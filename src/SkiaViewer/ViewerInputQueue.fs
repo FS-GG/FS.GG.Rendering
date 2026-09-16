@@ -9,12 +9,14 @@ open System
 /// identically. `module Viewer` keeps byte-identical public delegators to these.
 module internal ViewerInputQueueOps =
     let emptyInputQueue =
-        { Discrete = []
-          LatestContinuousPointer = None
-          ContinuousCoalescedCount = 0
-          Lifecycle = []
-          NextSequenceId = 1L
-          MaxObservedDepth = 0 }
+        {
+            Discrete = []
+            LatestContinuousPointer = None
+            ContinuousCoalescedCount = 0
+            Lifecycle = []
+            NextSequenceId = 1L
+            MaxObservedDepth = 0
+        }
 
     let inputQueueDepth queue =
         queue.Discrete.Length
@@ -43,12 +45,14 @@ module internal ViewerInputQueueOps =
             | _ -> priorityForInput inputKind
 
         let envelope =
-            { SequenceId = queue.NextSequenceId
-              ReceivedAt = receivedAt
-              InputKind = inputKind
-              PriorityLane = priority
-              ReceiptQueueDepth = depthBefore
-              Payload = payload }
+            {
+                SequenceId = queue.NextSequenceId
+                ReceivedAt = receivedAt
+                InputKind = inputKind
+                PriorityLane = priority
+                ReceiptQueueDepth = depthBefore
+                Payload = payload
+            }
 
         let next =
             match envelope.PriorityLane with
@@ -57,25 +61,32 @@ module internal ViewerInputQueueOps =
                     LatestContinuousPointer = Some envelope
                     ContinuousCoalescedCount =
                         queue.ContinuousCoalescedCount
-                        + (if Option.isSome queue.LatestContinuousPointer then 1 else 0) }
+                        + (if Option.isSome queue.LatestContinuousPointer then 1 else 0)
+                }
             | Lifecycle ->
-                { queue with Lifecycle = queue.Lifecycle @ [ envelope ] }
+                { queue with
+                    Lifecycle = queue.Lifecycle @ [ envelope ]
+                }
             | Discrete
             | Background ->
-                { queue with Discrete = queue.Discrete @ [ envelope ] }
+                { queue with
+                    Discrete = queue.Discrete @ [ envelope ]
+                }
 
         let observedDepth = max (depthBefore + 1) (inputQueueDepth next)
 
         envelope,
         { next with
             NextSequenceId = queue.NextSequenceId + 1L
-            MaxObservedDepth = max queue.MaxObservedDepth observedDepth }
+            MaxObservedDepth = max queue.MaxObservedDepth observedDepth
+        }
 
     let enqueueInput receivedAt inputKind payload queue =
         enqueueInputWithPolicy ViewerContinuousPointerPolicy.CoalesceLatestPerFrame receivedAt inputKind payload queue
 
     let drainInputQueue batchId drainReason queue =
         let before = inputQueueDepth queue
+
         let orderedNonContinuous =
             let laneRank envelope =
                 match envelope.PriorityLane with
@@ -90,20 +101,23 @@ module internal ViewerInputQueueOps =
             |> List.map (fun (_, _, envelope) -> envelope)
 
         let drain =
-            { BatchId = batchId
-              DiscreteInputs = orderedNonContinuous
-              CoalescedPointer = queue.LatestContinuousPointer
-              CoalescedMovementCount = queue.ContinuousCoalescedCount
-              QueueDepthBeforeDrain = before
-              QueueDepthAfterDrain = 0
-              DrainReason = drainReason }
+            {
+                BatchId = batchId
+                DiscreteInputs = orderedNonContinuous
+                CoalescedPointer = queue.LatestContinuousPointer
+                CoalescedMovementCount = queue.ContinuousCoalescedCount
+                QueueDepthBeforeDrain = before
+                QueueDepthAfterDrain = 0
+                DrainReason = drainReason
+            }
 
         let queue' =
             { queue with
                 Discrete = []
                 LatestContinuousPointer = None
                 ContinuousCoalescedCount = 0
-                Lifecycle = [] }
+                Lifecycle = []
+            }
 
         drain, queue'
 
@@ -122,13 +136,14 @@ module internal ViewerInputQueueOps =
             || themeChanged
             || Option.isSome dirtyRegion
 
-        { ProductModelChanged = productModelChanged
-          RuntimeStateChanged = runtimeStateChanged
-          SizeChanged = sizeChanged
-          ThemeChanged = themeChanged
-          SceneDirty = sceneDirty
-          DirtyRegionSummary = dirtyRegion
-          Reason = reason }
+        {
+            ProductModelChanged = productModelChanged
+            RuntimeStateChanged = runtimeStateChanged
+            SizeChanged = sizeChanged
+            ThemeChanged = themeChanged
+            SceneDirty = sceneDirty
+            DirtyRegionSummary = dirtyRegion
+            Reason = reason
+        }
 
-    let dirtyStateRequiresRecompose dirty =
-        dirty.SceneDirty
+    let dirtyStateRequiresRecompose dirty = dirty.SceneDirty

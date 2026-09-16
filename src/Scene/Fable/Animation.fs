@@ -9,31 +9,39 @@ type Easing =
     | EaseInOut
 
 type Transform =
-    { TranslateX: float
-      TranslateY: float
-      ScaleX: float
-      ScaleY: float
-      RotationDegrees: float }
+    {
+        TranslateX: float
+        TranslateY: float
+        ScaleX: float
+        ScaleY: float
+        RotationDegrees: float
+    }
 
 type Tween<'a> =
-    { Start: 'a
-      End: 'a
-      Duration: TimeSpan
-      Easing: Easing }
+    {
+        Start: 'a
+        End: 'a
+        Duration: TimeSpan
+        Easing: Easing
+    }
 
 type Animation =
-    { Opacity: Tween<float> option
-      Transform: Tween<Transform> option
-      Color: Tween<Color> option }
+    {
+        Opacity: Tween<float> option
+        Transform: Tween<Transform> option
+        Color: Tween<Color> option
+    }
 
 type AnimationState<'a> =
-    { Current: 'a
-      Start: 'a
-      Target: 'a
-      Elapsed: TimeSpan
-      Duration: TimeSpan
-      Easing: Easing
-      Interp: 'a -> 'a -> float -> 'a }
+    {
+        Current: 'a
+        Start: 'a
+        Target: 'a
+        Elapsed: TimeSpan
+        Duration: TimeSpan
+        Easing: Easing
+        Interp: 'a -> 'a -> float -> 'a
+    }
 
 type ClipProperty =
     | PositionX
@@ -52,14 +60,18 @@ type ClipValue =
     | PathValue of (float * float) list
 
 type ClipKeyframe =
-    { Time: TimeSpan
-      Value: ClipValue
-      EasingToNext: Easing }
+    {
+        Time: TimeSpan
+        Value: ClipValue
+        EasingToNext: Easing
+    }
 
 type AnimationCue =
-    { Id: string
-      Time: TimeSpan
-      Payload: string }
+    {
+        Id: string
+        Time: TimeSpan
+        Payload: string
+    }
 
 type ClipLoop =
     | Once
@@ -67,11 +79,13 @@ type ClipLoop =
     | PingPong of iterations: int
 
 type AnimationClip =
-    { Id: string
-      Duration: TimeSpan
-      Tracks: (ClipProperty * ClipKeyframe list) list
-      Cues: AnimationCue list
-      Loop: ClipLoop }
+    {
+        Id: string
+        Duration: TimeSpan
+        Tracks: (ClipProperty * ClipKeyframe list) list
+        Cues: AnimationCue list
+        Loop: ClipLoop
+    }
 
 type ClipIssue =
     | EmptyClipId
@@ -103,17 +117,21 @@ type ClipCueMode =
     | Paused
 
 type CueOccurrence =
-    { Cue: AnimationCue
-      Iteration: int
-      Direction: ClipDirection }
+    {
+        Cue: AnimationCue
+        Iteration: int
+        Direction: ClipDirection
+    }
 
 type AnimationClipSample =
-    { LocalTime: TimeSpan
-      Iteration: int
-      Direction: ClipDirection
-      Values: Map<ClipProperty, ClipValue>
-      Cues: CueOccurrence list
-      IsComplete: bool }
+    {
+        LocalTime: TimeSpan
+        Iteration: int
+        Direction: ClipDirection
+        Values: Map<ClipProperty, ClipValue>
+        Cues: CueOccurrence list
+        IsComplete: bool
+    }
 
 module Easing =
     let private clamp01 (t: float) =
@@ -141,22 +159,26 @@ module Easing =
 
 module Transform =
     let identity: Transform =
-        { TranslateX = 0.0
-          TranslateY = 0.0
-          ScaleX = 1.0
-          ScaleY = 1.0
-          RotationDegrees = 0.0 }
+        {
+            TranslateX = 0.0
+            TranslateY = 0.0
+            ScaleX = 1.0
+            ScaleY = 1.0
+            RotationDegrees = 0.0
+        }
 
     let isIdentity (transform: Transform) : bool = transform = identity
 
     let private lerp1 (a: float) (b: float) (t: float) = a + (b - a) * t
 
     let lerp (a: Transform) (b: Transform) (t: float) : Transform =
-        { TranslateX = lerp1 a.TranslateX b.TranslateX t
-          TranslateY = lerp1 a.TranslateY b.TranslateY t
-          ScaleX = lerp1 a.ScaleX b.ScaleX t
-          ScaleY = lerp1 a.ScaleY b.ScaleY t
-          RotationDegrees = lerp1 a.RotationDegrees b.RotationDegrees t }
+        {
+            TranslateX = lerp1 a.TranslateX b.TranslateX t
+            TranslateY = lerp1 a.TranslateY b.TranslateY t
+            ScaleX = lerp1 a.ScaleX b.ScaleX t
+            ScaleY = lerp1 a.ScaleY b.ScaleY t
+            RotationDegrees = lerp1 a.RotationDegrees b.RotationDegrees t
+        }
 
     let toPerspectiveTransform (transform: Transform) : PerspectiveTransform =
         // Compose translate ∘ rotate ∘ scale into a 2D affine 3×3.
@@ -166,15 +188,17 @@ module Transform =
         let sx = transform.ScaleX
         let sy = transform.ScaleY
 
-        { M11 = sx * cos
-          M12 = -(sy * sin)
-          M13 = transform.TranslateX
-          M21 = sx * sin
-          M22 = sy * cos
-          M23 = transform.TranslateY
-          M31 = 0.0
-          M32 = 0.0
-          M33 = 1.0 }
+        {
+            M11 = sx * cos
+            M12 = -(sy * sin)
+            M13 = transform.TranslateX
+            M21 = sx * sin
+            M22 = sy * cos
+            M23 = transform.TranslateY
+            M31 = 0.0
+            M32 = 0.0
+            M33 = 1.0
+        }
 
 module Tween =
     let progress (elapsed: TimeSpan) (tween: Tween<'a>) : float =
@@ -201,12 +225,16 @@ module private Lower =
         else byte r
 
     let private scaleColor (o: float) (c: Color) : Color =
-        { c with Alpha = clampByte (float c.Alpha * o) }
+        { c with
+            Alpha = clampByte (float c.Alpha * o)
+        }
 
     let private scalePaint (o: float) (p: Paint) : Paint = { p with Opacity = p.Opacity * o }
 
     let rec scaleScene (o: float) (scene: Scene) : Scene =
-        { Nodes = scene.Nodes |> List.map (scaleNode o) }
+        {
+            Nodes = scene.Nodes |> List.map (scaleNode o)
+        }
 
     and scaleNode (o: float) (node: SceneNode) : SceneNode =
         match node with
@@ -223,17 +251,29 @@ module private Lower =
         | Vertices(mode, vs, paint) -> Vertices(mode, vs, scalePaint o paint)
         | Arc(rect, sa, ea, paint) -> Arc(rect, sa, ea, scalePaint o paint)
         | Text(pos, s, color) -> Text(pos, s, scaleColor o color)
-        | TextRun run -> TextRun { run with Paint = scalePaint o run.Paint }
+        | TextRun run ->
+            TextRun
+                { run with
+                    Paint = scalePaint o run.Paint
+                }
         | Image(bounds, src) -> Image(bounds, src)
         | ClipNode(clip, scene) -> ClipNode(clip, scaleScene o scene)
         | RegionNode(region, paint) -> RegionNode(region, scalePaint o paint)
         | ColorSpaceNode(cs, scene) -> ColorSpaceNode(cs, scaleScene o scene)
         | PerspectiveNode(t, scene) -> PerspectiveNode(t, scaleScene o scene)
-        | PictureNode picture -> PictureNode { picture with Scene = scaleScene o picture.Scene }
+        | PictureNode picture ->
+            PictureNode
+                { picture with
+                    Scene = scaleScene o picture.Scene
+                }
         | Chart values -> Chart values
         | Translate(offset, scene) -> Translate(offset, scaleScene o scene)
         | SizedText(pos, s, size, color) -> SizedText(pos, s, size, scaleColor o color)
-        | GlyphRun run -> GlyphRun { run with Paint = scalePaint o run.Paint }
+        | GlyphRun run ->
+            GlyphRun
+                { run with
+                    Paint = scalePaint o run.Paint
+                }
         // Feature 120 (FR-007): transparent — scaling changes content, so unwrap the boundary and
         // scale the inner subtree (a scaled subtree is no longer byte-identical to its recorded
         // picture, so it must not carry the cache marker into the overlay sampler).
@@ -261,15 +301,19 @@ module Animation =
         clampByte (float a + (float b - float a) * t)
 
     let lerpColor (a: Color) (b: Color) (t: float) : Color =
-        { Red = lerpByte a.Red b.Red t
-          Green = lerpByte a.Green b.Green t
-          Blue = lerpByte a.Blue b.Blue t
-          Alpha = lerpByte a.Alpha b.Alpha t }
+        {
+            Red = lerpByte a.Red b.Red t
+            Green = lerpByte a.Green b.Green t
+            Blue = lerpByte a.Blue b.Blue t
+            Alpha = lerpByte a.Alpha b.Alpha t
+        }
 
     let empty: Animation =
-        { Opacity = None
-          Transform = None
-          Color = None }
+        {
+            Opacity = None
+            Transform = None
+            Color = None
+        }
 
     let private sampleOpacity (elapsed: TimeSpan) (animation: Animation) : float =
         match animation.Opacity with
@@ -287,7 +331,8 @@ module Animation =
     // it a success-shaped stub, expose the sampled colour here so consumers can drive their own
     // recolouring (e.g. a `Paint` fill) from the animated value; `None` when no colour tween is set.
     let sampleColor (elapsed: TimeSpan) (animation: Animation) : Color option =
-        animation.Color |> Option.map (fun tween -> Tween.sample lerpColor elapsed tween)
+        animation.Color
+        |> Option.map (fun tween -> Tween.sample lerpColor elapsed tween)
 
     let applyAt (elapsed: TimeSpan) (animation: Animation) (target: Scene) : SceneNode =
         let opacity = sampleOpacity elapsed animation
@@ -299,7 +344,11 @@ module Animation =
             // Identity-at-rest (R5): byte-identical to the static render.
             Lower.unwrap target
         else
-            let folded = if opacityAtRest then target else Lower.scaleScene opacity target
+            let folded =
+                if opacityAtRest then
+                    target
+                else
+                    Lower.scaleScene opacity target
 
             if transformAtRest then
                 Lower.unwrap folded
@@ -307,24 +356,37 @@ module Animation =
                 PerspectiveNode(Transform.toPerspectiveTransform transform, folded)
 
     let sampleFrames (times: TimeSpan list) (animation: Animation) (target: Scene) : Scene list =
-        times |> List.map (fun t -> { Nodes = [ applyAt t animation target ] })
+        times
+        |> List.map (fun t ->
+            {
+                Nodes = [ applyAt t animation target ]
+            })
 
     let isSettled (elapsed: TimeSpan) (animation: Animation) : bool =
-        [ animation.Opacity |> Option.map (fun t -> t.Duration)
-          animation.Transform |> Option.map (fun t -> t.Duration)
-          animation.Color |> Option.map (fun t -> t.Duration) ]
+        [
+            animation.Opacity |> Option.map (fun t -> t.Duration)
+            animation.Transform |> Option.map (fun t -> t.Duration)
+            animation.Color |> Option.map (fun t -> t.Duration)
+        ]
         |> List.choose id
         |> List.forall (fun duration -> elapsed >= duration)
 
 module AnimationState =
-    let create (interp: 'a -> 'a -> float -> 'a) (initial: 'a) (duration: TimeSpan) (easing: Easing) : AnimationState<'a> =
-        { Current = initial
-          Start = initial
-          Target = initial
-          Elapsed = TimeSpan.Zero
-          Duration = duration
-          Easing = easing
-          Interp = interp }
+    let create
+        (interp: 'a -> 'a -> float -> 'a)
+        (initial: 'a)
+        (duration: TimeSpan)
+        (easing: Easing)
+        : AnimationState<'a> =
+        {
+            Current = initial
+            Start = initial
+            Target = initial
+            Elapsed = TimeSpan.Zero
+            Duration = duration
+            Easing = easing
+            Interp = interp
+        }
 
     let advance (delta: TimeSpan) (state: AnimationState<'a>) : AnimationState<'a> =
         let raw = state.Elapsed + delta
@@ -349,13 +411,15 @@ module AnimationState =
 
         { state with
             Elapsed = capped
-            Current = current }
+            Current = current
+        }
 
     let retarget (newTarget: 'a) (state: AnimationState<'a>) : AnimationState<'a> =
         { state with
             Start = state.Current
             Target = newTarget
-            Elapsed = TimeSpan.Zero }
+            Elapsed = TimeSpan.Zero
+        }
 
     let value (state: AnimationState<'a>) : 'a = state.Current
 
@@ -363,7 +427,8 @@ module AnimationState =
         state.Elapsed < state.Duration && state.Current <> state.Target
 
 module AnimationClip =
-    let private finite value = not (Double.IsNaN value || Double.IsInfinity value)
+    let private finite value =
+        not (Double.IsNaN value || Double.IsInfinity value)
 
     let private propertyAccepts property value =
         match property, value with
@@ -376,7 +441,9 @@ module AnimationClip =
         match value with
         | ScalarValue scalar -> finite scalar
         | ColorValue _ -> true
-        | PathValue points -> points.Length >= 2 && (points |> List.forall (fun (x, y) -> finite x && finite y))
+        | PathValue points ->
+            points.Length >= 2
+            && (points |> List.forall (fun (x, y) -> finite x && finite y))
 
     let private trackIssues duration (property, frames: ClipKeyframe list) =
         let identityIssues =
@@ -393,43 +460,78 @@ module AnimationClip =
                 |> List.indexed
                 |> List.choose (fun (index, frame) ->
                     let prior = if index = 0 then None else Some frames[index - 1].Time
-                    if frame.Time < TimeSpan.Zero || frame.Time > duration || (prior |> Option.exists (fun value -> frame.Time <= value)) then
+
+                    if
+                        frame.Time < TimeSpan.Zero
+                        || frame.Time > duration
+                        || (prior |> Option.exists (fun value -> frame.Time <= value))
+                    then
                         Some(InvalidKeyframeTime(property, index))
-                    else None)
+                    else
+                        None)
 
             let endpointIssues =
                 if frames.Head.Time <> TimeSpan.Zero || frames[frames.Length - 1].Time <> duration then
-                    [ InvalidKeyframeTime(property, if frames.Head.Time <> TimeSpan.Zero then 0 else frames.Length - 1) ]
-                else []
+                    [
+                        InvalidKeyframeTime(
+                            property,
+                            if frames.Head.Time <> TimeSpan.Zero then
+                                0
+                            else
+                                frames.Length - 1
+                        )
+                    ]
+                else
+                    []
 
             let valueIssues =
                 frames
                 |> List.indexed
                 |> List.collect (fun (index, frame) ->
-                    [ if not (propertyAccepts property frame.Value) then MismatchedKeyframeValue(property, index)
-                      if not (validValue frame.Value) then InvalidKeyframeValue(property, index) ])
+                    [
+                        if not (propertyAccepts property frame.Value) then
+                            MismatchedKeyframeValue(property, index)
+                        if not (validValue frame.Value) then
+                            InvalidKeyframeValue(property, index)
+                    ])
 
             let topologyIssues =
                 match property with
                 | PathMorph _ ->
                     let counts =
                         frames
-                        |> List.choose (fun frame -> match frame.Value with PathValue points -> Some points.Length | _ -> None)
+                        |> List.choose (fun frame ->
+                            match frame.Value with
+                            | PathValue points -> Some points.Length
+                            | _ -> None)
                         |> Set.ofList
-                    if counts.Count > 1 then [ IncompatiblePathTopology property ] else []
+
+                    if counts.Count > 1 then
+                        [ IncompatiblePathTopology property ]
+                    else
+                        []
                 | _ -> []
 
             identityIssues @ timeIssues @ endpointIssues @ valueIssues @ topologyIssues
 
     let validate clip =
         let basic =
-            [ if String.IsNullOrWhiteSpace clip.Id then EmptyClipId
-              if clip.Duration <= TimeSpan.Zero || clip.Duration.TotalMilliseconds > 86400000.0 || not (finite clip.Duration.TotalMilliseconds) then InvalidDuration
-              if List.isEmpty clip.Tracks then EmptyTracks
-              match clip.Loop with
-              | Repeat iterations
-              | PingPong iterations when iterations < 1 || iterations > 10000 -> InvalidLoopIterations iterations
-              | _ -> () ]
+            [
+                if String.IsNullOrWhiteSpace clip.Id then
+                    EmptyClipId
+                if
+                    clip.Duration <= TimeSpan.Zero
+                    || clip.Duration.TotalMilliseconds > 86400000.0
+                    || not (finite clip.Duration.TotalMilliseconds)
+                then
+                    InvalidDuration
+                if List.isEmpty clip.Tracks then
+                    EmptyTracks
+                match clip.Loop with
+                | Repeat iterations
+                | PingPong iterations when iterations < 1 || iterations > 10000 -> InvalidLoopIterations iterations
+                | _ -> ()
+            ]
 
         let duplicateTracks =
             clip.Tracks
@@ -441,30 +543,49 @@ module AnimationClip =
                 clip.Cues
                 |> List.indexed
                 |> List.collect (fun (index, cue) ->
-                    [ if String.IsNullOrWhiteSpace cue.Id then EmptyCueId index
-                      if cue.Time < TimeSpan.Zero || cue.Time > clip.Duration then InvalidCueTime cue.Id ])
+                    [
+                        if String.IsNullOrWhiteSpace cue.Id then
+                            EmptyCueId index
+                        if cue.Time < TimeSpan.Zero || cue.Time > clip.Duration then
+                            InvalidCueTime cue.Id
+                    ])
+
             let duplicates =
                 clip.Cues
                 |> List.filter (fun cue -> not (String.IsNullOrWhiteSpace cue.Id))
                 |> List.countBy _.Id
                 |> List.choose (fun (id, count) -> if count > 1 then Some(DuplicateCueId id) else None)
+
             let ordered =
-                if clip.Cues |> List.pairwise |> List.exists (fun (a, b) -> b.Time < a.Time) then [ UnorderedCues ] else []
+                if clip.Cues |> List.pairwise |> List.exists (fun (a, b) -> b.Time < a.Time) then
+                    [ UnorderedCues ]
+                else
+                    []
+
             identities @ duplicates @ ordered
 
         let trackValidation =
-            if clip.Duration <= TimeSpan.Zero then []
-            else clip.Tracks |> List.collect (trackIssues clip.Duration)
+            if clip.Duration <= TimeSpan.Zero then
+                []
+            else
+                clip.Tracks |> List.collect (trackIssues clip.Duration)
 
         let issues = basic @ duplicateTracks @ trackValidation @ cueIssues
-        if List.isEmpty issues then Ok(ValidatedAnimationClip clip) else Error issues
+
+        if List.isEmpty issues then
+            Ok(ValidatedAnimationClip clip)
+        else
+            Error issues
 
     let value (ValidatedAnimationClip clip) = clip
 
     let private interpolateValue easing progress startValue endValue =
         let t = Easing.apply easing progress
-        if progress <= 0.0 then startValue
-        elif progress >= 1.0 then endValue
+
+        if progress <= 0.0 then
+            startValue
+        elif progress >= 1.0 then
+            endValue
         else
             match startValue, endValue with
             | ScalarValue a, ScalarValue b -> ScalarValue(Animation.lerpFloat a b t)
@@ -483,7 +604,13 @@ module AnimationClip =
             let first = frames[upper - 1]
             let second = frames[upper]
             let span = (second.Time - first.Time).TotalMilliseconds
-            let progress = if span <= 0.0 then 1.0 else (localTime - first.Time).TotalMilliseconds / span
+
+            let progress =
+                if span <= 0.0 then
+                    1.0
+                else
+                    (localTime - first.Time).TotalMilliseconds / span
+
             interpolateValue first.EasingToNext progress first.Value second.Value
 
     let private loopCount loop =
@@ -498,55 +625,98 @@ module AnimationClip =
         let count = loopCount clip.Loop
         let totalMs = durationMs * float count
         let complete = elapsedMs >= totalMs
-        let iteration = if complete then count - 1 else int (Math.Floor(elapsedMs / durationMs))
-        let rawLocal = if complete then durationMs else elapsedMs - float iteration * durationMs
+
+        let iteration =
+            if complete then
+                count - 1
+            else
+                int (Math.Floor(elapsedMs / durationMs))
+
+        let rawLocal =
+            if complete then
+                durationMs
+            else
+                elapsedMs - float iteration * durationMs
+
         let direction =
             match clip.Loop with
             | PingPong _ when iteration % 2 = 1 -> Reverse
             | _ -> Forward
+
         let localMs =
             if complete then
-                match direction with Forward -> durationMs | Reverse -> 0.0
+                match direction with
+                | Forward -> durationMs
+                | Reverse -> 0.0
             else
-                match direction with Forward -> rawLocal | Reverse -> durationMs - rawLocal
+                match direction with
+                | Forward -> rawLocal
+                | Reverse -> durationMs - rawLocal
+
         TimeSpan.FromMilliseconds localMs, iteration, direction, complete, min elapsedMs totalMs
 
     let private cueOccurrences (previous: float) (current: float) (clip: AnimationClip) =
-        if current <= previous then []
+        if current <= previous then
+            []
         else
             let durationMs = clip.Duration.TotalMilliseconds
             let count = loopCount clip.Loop
-            [ for iteration in 0 .. count - 1 do
-                let direction =
-                    match clip.Loop with
-                    | PingPong _ when iteration % 2 = 1 -> Reverse
-                    | _ -> Forward
-                for cue in clip.Cues do
-                    let local = cue.Time.TotalMilliseconds
-                    let offset = match direction with Forward -> local | Reverse -> durationMs - local
-                    let absolute = float iteration * durationMs + offset
-                    // A ping-pong turn belongs to the pass that arrives at the endpoint. Suppress the
-                    // following pass's coincident start boundary so one cue cannot fire twice at one instant.
-                    let startsLaterIteration =
+
+            [
+                for iteration in 0 .. count - 1 do
+                    let direction =
                         match clip.Loop with
-                        | PingPong _ -> iteration > 0 && offset = 0.0
-                        | _ -> false
-                    if not startsLaterIteration && absolute > previous && absolute <= current then
-                        yield absolute, { Cue = cue; Iteration = iteration; Direction = direction } ]
+                        | PingPong _ when iteration % 2 = 1 -> Reverse
+                        | _ -> Forward
+
+                    for cue in clip.Cues do
+                        let local = cue.Time.TotalMilliseconds
+
+                        let offset =
+                            match direction with
+                            | Forward -> local
+                            | Reverse -> durationMs - local
+
+                        let absolute = float iteration * durationMs + offset
+                        // A ping-pong turn belongs to the pass that arrives at the endpoint. Suppress the
+                        // following pass's coincident start boundary so one cue cannot fire twice at one instant.
+                        let startsLaterIteration =
+                            match clip.Loop with
+                            | PingPong _ -> iteration > 0 && offset = 0.0
+                            | _ -> false
+
+                        if not startsLaterIteration && absolute > previous && absolute <= current then
+                            yield
+                                absolute,
+                                {
+                                    Cue = cue
+                                    Iteration = iteration
+                                    Direction = direction
+                                }
+            ]
             |> List.sortBy (fun (absolute, occurrence) -> absolute, occurrence.Cue.Id)
             |> List.map snd
 
     let sample elapsed cueMode (ValidatedAnimationClip clip) =
-        let localTime, iteration, direction, complete, boundedElapsed = position elapsed clip
-        let values = clip.Tracks |> List.map (fun (property, frames) -> property, sampleTrack localTime frames) |> Map.ofList
+        let localTime, iteration, direction, complete, boundedElapsed =
+            position elapsed clip
+
+        let values =
+            clip.Tracks
+            |> List.map (fun (property, frames) -> property, sampleTrack localTime frames)
+            |> Map.ofList
+
         let cues =
             match cueMode with
             | Seek
             | Paused -> []
             | LiveAdvance previous -> cueOccurrences previous.TotalMilliseconds boundedElapsed clip
-        { LocalTime = localTime
-          Iteration = iteration
-          Direction = direction
-          Values = values
-          Cues = cues
-          IsComplete = complete }
+
+        {
+            LocalTime = localTime
+            Iteration = iteration
+            Direction = direction
+            Values = values
+            Cues = cues
+            IsComplete = complete
+        }

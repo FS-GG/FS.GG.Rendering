@@ -23,89 +23,107 @@ module PackageFeed =
         | Proof
 
     type PackablePackage =
-        { PackageId: string
-          Version: string
-          ProjectPath: string
-          IsPackable: bool
-          PackageFilePath: string }
+        {
+            PackageId: string
+            Version: string
+            ProjectPath: string
+            IsPackable: bool
+            PackageFilePath: string
+        }
 
     type CompatibilityException =
-        { Id: string
-          PackageId: string
-          DeclaredVersion: string
-          ExpectedVersion: string
-          SamplePath: string
-          Reason: string
-          Owner: string
-          Review: string }
+        {
+            Id: string
+            PackageId: string
+            DeclaredVersion: string
+            ExpectedVersion: string
+            SamplePath: string
+            Reason: string
+            Owner: string
+            Review: string
+        }
 
     type PackagePin =
-        { PackageId: string
-          DeclaredVersion: string
-          ExpectedVersion: string option
-          ProjectFilePath: string
-          Status: PackagePinStatus
-          CompatibilityExceptionId: string option }
+        {
+            PackageId: string
+            DeclaredVersion: string
+            ExpectedVersion: string option
+            ProjectFilePath: string
+            Status: PackagePinStatus
+            CompatibilityExceptionId: string option
+        }
 
     type FeedPackageStatus =
-        { PackageId: string
-          Version: string
-          PackageFilePath: string
-          Present: bool }
+        {
+            PackageId: string
+            Version: string
+            PackageFilePath: string
+            Present: bool
+        }
 
     type SourceRule =
-        { RuleId: string
-          PackagePattern: string
-          AllowedSources: string list }
+        {
+            RuleId: string
+            PackagePattern: string
+            AllowedSources: string list
+        }
 
     type SourceProof =
-        { Status: ProofStatus
-          FeedPath: string
-          CachePath: string
-          GlobalCacheCleared: bool
-          SelectedSamples: string list
-          SourceRules: SourceRule list
-          RestoreCommand: string option
-          RestoreLogPath: string option
-          /// `None` when the proof short-circuited before compiling the consumers (a stale pin or a
-          /// missing feed package), so "did not build" is never mistaken for "built clean".
-          BuildLogPath: string option
-          AssetsFiles: string list
-          Violations: string list }
+        {
+            Status: ProofStatus
+            FeedPath: string
+            CachePath: string
+            GlobalCacheCleared: bool
+            SelectedSamples: string list
+            SourceRules: SourceRule list
+            RestoreCommand: string option
+            RestoreLogPath: string option
+            /// `None` when the proof short-circuited before compiling the consumers (a stale pin or a
+            /// missing feed package), so "did not build" is never mistaken for "built clean".
+            BuildLogPath: string option
+            AssetsFiles: string list
+            Violations: string list
+        }
 
     type PackageFeedOptions =
-        { RepositoryRoot: string
-          SelectedSamples: string list
-          FeedPath: string
-          OutDir: string
-          Mode: PackageFeedMode
-          PackBeforeCheck: bool
-          IsolatedCachePath: string option
-          Cold: bool
-          ClearGlobalCache: bool
-          AllowedExceptionIds: Set<string>
-          CompatibilityExceptions: CompatibilityException list }
+        {
+            RepositoryRoot: string
+            SelectedSamples: string list
+            FeedPath: string
+            OutDir: string
+            Mode: PackageFeedMode
+            PackBeforeCheck: bool
+            IsolatedCachePath: string option
+            Cold: bool
+            ClearGlobalCache: bool
+            AllowedExceptionIds: Set<string>
+            CompatibilityExceptions: CompatibilityException list
+        }
 
     type PackageFeedResult =
-        { Status: ProofStatus
-          CurrentPackages: PackablePackage list
-          PackagePins: PackagePin list
-          FeedPackages: FeedPackageStatus list
-          ChangedFiles: string list
-          SourceProof: SourceProof option
-          EvidenceFiles: string list
-          Diagnostics: string list }
+        {
+            Status: ProofStatus
+            CurrentPackages: PackablePackage list
+            PackagePins: PackagePin list
+            FeedPackages: FeedPackageStatus list
+            ChangedFiles: string list
+            SourceProof: SourceProof option
+            EvidenceFiles: string list
+            Diagnostics: string list
+        }
 
     type Model =
-        { RepositoryRoot: string
-          SelectedSamples: string list
-          FeedPath: string
-          CurrentPackages: PackablePackage list
-          PackagePins: PackagePin list
-          FeedPackages: FeedPackageStatus list
-          Proof: SourceProof option
-          Status: ProofStatus option
-          Diagnostics: string list }
+        {
+            RepositoryRoot: string
+            SelectedSamples: string list
+            FeedPath: string
+            CurrentPackages: PackablePackage list
+            PackagePins: PackagePin list
+            FeedPackages: FeedPackageStatus list
+            Proof: SourceProof option
+            Status: ProofStatus option
+            Diagnostics: string list
+        }
 
     type Msg =
         | DiscoverPackagesRequested

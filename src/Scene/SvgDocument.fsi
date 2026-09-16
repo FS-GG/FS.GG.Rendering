@@ -3,12 +3,14 @@ namespace FS.GG.UI.Scene
 /// SVG affine matrix in the standard six-value form:
 /// x' = A*x + C*y + E; y' = B*x + D*y + F.
 type SvgAffine =
-    { A: float
-      B: float
-      C: float
-      D: float
-      E: float
-      F: float }
+    {
+        A: float
+        B: float
+        C: float
+        D: float
+        E: float
+        F: float
+    }
 
 [<RequireQualifiedAccess>]
 type SvgAffineError =
@@ -41,9 +43,11 @@ type SvgSpreadMethod =
     | Reflect
 
 type SvgGradientStop =
-    { Offset: float
-      Color: Color
-      StopOpacity: float }
+    {
+        Offset: float
+        Color: Color
+        StopOpacity: float
+    }
 
 [<RequireQualifiedAccess>]
 type SvgGradientGeometry =
@@ -51,12 +55,14 @@ type SvgGradientGeometry =
     | Radial of Center: Point * Radius: float * Focal: Point option
 
 type SvgGradientDefinition =
-    { Geometry: SvgGradientGeometry
-      Units: SvgCoordinateUnits
-      Transform: SvgAffine
-      Spread: SvgSpreadMethod
-      Stops: SvgGradientStop list
-      InheritFrom: string option }
+    {
+        Geometry: SvgGradientGeometry
+        Units: SvgCoordinateUnits
+        Transform: SvgAffine
+        Spread: SvgSpreadMethod
+        Stops: SvgGradientStop list
+        InheritFrom: string option
+    }
 
 [<RequireQualifiedAccess>]
 type SvgPaintSource =
@@ -64,19 +70,23 @@ type SvgPaintSource =
     | Definition of string
 
 type SvgStrokePresentation =
-    { Source: SvgPaintSource
-      Width: float
-      Cap: StrokeCap
-      Join: StrokeJoin
-      Miter: float
-      Dash: float list
-      DashOffset: float }
+    {
+        Source: SvgPaintSource
+        Width: float
+        Cap: StrokeCap
+        Join: StrokeJoin
+        Miter: float
+        Dash: float list
+        DashOffset: float
+    }
 
 type SvgPresentation =
-    { FillSource: SvgPaintSource option
-      StrokeStyle: SvgStrokePresentation option
-      OverallOpacity: float
-      FillRule: PathFillType }
+    {
+        FillSource: SvgPaintSource option
+        StrokeStyle: SvgStrokePresentation option
+        OverallOpacity: float
+        FillRule: PathFillType
+    }
 
 [<RequireQualifiedAccess>]
 type SvgMaskKind =
@@ -90,20 +100,24 @@ type SvgClipShape =
     | Intersection of definitionIds: string list
 
 type SvgFontReference =
-    { Family: string
-      Source: string
-      Sha256: string
-      License: string }
+    {
+        Family: string
+        Source: string
+        Sha256: string
+        License: string
+    }
 
 type SvgElement =
-    { Id: string
-      SemanticId: string option
-      Visible: bool
-      Transform: SvgAffine
-      ClipId: string option
-      MaskId: string option
-      Presentation: SvgPresentation option
-      Content: SvgElementContent }
+    {
+        Id: string
+        SemanticId: string option
+        Visible: bool
+        Transform: SvgAffine
+        ClipId: string option
+        MaskId: string option
+        Presentation: SvgPresentation option
+        Content: SvgElementContent
+    }
 
 and [<RequireQualifiedAccess>] SvgElementContent =
     | SceneLeaf of Scene
@@ -111,8 +125,10 @@ and [<RequireQualifiedAccess>] SvgElementContent =
     | SymbolInstance of definitionId: string * viewport: Rect option
 
 type SvgDefinition =
-    { Id: string
-      Content: SvgDefinitionContent }
+    {
+        Id: string
+        Content: SvgDefinitionContent
+    }
 
 and [<RequireQualifiedAccess>] SvgDefinitionContent =
     | Symbol of viewBox: Rect option * children: SvgElement list
@@ -122,24 +138,30 @@ and [<RequireQualifiedAccess>] SvgDefinitionContent =
     | Font of SvgFontReference
 
 type SvgDocument =
-    { Schema: string
-      Id: string
-      ViewBox: Rect
-      Definitions: SvgDefinition list
-      Children: SvgElement list }
+    {
+        Schema: string
+        Id: string
+        ViewBox: Rect
+        Definitions: SvgDefinition list
+        Children: SvgElement list
+    }
 
 type SvgDocumentLimits =
-    { MaxSerializedBytes: int
-      MaxNodes: int
-      MaxPathSegments: int
-      MaxDefinitions: int
-      MaxReferenceDepth: int
-      MaxExpandedSymbolNodes: int }
+    {
+        MaxSerializedBytes: int
+        MaxNodes: int
+        MaxPathSegments: int
+        MaxDefinitions: int
+        MaxReferenceDepth: int
+        MaxExpandedSymbolNodes: int
+    }
 
 type SvgDocumentIssue =
-    { Code: string
-      Location: string
-      Message: string }
+    {
+        Code: string
+        Location: string
+        Message: string
+    }
 
 [<RequireQualifiedAccess>]
 type SvgRuntimeSupport =
@@ -148,26 +170,33 @@ type SvgRuntimeSupport =
     | Unsupported of reason: string
 
 type SvgAssetDescriptor =
-    { AssetId: string
-      Version: string
-      Sha256: string
-      License: string
-      Document: SvgDocument }
+    {
+        AssetId: string
+        Version: string
+        Sha256: string
+        License: string
+        Document: SvgDocument
+    }
 
 type SvgBuildExtensionDescriptor =
-    { ExtensionId: string
-      Version: string
-      EntryPoint: string
-      Capabilities: string list
-      Support: SvgRuntimeSupport }
+    {
+        ExtensionId: string
+        Version: string
+        EntryPoint: string
+        Capabilities: string list
+        Support: SvgRuntimeSupport
+    }
 
 [<RequireQualifiedAccess>]
 module SvgDocument =
     val schema: string
     val defaultLimits: SvgDocumentLimits
     val defaultPresentation: SvgPresentation
+
     /// Validate identity, references, finite values and profile limits before browser mutation.
-    val validate: serializedByteCount: int -> limits: SvgDocumentLimits -> document: SvgDocument -> SvgDocumentIssue list
+    val validate:
+        serializedByteCount: int -> limits: SvgDocumentLimits -> document: SvgDocument -> SvgDocumentIssue list
+
     /// Checked compatibility adapter for the original retained foundation contract.
     val ofRetainedScene: viewBox: Rect -> scene: RetainedScene -> Result<SvgDocument, SvgDocumentIssue list>
     /// Serialize one accepted typed document into the bounded canonical `fsgg.svg-document/1` wire format.
@@ -182,21 +211,25 @@ module SvgDocument =
 /// Immutable handoff from the minimal document editor into a play/session boundary.
 /// The canonical serialized bytes do not share later editor history.
 type SvgDocumentPlaySnapshot =
-    { SourceRevision: int
-      SerializedDocument: string
-      SelectedSemanticId: string option }
+    {
+        SourceRevision: int
+        SerializedDocument: string
+        SelectedSemanticId: string option
+    }
 
 /// Minimal guarded document/edit state. This is a contract foundation, not a complete editor.
 type SvgDocumentInteractionState =
-    { Revision: int
-      Document: SvgDocument
-      Camera: SvgAffine
-      SelectedSemanticId: string option
-      FocusedSemanticId: string option
-      CapturedPointerId: int option
-      UndoDocuments: SvgDocument list
-      RedoDocuments: SvgDocument list
-      PlaySnapshot: SvgDocumentPlaySnapshot option }
+    {
+        Revision: int
+        Document: SvgDocument
+        Camera: SvgAffine
+        SelectedSemanticId: string option
+        FocusedSemanticId: string option
+        CapturedPointerId: int option
+        UndoDocuments: SvgDocument list
+        RedoDocuments: SvgDocument list
+        PlaySnapshot: SvgDocumentPlaySnapshot option
+    }
 
 [<RequireQualifiedAccess>]
 type SvgDocumentInteractionMessage =
@@ -224,8 +257,10 @@ type SvgDocumentInteractionError =
     | NothingToRedo
 
 type SvgDocumentInteractionResult =
-    { State: SvgDocumentInteractionState
-      Error: SvgDocumentInteractionError option }
+    {
+        State: SvgDocumentInteractionState
+        Error: SvgDocumentInteractionError option
+    }
 
 [<RequireQualifiedAccess>]
 module SvgDocumentInteraction =
@@ -234,10 +269,8 @@ module SvgDocumentInteraction =
         revision: int ->
         camera: SvgAffine ->
         document: SvgDocument ->
-        Result<SvgDocumentInteractionState, SvgDocumentInteractionError>
+            Result<SvgDocumentInteractionState, SvgDocumentInteractionError>
 
     /// Apply one synchronous, atomic minimal interaction/edit transition.
     val update:
-        message: SvgDocumentInteractionMessage ->
-        state: SvgDocumentInteractionState ->
-        SvgDocumentInteractionResult
+        message: SvgDocumentInteractionMessage -> state: SvgDocumentInteractionState -> SvgDocumentInteractionResult

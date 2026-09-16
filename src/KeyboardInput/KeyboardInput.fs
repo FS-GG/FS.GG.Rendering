@@ -22,25 +22,29 @@ type ViewerKeyDirection =
     | KeyUp
 
 type ViewerKeyEvent =
-    { RawKey: string
-      Direction: ViewerKeyDirection }
+    {
+        RawKey: string
+        Direction: ViewerKeyDirection
+    }
 
-type KeyboardBinding =
-    { Key: KeyId
-      Command: CommandId }
+type KeyboardBinding = { Key: KeyId; Command: CommandId }
 
 type KeyboardDiagnostic =
-    { Code: string
-      Severity: string
-      Message: string
-      Key: KeyId option }
+    {
+        Code: string
+        Severity: string
+        Message: string
+        Key: KeyId option
+    }
 
 type KeyboardStateDisplay =
-    { PressedKeys: KeyId list
-      ActiveLayout: string
-      ActiveModeStack: string list
-      PendingSequence: KeyId list
-      LastCommand: CommandId option }
+    {
+        PressedKeys: KeyId list
+        ActiveLayout: string
+        ActiveModeStack: string list
+        PendingSequence: KeyId list
+        LastCommand: CommandId option
+    }
 
 type KeyboardEffect =
     | CommandResolved of CommandId
@@ -53,16 +57,18 @@ type KeyboardEffect =
     | RequestHostKeyCapture of KeyId
 
 type KeyboardModel =
-    { Bindings: KeyboardBinding list
-      PressedKeys: Set<KeyId>
-      LastCommand: CommandId option
-      ActiveLayout: string
-      ActiveModeStack: string list
-      PersistentModeState: Map<string, string>
-      PendingSequence: KeyId list
-      Diagnostics: KeyboardDiagnostic list
-      RecentEffects: KeyboardEffect list
-      StateDisplay: KeyboardStateDisplay }
+    {
+        Bindings: KeyboardBinding list
+        PressedKeys: Set<KeyId>
+        LastCommand: CommandId option
+        ActiveLayout: string
+        ActiveModeStack: string list
+        PersistentModeState: Map<string, string>
+        PendingSequence: KeyId list
+        Diagnostics: KeyboardDiagnostic list
+        RecentEffects: KeyboardEffect list
+        StateDisplay: KeyboardStateDisplay
+    }
 
 type KeyboardMsg =
     | KeyDown of KeyId
@@ -77,36 +83,47 @@ type KeyboardMsg =
 
 module Keyboard =
     let stateDisplay model =
-        { PressedKeys = model.PressedKeys |> Set.toList
-          ActiveLayout = model.ActiveLayout
-          ActiveModeStack = model.ActiveModeStack
-          PendingSequence = model.PendingSequence
-          LastCommand = model.LastCommand }
+        {
+            PressedKeys = model.PressedKeys |> Set.toList
+            ActiveLayout = model.ActiveLayout
+            ActiveModeStack = model.ActiveModeStack
+            PendingSequence = model.PendingSequence
+            LastCommand = model.LastCommand
+        }
 
     let attachState effects model =
         let display = stateDisplay model
-        { model with StateDisplay = display; RecentEffects = effects }, effects
+
+        { model with
+            StateDisplay = display
+            RecentEffects = effects
+        },
+        effects
 
     let init bindings =
         let display =
-            { PressedKeys = []
-              ActiveLayout = "default"
-              ActiveModeStack = []
-              PendingSequence = []
-              LastCommand = None }
+            {
+                PressedKeys = []
+                ActiveLayout = "default"
+                ActiveModeStack = []
+                PendingSequence = []
+                LastCommand = None
+            }
 
         let effects = [ StateDisplayChanged display ]
 
-        { Bindings = bindings
-          PressedKeys = Set.empty
-          LastCommand = None
-          ActiveLayout = "default"
-          ActiveModeStack = []
-          PersistentModeState = Map.empty
-          PendingSequence = []
-          Diagnostics = []
-          RecentEffects = effects
-          StateDisplay = display },
+        {
+            Bindings = bindings
+            PressedKeys = Set.empty
+            LastCommand = None
+            ActiveLayout = "default"
+            ActiveModeStack = []
+            PersistentModeState = Map.empty
+            PendingSequence = []
+            Diagnostics = []
+            RecentEffects = effects
+            StateDisplay = display
+        },
         effects
 
     let update msg model =
@@ -120,13 +137,18 @@ module Keyboard =
                 |> Option.map _.Command
 
             let effects =
-                [ KeyStateChanged(Set.toList pressed)
-                  match command with
-                  | Some command -> CommandResolved command
-                  | None -> KeyStateChanged(Set.toList pressed) ]
+                [
+                    KeyStateChanged(Set.toList pressed)
+                    match command with
+                    | Some command -> CommandResolved command
+                    | None -> KeyStateChanged(Set.toList pressed)
+                ]
                 |> List.distinct
 
-            { model with PressedKeys = pressed; LastCommand = command }
+            { model with
+                PressedKeys = pressed
+                LastCommand = command
+            }
             |> attachState effects
         | KeyUp key ->
             let pressed = model.PressedKeys |> Set.remove key
@@ -134,28 +156,30 @@ module Keyboard =
             { model with PressedKeys = pressed } |> attachState effects
         | FocusLost ->
             let diagnostic =
-                { Code = "FocusLostRecovered"
-                  Severity = "Warning"
-                  Message = "Focus loss cleared pressed keys and temporary modes."
-                  Key = None }
+                {
+                    Code = "FocusLostRecovered"
+                    Severity = "Warning"
+                    Message = "Focus loss cleared pressed keys and temporary modes."
+                    Key = None
+                }
 
             let effects =
-                [ KeyStateChanged []
-                  ModeChanged []
-                  PendingSequenceChanged []
-                  ReportKeyboardDiagnostic diagnostic ]
+                [
+                    KeyStateChanged []
+                    ModeChanged []
+                    PendingSequenceChanged []
+                    ReportKeyboardDiagnostic diagnostic
+                ]
 
             { model with
                 PressedKeys = Set.empty
                 ActiveModeStack = []
                 PendingSequence = []
-                Diagnostics = diagnostic :: model.Diagnostics }
+                Diagnostics = diagnostic :: model.Diagnostics
+            }
             |> attachState effects
         | Reset ->
-            let effects =
-                [ KeyStateChanged []
-                  ModeChanged []
-                  PendingSequenceChanged [] ]
+            let effects = [ KeyStateChanged []; ModeChanged []; PendingSequenceChanged [] ]
 
             { model with
                 PressedKeys = Set.empty
@@ -163,29 +187,31 @@ module Keyboard =
                 ActiveModeStack = []
                 PendingSequence = []
                 PersistentModeState = Map.empty
-                Diagnostics = [] }
+                Diagnostics = []
+            }
             |> attachState effects
-        | SetActiveLayout layout ->
-            { model with ActiveLayout = layout }
-            |> attachState [ LayoutChanged layout ]
+        | SetActiveLayout layout -> { model with ActiveLayout = layout } |> attachState [ LayoutChanged layout ]
         | PushTemporaryMode mode ->
             let modes = mode :: model.ActiveModeStack
-            { model with ActiveModeStack = modes }
-            |> attachState [ ModeChanged modes ]
+            { model with ActiveModeStack = modes } |> attachState [ ModeChanged modes ]
         | PopTemporaryMode ->
             let modes =
                 match model.ActiveModeStack with
                 | _ :: rest -> rest
                 | [] -> []
 
-            { model with ActiveModeStack = modes }
-            |> attachState [ ModeChanged modes ]
+            { model with ActiveModeStack = modes } |> attachState [ ModeChanged modes ]
         | SetPersistentMode(key, value) ->
             let state = model.PersistentModeState |> Map.add key value
-            { model with PersistentModeState = state }
+
+            { model with
+                PersistentModeState = state
+            }
             |> attachState [ ModeChanged model.ActiveModeStack ]
         | ResolvePendingSequence sequence ->
-            { model with PendingSequence = sequence }
+            { model with
+                PendingSequence = sequence
+            }
             |> attachState [ PendingSequenceChanged sequence ]
 
 // Issue 331 (epic 330): the keymap mechanism. Representation is a `Map<KeyId, CommandId>` so a key
@@ -201,9 +227,11 @@ module Keymap =
     // Fold left so a key bound more than once takes its LAST binding (Map.add overwrites) — total on
     // duplicates, and the natural inverse of `toBindings`.
     let ofBindings (bindings: KeyboardBinding list) =
-        { Bindings =
-            bindings
-            |> List.fold (fun acc binding -> Map.add binding.Key binding.Command acc) Map.empty }
+        {
+            Bindings =
+                bindings
+                |> List.fold (fun acc binding -> Map.add binding.Key binding.Command acc) Map.empty
+        }
 
     // Map enumerates in key order, so the result is deterministic across runs.
     let toBindings (keymap: Keymap) =
@@ -220,22 +248,30 @@ module Keymap =
         if keymap.Bindings.ContainsKey key then
             keymap
         else
-            { keymap with Bindings = Map.add key command keymap.Bindings }
+            { keymap with
+                Bindings = Map.add key command keymap.Bindings
+            }
 
     let remove key (keymap: Keymap) =
-        { keymap with Bindings = Map.remove key keymap.Bindings }
+        { keymap with
+            Bindings = Map.remove key keymap.Bindings
+        }
 
     // Update-only: leaves an unbound key untouched (the complement of `add`).
     let replace key command (keymap: Keymap) =
         if keymap.Bindings.ContainsKey key then
-            { keymap with Bindings = Map.add key command keymap.Bindings }
+            { keymap with
+                Bindings = Map.add key command keymap.Bindings
+            }
         else
             keymap
 
     // Key-indexed upsert: binds a fresh key, and overwrites an already-bound one. It deliberately
     // leaves any OTHER key assigned to the same command intact.
     let assignKey key command (keymap: Keymap) =
-        { keymap with Bindings = Map.add key command keymap.Bindings }
+        { keymap with
+            Bindings = Map.add key command keymap.Bindings
+        }
 
     let rebind key command keymap = assignKey key command keymap
 
@@ -243,10 +279,11 @@ module Keymap =
     // also makes a formerly multiply-bound command converge to the documented invariant.
     let replaceCommandBinding command key (keymap: Keymap) =
         let withoutCommand =
-            keymap.Bindings
-            |> Map.filter (fun _ boundCommand -> boundCommand <> command)
+            keymap.Bindings |> Map.filter (fun _ boundCommand -> boundCommand <> command)
 
-        { keymap with Bindings = Map.add key command withoutCommand }
+        { keymap with
+            Bindings = Map.add key command withoutCommand
+        }
 
     let clear (_: Keymap) = empty
 
@@ -257,15 +294,18 @@ module Keymap =
         |> List.groupBy (fun binding -> binding.Command)
         |> List.sortBy fst
         |> List.choose (fun (command, group) ->
-            let keys = group |> List.map (fun binding -> binding.Key) |> List.distinct |> List.sort
+            let keys =
+                group |> List.map (fun binding -> binding.Key) |> List.distinct |> List.sort
 
             if List.length keys > 1 then
                 Some
-                    { Code = "SharedCommandBinding"
-                      Severity = "Info"
-                      Message =
-                        sprintf "Command '%s' is bound to multiple keys: %s." command (String.concat ", " keys)
-                      Key = None }
+                    {
+                        Code = "SharedCommandBinding"
+                        Severity = "Info"
+                        Message =
+                            sprintf "Command '%s' is bound to multiple keys: %s." command (String.concat ", " keys)
+                        Key = None
+                    }
             else
                 None)
 
@@ -281,16 +321,18 @@ module Keymap =
                 let commands = group |> List.map (fun binding -> binding.Command)
 
                 Some
-                    { Code = "DuplicateKeyBinding"
-                      Severity = "Warning"
-                      Message =
-                        sprintf
-                            "Key '%s' is bound %d times (commands: %s); last-wins keeps '%s'."
-                            key
-                            (List.length group)
-                            (String.concat ", " commands)
-                            (List.last commands)
-                      Key = Some key }
+                    {
+                        Code = "DuplicateKeyBinding"
+                        Severity = "Warning"
+                        Message =
+                            sprintf
+                                "Key '%s' is bound %d times (commands: %s); last-wins keeps '%s'."
+                                key
+                                (List.length group)
+                                (String.concat ", " commands)
+                                (List.last commands)
+                        Key = Some key
+                    }
             else
                 None)
 
@@ -310,10 +352,12 @@ module Keymap =
 
 // Feature 108 (US5, FR-016): modifier state recovered at the key boundary (see KeyboardInput.fsi).
 type KeyModifiers =
-    { Ctrl: bool
-      Alt: bool
-      Shift: bool
-      Meta: bool }
+    {
+        Ctrl: bool
+        Alt: bool
+        Shift: bool
+        Meta: bool
+    }
 
 [<RequireQualifiedAccess>]
 type SvgKeyboardIntent =
@@ -325,12 +369,9 @@ type SvgKeyboardIntent =
 module ViewerKeyboard =
     let normalize (raw: string) =
         let value =
-            if System.String.IsNullOrEmpty raw then
-                ""
-            elif raw = " " then
-                raw
-            else
-                raw.Trim()
+            if System.String.IsNullOrEmpty raw then ""
+            elif raw = " " then raw
+            else raw.Trim()
 
         let lower = value.ToLowerInvariant()
 
@@ -359,20 +400,26 @@ module ViewerKeyboard =
         // Feature 085 (FR-007/FR-008) — toolkit key-name families. Browser/toolkit codes spell
         // digits as Number5/Digit5/Keypad5/Key5 and letters as KeyL; map them to the existing
         // Digit n / Letter X cases. The terminal `Unknown raw` arm below is preserved (totality).
-        | _ when (lower.StartsWith "number" || lower.StartsWith "keypad") && lower.Length = 7 && System.Char.IsDigit lower[6] ->
+        | _ when
+            (lower.StartsWith "number" || lower.StartsWith "keypad")
+            && lower.Length = 7
+            && System.Char.IsDigit lower[6]
+            ->
             Digit(int lower[6] - int '0')
         | _ when lower.StartsWith "digit" && lower.Length = 6 && System.Char.IsDigit lower[5] ->
             Digit(int lower[5] - int '0')
         | _ when lower.StartsWith "key" && lower.Length = 4 ->
             // Key{n} / Key{X}: classify the single trailing char (resolves Key5-vs-KeyL in one arm).
             let c = value[value.Length - 1]
-            if System.Char.IsDigit c then Digit(int c - int '0')
-            elif System.Char.IsLetter c then Letter(System.Char.ToUpperInvariant c)
-            else Unknown raw
-        | _ when value.Length = 1 && System.Char.IsLetter value[0] ->
-            Letter(System.Char.ToUpperInvariant value[0])
-        | _ when value.Length = 1 && System.Char.IsDigit value[0] ->
-            Digit(int value[0] - int '0')
+
+            if System.Char.IsDigit c then
+                Digit(int c - int '0')
+            elif System.Char.IsLetter c then
+                Letter(System.Char.ToUpperInvariant c)
+            else
+                Unknown raw
+        | _ when value.Length = 1 && System.Char.IsLetter value[0] -> Letter(System.Char.ToUpperInvariant value[0])
+        | _ when value.Length = 1 && System.Char.IsDigit value[0] -> Digit(int value[0] - int '0')
         | _ when lower.StartsWith("f") ->
             match System.Int32.TryParse(value.Substring 1) with
             | true, number when number > 0 -> Function number
@@ -380,34 +427,38 @@ module ViewerKeyboard =
         | _ -> Unknown raw
 
     let noModifiers =
-        { Ctrl = false
-          Alt = false
-          Shift = false
-          Meta = false }
+        {
+            Ctrl = false
+            Alt = false
+            Shift = false
+            Meta = false
+        }
 
     // Issue 183: the modifier keys themselves. A host must never decorate one with its own held
     // state — `ControlLeft` pressed while Ctrl is down is `ControlLeft`, not `Ctrl+ControlLeft`.
     // Both the toolkit spellings (`ControlLeft`) and the bare tokens `parseModifiers` accepts.
     let private modifierKeyNames =
         set
-            [ "shift"
-              "shiftleft"
-              "shiftright"
-              "ctrl"
-              "control"
-              "controlleft"
-              "controlright"
-              "alt"
-              "option"
-              "altleft"
-              "altright"
-              "meta"
-              "cmd"
-              "command"
-              "win"
-              "super"
-              "superleft"
-              "superright" ]
+            [
+                "shift"
+                "shiftleft"
+                "shiftright"
+                "ctrl"
+                "control"
+                "controlleft"
+                "controlright"
+                "alt"
+                "option"
+                "altleft"
+                "altright"
+                "meta"
+                "cmd"
+                "command"
+                "win"
+                "super"
+                "superleft"
+                "superright"
+            ]
 
     let isModifierKey (raw: string) =
         not (System.String.IsNullOrEmpty raw)
@@ -452,10 +503,16 @@ module ViewerKeyboard =
             baseKey
         else
             let prefixes =
-                [ if modifiers.Ctrl then "Ctrl"
-                  if modifiers.Alt then "Alt"
-                  if modifiers.Shift then "Shift"
-                  if modifiers.Meta then "Meta" ]
+                [
+                    if modifiers.Ctrl then
+                        "Ctrl"
+                    if modifiers.Alt then
+                        "Alt"
+                    if modifiers.Shift then
+                        "Shift"
+                    if modifiers.Meta then
+                        "Meta"
+                ]
 
             if List.isEmpty prefixes then
                 baseKey

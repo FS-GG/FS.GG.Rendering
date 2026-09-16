@@ -17,14 +17,16 @@ module CompositorProof =
         | Unknown
 
     type HostProfile =
-        { ProfileId: string
-          Backend: string
-          Renderer: string option
-          PresentMode: ViewerPresentMode
-          FramebufferSize: Size
-          Scale: float option
-          DisplayEnvironment: HostDisplayEnvironment
-          ProofAlgorithmVersion: string }
+        {
+            ProfileId: string
+            Backend: string
+            Renderer: string option
+            PresentMode: ViewerPresentMode
+            FramebufferSize: Size
+            Scale: float option
+            DisplayEnvironment: HostDisplayEnvironment
+            ProofAlgorithmVersion: string
+        }
 
     [<RequireQualifiedAccess>]
     type ObservedRegionKind =
@@ -32,11 +34,13 @@ module CompositorProof =
         | Damaged
 
     type PresentProofObservation =
-        { RegionId: string
-          Kind: ObservedRegionKind
-          ExpectedIdentity: string
-          ActualIdentity: string
-          Matched: bool }
+        {
+            RegionId: string
+            Kind: ObservedRegionKind
+            ExpectedIdentity: string
+            ActualIdentity: string
+            Matched: bool
+        }
 
     [<RequireQualifiedAccess>]
     type PresentProofFailureCause =
@@ -55,41 +59,49 @@ module CompositorProof =
         | PresentProofEnvironmentLimited of reason: string
 
     type PresentProof =
-        { ProofId: string
-          HostProfile: HostProfile
-          ScenarioId: string
-          Verdict: PresentProofVerdict
-          ObservedUntouchedRegions: PresentProofObservation list
-          ObservedDamagedRegion: PresentProofObservation option
-          EvidenceArtifacts: string list
-          CreatedAt: DateTimeOffset
-          Diagnostics: string list }
+        {
+            ProofId: string
+            HostProfile: HostProfile
+            ScenarioId: string
+            Verdict: PresentProofVerdict
+            ObservedUntouchedRegions: PresentProofObservation list
+            ObservedDamagedRegion: PresentProofObservation option
+            EvidenceArtifacts: string list
+            CreatedAt: DateTimeOffset
+            Diagnostics: string list
+        }
 
     /// Feature 152 artifact quality gate for one live proof attempt.
     type ProofArtifactQuality =
-        { Present: bool
-          Decodable: bool
-          NonBlank: bool
-          Fresh: bool
-          Synthetic: bool }
+        {
+            Present: bool
+            Decodable: bool
+            NonBlank: bool
+            Fresh: bool
+            Synthetic: bool
+        }
 
     /// Feature 152 accepted-set candidate. Synthetic attempts are allowed only for rejection tests.
     type LiveProofAttempt =
-        { AttemptId: string
-          Proof: PresentProof
-          ProofMethod: string
-          ArtifactQuality: ProofArtifactQuality }
+        {
+            AttemptId: string
+            Proof: PresentProof
+            ProofMethod: string
+            ArtifactQuality: ProofArtifactQuality
+        }
 
     /// Feature 152 accepted run set that unlocks a same-profile live partial-redraw claim.
     type AcceptedProofSet =
-        { ProofSetId: string
-          HostProfile: HostProfile
-          ProofMethod: string
-          SelectedAttemptIds: string list
-          FreshnessWindow: TimeSpan
-          Attempts: LiveProofAttempt list
-          AcceptedAt: DateTimeOffset
-          Diagnostics: string list }
+        {
+            ProofSetId: string
+            HostProfile: HostProfile
+            ProofMethod: string
+            SelectedAttemptIds: string list
+            FreshnessWindow: TimeSpan
+            Attempts: LiveProofAttempt list
+            AcceptedAt: DateTimeOffset
+            Diagnostics: string list
+        }
 
     [<RequireQualifiedAccess>]
     type ProofSetReadiness =
@@ -117,10 +129,12 @@ module CompositorProof =
         | Completed
 
     type Model =
-        { ActiveProfile: HostProfile option
-          Phase: ProofPhase
-          Proof: PresentProof option
-          Diagnostics: string list }
+        {
+            ActiveProfile: HostProfile option
+            Phase: ProofPhase
+            Proof: PresentProof option
+            Diagnostics: string list
+        }
 
     type Msg =
         | ProfileDetected of HostProfile
@@ -143,10 +157,12 @@ module CompositorProof =
         | DamageScoped
 
     type TimingOverheadDisclosure =
-        { Path: TimingPath
-          ProofReadbackIncluded: bool
-          ValidationReadbackIncluded: bool
-          ReviewerNote: string }
+        {
+            Path: TimingPath
+            ProofReadbackIncluded: bool
+            ValidationReadbackIncluded: bool
+            ReviewerNote: string
+        }
 
     val sentinelDamageRect: Rect
     val timingPathToken: path: TimingPath -> string
@@ -160,13 +176,17 @@ module CompositorProof =
     val artifactQualityFailure: quality: ProofArtifactQuality -> string option
     val proofMatchesHost: active: HostProfile -> proof: PresentProof -> bool
     val proofIsFresh: now: DateTimeOffset -> maxAge: TimeSpan -> proof: PresentProof -> bool
-    val readiness: active: HostProfile -> now: DateTimeOffset -> maxAge: TimeSpan -> proof: PresentProof option -> ProofReadiness
+
+    val readiness:
+        active: HostProfile -> now: DateTimeOffset -> maxAge: TimeSpan -> proof: PresentProof option -> ProofReadiness
+
     val evaluateProofSet:
         active: HostProfile ->
         now: DateTimeOffset ->
         maxAge: TimeSpan ->
         attempts: LiveProofAttempt list ->
             ProofSetReadiness
+
     val classifyObservations: observations: PresentProofObservation list -> PresentProofVerdict
     val init: unit -> Model * Effect list
     val update: now: DateTimeOffset -> outputPath: string -> msg: Msg -> model: Model -> Model * Effect list

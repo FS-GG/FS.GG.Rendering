@@ -30,11 +30,18 @@ open Expecto
 open FS.GG.TestSupport
 
 let private repositoryRoot = RepositoryRoot.value
-let private repositoryPath (rel: string) = Path.Combine(repositoryRoot, rel.Replace('/', Path.DirectorySeparatorChar))
 
-let private generator = File.ReadAllText(repositoryPath "scripts/refresh-api-surface-mirror.fsx")
-let private manifest = File.ReadAllText(repositoryPath "scripts/api-surface-manifest.txt")
-let private pins = File.ReadAllText(repositoryPath "template/base/Directory.Packages.props")
+let private repositoryPath (rel: string) =
+    Path.Combine(repositoryRoot, rel.Replace('/', Path.DirectorySeparatorChar))
+
+let private generator =
+    File.ReadAllText(repositoryPath "scripts/refresh-api-surface-mirror.fsx")
+
+let private manifest =
+    File.ReadAllText(repositoryPath "scripts/api-surface-manifest.txt")
+
+let private pins =
+    File.ReadAllText(repositoryPath "template/base/Directory.Packages.props")
 
 /// The bridge's own identifiers. Matched against CODE only — the generator keeps a prose account of what
 /// was removed and why, and a test that forbade the words outright would forbid the explanation too.
@@ -57,86 +64,116 @@ let private rendered =
 let issue1101ContractsSurfaceTests =
     testList
         "issue-1101 contracts api-surface bridge"
-        [ test "the generator carries no legacy hand-copy surface map" {
-              // The map itself. A reintroduction under a new name still has to point somewhere, which the
-              // next two tests cover; this one catches the literal revert.
-              Expect.isFalse (codeMentions "legacyPre782Surfaces") "no `legacyPre782Surfaces` map survives in the generator's code"
-          }
+        [
+            test "the generator carries no legacy hand-copy surface map" {
+                // The map itself. A reintroduction under a new name still has to point somewhere, which the
+                // next two tests cover; this one catches the literal revert.
+                Expect.isFalse
+                    (codeMentions "legacyPre782Surfaces")
+                    "no `legacyPre782Surfaces` map survives in the generator's code"
+            }
 
-          test "no code path reads a hand-written surface directory out of scripts/" {
-              // The directory is what makes a bridge possible at all. Naming it in code — under any map
-              // name — is the reintroduction, so this is the test that survives a rename.
-              Expect.isFalse (codeMentions "legacy-api-surfaces") "no code path resolves `scripts/legacy-api-surfaces`"
-              Expect.isFalse
-                  (Directory.Exists(repositoryPath "scripts/legacy-api-surfaces"))
-                  "scripts/legacy-api-surfaces/ does not exist"
-          }
+            test "no code path reads a hand-written surface directory out of scripts/" {
+                // The directory is what makes a bridge possible at all. Naming it in code — under any map
+                // name — is the reintroduction, so this is the test that survives a rename.
+                Expect.isFalse
+                    (codeMentions "legacy-api-surfaces")
+                    "no code path resolves `scripts/legacy-api-surfaces`"
 
-          test "the missing-surface failure asks the feed instead of prescribing a fixed remedy" {
-              // AC3. The old message was one fixed sentence — "Bump the pin to a release that packs its
-              // .fsi" — which was UNFOLLOWABLE for months: 7.0.0, 7.1.0, 7.2.0 and 7.3.0 were every
-              // published FS.GG.Contracts and none packed `api-surface/`. Advice that may be impossible is
-              // what pushed #1094 into the bridge, so the diagnostic has to decide, not assume.
-              Expect.stringContains generator "packingReleaseAtOrAbove" "the failure path probes the feed for a release the pin could move UP to"
-              Expect.stringContains rendered "BUMPING THE PIN CANNOT FIX THIS" "it says so plainly when no such release exists"
-              Expect.stringContains rendered "The remedy belongs to the PRODUCING" "and it names whose problem it actually is"
-          }
+                Expect.isFalse
+                    (Directory.Exists(repositoryPath "scripts/legacy-api-surfaces"))
+                    "scripts/legacy-api-surfaces/ does not exist"
+            }
 
-          test "the no-release advice does not send the reader back to a hand-copy" {
-              // The one remedy that must never be suggested, in the one message a reader hits at the exact
-              // moment it looks attractive.
-              Expect.stringContains rendered "Do NOT hand-copy the surface into this repo" "the impossible-bump branch forbids the bridge by name"
-          }
+            test "the missing-surface failure asks the feed instead of prescribing a fixed remedy" {
+                // AC3. The old message was one fixed sentence — "Bump the pin to a release that packs its
+                // .fsi" — which was UNFOLLOWABLE for months: 7.0.0, 7.1.0, 7.2.0 and 7.3.0 were every
+                // published FS.GG.Contracts and none packed `api-surface/`. Advice that may be impossible is
+                // what pushed #1094 into the bridge, so the diagnostic has to decide, not assume.
+                Expect.stringContains
+                    generator
+                    "packingReleaseAtOrAbove"
+                    "the failure path probes the feed for a release the pin could move UP to"
 
-          test "an unreachable feed fails closed rather than claiming no release exists" {
-              // #266/#606. "I could not check" rendering as "no packing release exists" would send a worker
-              // to file a producer issue that is already discharged — the failure mode this run was warned
-              // about, made structural.
-              Expect.stringContains rendered "Could not determine whether any published release" "the unreachable-feed branch is distinct"
-              Expect.stringContains rendered "failing closed rather than guessing" "and it says it is failing closed"
-          }
+                Expect.stringContains
+                    rendered
+                    "BUMPING THE PIN CANNOT FIX THIS"
+                    "it says so plainly when no such release exists"
 
-          test "the pin is at or above the first Contracts release that packs api-surface/" {
-              // 7.4.0 is that release (FS-GG/FS.GG.SDD#742). Below it the generator has no surface to read
-              // and, with the bridge gone, no fallback — so this is the pin's floor, not a preference.
-              // Exact-version witnessing stays where #1102 AC2 put it
-              // (tests/Package.Tests/Issue1039PerformanceEvidenceTests.fs); this asserts only the floor.
-              let m =
-                  System.Text.RegularExpressions.Regex.Match(pins, @"<FsGgContractsVersion>(?<v>[^<]+)</FsGgContractsVersion>")
+                Expect.stringContains
+                    rendered
+                    "The remedy belongs to the PRODUCING"
+                    "and it names whose problem it actually is"
+            }
 
-              Expect.isTrue m.Success "the payload props declare $(FsGgContractsVersion)"
+            test "the no-release advice does not send the reader back to a hand-copy" {
+                // The one remedy that must never be suggested, in the one message a reader hits at the exact
+                // moment it looks attractive.
+                Expect.stringContains
+                    rendered
+                    "Do NOT hand-copy the surface into this repo"
+                    "the impossible-bump branch forbids the bridge by name"
+            }
 
-              let pinned = m.Groups.["v"].Value
+            test "an unreachable feed fails closed rather than claiming no release exists" {
+                // #266/#606. "I could not check" rendering as "no packing release exists" would send a worker
+                // to file a producer issue that is already discharged — the failure mode this run was warned
+                // about, made structural.
+                Expect.stringContains
+                    rendered
+                    "Could not determine whether any published release"
+                    "the unreachable-feed branch is distinct"
 
-              // Read the numeric core only. A preview-channel pin (`7.4.0-preview.1`) is a legitimate
-              // future state, and `int` on the whole segment would throw a FormatException — a crash
-              // where the suite owes a verdict.
-              let core = pinned.Split('-').[0].Split('.')
+                Expect.stringContains rendered "failing closed rather than guessing" "and it says it is failing closed"
+            }
 
-              let part i =
-                  match System.Int32.TryParse(Array.tryItem i core |> Option.defaultValue "") with
-                  | true, n -> Some n
-                  | _ -> None
+            test "the pin is at or above the first Contracts release that packs api-surface/" {
+                // 7.4.0 is that release (FS-GG/FS.GG.SDD#742). Below it the generator has no surface to read
+                // and, with the bridge gone, no fallback — so this is the pin's floor, not a preference.
+                // Exact-version witnessing stays where #1102 AC2 put it
+                // (tests/Package.Tests/Issue1039PerformanceEvidenceTests.fs); this asserts only the floor.
+                let m =
+                    System.Text.RegularExpressions.Regex.Match(
+                        pins,
+                        @"<FsGgContractsVersion>(?<v>[^<]+)</FsGgContractsVersion>"
+                    )
 
-              match part 0, part 1 with
-              | Some major, Some minor ->
-                  Expect.isTrue
-                      (major > 7 || (major = 7 && minor >= 4))
-                      (sprintf "$(FsGgContractsVersion)=%s is >= 7.4.0, the first release that packs api-surface/" pinned)
-              | _ -> failtestf "$(FsGgContractsVersion)=%s has no numeric major.minor core to compare" pinned
-          }
+                Expect.isTrue m.Success "the payload props declare $(FsGgContractsVersion)"
 
-          test "the member-level coverage rule now sees FS.GG.Contracts at all" {
-              // The blind spot, asserted directly. Before #1101 this count was ZERO — not because Contracts
-              // exported nothing, but because the bridge fed the reconciliation a 22-line hand-copy. A
-              // regression to zero means the generator stopped reading the real package, whatever the
-              // reason, and that is the condition worth failing on rather than the exact number.
-              let waivers =
-                  manifest.Replace("\r\n", "\n").Split('\n')
-                  |> Array.filter (fun l -> l.StartsWith "waive FS.GG.Contracts ")
+                let pinned = m.Groups.["v"].Value
 
-              Expect.isGreaterThan
-                  waivers.Length
-                  0
-                  "the manifest records FS.GG.Contracts members as taught-or-waived decisions; zero means the real surface is not being read"
-          } ]
+                // Read the numeric core only. A preview-channel pin (`7.4.0-preview.1`) is a legitimate
+                // future state, and `int` on the whole segment would throw a FormatException — a crash
+                // where the suite owes a verdict.
+                let core = pinned.Split('-').[0].Split('.')
+
+                let part i =
+                    match System.Int32.TryParse(Array.tryItem i core |> Option.defaultValue "") with
+                    | true, n -> Some n
+                    | _ -> None
+
+                match part 0, part 1 with
+                | Some major, Some minor ->
+                    Expect.isTrue
+                        (major > 7 || (major = 7 && minor >= 4))
+                        (sprintf
+                            "$(FsGgContractsVersion)=%s is >= 7.4.0, the first release that packs api-surface/"
+                            pinned)
+                | _ -> failtestf "$(FsGgContractsVersion)=%s has no numeric major.minor core to compare" pinned
+            }
+
+            test "the member-level coverage rule now sees FS.GG.Contracts at all" {
+                // The blind spot, asserted directly. Before #1101 this count was ZERO — not because Contracts
+                // exported nothing, but because the bridge fed the reconciliation a 22-line hand-copy. A
+                // regression to zero means the generator stopped reading the real package, whatever the
+                // reason, and that is the condition worth failing on rather than the exact number.
+                let waivers =
+                    manifest.Replace("\r\n", "\n").Split('\n')
+                    |> Array.filter (fun l -> l.StartsWith "waive FS.GG.Contracts ")
+
+                Expect.isGreaterThan
+                    waivers.Length
+                    0
+                    "the manifest records FS.GG.Contracts members as taught-or-waived decisions; zero means the real surface is not being read"
+            }
+        ]

@@ -17,11 +17,13 @@ open Silk.NET.Maths
 open Silk.NET.Windowing
 
 type ViewerOptions =
-    { Title: string
-      InitialSize: Size
-      PresentMode: ViewerPresentMode
-      FrameRateCap: int option
-      LogicalSize: Size option }
+    {
+        Title: string
+        InitialSize: Size
+        PresentMode: ViewerPresentMode
+        FrameRateCap: int option
+        LogicalSize: Size option
+    }
 
 type ViewerLaunchMode =
     | InteractiveWindow
@@ -74,33 +76,39 @@ type ViewerWindowOptionStatus =
     | FailedOption
 
 type ViewerWindowBehaviorRequest =
-    { ResizePolicy: ViewerWindowResizePolicy
-      MaximizePolicy: ViewerWindowMaximizePolicy
-      StartupState: ViewerWindowStartupState
-      StartupPosition: ViewerWindowPosition option
-      BackendPreference: ViewerBackendPreference option }
+    {
+        ResizePolicy: ViewerWindowResizePolicy
+        MaximizePolicy: ViewerWindowMaximizePolicy
+        StartupState: ViewerWindowStartupState
+        StartupPosition: ViewerWindowPosition option
+        BackendPreference: ViewerBackendPreference option
+    }
 
 type ViewerWindowOptionResult =
-    { Option: string
-      Requested: string
-      Observed: string option
-      Status: ViewerWindowOptionStatus
-      Message: string }
+    {
+        Option: string
+        Requested: string
+        Observed: string option
+        Status: ViewerWindowOptionStatus
+        Message: string
+    }
 
 type ViewerWindowStateDiagnostic =
-    { WindowInitialized: bool
-      NativeHandle: ViewerObservedValue
-      Visible: ViewerObservedValue
-      Focusable: ViewerObservedValue
-      Focused: ViewerObservedValue
-      Minimized: ViewerObservedValue
-      Maximized: ViewerObservedValue
-      ClientSize: string option
-      RenderableSurfaceAvailable: ViewerObservedValue
-      Backend: string option
-      InputDevicesAvailable: ViewerObservedValue
-      FailureClass: string option
-      Message: string }
+    {
+        WindowInitialized: bool
+        NativeHandle: ViewerObservedValue
+        Visible: ViewerObservedValue
+        Focusable: ViewerObservedValue
+        Focused: ViewerObservedValue
+        Minimized: ViewerObservedValue
+        Maximized: ViewerObservedValue
+        ClientSize: string option
+        RenderableSurfaceAvailable: ViewerObservedValue
+        Backend: string option
+        InputDevicesAvailable: ViewerObservedValue
+        FailureClass: string option
+        Message: string
+    }
 
 type ViewerVisualEvidenceKind =
     | Image
@@ -109,12 +117,14 @@ type ViewerVisualEvidenceKind =
     | UnsupportedHost
 
 type ViewerVisualEvidenceArtifact =
-    { Kind: ViewerVisualEvidenceKind
-      Path: string option
-      ImageDecodable: bool option
-      ProvesSceneRendering: bool
-      ProvesDesktopVisibility: bool
-      Message: string }
+    {
+        Kind: ViewerVisualEvidenceKind
+        Path: string option
+        ImageDecodable: bool option
+        ProvesSceneRendering: bool
+        ProvesDesktopVisibility: bool
+        Message: string
+    }
 
 type ViewerFailureClass =
     | EnvironmentSession
@@ -181,19 +191,23 @@ type ViewerRunFailureClassification =
     | ProductDefect
 
 type ViewerDiagnosticEvent =
-    { Level: ViewerDiagnosticLevel
-      Category: ViewerDiagnosticCategory
-      Message: string
-      FrameIndex: int option
-      Stage: ViewerRunBlockedStage option
-      Elapsed: TimeSpan option }
+    {
+        Level: ViewerDiagnosticLevel
+        Category: ViewerDiagnosticCategory
+        Message: string
+        FrameIndex: int option
+        Stage: ViewerRunBlockedStage option
+        Elapsed: TimeSpan option
+    }
 
 type ViewerDiagnosticsOptions =
-    { MinimumLevel: ViewerDiagnosticLevel
-      Categories: Set<ViewerDiagnosticCategory>
-      FrameLogLimit: int option
-      Sink: (ViewerDiagnosticEvent -> unit) option
-      Verbose: bool }
+    {
+        MinimumLevel: ViewerDiagnosticLevel
+        Categories: Set<ViewerDiagnosticCategory>
+        FrameLogLimit: int option
+        Sink: (ViewerDiagnosticEvent -> unit) option
+        Verbose: bool
+    }
 
 [<RequireQualifiedAccess>]
 type ViewerResponsivenessInputKind =
@@ -235,98 +249,116 @@ type ViewerResponsivenessReadiness =
     | Failed
 
 type ViewerResponsivenessPhaseTiming =
-    { ReceiptDuration: TimeSpan option
-      QueueDelay: TimeSpan option
-      RoutingDuration: TimeSpan option
-      UpdateDuration: TimeSpan option
-      ViewDuration: TimeSpan option
-      RetainedStepDuration: TimeSpan option
-      LayoutDuration: TimeSpan option
-      TextDuration: TimeSpan option
-      PaintDuration: TimeSpan option
-      PresentDuration: TimeSpan option
-      TotalInputToVisibleDuration: TimeSpan option }
+    {
+        ReceiptDuration: TimeSpan option
+        QueueDelay: TimeSpan option
+        RoutingDuration: TimeSpan option
+        UpdateDuration: TimeSpan option
+        ViewDuration: TimeSpan option
+        RetainedStepDuration: TimeSpan option
+        LayoutDuration: TimeSpan option
+        TextDuration: TimeSpan option
+        PaintDuration: TimeSpan option
+        PresentDuration: TimeSpan option
+        TotalInputToVisibleDuration: TimeSpan option
+    }
 
 type ViewerResponsivenessDirtyRegion =
-    { DirtyRectCount: int option
-      DirtyArea: int option
-      RepaintedNodeCount: int option
-      Status: ViewerResponsivenessEnvironmentStatus }
+    {
+        DirtyRectCount: int option
+        DirtyArea: int option
+        RepaintedNodeCount: int option
+        Status: ViewerResponsivenessEnvironmentStatus
+    }
 
 type ViewerLatencyRecord =
-    { RecordId: string
-      RunId: string
-      InputSequenceId: int64
-      InputKind: ViewerResponsivenessInputKind
-      InputName: string option
-      Page: string option
-      ControlGroup: string option
-      ReceiptTimestamp: DateTimeOffset
-      QueueDepthAtReceipt: int
-      QueueDepthAtDrain: int
-      CoalescedMovementCount: int
-      ProductMessageCount: int
-      ProductStateChanged: bool
-      RuntimeStateChanged: bool
-      VisibleResponse: ViewerResponsivenessVisibleResponse
-      PresentedFrameId: int64 option
-      EnvironmentStatus: ViewerResponsivenessEnvironmentStatus
-      PhaseTiming: ViewerResponsivenessPhaseTiming
-      DirtyRegion: ViewerResponsivenessDirtyRegion option
-      LongFrame: bool
-      Diagnostics: string list }
+    {
+        RecordId: string
+        RunId: string
+        InputSequenceId: int64
+        InputKind: ViewerResponsivenessInputKind
+        InputName: string option
+        Page: string option
+        ControlGroup: string option
+        ReceiptTimestamp: DateTimeOffset
+        QueueDepthAtReceipt: int
+        QueueDepthAtDrain: int
+        CoalescedMovementCount: int
+        ProductMessageCount: int
+        ProductStateChanged: bool
+        RuntimeStateChanged: bool
+        VisibleResponse: ViewerResponsivenessVisibleResponse
+        PresentedFrameId: int64 option
+        EnvironmentStatus: ViewerResponsivenessEnvironmentStatus
+        PhaseTiming: ViewerResponsivenessPhaseTiming
+        DirtyRegion: ViewerResponsivenessDirtyRegion option
+        LongFrame: bool
+        Diagnostics: string list
+    }
 
 type ViewerResponsivenessBudget =
-    { InputReceiptP95: TimeSpan
-      InputReceiptMax: TimeSpan
-      InputToVisibleP95: TimeSpan
-      InputToVisibleMax: TimeSpan
-      LongFrameThreshold: TimeSpan }
+    {
+        InputReceiptP95: TimeSpan
+        InputReceiptMax: TimeSpan
+        InputToVisibleP95: TimeSpan
+        InputToVisibleMax: TimeSpan
+        LongFrameThreshold: TimeSpan
+    }
 
 type ViewerResponsivenessFailedBudget =
-    { Kind: string
-      Scope: string option
-      InputKind: ViewerResponsivenessInputKind option
-      Measured: TimeSpan
-      Budget: TimeSpan }
+    {
+        Kind: string
+        Scope: string option
+        InputKind: ViewerResponsivenessInputKind option
+        Measured: TimeSpan
+        Budget: TimeSpan
+    }
 
 type ViewerResponsivenessGroupSummary =
-    { Page: string option
-      InputKind: ViewerResponsivenessInputKind
-      ControlGroup: string option
-      Count: int
-      P50: TimeSpan option
-      P95: TimeSpan option
-      Max: TimeSpan option
-      LongFrameCount: int
-      Readiness: ViewerResponsivenessReadiness }
+    {
+        Page: string option
+        InputKind: ViewerResponsivenessInputKind
+        ControlGroup: string option
+        Count: int
+        P50: TimeSpan option
+        P95: TimeSpan option
+        Max: TimeSpan option
+        LongFrameCount: int
+        Readiness: ViewerResponsivenessReadiness
+    }
 
 type ViewerResponsivenessSlowInteraction =
-    { RecordId: string
-      InputSequenceId: int64
-      TotalInputToVisible: TimeSpan option
-      DominantPhase: string option }
+    {
+        RecordId: string
+        InputSequenceId: int64
+        TotalInputToVisible: TimeSpan option
+        DominantPhase: string option
+    }
 
 type ViewerResponsivenessSummary =
-    { RunId: string
-      Scope: string
-      OverallReadiness: ViewerResponsivenessReadiness
-      StartedUtc: DateTimeOffset
-      CompletedUtc: DateTimeOffset
-      RecordsPath: string
-      Budgets: ViewerResponsivenessBudget
-      FirstFailedBudget: ViewerResponsivenessFailedBudget option
-      Groups: ViewerResponsivenessGroupSummary list
-      SlowestInteractions: ViewerResponsivenessSlowInteraction list
-      EnvironmentLimitations: string list
-      Diagnostics: string list }
+    {
+        RunId: string
+        Scope: string
+        OverallReadiness: ViewerResponsivenessReadiness
+        StartedUtc: DateTimeOffset
+        CompletedUtc: DateTimeOffset
+        RecordsPath: string
+        Budgets: ViewerResponsivenessBudget
+        FirstFailedBudget: ViewerResponsivenessFailedBudget option
+        Groups: ViewerResponsivenessGroupSummary list
+        SlowestInteractions: ViewerResponsivenessSlowInteraction list
+        EnvironmentLimitations: string list
+        Diagnostics: string list
+    }
 
 type ViewerResponsivenessOptions =
-    { Enabled: bool
-      RunId: string option
-      OutputRoot: string option
-      Budget: ViewerResponsivenessBudget
-      Sink: (ViewerLatencyRecord -> unit) option }
+    {
+        Enabled: bool
+        RunId: string option
+        OutputRoot: string option
+        Budget: ViewerResponsivenessBudget
+        Sink: (ViewerLatencyRecord -> unit) option
+    }
 
 type ViewerInputPriorityLane =
     | Discrete
@@ -335,38 +367,46 @@ type ViewerInputPriorityLane =
     | Background
 
 type ViewerInputEnvelope =
-    { SequenceId: int64
-      ReceivedAt: DateTimeOffset
-      InputKind: ViewerResponsivenessInputKind
-      PriorityLane: ViewerInputPriorityLane
-      ReceiptQueueDepth: int
-      Payload: string }
+    {
+        SequenceId: int64
+        ReceivedAt: DateTimeOffset
+        InputKind: ViewerResponsivenessInputKind
+        PriorityLane: ViewerInputPriorityLane
+        ReceiptQueueDepth: int
+        Payload: string
+    }
 
 type ViewerInputQueue =
-    { Discrete: ViewerInputEnvelope list
-      LatestContinuousPointer: ViewerInputEnvelope option
-      ContinuousCoalescedCount: int
-      Lifecycle: ViewerInputEnvelope list
-      NextSequenceId: int64
-      MaxObservedDepth: int }
+    {
+        Discrete: ViewerInputEnvelope list
+        LatestContinuousPointer: ViewerInputEnvelope option
+        ContinuousCoalescedCount: int
+        Lifecycle: ViewerInputEnvelope list
+        NextSequenceId: int64
+        MaxObservedDepth: int
+    }
 
 type ViewerFrameDrain =
-    { BatchId: int64
-      DiscreteInputs: ViewerInputEnvelope list
-      CoalescedPointer: ViewerInputEnvelope option
-      CoalescedMovementCount: int
-      QueueDepthBeforeDrain: int
-      QueueDepthAfterDrain: int
-      DrainReason: string }
+    {
+        BatchId: int64
+        DiscreteInputs: ViewerInputEnvelope list
+        CoalescedPointer: ViewerInputEnvelope option
+        CoalescedMovementCount: int
+        QueueDepthBeforeDrain: int
+        QueueDepthAfterDrain: int
+        DrainReason: string
+    }
 
 type ViewerDirtyState =
-    { ProductModelChanged: bool
-      RuntimeStateChanged: bool
-      SizeChanged: bool
-      ThemeChanged: bool
-      SceneDirty: bool
-      DirtyRegionSummary: ViewerResponsivenessDirtyRegion option
-      Reason: string list }
+    {
+        ProductModelChanged: bool
+        RuntimeStateChanged: bool
+        SizeChanged: bool
+        ThemeChanged: bool
+        SceneDirty: bool
+        DirtyRegionSummary: ViewerResponsivenessDirtyRegion option
+        Reason: string list
+    }
 
 type ViewerEvidenceTarget =
     | FirstFrame
@@ -374,26 +414,32 @@ type ViewerEvidenceTarget =
     | Duration of TimeSpan
 
 type ViewerRunRequest =
-    { Target: ViewerEvidenceTarget
-      Timeout: TimeSpan
-      Diagnostics: ViewerDiagnosticsOptions
-      RendererMode: string
-      EvidencePath: string option }
+    {
+        Target: ViewerEvidenceTarget
+        Timeout: TimeSpan
+        Diagnostics: ViewerDiagnosticsOptions
+        RendererMode: string
+        EvidencePath: string option
+    }
 
 type ViewerRunEvidence =
-    { FramesRendered: int
-      Elapsed: TimeSpan
-      InitialOutputSize: Size
-      RendererMode: string
-      LastDiagnosticSummary: string option
-      EvidencePath: string option }
+    {
+        FramesRendered: int
+        Elapsed: TimeSpan
+        InitialOutputSize: Size
+        RendererMode: string
+        LastDiagnosticSummary: string option
+        EvidencePath: string option
+    }
 
 type ViewerRunFailure =
-    { BlockedStage: ViewerRunBlockedStage
-      Classification: ViewerRunFailureClassification
-      DiagnosticCategory: ViewerDiagnosticCategory
-      Message: string
-      LastDiagnosticSummary: string option }
+    {
+        BlockedStage: ViewerRunBlockedStage
+        Classification: ViewerRunFailureClassification
+        DiagnosticCategory: ViewerDiagnosticCategory
+        Message: string
+        LastDiagnosticSummary: string option
+    }
 
 [<RequireQualifiedAccess>]
 type ViewerTimingPath =
@@ -414,18 +460,19 @@ type ScreenshotEvidenceStatus =
     | ScreenshotFailed
 
 type ScreenshotEvidenceRequest =
-    { Command: string
-      AppOrSample: string
-      OutputPath: string
-      Width: int
-      Height: int
-      RendererMode: string
-      CaptureMode: ScreenshotCaptureMode
-      HostFacts: string list
-      Timeout: TimeSpan }
+    {
+        Command: string
+        AppOrSample: string
+        OutputPath: string
+        Width: int
+        Height: int
+        RendererMode: string
+        CaptureMode: ScreenshotCaptureMode
+        HostFacts: string list
+        Timeout: TimeSpan
+    }
 
-and ScreenshotCaptureMode =
-    | ViewerRenderTargetPng
+and ScreenshotCaptureMode = | ViewerRenderTargetPng
 
 type ViewerOpenStatus =
     | ViewerOpenConfirmed
@@ -460,104 +507,116 @@ type ScreenshotPixelContentValidation =
     | PixelContentNotValidated of reason: string
 
 type ScreenshotEvidenceResult =
-    { Status: ScreenshotEvidenceStatus
-      Command: string
-      AppOrSample: string
-      HostFacts: string list
-      CaptureMode: ScreenshotCaptureMode
-      EvidenceKind: string
-      OutputPath: string option
-      ScreenshotPath: string option
-      Width: int option
-      Height: int option
-      PixelContentValidation: ScreenshotPixelContentValidation
-      RendererMode: string
-      FramesRendered: int option
-      ViewerOpenStatus: ViewerOpenStatus
-      FirstFrameStatus: FirstFrameStatus
-      CaptureAvailability: ScreenshotCaptureAvailability
-      CaptureSource: ScreenshotCaptureSource
-      DeterministicFallbackKind: string option
-      ProvesScreenshot: bool
-      BlockedStage: ViewerRunBlockedStage option
-      Classification: ViewerRunFailureClassification option
-      Category: ViewerDiagnosticCategory option
-      Message: string
-      Timestamp: DateTimeOffset
-      UnsupportedHostReason: string option
-      Fallback: string option
-      Diagnostics: string list }
+    {
+        Status: ScreenshotEvidenceStatus
+        Command: string
+        AppOrSample: string
+        HostFacts: string list
+        CaptureMode: ScreenshotCaptureMode
+        EvidenceKind: string
+        OutputPath: string option
+        ScreenshotPath: string option
+        Width: int option
+        Height: int option
+        PixelContentValidation: ScreenshotPixelContentValidation
+        RendererMode: string
+        FramesRendered: int option
+        ViewerOpenStatus: ViewerOpenStatus
+        FirstFrameStatus: FirstFrameStatus
+        CaptureAvailability: ScreenshotCaptureAvailability
+        CaptureSource: ScreenshotCaptureSource
+        DeterministicFallbackKind: string option
+        ProvesScreenshot: bool
+        BlockedStage: ViewerRunBlockedStage option
+        Classification: ViewerRunFailureClassification option
+        Category: ViewerDiagnosticCategory option
+        Message: string
+        Timestamp: DateTimeOffset
+        UnsupportedHostReason: string option
+        Fallback: string option
+        Diagnostics: string list
+    }
 
 type ViewerRuntimeCapability =
-    { PersistentWindow: bool
-      BoundedSmoke: bool
-      KeyboardInput: bool
-      RendererMode: string
-      UnsupportedHostReasons: string list
-      MissingPackageCapabilities: string list }
+    {
+        PersistentWindow: bool
+        BoundedSmoke: bool
+        KeyboardInput: bool
+        RendererMode: string
+        UnsupportedHostReasons: string list
+        MissingPackageCapabilities: string list
+    }
 
 type ViewerDesktopSessionDiagnostic =
-    { RuntimeDirectory: string option
-      RuntimeDirectoryExists: bool
-      RuntimeDirectoryOwnerSuitable: bool
-      RuntimeDirectoryPermissionsSuitable: bool
-      DisplayVariable: string option
-      DisplaySocket: string option
-      DisplaySocketExists: bool
-      SessionBus: string option
-      FallbackRuntimeDirectory: string option
-      FallbackIsFullDesktopSession: bool
-      DiagnosticClass: string
-      Message: string }
+    {
+        RuntimeDirectory: string option
+        RuntimeDirectoryExists: bool
+        RuntimeDirectoryOwnerSuitable: bool
+        RuntimeDirectoryPermissionsSuitable: bool
+        DisplayVariable: string option
+        DisplaySocket: string option
+        DisplaySocketExists: bool
+        SessionBus: string option
+        FallbackRuntimeDirectory: string option
+        FallbackIsFullDesktopSession: bool
+        DiagnosticClass: string
+        Message: string
+    }
 
 type ViewerLaunchOutcome =
-    { Status: string
-      Mode: string
-      Command: string option
-      RendererMode: string
-      WindowOpened: bool
-      WindowVisible: ViewerObservedValue
-      FirstFramePresented: bool
-      CloseReason: ViewerCloseReason option
-      UserCloseObserved: bool
-      AppCloseObserved: bool
-      EvidenceCloseObserved: bool
-      SelfClosedForEvidence: bool
-      InputDispatch: string
-      ExitPath: bool
-      WindowDiagnostics: ViewerWindowStateDiagnostic list
-      OptionResults: ViewerWindowOptionResult list
-      VisualEvidence: ViewerVisualEvidenceArtifact list
-      FailureClass: ViewerFailureClass option
-      BlockedStage: ViewerRunBlockedStage option
-      Classification: ViewerRunFailureClassification option
-      Category: ViewerDiagnosticCategory option
-      Message: string }
+    {
+        Status: string
+        Mode: string
+        Command: string option
+        RendererMode: string
+        WindowOpened: bool
+        WindowVisible: ViewerObservedValue
+        FirstFramePresented: bool
+        CloseReason: ViewerCloseReason option
+        UserCloseObserved: bool
+        AppCloseObserved: bool
+        EvidenceCloseObserved: bool
+        SelfClosedForEvidence: bool
+        InputDispatch: string
+        ExitPath: bool
+        WindowDiagnostics: ViewerWindowStateDiagnostic list
+        OptionResults: ViewerWindowOptionResult list
+        VisualEvidence: ViewerVisualEvidenceArtifact list
+        FailureClass: ViewerFailureClass option
+        BlockedStage: ViewerRunBlockedStage option
+        Classification: ViewerRunFailureClassification option
+        Category: ViewerDiagnosticCategory option
+        Message: string
+    }
 
 // Feature 183 (US3): named, transposition-safe grouping of the four window-observation inputs for
 // classifyWindowObservation (values/results unchanged).
 type WindowObservationInputs =
-    { ExternalObservationAttempted: bool
-      ExternalWindowMatched: bool option
-      CaptureAttempted: bool
-      CaptureSucceeded: bool option }
+    {
+        ExternalObservationAttempted: bool
+        ExternalWindowMatched: bool option
+        CaptureAttempted: bool
+        CaptureSucceeded: bool option
+    }
 
 type ViewerWindowObservationResult =
-    { DiagnosticSource: string
-      Command: string option
-      HostFacts: string list
-      ViewerFacts: string list
-      ViewerWindowOpened: bool
-      ViewerFirstFramePresented: bool
-      ViewerWindowVisible: ViewerObservedValue
-      ExternalObservationAttempted: bool
-      ExternalWindowMatched: bool option
-      CaptureAttempted: bool
-      CaptureSucceeded: bool option
-      BlockedStage: ViewerRunBlockedStage option
-      Classification: ViewerRunFailureClassification option
-      MissingFacts: string list
-      Message: string }
+    {
+        DiagnosticSource: string
+        Command: string option
+        HostFacts: string list
+        ViewerFacts: string list
+        ViewerWindowOpened: bool
+        ViewerFirstFramePresented: bool
+        ViewerWindowVisible: ViewerObservedValue
+        ExternalObservationAttempted: bool
+        ExternalWindowMatched: bool option
+        CaptureAttempted: bool
+        CaptureSucceeded: bool option
+        BlockedStage: ViewerRunBlockedStage option
+        Classification: ViewerRunFailureClassification option
+        MissingFacts: string list
+        Message: string
+    }
 
 type ViewerLifecycleState =
     | NotStarted
@@ -578,21 +637,25 @@ type ViewerLifecycleState =
     | Unsupported
 
 type ViewerModel =
-    { Options: ViewerOptions
-      WindowBehavior: ViewerWindowBehaviorRequest
-      IsRunning: bool
-      LifecycleState: ViewerLifecycleState
-      FirstFramePresented: bool
-      UserCloseObserved: bool
-      InputDispatch: ViewerInputDispatchStatus
-      LastScene: SceneNode option }
+    {
+        Options: ViewerOptions
+        WindowBehavior: ViewerWindowBehaviorRequest
+        IsRunning: bool
+        LifecycleState: ViewerLifecycleState
+        FirstFramePresented: bool
+        UserCloseObserved: bool
+        InputDispatch: ViewerInputDispatchStatus
+        LastScene: SceneNode option
+    }
 
 type ViewerRunModel =
-    { Request: ViewerRunRequest
-      FramesRendered: int
-      StartedAt: DateTimeOffset option
-      LastDiagnostic: ViewerDiagnosticEvent option
-      Completed: Result<ViewerRunEvidence, ViewerRunFailure> option }
+    {
+        Request: ViewerRunRequest
+        FramesRendered: int
+        StartedAt: DateTimeOffset option
+        LastDiagnostic: ViewerDiagnosticEvent option
+        Completed: Result<ViewerRunEvidence, ViewerRunFailure> option
+    }
 
 type ViewerMsg =
     | Start
@@ -658,13 +721,15 @@ type ViewerRunEffect =
     | PersistRunEvidence of ViewerRunEvidence
 
 type EvidenceWorkflowModel =
-    { Request: ScreenshotEvidenceRequest
-      ViewerOpenStatus: ViewerOpenStatus
-      FirstFrameStatus: FirstFrameStatus
-      CaptureAvailability: ScreenshotCaptureAvailability
-      OutputPath: string option
-      Result: ScreenshotEvidenceResult option
-      Diagnostics: string list }
+    {
+        Request: ScreenshotEvidenceRequest
+        ViewerOpenStatus: ViewerOpenStatus
+        FirstFrameStatus: FirstFrameStatus
+        CaptureAvailability: ScreenshotCaptureAvailability
+        OutputPath: string option
+        Result: ScreenshotEvidenceResult option
+        Diagnostics: string list
+    }
 
 type EvidenceWorkflowMsg =
     | LaunchStarted
@@ -685,13 +750,15 @@ type EvidenceWorkflowEffect =
     | CollectProcessOutput
     | ValidateGeneratedGuidance
 
-type GeneratedAppHost<'model,'msg> =
-    { Init: unit -> 'model * ViewerEffect list
-      Update: 'msg -> 'model -> 'model * ViewerEffect list
-      View: 'model -> SceneNode
-      MapKey: ViewerKey -> bool -> 'msg option
-      Tick: TimeSpan -> 'msg option
-      Diagnostics: ViewerDiagnosticsOptions }
+type GeneratedAppHost<'model, 'msg> =
+    {
+        Init: unit -> 'model * ViewerEffect list
+        Update: 'msg -> 'model -> 'model * ViewerEffect list
+        View: 'model -> SceneNode
+        MapKey: ViewerKey -> bool -> 'msg option
+        Tick: TimeSpan -> 'msg option
+        Diagnostics: ViewerDiagnosticsOptions
+    }
 
 /// Issue #911: the `GeneratedAppHost.auditKeyWiring` result — a declared input surface partitioned
 /// into the events that route through `MapKey` to a product message and the DEAD ones that route to
@@ -700,8 +767,10 @@ type GeneratedAppHost<'model,'msg> =
 /// for this host — "a key that is bound is a key that dispatches" — and a non-empty `Dead` over a
 /// product's declared keymap is a bound key that dispatches nothing.
 type SceneHostKeyWiring<'msg> =
-    { Wired: (ViewerKeyEvent * 'msg) list
-      Dead: ViewerKeyEvent list }
+    {
+        Wired: (ViewerKeyEvent * 'msg) list
+        Dead: ViewerKeyEvent list
+    }
 
 [<RequireQualifiedAccess>]
 /// Framework-neutral pointer button identity surfaced to the interactive host (085).
@@ -723,12 +792,14 @@ type ViewerPointerPhaseKind =
 /// (085). X/Y are in the swapchain/scene coordinate space; consumers hit-test against the
 /// scene they rendered for the same `Size`.
 type ViewerPointerInput =
-    { Phase: ViewerPointerPhaseKind
-      X: float
-      Y: float
-      Button: ViewerPointerButtonKind option
-      DeltaX: float
-      DeltaY: float }
+    {
+        Phase: ViewerPointerPhaseKind
+        X: float
+        Y: float
+        Button: ViewerPointerButtonKind option
+        DeltaX: float
+        DeltaY: float
+    }
 
 [<RequireQualifiedAccess>]
 /// Policy for replaceable continuous pointer samples at the interactive viewer boundary.
@@ -747,18 +818,22 @@ type ViewerPointerRepaintCause =
 /// One live pointer-pacing receipt. Counts describe the input batch drained at a presentation
 /// boundary; `PresentedFrames` is the cumulative number of frames presented by this launch.
 type ViewerPointerPacingMetrics =
-    { RawSamplesReceived: int
-      FoldedSamplesApplied: int
-      CoalescedSamples: int
-      ModelUpdates: int
-      PresentedFrames: int64
-      RepaintCause: ViewerPointerRepaintCause
-      FullRenderFallbacks: int }
+    {
+        RawSamplesReceived: int
+        FoldedSamplesApplied: int
+        CoalescedSamples: int
+        ModelUpdates: int
+        PresentedFrames: int64
+        RepaintCause: ViewerPointerRepaintCause
+        FullRenderFallbacks: int
+    }
 
 /// Public policy and observability seam for continuous pointer input.
 type ViewerPointerPacingOptions =
-    { ContinuousPolicy: ViewerContinuousPointerPolicy
-      OnMetrics: ViewerPointerPacingMetrics -> unit }
+    {
+        ContinuousPolicy: ViewerContinuousPointerPolicy
+        OnMetrics: ViewerPointerPacingMetrics -> unit
+    }
 
 /// Pointer-aware, size-aware durable host variant (feature 085). Mirrors `GeneratedAppHost`
 /// field-for-field PLUS a model-aware pointer seam (`MapPointer`) and a size-carrying `View`,
@@ -766,32 +841,40 @@ type ViewerPointerPacingOptions =
 /// `Viewer.runApp viewerOptions generatedHost` GovernanceTests literal are unbroken (FR-006).
 /// This is the Controls-free lower runner; the Control/PointerInteraction-aware
 /// `InteractiveAppHost` (FS.GG.UI.Controls.Elmish) adapts onto it (research D3-AMEND).
-type InteractiveViewerHost<'model,'msg> =
-    { Init: unit -> 'model * ViewerEffect list
-      Update: 'msg -> 'model -> 'model * ViewerEffect list
-      View: Size -> 'model -> SceneNode
-      // 092 (FR-006): `'msg list` (was `'msg option`) — one key can dispatch several messages in
-      // order; `[]` = unhandled. Folded through `Update` exactly like the pointer `'msg list` path.
-      MapKey: ViewerKey -> bool -> 'msg list
-      MapPointer: ViewerPointerInput -> Size -> 'model -> 'msg list
-      Tick: TimeSpan -> 'msg option
-      Diagnostics: ViewerDiagnosticsOptions }
+type InteractiveViewerHost<'model, 'msg> =
+    {
+        Init: unit -> 'model * ViewerEffect list
+        Update: 'msg -> 'model -> 'model * ViewerEffect list
+        View: Size -> 'model -> SceneNode
+        // 092 (FR-006): `'msg list` (was `'msg option`) — one key can dispatch several messages in
+        // order; `[]` = unhandled. Folded through `Update` exactly like the pointer `'msg list` path.
+        MapKey: ViewerKey -> bool -> 'msg list
+        MapPointer: ViewerPointerInput -> Size -> 'model -> 'msg list
+        Tick: TimeSpan -> 'msg option
+        Diagnostics: ViewerDiagnosticsOptions
+    }
 
 type GamepadSnapshot =
-    { LeftStickX: float
-      LeftStickY: float
-      RightStickX: float
-      RightStickY: float
-      LeftTrigger: float
-      RightTrigger: float }
+    {
+        LeftStickX: float
+        LeftStickY: float
+        RightStickX: float
+        RightStickY: float
+        LeftTrigger: float
+        RightTrigger: float
+    }
 
 type GamepadFrameSource<'msg> =
-    { Poll: unit -> GamepadSnapshot option
-      Map: GamepadSnapshot -> 'msg list }
+    {
+        Poll: unit -> GamepadSnapshot option
+        Map: GamepadSnapshot -> 'msg list
+    }
 
-type InteractiveViewerGamepadHost<'model,'msg> =
-    { Host: InteractiveViewerHost<'model,'msg>
-      Gamepad: GamepadFrameSource<'msg> }
+type InteractiveViewerGamepadHost<'model, 'msg> =
+    {
+        Host: InteractiveViewerHost<'model, 'msg>
+        Gamepad: GamepadFrameSource<'msg>
+    }
 
 module GamepadFrameSource =
     let poll (source: GamepadFrameSource<'msg>) =

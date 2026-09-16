@@ -13,21 +13,25 @@ open Rendering.Harness.CliReadiness
 
 let private runProbe (rest: string list) =
     let facts = Probe.probe ()
+
     let evidence: Evidence.Evidence =
-        { RunId = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss")
-          Tier = T0
-          Subcommand = "probe"
-          Status = Passed
-          SkipReason = None
-          ProofLevel = Deterministic
-          AuthoritativeFor = [ "environment-facts" ]
-          NotAuthoritativeFor = [ "rendering"; "timing"; "live-host" ]
-          Facts = facts
-          Frames = 0
-          P50Ms = None
-          P95Ms = None
-          P99Ms = None
-          Artifacts = [ "summary.md" ] }
+        {
+            RunId = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss")
+            Tier = T0
+            Subcommand = "probe"
+            Status = Passed
+            SkipReason = None
+            ProofLevel = Deterministic
+            AuthoritativeFor = [ "environment-facts" ]
+            NotAuthoritativeFor = [ "rendering"; "timing"; "live-host" ]
+            Facts = facts
+            Frames = 0
+            P50Ms = None
+            P95Ms = None
+            P99Ms = None
+            Artifacts = [ "summary.md" ]
+        }
+
     let path = Evidence.write (outDir rest) evidence []
     printfn "%s" path
     0
@@ -40,7 +44,11 @@ let private runOffscreen (rest: string list) =
     let evT1, fT1 = Tiers.runOffscreen T1 facts (Path.Combine(baseOut, "T1"))
     let p1 = Evidence.write (Path.Combine(baseOut, "T1")) evT1 fT1
     printfn "%s" p1
-    if evT0.Status = Passed && evT1.Status = Passed then 0 else 1
+
+    if evT0.Status = Passed && evT1.Status = Passed then
+        0
+    else
+        1
 
 
 
@@ -51,25 +59,36 @@ let private runPerfCmd (rest: string list) =
         match flagValue "--mode" rest with
         | Some m -> Perf.parseMode m
         | None -> Some Perf.Throughput
+
     let frames =
         match flagValue "--frames" rest with
-        | Some f -> (match Int32.TryParse f with | true, v -> v | _ -> 120)
+        | Some f ->
+            (match Int32.TryParse f with
+             | true, v -> v
+             | _ -> 120)
         | None -> 120
+
     match mode with
-    | None -> eprintfn "unknown --mode (expected throughput|paced-60|paced-native|stress-resize|input-latency)"; 2
+    | None ->
+        eprintfn "unknown --mode (expected throughput|paced-60|paced-native|stress-resize|input-latency)"
+        2
     | Some m ->
         let facts = Probe.probe ()
         let out = outDir rest
+
         let selfDll =
             match System.Reflection.Assembly.GetEntryAssembly() with
             | null -> ""
             | a -> a.Location
+
         let ev, fms =
             match m with
             | Perf.PacedNative -> Live.runFaithfulPerf facts selfDll out // faithful GPU vsync timing
             | _ -> Perf.runPerf m frames facts out // offscreen render throughput
+
         let path = Evidence.write out ev fms
         printfn "%s" path
+
         match ev.Status with
         | RunStatus.Passed
         | RunStatus.Skipped -> 0
@@ -78,13 +97,16 @@ let private runPerfCmd (rest: string list) =
 let private runLiveCmd (rest: string list) =
     let facts = Probe.probe ()
     let out = outDir rest
+
     let selfDll =
         match System.Reflection.Assembly.GetEntryAssembly() with
         | null -> ""
         | a -> a.Location
+
     let ev = Live.runLive facts selfDll out
     let path = Evidence.write out ev []
     printfn "%s" path
+
     match ev.Status with
     | RunStatus.Passed
     | RunStatus.Skipped -> 0
@@ -102,12 +124,21 @@ let private runOverlayVisualProofCmd (rest: string list) =
     let run = Live.runOverlayVisualProof facts out
     IO.File.WriteAllText(IO.Path.Combine(out, "visual-proof.md"), Evidence.renderVisualProofRun run)
     IO.File.WriteAllText(IO.Path.Combine(out, "correlation.md"), Evidence.renderCorrelation run)
+
     match run.Limitation with
     | Some limitation ->
-        IO.File.WriteAllText(IO.Path.Combine(out, "unsupported-host.md"), Evidence.renderUnsupportedHostLimitation limitation)
+        IO.File.WriteAllText(
+            IO.Path.Combine(out, "unsupported-host.md"),
+            Evidence.renderUnsupportedHostLimitation limitation
+        )
     | None ->
-        IO.File.WriteAllText(IO.Path.Combine(out, "unsupported-host.md"), "# Unsupported Host Limitation\n\nNo unsupported-host limitation was recorded for this run.\n")
+        IO.File.WriteAllText(
+            IO.Path.Combine(out, "unsupported-host.md"),
+            "# Unsupported Host Limitation\n\nNo unsupported-host limitation was recorded for this run.\n"
+        )
+
     printfn "%s" (IO.Path.Combine(out, "visual-proof.md"))
+
     match run.Status with
     | Evidence.VisualProofPassed
     | Evidence.VisualProofEnvironmentLimited -> 0
@@ -135,7 +166,10 @@ let private runRenderAnywhereReferenceCmd (rest: string list) =
 
 let private runRenderAnywhereBrowserFeasibilityCmd (rest: string list) =
     let out = renderAnywhereBrowserOutDir rest
-    RenderAnywhere.runBrowserCapabilityCommand RenderAnywhere.referenceDirectory out |> ignore
+
+    RenderAnywhere.runBrowserCapabilityCommand RenderAnywhere.referenceDirectory out
+    |> ignore
+
     printfn "%s" (IO.Path.Combine(out, "browser-feasibility.md"))
     0
 
@@ -149,18 +183,24 @@ let private runCompositorPresentProofCmd (rest: string list) =
         match facts.EffectiveBackend, facts.GlRenderer with
         | NoDisplay, _ -> Compositor.Types.ProofEnvironmentLimited "missing display"
         | _, None -> Compositor.Types.ProofEnvironmentLimited "missing GL renderer facts"
-        | _ -> Compositor.Types.ProofEnvironmentLimited "live sentinel readback proof is not implemented in this deterministic harness"
+        | _ ->
+            Compositor.Types.ProofEnvironmentLimited
+                "live sentinel readback proof is not implemented in this deterministic harness"
 
     let proof: Compositor.Types.PresentProof =
-        { ProofId = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss")
-          HostProfile = profile
-          ScenarioId = "proof/sentinel-damage-v1"
-          Verdict = verdict
-          CreatedAt = DateTimeOffset.UtcNow
-          EvidenceArtifacts = [ "proof.md" ]
-          Diagnostics =
-            [ $"backend={profile.DisplayEnvironment}"
-              $"verdict={Compositor.Config.proofVerdictToken verdict}" ] }
+        {
+            ProofId = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss")
+            HostProfile = profile
+            ScenarioId = "proof/sentinel-damage-v1"
+            Verdict = verdict
+            CreatedAt = DateTimeOffset.UtcNow
+            EvidenceArtifacts = [ "proof.md" ]
+            Diagnostics =
+                [
+                    $"backend={profile.DisplayEnvironment}"
+                    $"verdict={Compositor.Config.proofVerdictToken verdict}"
+                ]
+        }
 
     let path = IO.Path.Combine(out, "proof.md")
     IO.File.WriteAllText(path, Compositor.Render.renderPresentProof proof)
@@ -168,10 +208,15 @@ let private runCompositorPresentProofCmd (rest: string list) =
     0
 
 let private feature155ReadinessRootFor (output: string) =
-    let normalized = output.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+    let normalized =
+        output.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+
     let leaf = Path.GetFileName normalized
-    if String.Equals(leaf, "attempts", StringComparison.OrdinalIgnoreCase)
-       || String.Equals(leaf, "unsupported", StringComparison.OrdinalIgnoreCase) then
+
+    if
+        String.Equals(leaf, "attempts", StringComparison.OrdinalIgnoreCase)
+        || String.Equals(leaf, "unsupported", StringComparison.OrdinalIgnoreCase)
+    then
         match Directory.GetParent(normalized) with
         | null -> FeatureCatalog.FeatureDescriptor.readinessDirectory (FeatureCatalog.descriptorById 155)
         | liveProof ->
@@ -182,8 +227,11 @@ let private feature155ReadinessRootFor (output: string) =
         FeatureCatalog.FeatureDescriptor.readinessDirectory (FeatureCatalog.descriptorById 155)
 
 let private feature155UnsupportedOutput (output: string) =
-    let normalized = output.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+    let normalized =
+        output.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+
     let leaf = Path.GetFileName normalized
+
     if String.Equals(leaf, "unsupported", StringComparison.OrdinalIgnoreCase) then
         output
     else
@@ -192,23 +240,39 @@ let private feature155UnsupportedOutput (output: string) =
 let private writeFeature155Unsupported output (profile: Compositor.Types.HostProfile) reason =
     Directory.CreateDirectory(output) |> ignore
     let now = DateTimeOffset.UtcNow
+
     let proof: Compositor.Types.PresentProof =
-        { ProofId = now.UtcDateTime.ToString("yyyyMMdd-HHmmss")
-          HostProfile = profile
-          ScenarioId = "proof/live-sentinel-damage-v1"
-          Verdict = Compositor.Types.ProofEnvironmentLimited reason
-          CreatedAt = now
-          EvidenceArtifacts = [ "proof.md"; "limitations.md"; "README.md" ]
-          Diagnostics =
-            [ $"backend={profile.DisplayEnvironment}"
-              $"package={Compositor.Config.feature155PackageVersion}"
-              "attempt-count=0"
-              $"verdict={Compositor.Config.proofVerdictToken (Compositor.Types.ProofEnvironmentLimited reason)}"
-              $"reason={reason}" ] }
+        {
+            ProofId = now.UtcDateTime.ToString("yyyyMMdd-HHmmss")
+            HostProfile = profile
+            ScenarioId = "proof/live-sentinel-damage-v1"
+            Verdict = Compositor.Types.ProofEnvironmentLimited reason
+            CreatedAt = now
+            EvidenceArtifacts = [ "proof.md"; "limitations.md"; "README.md" ]
+            Diagnostics =
+                [
+                    $"backend={profile.DisplayEnvironment}"
+                    $"package={Compositor.Config.feature155PackageVersion}"
+                    "attempt-count=0"
+                    $"verdict={Compositor.Config.proofVerdictToken (Compositor.Types.ProofEnvironmentLimited reason)}"
+                    $"reason={reason}"
+                ]
+        }
 
     File.WriteAllText(Path.Combine(output, "proof.md"), Compositor.Render2.emitFeature155LiveProof proof)
-    File.WriteAllText(Path.Combine(output, "limitations.md"), "# Feature 155 Live Proof Limitation\n\nThis run is environment-limited because " + reason + ".\n")
-    File.WriteAllText(Path.Combine(output, "README.md"), "# Feature 155 Unsupported Host Evidence\n\nStatus: `environment-limited`\n\nAccepted partial-redraw artifacts: `0`\n")
+
+    File.WriteAllText(
+        Path.Combine(output, "limitations.md"),
+        "# Feature 155 Live Proof Limitation\n\nThis run is environment-limited because "
+        + reason
+        + ".\n"
+    )
+
+    File.WriteAllText(
+        Path.Combine(output, "README.md"),
+        "# Feature 155 Unsupported Host Evidence\n\nStatus: `environment-limited`\n\nAccepted partial-redraw artifacts: `0`\n"
+    )
+
     proof
 
 let private runFeature155LiveProof rest facts output profile =
@@ -220,13 +284,21 @@ let private runFeature155LiveProof rest facts output profile =
     | NoDisplay, _, _ ->
         let proof = writeFeature155Unsupported unsupportedOutput profile "missing display"
         printfn "%s" (Path.Combine(unsupportedOutput, "proof.md"))
-        if proof.Verdict = Compositor.Types.ProofEnvironmentLimited "missing display" then 0 else 1
+
+        if proof.Verdict = Compositor.Types.ProofEnvironmentLimited "missing display" then
+            0
+        else
+            1
     | _, None, _ ->
-        writeFeature155Unsupported unsupportedOutput profile "missing GL renderer facts" |> ignore
+        writeFeature155Unsupported unsupportedOutput profile "missing GL renderer facts"
+        |> ignore
+
         printfn "%s" (Path.Combine(unsupportedOutput, "proof.md"))
         0
     | _, _, false ->
-        writeFeature155Unsupported unsupportedOutput profile "OpenGL direct rendering is unavailable" |> ignore
+        writeFeature155Unsupported unsupportedOutput profile "OpenGL direct rendering is unavailable"
+        |> ignore
+
         printfn "%s" (Path.Combine(unsupportedOutput, "proof.md"))
         0
     | _ ->
@@ -236,13 +308,18 @@ let private runFeature155LiveProof rest facts output profile =
         let renderer = profile.Renderer |> Option.defaultValue "unknown"
         let display = facts.Display |> Option.defaultValue "none"
         let glDirect = facts.GlDirect.ToString().ToLowerInvariant()
-        let refreshHz = facts.RefreshHz |> Option.map string |> Option.defaultValue "unknown"
+
+        let refreshHz =
+            facts.RefreshHz |> Option.map string |> Option.defaultValue "unknown"
+
         let hostFacts =
-            [ $"backend={profile.DisplayEnvironment}"
-              $"renderer={renderer}"
-              $"display={display}"
-              $"gl-direct={glDirect}"
-              $"refresh-hz={refreshHz}" ]
+            [
+                $"backend={profile.DisplayEnvironment}"
+                $"renderer={renderer}"
+                $"display={display}"
+                $"gl-direct={glDirect}"
+                $"refresh-hz={refreshHz}"
+            ]
 
         let createAttempt index =
             let attemptId = $"feature155-{now.UtcDateTime:yyyyMMddHHmmss}-{index}"
@@ -250,16 +327,33 @@ let private runFeature155LiveProof rest facts output profile =
             Directory.CreateDirectory(attemptDir) |> ignore
             let sentinelPath = Path.Combine(attemptDir, "sentinel-frame.png")
             let damagePath = Path.Combine(attemptDir, "damage-frame.png")
-            let sentinelResult = captureProofImage "compositor-live-proof" "feature155-sentinel" hostFacts sentinelPath (sentinelScene ())
-            let damageResult = captureProofImage "compositor-live-proof" "feature155-damage" hostFacts damagePath (damageScene ())
-            let sentinelOk = sentinelResult.Status = ScreenshotOk && fileDecodableNonBlank sentinelPath
-            let damageOk = damageResult.Status = ScreenshotOk && fileDecodableNonBlank damagePath
+
+            let sentinelResult =
+                captureProofImage
+                    "compositor-live-proof"
+                    "feature155-sentinel"
+                    hostFacts
+                    sentinelPath
+                    (sentinelScene ())
+
+            let damageResult =
+                captureProofImage "compositor-live-proof" "feature155-damage" hostFacts damagePath (damageScene ())
+
+            let sentinelOk =
+                sentinelResult.Status = ScreenshotOk && fileDecodableNonBlank sentinelPath
+
+            let damageOk =
+                damageResult.Status = ScreenshotOk && fileDecodableNonBlank damagePath
+
             let undamagedBefore = tryPixel sentinelPath 40 40
             let undamagedAfter = tryPixel damagePath 40 40
             let damagedBefore = tryPixel sentinelPath 350 230
             let damagedAfter = tryPixel damagePath 350 230
             let undamagedPreserved = undamagedBefore.IsSome && undamagedBefore = undamagedAfter
-            let damagedUpdated = damagedBefore.IsSome && damagedAfter.IsSome && damagedBefore <> damagedAfter
+
+            let damagedUpdated =
+                damagedBefore.IsSome && damagedAfter.IsSome && damagedBefore <> damagedAfter
+
             let verdict =
                 if sentinelOk && damageOk && undamagedPreserved && damagedUpdated then
                     Compositor.Types.ProofPassed
@@ -271,66 +365,100 @@ let private runFeature155LiveProof rest facts output profile =
                     Compositor.Types.ProofFailed "undamaged pixels did not preserve sentinel identity"
 
             let relativeArtifacts =
-                [ $"{attemptId}/sentinel-frame.png"
-                  $"{attemptId}/damage-frame.png"
-                  $"{attemptId}/proof.md" ]
+                [
+                    $"{attemptId}/sentinel-frame.png"
+                    $"{attemptId}/damage-frame.png"
+                    $"{attemptId}/proof.md"
+                ]
 
             let proof: Compositor.Types.PresentProof =
-                { ProofId = attemptId
-                  HostProfile = profile
-                  ScenarioId = "proof/live-sentinel-damage-v1"
-                  Verdict = verdict
-                  CreatedAt = now
-                  EvidenceArtifacts = relativeArtifacts
-                  Diagnostics =
-                    hostFacts
-                    @ [ $"attempt={index}"
-                        "workflow=DetectProfile>PresentSentinelFrame>PresentDamageFrame>ObservePixels>WriteProofArtifact"
-                        $"sentinel-status={sentinelResult.Status}"
-                        $"damage-status={damageResult.Status}"
-                        $"sentinel-nonblank={sentinelOk.ToString().ToLowerInvariant()}"
-                        $"damage-nonblank={damageOk.ToString().ToLowerInvariant()}"
-                        $"undamaged-preserved={undamagedPreserved.ToString().ToLowerInvariant()}"
-                        $"damaged-updated={damagedUpdated.ToString().ToLowerInvariant()}"
-                        $"verdict={Compositor.Config.proofVerdictToken verdict}" ] }
+                {
+                    ProofId = attemptId
+                    HostProfile = profile
+                    ScenarioId = "proof/live-sentinel-damage-v1"
+                    Verdict = verdict
+                    CreatedAt = now
+                    EvidenceArtifacts = relativeArtifacts
+                    Diagnostics =
+                        hostFacts
+                        @ [
+                            $"attempt={index}"
+                            "workflow=DetectProfile>PresentSentinelFrame>PresentDamageFrame>ObservePixels>WriteProofArtifact"
+                            $"sentinel-status={sentinelResult.Status}"
+                            $"damage-status={damageResult.Status}"
+                            $"sentinel-nonblank={sentinelOk.ToString().ToLowerInvariant()}"
+                            $"damage-nonblank={damageOk.ToString().ToLowerInvariant()}"
+                            $"undamaged-preserved={undamagedPreserved.ToString().ToLowerInvariant()}"
+                            $"damaged-updated={damagedUpdated.ToString().ToLowerInvariant()}"
+                            $"verdict={Compositor.Config.proofVerdictToken verdict}"
+                        ]
+                }
 
             File.WriteAllText(Path.Combine(attemptDir, "proof.md"), Compositor.Render2.emitFeature155LiveProof proof)
             proof
 
         let proofs = [ 1..requestedAttempts ] |> List.map createAttempt
-        let selected = proofs |> List.filter (fun proof -> proof.Verdict = Compositor.Types.ProofPassed) |> List.truncate 3
+
+        let selected =
+            proofs
+            |> List.filter (fun proof -> proof.Verdict = Compositor.Types.ProofPassed)
+            |> List.truncate 3
+
         let model =
             let start, _ = Compositor.FeatureState.initReadiness ()
+
             proofs
-            |> List.fold (fun state proof -> Compositor.FeatureState.updateReadiness (Compositor.Types.ProofLoaded proof) state |> fst) start
+            |> List.fold
+                (fun state proof ->
+                    Compositor.FeatureState.updateReadiness (Compositor.Types.ProofLoaded proof) state
+                    |> fst)
+                start
 
         let attemptsReadme =
-            [ "# Feature 155 Capable-Host Attempts"
-              ""
-              "Status: `accepted`"
-              $"Selected attempts: `{selected.Length}/3`"
-              $"Accepted host profile: `{profile.ProfileId}`"
-              ""
-              "## Attempts"
-              ""
-              if List.isEmpty proofs then
-                  "- none"
-              else
-                  proofs
-                  |> List.map (fun proof -> $"- `{proof.ProofId}`: {Compositor.Config.proofVerdictToken proof.Verdict}")
-                  |> String.concat "\n" ]
+            [
+                "# Feature 155 Capable-Host Attempts"
+                ""
+                "Status: `accepted`"
+                $"Selected attempts: `{selected.Length}/3`"
+                $"Accepted host profile: `{profile.ProfileId}`"
+                ""
+                "## Attempts"
+                ""
+                if List.isEmpty proofs then
+                    "- none"
+                else
+                    proofs
+                    |> List.map (fun proof ->
+                        $"- `{proof.ProofId}`: {Compositor.Config.proofVerdictToken proof.Verdict}")
+                    |> String.concat "\n"
+            ]
             |> String.concat "\n"
 
         File.WriteAllText(Path.Combine(output, "README.md"), attemptsReadme)
-        File.WriteAllText(Path.Combine(output, "proof.md"), Compositor.Render2.emitFeature155LiveProof (proofs |> List.head))
+
+        File.WriteAllText(
+            Path.Combine(output, "proof.md"),
+            Compositor.Render2.emitFeature155LiveProof (proofs |> List.head)
+        )
+
         File.WriteAllText(Path.Combine(readinessRoot, "proof-set.md"), Compositor.Render2.emitFeature155ProofSet model)
-        File.WriteAllText(Path.Combine(readinessRoot, "validation-summary.md"), Compositor.Render2.emitFeature155ValidationSummary model)
-        File.WriteAllText(Path.Combine(readinessRoot, "compatibility-ledger.md"), Compositor.Render2.emitFeature155CompatibilityLedger model)
+
+        File.WriteAllText(
+            Path.Combine(readinessRoot, "validation-summary.md"),
+            Compositor.Render2.emitFeature155ValidationSummary model
+        )
+
+        File.WriteAllText(
+            Path.Combine(readinessRoot, "compatibility-ledger.md"),
+            Compositor.Render2.emitFeature155CompatibilityLedger model
+        )
+
         printfn "%s" (Path.Combine(output, "proof.md"))
         if selected.Length = 3 then 0 else 1
 
 let private runCompositorLiveProofCmd (rest: string list) =
     let facts = Probe.probe ()
+
     let out =
         match flagValue "--out" rest with
         | Some d -> d
@@ -340,6 +468,7 @@ let private runCompositorLiveProofCmd (rest: string list) =
         | None when isFeature152 rest -> Compositor.Config.feature152LiveProofDirectory
         | None when isFeature149 rest -> Compositor.Config.feature149LiveProofDirectory
         | None -> Compositor.Config.feature148LiveProofDirectory
+
     IO.Directory.CreateDirectory(out) |> ignore
     let profile = Compositor.Config.hostProfileFromFacts facts
 
@@ -352,32 +481,43 @@ let private runCompositorLiveProofCmd (rest: string list) =
             | NoDisplay, _ -> Compositor.Types.ProofEnvironmentLimited "missing display"
             | _, None -> Compositor.Types.ProofEnvironmentLimited "missing GL renderer facts"
             | _ -> Compositor.Types.ProofEnvironmentLimited "live sentinel/damage readback requires a capable host run"
+
         let packageVersion =
-            if isFeature154 rest then Compositor.Config.feature154PackageVersion
-            elif isFeature153 rest then Compositor.Config.feature153PackageVersion
-            elif isFeature152 rest then Compositor.Config.feature152PackageVersion
-            elif isFeature149 rest then Compositor.Config.feature149PackageVersion
-            else Compositor.Config.feature148PackageVersion
+            if isFeature154 rest then
+                Compositor.Config.feature154PackageVersion
+            elif isFeature153 rest then
+                Compositor.Config.feature153PackageVersion
+            elif isFeature152 rest then
+                Compositor.Config.feature152PackageVersion
+            elif isFeature149 rest then
+                Compositor.Config.feature149PackageVersion
+            else
+                Compositor.Config.feature148PackageVersion
 
         let proof: Compositor.Types.PresentProof =
-            { ProofId = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss")
-              HostProfile = profile
-              ScenarioId = "proof/live-sentinel-damage-v1"
-              Verdict = verdict
-              CreatedAt = DateTimeOffset.UtcNow
-              EvidenceArtifacts =
-                if isFeature154 rest || isFeature153 rest then
-                    [ "proof.md"; "limitations.md"; "attempts/README.md"; "unsupported/README.md" ]
-                else
-                    [ "proof.md"; "limitations.md" ]
-              Diagnostics =
-                [ $"backend={profile.DisplayEnvironment}"
-                  $"package={packageVersion}"
-                  $"attempt-count={attemptCount rest}"
-                  $"verdict={Compositor.Config.proofVerdictToken verdict}" ] }
+            {
+                ProofId = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss")
+                HostProfile = profile
+                ScenarioId = "proof/live-sentinel-damage-v1"
+                Verdict = verdict
+                CreatedAt = DateTimeOffset.UtcNow
+                EvidenceArtifacts =
+                    if isFeature154 rest || isFeature153 rest then
+                        [ "proof.md"; "limitations.md"; "attempts/README.md"; "unsupported/README.md" ]
+                    else
+                        [ "proof.md"; "limitations.md" ]
+                Diagnostics =
+                    [
+                        $"backend={profile.DisplayEnvironment}"
+                        $"package={packageVersion}"
+                        $"attempt-count={attemptCount rest}"
+                        $"verdict={Compositor.Config.proofVerdictToken verdict}"
+                    ]
+            }
 
         let proofPath = IO.Path.Combine(out, "proof.md")
         let limitationsPath = IO.Path.Combine(out, "limitations.md")
+
         let proofBody =
             if isFeature154 rest then
                 Compositor.Render2.emitFeature154LiveProof proof
@@ -403,15 +543,23 @@ let private runCompositorLiveProofCmd (rest: string list) =
                 "# Feature 148 Live Proof Limitation"
 
         IO.File.WriteAllText(proofPath, proofBody)
+
         IO.File.WriteAllText(
             limitationsPath,
-            limitationTitle + "\n\nThis run is environment-limited until a capable OpenGL host captures sentinel and damage readback artifacts.\n")
+            limitationTitle
+            + "\n\nThis run is environment-limited until a capable OpenGL host captures sentinel and damage readback artifacts.\n"
+        )
+
         if isFeature154 rest || isFeature153 rest then
             let featureNumber, attemptsDefault, unsupportedDefault =
                 if isFeature154 rest then
-                    "154", Compositor.Config.feature154LiveProofAttemptsDirectory, Compositor.Config.feature154LiveProofUnsupportedDirectory
+                    "154",
+                    Compositor.Config.feature154LiveProofAttemptsDirectory,
+                    Compositor.Config.feature154LiveProofUnsupportedDirectory
                 else
-                    "153", Compositor.Config.feature153LiveProofAttemptsDirectory, Compositor.Config.feature153LiveProofUnsupportedDirectory
+                    "153",
+                    Compositor.Config.feature153LiveProofAttemptsDirectory,
+                    Compositor.Config.feature153LiveProofUnsupportedDirectory
 
             let leaf =
                 out.TrimEnd(IO.Path.DirectorySeparatorChar, IO.Path.AltDirectorySeparatorChar)
@@ -427,8 +575,17 @@ let private runCompositorLiveProofCmd (rest: string list) =
 
             IO.Directory.CreateDirectory(attemptsDir) |> ignore
             IO.Directory.CreateDirectory(unsupportedDir) |> ignore
-            IO.File.WriteAllText(IO.Path.Combine(attemptsDir, "README.md"), $"# Feature {featureNumber} Capable-Host Attempts\n\nNo capable-host attempts were accepted in this environment-limited run.\n\nSelected attempts: `0/3`\n")
-            IO.File.WriteAllText(IO.Path.Combine(unsupportedDir, "README.md"), $"# Feature {featureNumber} Unsupported Host Evidence\n\nStatus: `environment-limited`\n\nAccepted partial-redraw artifacts: `0`\n")
+
+            IO.File.WriteAllText(
+                IO.Path.Combine(attemptsDir, "README.md"),
+                $"# Feature {featureNumber} Capable-Host Attempts\n\nNo capable-host attempts were accepted in this environment-limited run.\n\nSelected attempts: `0/3`\n"
+            )
+
+            IO.File.WriteAllText(
+                IO.Path.Combine(unsupportedDir, "README.md"),
+                $"# Feature {featureNumber} Unsupported Host Evidence\n\nStatus: `environment-limited`\n\nAccepted partial-redraw artifacts: `0`\n"
+            )
+
         printfn "%s" proofPath
         0
 
@@ -449,15 +606,17 @@ let private runCompositorParityCmd (rest: string list) =
         elif isFeature148 rest then
             Compositor.Render.emitFeature148ParityReport ()
         else
-            [ "# Feature 147 Damage Parity"
-              ""
-              "| Scenario | Verdict |"
-              "|----------|---------|"
-              for scenario in Compositor.Config.scenarioIds do
-                  if scenario.StartsWith("damage/", StringComparison.Ordinal) then
-                      $"| `{scenario}` | passed |"
-              ""
-              "Full-redraw oracle parity is represented by deterministic retained-damage policy tests in this environment." ]
+            [
+                "# Feature 147 Damage Parity"
+                ""
+                "| Scenario | Verdict |"
+                "|----------|---------|"
+                for scenario in Compositor.Config.scenarioIds do
+                    if scenario.StartsWith("damage/", StringComparison.Ordinal) then
+                        $"| `{scenario}` | passed |"
+                ""
+                "Full-redraw oracle parity is represented by deterministic retained-damage policy tests in this environment."
+            ]
             |> String.concat "\n"
 
     IO.File.WriteAllText(path, body)
@@ -471,16 +630,18 @@ let private runCompositorPerfCmd (rest: string list) =
     let path = IO.Path.Combine(out, $"perf-{tier}.md")
 
     let body =
-        [ "# Feature 147 Performance Probe"
-          ""
-          $"Tier: `{tier}`"
-          sprintf "Promotion threshold: `%g%%`" Compositor.Config.thresholds.PromotionReductionPercent
-          sprintf "Simple-scene overhead limit: `%g%%`" Compositor.Config.thresholds.SimpleSceneOverheadPercent
-          sprintf "Snapshot threshold: `%g%%`" Compositor.Config.thresholds.SnapshotImprovementPercent
-          $"Snapshot budget entries: `{Compositor.Config.snapshotBudget.MaxEntries}`"
-          $"Snapshot budget bytes: `{Compositor.Config.snapshotBudget.MaxBytes}`"
-          ""
-          "Verdict: limited in this deterministic harness run until real host timing evidence is captured." ]
+        [
+            "# Feature 147 Performance Probe"
+            ""
+            $"Tier: `{tier}`"
+            sprintf "Promotion threshold: `%g%%`" Compositor.Config.thresholds.PromotionReductionPercent
+            sprintf "Simple-scene overhead limit: `%g%%`" Compositor.Config.thresholds.SimpleSceneOverheadPercent
+            sprintf "Snapshot threshold: `%g%%`" Compositor.Config.thresholds.SnapshotImprovementPercent
+            $"Snapshot budget entries: `{Compositor.Config.snapshotBudget.MaxEntries}`"
+            $"Snapshot budget bytes: `{Compositor.Config.snapshotBudget.MaxBytes}`"
+            ""
+            "Verdict: limited in this deterministic harness run until real host timing evidence is captured."
+        ]
         |> String.concat "\n"
 
     IO.File.WriteAllText(path, body)
@@ -493,13 +654,16 @@ let private runCompositorReuseCmd (rest: string list) =
         | Some d -> d
         | None when isFeature149 rest -> Compositor.Config.feature149ReuseDirectory
         | None -> Compositor.Config.feature148ReuseDirectory
+
     IO.Directory.CreateDirectory(out) |> ignore
     let path = IO.Path.Combine(out, "reuse.md")
+
     let body =
         if isFeature149 rest then
             Compositor.Render.emitFeature149ReuseReport ()
         else
             Compositor.Render.emitFeature148ReuseReport ()
+
     IO.File.WriteAllText(path, body)
     printfn "%s" path
     0
@@ -510,19 +674,23 @@ let private runCompositorSnapshotsCmd (rest: string list) =
         | Some d -> d
         | None when isFeature149 rest -> Compositor.Config.feature149SnapshotsDirectory
         | None -> Compositor.Config.feature148SnapshotsDirectory
+
     IO.Directory.CreateDirectory(out) |> ignore
     let path = IO.Path.Combine(out, "snapshots.md")
+
     let body =
         if isFeature149 rest then
             Compositor.Render.emitFeature149SnapshotReport ()
         else
             Compositor.Render.emitFeature148SnapshotReport ()
+
     IO.File.WriteAllText(path, body)
     printfn "%s" path
     0
 
 let private runCompositorTimingCmd (rest: string list) =
     let tier = flagValue "--tier" rest |> Option.defaultValue "damage"
+
     let out =
         match flagValue "--out" rest with
         | Some d -> d
@@ -531,19 +699,28 @@ let private runCompositorTimingCmd (rest: string list) =
         | None when isFeature152 rest -> Compositor.Config.feature152TimingDirectory
         | None when isFeature149 rest -> Compositor.Config.feature149TimingDirectory
         | None -> Compositor.Config.feature148TimingDirectory
+
     IO.Directory.CreateDirectory(out) |> ignore
     let path = IO.Path.Combine(out, $"timing-{tier}.md")
+
     let body =
         if isFeature155 rest then
-            Compositor.Render2.emitFeature155TimingReport tier (positiveIntFlag "--scenario-count" 5 rest) (positiveIntFlag "--repetitions" 5 rest)
+            Compositor.Render2.emitFeature155TimingReport
+                tier
+                (positiveIntFlag "--scenario-count" 5 rest)
+                (positiveIntFlag "--repetitions" 5 rest)
         elif isFeature154 rest then
-            Compositor.Render2.emitFeature154TimingReport tier (positiveIntFlag "--scenario-count" 5 rest) (positiveIntFlag "--repetitions" 5 rest)
+            Compositor.Render2.emitFeature154TimingReport
+                tier
+                (positiveIntFlag "--scenario-count" 5 rest)
+                (positiveIntFlag "--repetitions" 5 rest)
         elif isFeature152 rest then
             Compositor.Render.emitFeature152TimingReport tier
         elif isFeature149 rest then
             Compositor.Render.emitFeature149TimingReport tier
         else
             Compositor.Render.emitFeature148TimingReport tier
+
     IO.File.WriteAllText(path, body)
     printfn "%s" path
     0
@@ -558,8 +735,7 @@ let private flagValues (flag: string) (rest: string list) =
 
     collect [] rest
 
-let private hasFlag (flag: string) (rest: string list) =
-    rest |> List.exists ((=) flag)
+let private hasFlag (flag: string) (rest: string list) = rest |> List.exists ((=) flag)
 
 let private runPackageFeedProof (rest: string list) =
     let mode =
@@ -590,7 +766,9 @@ let private runPackageFeedProof (rest: string list) =
 
         if samples.IsEmpty then
             // Fail closed: "no samples selected" and "all samples pass" must not share an exit code.
-            eprintfn "package-feed: no package-consuming samples found under samples/ (a sample qualifies by mapping FS.GG.UI.* to the local feed in its own nuget.config), and none given with --sample"
+            eprintfn
+                "package-feed: no package-consuming samples found under samples/ (a sample qualifies by mapping FS.GG.UI.* to the local feed in its own nuget.config), and none given with --sample"
+
             2
         else
             // Default OUT of the worktree, not into it (#702). The default used to be feature 163's
@@ -601,26 +779,25 @@ let private runPackageFeedProof (rest: string list) =
             // is how the committed record drifted into a mixture: two tables refreshed in July, five
             // proof files left over from a June run against one sample. Writing the readiness record
             // is now something you ASK for with an explicit `--out`, and `artifacts/` is gitignored.
-            let out =
-                flagValue "--out" rest
-                |> Option.defaultValue "artifacts/package-proof"
+            let out = flagValue "--out" rest |> Option.defaultValue "artifacts/package-proof"
 
             let feed =
-                flagValue "--feed" rest
-                |> Option.defaultValue PackageFeed.defaultFeedPath
+                flagValue "--feed" rest |> Option.defaultValue PackageFeed.defaultFeedPath
 
             let options: PackageFeed.PackageFeedOptions =
-                { RepositoryRoot = repositoryRoot
-                  SelectedSamples = samples
-                  FeedPath = feed
-                  OutDir = out
-                  Mode = mode
-                  PackBeforeCheck = hasFlag "--pack" rest
-                  IsolatedCachePath = flagValue "--isolated-cache" rest
-                  Cold = hasFlag "--cold" rest
-                  ClearGlobalCache = hasFlag "--clear-global-cache" rest
-                  AllowedExceptionIds = flagValues "--allow-exception" rest |> Set.ofList
-                  CompatibilityExceptions = [] }
+                {
+                    RepositoryRoot = repositoryRoot
+                    SelectedSamples = samples
+                    FeedPath = feed
+                    OutDir = out
+                    Mode = mode
+                    PackBeforeCheck = hasFlag "--pack" rest
+                    IsolatedCachePath = flagValue "--isolated-cache" rest
+                    Cold = hasFlag "--cold" rest
+                    ClearGlobalCache = hasFlag "--clear-global-cache" rest
+                    AllowedExceptionIds = flagValues "--allow-exception" rest |> Set.ofList
+                    CompatibilityExceptions = []
+                }
 
             let result = PackageFeed.runWorkflow options
 
@@ -675,20 +852,22 @@ let private runPackageFeedCmd (rest: string list) =
         runPackageFeedProof rest
     with PackageFeed.PackageDiscoveryError message ->
         eprintfn "package-feed: %s" message
-        eprintfn "package-feed: the expected-feed set could not be derived, so NOTHING was checked — this is not a pass."
+
+        eprintfn
+            "package-feed: the expected-feed set could not be derived, so NOTHING was checked — this is not a pass."
+
         2
 
 let private runValidationLanesCmd (rest: string list) =
     let repositoryRoot = Directory.GetCurrentDirectory()
 
-    let out =
-        flagValue "--out" rest
-        |> Option.defaultValue "artifacts/validation-lanes"
+    let out = flagValue "--out" rest |> Option.defaultValue "artifacts/validation-lanes"
 
     let replaceRunValue =
         let rec find xs =
             match xs with
-            | "--replace-run" :: value :: _ when not (value.StartsWith("-", StringComparison.Ordinal)) -> Some(Some value)
+            | "--replace-run" :: value :: _ when not (value.StartsWith("-", StringComparison.Ordinal)) ->
+                Some(Some value)
             | "--replace-run" :: _ -> Some None
             | _ :: tl -> find tl
             | [] -> None
@@ -702,13 +881,15 @@ let private runValidationLanesCmd (rest: string list) =
         | None, _ -> None
 
     let request: ValidationLanes.RunRequest =
-        { RequestedLaneIds = flagValues "--lane" rest
-          IncludeOptionalLaneIds = (flagValues "--include-optional" rest) @ (flagValues "--include" rest)
-          OutDir = out
-          RunId = runId
-          ReplaceRun = replaceRunValue.IsSome
-          ListOnly = hasFlag "--list" rest
-          AllowParallel = hasFlag "--parallel" rest }
+        {
+            RequestedLaneIds = flagValues "--lane" rest
+            IncludeOptionalLaneIds = (flagValues "--include-optional" rest) @ (flagValues "--include" rest)
+            OutDir = out
+            RunId = runId
+            ReplaceRun = replaceRunValue.IsSome
+            ListOnly = hasFlag "--list" rest
+            AllowParallel = hasFlag "--parallel" rest
+        }
 
     if request.ListOnly then
         let runRoot = Path.Combine(out, request.RunId |> Option.defaultValue "list-only")
@@ -733,7 +914,7 @@ let private runValidationLanesCmd (rest: string list) =
                 eprintfn "%s: %s" diagnostic.Code diagnostic.Message
 
             2
-        | Result.Ok (summary: ValidationLanes.ValidationSummary) ->
+        | Result.Ok(summary: ValidationLanes.ValidationSummary) ->
             let markdownPath = Path.Combine(summary.ArtifactRoot, "summary.md")
             let jsonPath = Path.Combine(summary.ArtifactRoot, "summary.json")
 
@@ -745,9 +926,16 @@ let private runValidationLanesCmd (rest: string list) =
             else
                 printfn "%s" markdownPath
 
-            if summary.LaneResults |> List.exists (fun (result: ValidationLanes.LaneResult) -> result.Status = ValidationLanes.Canceled) then
+            if
+                summary.LaneResults
+                |> List.exists (fun (result: ValidationLanes.LaneResult) -> result.Status = ValidationLanes.Canceled)
+            then
                 130
-            elif summary.LaneResults |> List.exists (fun (result: ValidationLanes.LaneResult) -> result.Status = ValidationLanes.InfrastructureError) then
+            elif
+                summary.LaneResults
+                |> List.exists (fun (result: ValidationLanes.LaneResult) ->
+                    result.Status = ValidationLanes.InfrastructureError)
+            then
                 3
             else
                 match summary.OverallReadiness with
@@ -763,14 +951,20 @@ let private runValidationLanesCmd (rest: string list) =
 // exit (FR-007/FR-011). Performance/promotion preserve their prior `requires --feature …` message and
 // exit code for any non-handled feature; readiness keeps the shared legacy body for a bare invocation.
 let private runCompositorPerformanceCmd (rest: string list) =
-    match flagValue "--feature" rest |> Option.bind FeatureCatalog.FeatureDescriptor.tryByAlias with
+    match
+        flagValue "--feature" rest
+        |> Option.bind FeatureCatalog.FeatureDescriptor.tryByAlias
+    with
     | Some descriptor -> runPerformance descriptor rest
     | None ->
         eprintfn "compositor-performance requires --feature 156, --feature 158, --feature 160, or --feature 161"
         2
 
 let private runCompositorPromotionCmd (rest: string list) =
-    match flagValue "--feature" rest |> Option.bind FeatureCatalog.FeatureDescriptor.tryByAlias with
+    match
+        flagValue "--feature" rest
+        |> Option.bind FeatureCatalog.FeatureDescriptor.tryByAlias
+    with
     | Some descriptor -> runPromotion descriptor rest
     | None ->
         eprintfn "compositor-promotion requires --feature 159"
@@ -794,7 +988,14 @@ let main argv =
     | "perf" :: rest -> runPerfCmd rest
     | "__viewer" :: _ -> Live.launchViewerChild ()
     | "__vsyncprobe" :: stampFile :: rest ->
-        let seconds = match rest with | s :: _ -> (match Double.TryParse s with | true, v -> v | _ -> 3.0) | [] -> 3.0
+        let seconds =
+            match rest with
+            | s :: _ ->
+                (match Double.TryParse s with
+                 | true, v -> v
+                 | _ -> 3.0)
+            | [] -> 3.0
+
         Live.launchVsyncProbeChild stampFile seconds
     | "live-x11" :: rest -> runLiveCmd rest
     | "overlay-visual-proof" :: rest -> runOverlayVisualProofCmd rest
@@ -815,7 +1016,9 @@ let main argv =
     | "validation-lanes" :: rest -> runValidationLanesCmd rest
     | "skill-parity" :: rest -> SkillParity.runCli rest
     | "input" :: rest ->
-        let known () = Input.scripts |> Map.toList |> List.map fst |> String.concat ", "
+        let known () =
+            Input.scripts |> Map.toList |> List.map fst |> String.concat ", "
+
         match flagValue "--backend" rest |> Option.bind Input.parseBackend, flagValue "--script" rest with
         | None, _ ->
             eprintfn "input: --backend pure|x11-xtest|uinput required"
@@ -831,20 +1034,25 @@ let main argv =
             | Some script ->
                 let facts = Probe.probe ()
                 let out = outDir rest
+
                 let selfDll =
                     match System.Reflection.Assembly.GetEntryAssembly() with
                     | null -> ""
                     | a -> a.Location
+
                 let ev = Input.run backend script facts selfDll out
                 let path = Evidence.write out ev []
                 printfn "%s" path
+
                 match ev.Status with
                 | RunStatus.Passed
                 | RunStatus.Skipped -> 0
                 | RunStatus.Failed -> 1
     | []
     | "--help" :: _ ->
-        printfn "usage: <probe|offscreen|live-x11|overlay-visual-proof|render-anywhere-reference|render-anywhere-browser-feasibility|compositor-present-proof|compositor-live-proof|compositor-parity|compositor-perf|compositor-reuse|compositor-snapshots|compositor-timing|compositor-damage|compositor-promotion|compositor-performance|compositor-readiness|package-feed|validation-lanes|skill-parity|perf|input> [--out <dir>] [--json]"
+        printfn
+            "usage: <probe|offscreen|live-x11|overlay-visual-proof|render-anywhere-reference|render-anywhere-browser-feasibility|compositor-present-proof|compositor-live-proof|compositor-parity|compositor-perf|compositor-reuse|compositor-snapshots|compositor-timing|compositor-damage|compositor-promotion|compositor-performance|compositor-readiness|package-feed|validation-lanes|skill-parity|perf|input> [--out <dir>] [--json]"
+
         0
     | other ->
         eprintfn "unknown subcommand: %s" (String.concat " " other)

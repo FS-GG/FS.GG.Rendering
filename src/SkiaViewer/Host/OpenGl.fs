@@ -35,12 +35,17 @@ module private RenderLagTrace =
     let emit eventName fields =
         if enabled then
             let fieldsText =
-                fields
-                |> List.map (fun (name, value) -> $"{name}={value}")
-                |> String.concat " "
+                fields |> List.map (fun (name, value) -> $"{name}={value}") |> String.concat " "
 
-            let suffix = if String.IsNullOrWhiteSpace fieldsText then "" else " " + fieldsText
-            let ts = DateTimeOffset.UtcNow.ToString("O", Globalization.CultureInfo.InvariantCulture)
+            let suffix =
+                if String.IsNullOrWhiteSpace fieldsText then
+                    ""
+                else
+                    " " + fieldsText
+
+            let ts =
+                DateTimeOffset.UtcNow.ToString("O", Globalization.CultureInfo.InvariantCulture)
+
             let ticks = System.Diagnostics.Stopwatch.GetTimestamp()
             Console.Error.WriteLine($"FS_GG_RENDER_LAG_TRACE ts={ts} ticks={ticks} event={eventName}{suffix}")
 
@@ -59,52 +64,64 @@ module GlResources =
         | Released
 
     type OwnedResource =
-        { Id: string
-          Category: ResourceCategory
-          AcquireStage: string
-          Owner: string
-          TransferPoint: string option
-          ReleaseAction: string
-          State: OwnershipState }
+        {
+            Id: string
+            Category: ResourceCategory
+            AcquireStage: string
+            Owner: string
+            TransferPoint: string option
+            ReleaseAction: string
+            State: OwnershipState
+        }
 
     type ReleaseRecord =
-        { Id: string
-          Category: ResourceCategory
-          Stage: string
-          Order: int }
+        {
+            Id: string
+            Category: ResourceCategory
+            Stage: string
+            Order: int
+        }
 
     type ResourceLedger =
-        { Owned: OwnedResource list
-          Released: ReleaseRecord list }
+        {
+            Owned: OwnedResource list
+            Released: ReleaseRecord list
+        }
 
     let empty = { Owned = []; Released = [] }
 
     let acquire id category acquireStage owner releaseAction ledger =
         let resource =
-            { Id = id
-              Category = category
-              AcquireStage = acquireStage
-              Owner = owner
-              TransferPoint = None
-              ReleaseAction = releaseAction
-              State = Acquired }
+            {
+                Id = id
+                Category = category
+                AcquireStage = acquireStage
+                Owner = owner
+                TransferPoint = None
+                ReleaseAction = releaseAction
+                State = Acquired
+            }
 
-        { ledger with Owned = ledger.Owned @ [ resource ] }
+        { ledger with
+            Owned = ledger.Owned @ [ resource ]
+        }
 
     let transfer id transferPoint ledger =
         let update (resource: OwnedResource) =
             if resource.Id = id && resource.State <> Released then
                 { resource with
                     State = Transferred
-                    TransferPoint = Some transferPoint }
+                    TransferPoint = Some transferPoint
+                }
             else
                 resource
 
-        { ledger with Owned = ledger.Owned |> List.map update }
+        { ledger with
+            Owned = ledger.Owned |> List.map update
+        }
 
     let acquired (ledger: ResourceLedger) =
-        ledger.Owned
-        |> List.filter (fun resource -> resource.State <> Released)
+        ledger.Owned |> List.filter (fun resource -> resource.State <> Released)
 
     let releaseAll stage ledger =
         let releasable = acquired ledger |> List.rev
@@ -112,10 +129,12 @@ module GlResources =
         let records =
             releasable
             |> List.mapi (fun index resource ->
-                { Id = resource.Id
-                  Category = resource.Category
-                  Stage = stage
-                  Order = index + 1 })
+                {
+                    Id = resource.Id
+                    Category = resource.Category
+                    Stage = stage
+                    Order = index + 1
+                })
 
         let releasedIds = records |> List.map _.Id |> Set.ofList
 
@@ -127,51 +146,71 @@ module GlResources =
                 else
                     resource)
 
-        { Owned = owned
-          Released = ledger.Released @ records },
+        {
+            Owned = owned
+            Released = ledger.Released @ records
+        },
         records
 
 module GlStartup =
     type StartupStage =
-        { Name: string
-          Order: int
-          Resource: GlResources.ResourceCategory option
-          DiagnosticStage: string }
+        {
+            Name: string
+            Order: int
+            Resource: GlResources.ResourceCategory option
+            DiagnosticStage: string
+        }
 
     type StartupFailureCase =
-        { FailedStage: StartupStage
-          AcquiredBeforeFailure: GlResources.OwnedResource list
-          ExpectedReleaseOrder: GlResources.ResourceCategory list
-          ObservedReleaseOrder: GlResources.ResourceCategory list
-          DiagnosticStage: string
-          DiagnosticCause: string
-          Synthetic: bool }
+        {
+            FailedStage: StartupStage
+            AcquiredBeforeFailure: GlResources.OwnedResource list
+            ExpectedReleaseOrder: GlResources.ResourceCategory list
+            ObservedReleaseOrder: GlResources.ResourceCategory list
+            DiagnosticStage: string
+            DiagnosticCause: string
+            Synthetic: bool
+        }
 
     let stages =
-        [ { Name = "create-gl-context"
-            Order = 10
-            Resource = Some GlResources.GlContext
-            DiagnosticStage = "GlContext" }
-          { Name = "acquire-window-surface"
-            Order = 20
-            Resource = Some GlResources.GlSurface
-            DiagnosticStage = "GlSurface" }
-          { Name = "create-skia-gl-context"
-            Order = 30
-            Resource = Some GlResources.GrContext
-            DiagnosticStage = "SkiaContext" }
-          { Name = "wrap-default-framebuffer"
-            Order = 40
-            Resource = Some GlResources.Framebuffer
-            DiagnosticStage = "Framebuffer" }
-          { Name = "create-skia-surface"
-            Order = 50
-            Resource = Some GlResources.SkiaSurface
-            DiagnosticStage = "Framebuffer" }
-          { Name = "create-skia-gpu-context"
-            Order = 60
-            Resource = Some GlResources.SkiaGpu
-            DiagnosticStage = "SkiaContext" } ]
+        [
+            {
+                Name = "create-gl-context"
+                Order = 10
+                Resource = Some GlResources.GlContext
+                DiagnosticStage = "GlContext"
+            }
+            {
+                Name = "acquire-window-surface"
+                Order = 20
+                Resource = Some GlResources.GlSurface
+                DiagnosticStage = "GlSurface"
+            }
+            {
+                Name = "create-skia-gl-context"
+                Order = 30
+                Resource = Some GlResources.GrContext
+                DiagnosticStage = "SkiaContext"
+            }
+            {
+                Name = "wrap-default-framebuffer"
+                Order = 40
+                Resource = Some GlResources.Framebuffer
+                DiagnosticStage = "Framebuffer"
+            }
+            {
+                Name = "create-skia-surface"
+                Order = 50
+                Resource = Some GlResources.SkiaSurface
+                DiagnosticStage = "Framebuffer"
+            }
+            {
+                Name = "create-skia-gpu-context"
+                Order = 60
+                Resource = Some GlResources.SkiaGpu
+                DiagnosticStage = "SkiaContext"
+            }
+        ]
 
     let stageByName name =
         stages |> List.tryFind (fun stage -> stage.Name = name)
@@ -206,19 +245,22 @@ module GlStartup =
         // SYNTHETIC: symbolic resource handles force each startup failure path; real native smoke is the live GL launch under readiness/.
         let failedStage =
             stageByName failedStageName
-            |> Option.defaultWith (fun () -> invalidArg (nameof failedStageName) $"Unknown startup stage: {failedStageName}")
+            |> Option.defaultWith (fun () ->
+                invalidArg (nameof failedStageName) $"Unknown startup stage: {failedStageName}")
 
         let ledger = acquireBefore failedStage
         let acquired = GlResources.acquired ledger
         let _, releases = GlResources.releaseAll failedStage.Name ledger
 
-        { FailedStage = failedStage
-          AcquiredBeforeFailure = acquired
-          ExpectedReleaseOrder = acquired |> List.rev |> List.map _.Category
-          ObservedReleaseOrder = releases |> List.map _.Category
-          DiagnosticStage = failedStage.DiagnosticStage
-          DiagnosticCause = $"{failedStage.Name} failed with synthetic native error"
-          Synthetic = true }
+        {
+            FailedStage = failedStage
+            AcquiredBeforeFailure = acquired
+            ExpectedReleaseOrder = acquired |> List.rev |> List.map _.Category
+            ObservedReleaseOrder = releases |> List.map _.Category
+            DiagnosticStage = failedStage.DiagnosticStage
+            DiagnosticCause = $"{failedStage.Name} failed with synthetic native error"
+            Synthetic = true
+        }
 
     let simulateSuccessfulShutdown () =
         // SYNTHETIC: symbolic successful acquisition verifies idempotent reverse cleanup order without opening a real GL context.
@@ -244,14 +286,18 @@ module GlStartup =
 /// ones that happen not to use a timer.
 type internal LoopDispatchGate<'msg> =
     private
-        { Queue: ConcurrentQueue<'msg>
-          LoopThreadId: int }
+        {
+            Queue: ConcurrentQueue<'msg>
+            LoopThreadId: int
+        }
 
 module internal LoopDispatch =
     /// Bind a gate to the calling thread. `run` calls this on the thread that will own the loop.
     let forCurrentThread<'msg> () : LoopDispatchGate<'msg> =
-        { Queue = ConcurrentQueue<'msg>()
-          LoopThreadId = Environment.CurrentManagedThreadId }
+        {
+            Queue = ConcurrentQueue<'msg>()
+            LoopThreadId = Environment.CurrentManagedThreadId
+        }
 
     let isLoopThread (gate: LoopDispatchGate<'msg>) =
         Environment.CurrentManagedThreadId = gate.LoopThreadId
@@ -293,12 +339,24 @@ module GlHost =
             let glfw = Silk.NET.GLFW.Glfw.GetApi()
             let mutable count = 0
             let monitors = glfw.GetMonitors(&count)
-            if NativePtr.toNativeInt monitors = 0n || monitor.Index < 0 || monitor.Index >= count then None
+
+            if
+                NativePtr.toNativeInt monitors = 0n
+                || monitor.Index < 0
+                || monitor.Index >= count
+            then
+                None
             else
                 let mutable x, y, width, height = 0, 0, 0, 0
                 glfw.GetMonitorWorkarea(NativePtr.get monitors monitor.Index, &x, &y, &width, &height)
-                if width > 0 && height > 0 then Some(Vector2D<int>(x, y), Vector2D<int>(width, height)) else None
-        with _ -> None
+
+                if width > 0 && height > 0 then
+                    Some(Vector2D<int>(x, y), Vector2D<int>(width, height))
+                else
+                    None
+        with _ ->
+            None
+
     /// The single source of truth for the graphics backend this viewer host actually initializes.
     /// The live window is always created with `ContextAPI.OpenGL` (see `createWindow`) and Skia
     /// wraps it through `GRContext.CreateGl` (see `createSkiaContext`); Vulkan/software preferences
@@ -308,38 +366,48 @@ module GlHost =
 
     [<NoEquality; NoComparison>]
     type internal RuntimeWindowTarget =
-        { GetState: unit -> WindowState
-          SetState: WindowState -> unit
-          GetBorder: unit -> WindowBorder
-          SetBorder: WindowBorder -> unit
-          GetPosition: unit -> Vector2D<int>
-          SetPosition: Vector2D<int> -> unit
-          GetSize: unit -> Vector2D<int>
-          SetSize: Vector2D<int> -> unit
-          /// Resolves the work area of the output that currently owns this window.
-          GetWorkArea: unit -> (Vector2D<int> * Vector2D<int>) option }
+        {
+            GetState: unit -> WindowState
+            SetState: WindowState -> unit
+            GetBorder: unit -> WindowBorder
+            SetBorder: WindowBorder -> unit
+            GetPosition: unit -> Vector2D<int>
+            SetPosition: Vector2D<int> -> unit
+            GetSize: unit -> Vector2D<int>
+            SetSize: Vector2D<int> -> unit
+            /// Resolves the work area of the output that currently owns this window.
+            GetWorkArea: unit -> (Vector2D<int> * Vector2D<int>) option
+        }
 
     type private RuntimeWindowSnapshot =
-        { State: WindowState
-          Border: WindowBorder
-          Position: Vector2D<int>
-          Size: Vector2D<int> }
+        {
+            State: WindowState
+            Border: WindowBorder
+            Position: Vector2D<int>
+            Size: Vector2D<int>
+        }
 
     type internal RuntimeWindowController =
-        { mutable WindowedPosition: Vector2D<int> option
-          mutable WindowedSize: Vector2D<int>
-          mutable CurrentMode: RuntimeWindowMode option }
+        {
+            mutable WindowedPosition: Vector2D<int> option
+            mutable WindowedSize: Vector2D<int>
+            mutable CurrentMode: RuntimeWindowMode option
+        }
 
     let internal createRuntimeWindowController (initialWindowedSize: Size) =
-        { WindowedPosition = None
-          WindowedSize = Vector2D<int>(initialWindowedSize.Width, initialWindowedSize.Height)
-          CurrentMode = None }
+        {
+            WindowedPosition = None
+            WindowedSize = Vector2D<int>(initialWindowedSize.Width, initialWindowedSize.Height)
+            CurrentMode = None
+        }
 
     let private snapshotRuntimeWindow (target: RuntimeWindowTarget) =
-        { State = target.GetState()
-          Border = target.GetBorder()
-          Position = target.GetPosition()
-          Size = target.GetSize() }
+        {
+            State = target.GetState()
+            Border = target.GetBorder()
+            Position = target.GetPosition()
+            Size = target.GetSize()
+        }
 
     let private inferredRuntimeWindowMode snapshot =
         if snapshot.State = WindowState.Fullscreen then
@@ -352,10 +420,25 @@ module GlHost =
             RuntimeWindowMode.Normal
 
     let private restoreRuntimeWindowSnapshot (target: RuntimeWindowTarget) snapshot =
-        try target.SetState snapshot.State with _ -> ()
-        try target.SetBorder snapshot.Border with _ -> ()
-        try target.SetPosition snapshot.Position with _ -> ()
-        try target.SetSize snapshot.Size with _ -> ()
+        try
+            target.SetState snapshot.State
+        with _ ->
+            ()
+
+        try
+            target.SetBorder snapshot.Border
+        with _ ->
+            ()
+
+        try
+            target.SetPosition snapshot.Position
+        with _ ->
+            ()
+
+        try
+            target.SetSize snapshot.Size
+        with _ ->
+            ()
 
     /// Apply one behavior on the native loop thread. Every property write is conditional, making a
     /// repeated request a stable no-op; on failure the captured state is restored best-effort and an
@@ -366,9 +449,13 @@ module GlHost =
         (behavior: RuntimeWindowBehavior)
         : Result<bool, RenderDiagnostic> =
         let before = snapshotRuntimeWindow target
-        let currentMode = controller.CurrentMode |> Option.defaultValue (inferredRuntimeWindowMode before)
+
+        let currentMode =
+            controller.CurrentMode |> Option.defaultValue (inferredRuntimeWindowMode before)
+
         let enteringPresentation =
-            (behavior.Mode = RuntimeWindowMode.Fullscreen || behavior.Mode = RuntimeWindowMode.WindowedFullscreen)
+            (behavior.Mode = RuntimeWindowMode.Fullscreen
+             || behavior.Mode = RuntimeWindowMode.WindowedFullscreen)
             && currentMode <> RuntimeWindowMode.Fullscreen
             && currentMode <> RuntimeWindowMode.WindowedFullscreen
 
@@ -380,7 +467,8 @@ module GlHost =
             behavior.Position |> Option.map (fun (x, y) -> Vector2D<int>(x, y))
 
         let requestedSize =
-            behavior.Size |> Option.map (fun (width, height) -> Vector2D<int>(width, height))
+            behavior.Size
+            |> Option.map (fun (width, height) -> Vector2D<int>(width, height))
 
         let desiredPosition, desiredSize =
             match behavior.Mode with
@@ -406,7 +494,7 @@ module GlHost =
         let mutable changed = false
 
         let setIfDifferent getValue setValue desired =
-            if getValue() <> desired then
+            if getValue () <> desired then
                 setValue desired
                 changed <- true
 
@@ -417,19 +505,24 @@ module GlHost =
                 changed <- true
 
             setIfDifferent target.GetBorder target.SetBorder behavior.Border
-            desiredPosition |> Option.iter (setIfDifferent target.GetPosition target.SetPosition)
+
+            desiredPosition
+            |> Option.iter (setIfDifferent target.GetPosition target.SetPosition)
+
             desiredSize |> Option.iter (setIfDifferent target.GetSize target.SetSize)
             setIfDifferent target.GetState target.SetState desiredState
             controller.CurrentMode <- Some behavior.Mode
             Ok changed
         with ex ->
             restoreRuntimeWindowSnapshot target before
+
             Result.Error(
                 Diagnostics.create
                     DiagnosticSeverity.Error
                     DiagnosticStage.Window
                     $"Runtime window behavior '{behavior.Token}' failed; the previous native-window state was restored."
-                    (Some ex.Message))
+                    (Some ex.Message)
+            )
 
     // #363: a process-global env override that pins GLFW to the GLX/X11 backend on an XWayland
     // session (where both `DISPLAY` and `WAYLAND_DISPLAY` are advertised and GLFW would otherwise
@@ -443,9 +536,11 @@ module GlHost =
     /// a lock so two windows never race the shared variable. A no-op off Linux or when only one of
     /// the two display vars is set.
     let internal withWindowBackendOverride (action: unit -> 'a) : 'a =
-        if OperatingSystem.IsLinux()
-           && not (String.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable "DISPLAY"))
-           && not (String.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable "WAYLAND_DISPLAY")) then
+        if
+            OperatingSystem.IsLinux()
+            && not (String.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable "DISPLAY"))
+            && not (String.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable "WAYLAND_DISPLAY"))
+        then
             lock nativeWindowBackendLock (fun () ->
                 let previousWayland = Environment.GetEnvironmentVariable "WAYLAND_DISPLAY"
 
@@ -458,10 +553,12 @@ module GlHost =
             action ()
 
     type ScissorRect =
-        { X: int
-          Y: int
-          Width: int
-          Height: int }
+        {
+            X: int
+            Y: int
+            Width: int
+            Height: int
+        }
 
     type ScissorDecision =
         | Scissored of ScissorRect list
@@ -491,10 +588,12 @@ module GlHost =
         | ResourceFailed
 
     type DamageValidationResult =
-        { Status: DamageValidationStatus
-          Rects: ScissorRect list
-          UnionArea: int
-          Reason: string option }
+        {
+            Status: DamageValidationStatus
+            Rects: ScissorRect list
+            UnionArea: int
+            Reason: string option
+        }
 
     [<RequireQualifiedAccess>]
     type DamageRenderDecisionKind =
@@ -505,51 +604,61 @@ module GlHost =
         | EnvironmentLimited
 
     type DamageRenderDecision =
-        { Kind: DamageRenderDecisionKind
-          ScissorRects: ScissorRect list
-          DamageArea: int
-          FallbackReason: string option
-          ProofGate: string
-          RetainedBacking: string
-          Parity: string }
+        {
+            Kind: DamageRenderDecisionKind
+            ScissorRects: ScissorRect list
+            DamageArea: int
+            FallbackReason: string option
+            ProofGate: string
+            RetainedBacking: string
+            Parity: string
+        }
 
     type DamageRenderEligibility =
-        { Proof: CompositorProof.ProofReadiness
-          RetainedBacking: RetainedBackingStatus
-          Damage: ScissorRect list
-          FrameWidth: int
-          FrameHeight: int
-          VisibleChange: bool
-          FullFrameInvalidation: bool
-          StaleDamage: bool
-          IncompleteDamage: bool
-          AmbiguousDamage: bool
-          ResourcesAvailable: bool
-          ParityAccepted: bool }
+        {
+            Proof: CompositorProof.ProofReadiness
+            RetainedBacking: RetainedBackingStatus
+            Damage: ScissorRect list
+            FrameWidth: int
+            FrameHeight: int
+            VisibleChange: bool
+            FullFrameInvalidation: bool
+            StaleDamage: bool
+            IncompleteDamage: bool
+            AmbiguousDamage: bool
+            ResourcesAvailable: bool
+            ParityAccepted: bool
+        }
 
     type LiveProofHostFacts =
-        { Display: string option
-          WaylandDisplay: string option
-          SessionType: string option
-          Renderer: string option
-          ReadbackAvailable: bool
-          PermissionGranted: bool
-          TimedOut: bool }
+        {
+            Display: string option
+            WaylandDisplay: string option
+            SessionType: string option
+            Renderer: string option
+            ReadbackAvailable: bool
+            PermissionGranted: bool
+            TimedOut: bool
+        }
 
     type InputReceiptDiagnostic =
-        { SequenceId: int64
-          InputKind: string
-          ReceivedAt: DateTimeOffset
-          CallbackDuration: TimeSpan
-          QueueDepthAtReceipt: int
-          SignalRequested: bool
-          RenderWorkStarted: bool }
+        {
+            SequenceId: int64
+            InputKind: string
+            ReceivedAt: DateTimeOffset
+            CallbackDuration: TimeSpan
+            QueueDepthAtReceipt: int
+            SignalRequested: bool
+            RenderWorkStarted: bool
+        }
 
     type PresentationTimingDiagnostic =
-        { PresentedFrameId: int64
-          PaintDuration: TimeSpan option
-          PresentDuration: TimeSpan option
-          EnvironmentStatus: string }
+        {
+            PresentedFrameId: int64
+            PaintDuration: TimeSpan option
+            PresentDuration: TimeSpan option
+            EnvironmentStatus: string
+        }
 
     [<RequireQualifiedAccess>]
     type LiveProofHostReadiness =
@@ -565,23 +674,26 @@ module GlHost =
     /// recreated on resize (FR-006), sized from the window framebuffer pixels (high-DPI/Wayland
     /// correct). Recreated, not leaked: the prior surface/target are disposed before re-wrapping.
     type FramebufferState =
-        { mutable Surface: SKSurface option
-          mutable RenderTarget: GRBackendRenderTarget option
-          mutable Width: int
-          mutable Height: int }
+        {
+            mutable Surface: SKSurface option
+            mutable RenderTarget: GRBackendRenderTarget option
+            mutable Width: int
+            mutable Height: int
+        }
 
     type FrameSnapshot =
-        { Width: int
-          Height: int
-          ColorType: SKColorType
-          Pixels: byte[] }
+        {
+            Width: int
+            Height: int
+            ColorType: SKColorType
+            Pixels: byte[]
+        }
 
     let trace configuration message =
         if configuration.Diagnostics.Verbose then
             Console.Error.WriteLine($"FS.GG.UI GlHost: {message}")
 
-    let toNativeSize (size: Size) =
-        Vector2D<int>(size.Width, size.Height)
+    let toNativeSize (size: Size) = Vector2D<int>(size.Width, size.Height)
 
     let drawScene (scene: Scene) (canvas: SKCanvas) =
         // Feature 063 (FR-001): delegate to the single shared exhaustive painter. `SceneRenderer.drawScene`
@@ -638,15 +750,24 @@ module GlHost =
     let private liveFitSizes (window: IWindow) (framebuffer: FramebufferState) : Size * Size =
         let authoring =
             liveAuthoringSizeOverride
-            |> Option.defaultValue { Width = window.Size.X; Height = window.Size.Y }
+            |> Option.defaultValue
+                {
+                    Width = window.Size.X
+                    Height = window.Size.Y
+                }
 
-        authoring, { Width = framebuffer.Width; Height = framebuffer.Height }
+        authoring,
+        {
+            Width = framebuffer.Width
+            Height = framebuffer.Height
+        }
 
     // Feature 120 (US1, FR-001/002): the most recent present's per-phase durations — the scene→canvas
     // paint walk (incl. surface clear + canvas flush) vs the GL flush + buffer-swap (compose/present).
     // Live-only, non-golden; surfaced to `FrameMetrics.PaintDuration`/`ComposeDuration`.
     let mutable lastPaintDuration = System.TimeSpan.Zero
     let mutable lastComposeDuration = System.TimeSpan.Zero
+
     let lastPresentTiming () : System.TimeSpan * System.TimeSpan =
         RenderThread.verify "GlHost.lastPresentTiming"
         lastPaintDuration, lastComposeDuration
@@ -668,7 +789,9 @@ module GlHost =
     // Swapchain buffers to keep populated after a change before fully idling: 3 covers typical
     // triple-buffering on Wayland. Not a public knob — the framework fix removes the consumer-visible
     // need (FR-004 deferred).
-    let [<Literal>] bufferFillDepth = 3
+
+    [<Literal>]
+    let bufferFillDepth = 3
 
     /// Feature 120 (US2, FR-004/005/006): the pure present-or-skip decision — present iff this is the
     /// first frame, the scene changed, or the framebuffer size changed. Testable in isolation (T016).
@@ -690,10 +813,18 @@ module GlHost =
     /// still be undrawn (`idleRepresentsRemaining > 0`); otherwise `SkipPresent` (full idle, the
     /// feature-120/121 no-scene-work path). Keeping every swapchain buffer populated stops a
     /// multi-buffer compositor from rotating an undrawn black buffer into view. Testable (T011).
-    let planPresent (prev: Scene option) (next: Scene) (sizeChanged: bool) (idleRepresentsRemaining: int) : PresentAction =
-        if shouldPresent prev next sizeChanged then PresentAction.PaintAndPresent
-        elif idleRepresentsRemaining > 0 then PresentAction.RepresentLastGood
-        else PresentAction.SkipPresent
+    let planPresent
+        (prev: Scene option)
+        (next: Scene)
+        (sizeChanged: bool)
+        (idleRepresentsRemaining: int)
+        : PresentAction =
+        if shouldPresent prev next sizeChanged then
+            PresentAction.PaintAndPresent
+        elif idleRepresentsRemaining > 0 then
+            PresentAction.RepresentLastGood
+        else
+            PresentAction.SkipPresent
 
     /// Feature 121 (US1, FR-002): the pure frame-pacing decision — advance (update + present) this
     /// iteration iff at least `frameInterval` seconds have elapsed since the last advance. Gates BOTH
@@ -710,20 +841,21 @@ module GlHost =
         (signalRequested: bool)
         (renderWorkStarted: bool)
         =
-        { SequenceId = sequenceId
-          InputKind = inputKind
-          ReceivedAt = DateTimeOffset.UtcNow
-          CallbackDuration = callbackDuration
-          QueueDepthAtReceipt = queueDepthAtReceipt
-          SignalRequested = signalRequested
-          RenderWorkStarted = renderWorkStarted }
+        {
+            SequenceId = sequenceId
+            InputKind = inputKind
+            ReceivedAt = DateTimeOffset.UtcNow
+            CallbackDuration = callbackDuration
+            QueueDepthAtReceipt = queueDepthAtReceipt
+            SignalRequested = signalRequested
+            RenderWorkStarted = renderWorkStarted
+        }
 
     let receiptWithinBudget (inputReceiptP95: TimeSpan) (inputReceiptMax: TimeSpan) (receipt: InputReceiptDiagnostic) =
         receipt.CallbackDuration <= inputReceiptMax
         && receipt.CallbackDuration <= inputReceiptP95
 
-    let receiptDidRenderWork (receipt: InputReceiptDiagnostic) =
-        receipt.RenderWorkStarted
+    let receiptDidRenderWork (receipt: InputReceiptDiagnostic) = receipt.RenderWorkStarted
 
     let presentationTiming
         (frameId: int64)
@@ -739,10 +871,12 @@ module GlHost =
             else
                 "missing-boundary"
 
-        { PresentedFrameId = frameId
-          PaintDuration = paintDuration
-          PresentDuration = presentDuration
-          EnvironmentStatus = status }
+        {
+            PresentedFrameId = frameId
+            PaintDuration = paintDuration
+            PresentDuration = presentDuration
+            EnvironmentStatus = status
+        }
 
     let normalizeScissorRects frameWidth frameHeight (rects: ScissorRect list) =
         // Feature 178 (US3): shared Numeric.clamp (same (lo, hi, value) order, identical semantics).
@@ -758,13 +892,25 @@ module GlHost =
             if width <= 0 || height <= 0 then
                 None
             else
-                Some { X = x0; Y = y0; Width = width; Height = height })
+                Some
+                    {
+                        X = x0
+                        Y = y0
+                        Width = width
+                        Height = height
+                    })
         |> List.distinct
 
     let scissorArea (rects: ScissorRect list) =
         rects |> List.sumBy (fun rect -> rect.Width * rect.Height)
 
-    let decideScissorRedraw (proof: CompositorProof.ProofReadiness) fullFrameInvalidation damage frameWidth frameHeight =
+    let decideScissorRedraw
+        (proof: CompositorProof.ProofReadiness)
+        fullFrameInvalidation
+        damage
+        frameWidth
+        frameHeight
+        =
         match proof with
         | CompositorProof.ProofReadiness.Ready when fullFrameInvalidation -> FullRedraw "full-frame invalidation"
         | CompositorProof.ProofReadiness.Ready ->
@@ -775,10 +921,10 @@ module GlHost =
         | CompositorProof.ProofReadiness.Stale -> FullRedraw "stale present-path proof"
         | CompositorProof.ProofReadiness.HostMismatch -> FullRedraw "host-mismatched present-path proof"
         | CompositorProof.ProofReadiness.Failed reason -> FullRedraw $"failed present-path proof: {reason}"
-        | CompositorProof.ProofReadiness.EnvironmentLimited reason -> FullRedraw $"environment-limited present-path proof: {reason}"
+        | CompositorProof.ProofReadiness.EnvironmentLimited reason ->
+            FullRedraw $"environment-limited present-path proof: {reason}"
 
-    let private proofGateToken proof =
-        CompositorProof.readinessToken proof
+    let private proofGateToken proof = CompositorProof.readinessToken proof
 
     let private retainedBackingToken retained =
         match retained with
@@ -798,20 +944,28 @@ module GlHost =
         | _ -> false
 
     let private fallback kind reason eligibility validation =
-        { Kind = kind
-          ScissorRects = validation.Rects
-          DamageArea = validation.UnionArea
-          FallbackReason = Some reason
-          ProofGate = proofGateToken eligibility.Proof
-          RetainedBacking = retainedBackingToken eligibility.RetainedBacking
-          Parity = if eligibility.ParityAccepted then "accepted" else "not-accepted" }
+        {
+            Kind = kind
+            ScissorRects = validation.Rects
+            DamageArea = validation.UnionArea
+            FallbackReason = Some reason
+            ProofGate = proofGateToken eligibility.Proof
+            RetainedBacking = retainedBackingToken eligibility.RetainedBacking
+            Parity =
+                if eligibility.ParityAccepted then
+                    "accepted"
+                else
+                    "not-accepted"
+        }
 
     type DamageValidationFlags =
-        { VisibleChange: bool
-          FullFrameInvalidation: bool
-          StaleDamage: bool
-          IncompleteDamage: bool
-          AmbiguousDamage: bool }
+        {
+            VisibleChange: bool
+            FullFrameInvalidation: bool
+            StaleDamage: bool
+            IncompleteDamage: bool
+            AmbiguousDamage: bool
+        }
 
     let validateDamage damage frameWidth frameHeight (flags: DamageValidationFlags) =
         let visibleChange = flags.VisibleChange
@@ -820,6 +974,7 @@ module GlHost =
         let incompleteDamage = flags.IncompleteDamage
         let ambiguousDamage = flags.AmbiguousDamage
         let normalized = normalizeScissorRects frameWidth frameHeight damage
+
         let outOfBounds =
             damage
             |> List.exists (fun rect ->
@@ -831,6 +986,7 @@ module GlHost =
                 || rect.Y + rect.Height > frameHeight)
 
         let duplicated = damage.Length <> (damage |> List.distinct).Length
+
         let status, reason =
             if fullFrameInvalidation then
                 DamageValidationStatus.FullFrameInvalidation, Some "full-frame invalidation"
@@ -851,10 +1007,12 @@ module GlHost =
             else
                 DamageValidationStatus.Valid, None
 
-        { Status = status
-          Rects = normalized
-          UnionArea = scissorArea normalized
-          Reason = reason }
+        {
+            Status = status
+            Rects = normalized
+            UnionArea = scissorArea normalized
+            Reason = reason
+        }
 
     let decideDamageScopedRender eligibility =
         let validation =
@@ -862,15 +1020,21 @@ module GlHost =
                 eligibility.Damage
                 eligibility.FrameWidth
                 eligibility.FrameHeight
-                { VisibleChange = eligibility.VisibleChange
-                  FullFrameInvalidation = eligibility.FullFrameInvalidation
-                  StaleDamage = eligibility.StaleDamage
-                  IncompleteDamage = eligibility.IncompleteDamage
-                  AmbiguousDamage = eligibility.AmbiguousDamage }
+                {
+                    VisibleChange = eligibility.VisibleChange
+                    FullFrameInvalidation = eligibility.FullFrameInvalidation
+                    StaleDamage = eligibility.StaleDamage
+                    IncompleteDamage = eligibility.IncompleteDamage
+                    AmbiguousDamage = eligibility.AmbiguousDamage
+                }
 
         match eligibility.Proof, validation.Status with
         | CompositorProof.ProofReadiness.EnvironmentLimited reason, _ ->
-            fallback DamageRenderDecisionKind.EnvironmentLimited $"environment-limited present-path proof: {reason}" eligibility validation
+            fallback
+                DamageRenderDecisionKind.EnvironmentLimited
+                $"environment-limited present-path proof: {reason}"
+                eligibility
+                validation
         | CompositorProof.ProofReadiness.Missing, _ ->
             fallback DamageRenderDecisionKind.FullRedraw "missing present-path proof" eligibility validation
         | CompositorProof.ProofReadiness.Stale, _ ->
@@ -880,27 +1044,41 @@ module GlHost =
         | CompositorProof.ProofReadiness.Failed reason, _ ->
             fallback DamageRenderDecisionKind.Rejected $"failed present-path proof: {reason}" eligibility validation
         | CompositorProof.ProofReadiness.Ready, DamageValidationStatus.EmptyNoChange ->
-            { Kind = DamageRenderDecisionKind.SkipNoChange
-              ScissorRects = []
-              DamageArea = 0
-              FallbackReason = None
-              ProofGate = "ready"
-              RetainedBacking = retainedBackingToken eligibility.RetainedBacking
-              Parity = if eligibility.ParityAccepted then "accepted" else "not-accepted" }
-        | CompositorProof.ProofReadiness.Ready, DamageValidationStatus.Valid when not (retainedBackingAccepted eligibility.RetainedBacking) ->
-            fallback DamageRenderDecisionKind.FullRedraw (retainedBackingToken eligibility.RetainedBacking) eligibility validation
+            {
+                Kind = DamageRenderDecisionKind.SkipNoChange
+                ScissorRects = []
+                DamageArea = 0
+                FallbackReason = None
+                ProofGate = "ready"
+                RetainedBacking = retainedBackingToken eligibility.RetainedBacking
+                Parity =
+                    if eligibility.ParityAccepted then
+                        "accepted"
+                    else
+                        "not-accepted"
+            }
+        | CompositorProof.ProofReadiness.Ready, DamageValidationStatus.Valid when
+            not (retainedBackingAccepted eligibility.RetainedBacking)
+            ->
+            fallback
+                DamageRenderDecisionKind.FullRedraw
+                (retainedBackingToken eligibility.RetainedBacking)
+                eligibility
+                validation
         | CompositorProof.ProofReadiness.Ready, DamageValidationStatus.Valid when not eligibility.ResourcesAvailable ->
             fallback DamageRenderDecisionKind.FullRedraw "resource-failure" eligibility validation
         | CompositorProof.ProofReadiness.Ready, DamageValidationStatus.Valid when not eligibility.ParityAccepted ->
             fallback DamageRenderDecisionKind.Rejected "parity-mismatch" eligibility validation
         | CompositorProof.ProofReadiness.Ready, DamageValidationStatus.Valid ->
-            { Kind = DamageRenderDecisionKind.DamageScopedAccepted
-              ScissorRects = validation.Rects
-              DamageArea = validation.UnionArea
-              FallbackReason = None
-              ProofGate = "ready"
-              RetainedBacking = retainedBackingToken eligibility.RetainedBacking
-              Parity = "accepted" }
+            {
+                Kind = DamageRenderDecisionKind.DamageScopedAccepted
+                ScissorRects = validation.Rects
+                DamageArea = validation.UnionArea
+                FallbackReason = None
+                ProofGate = "ready"
+                RetainedBacking = retainedBackingToken eligibility.RetainedBacking
+                Parity = "accepted"
+            }
         | CompositorProof.ProofReadiness.Ready, _ ->
             fallback
                 DamageRenderDecisionKind.FullRedraw
@@ -932,6 +1110,7 @@ module GlHost =
 
     let liveProofHostProfile facts : CompositorProof.HostProfile =
         let environment = displayEnvironment facts
+
         let environmentToken =
             match environment with
             | CompositorProof.HostDisplayEnvironment.X11 -> "x11"
@@ -941,19 +1120,22 @@ module GlHost =
             | CompositorProof.HostDisplayEnvironment.Unknown -> "unknown"
 
         let renderer = facts.Renderer |> Option.filter (String.IsNullOrWhiteSpace >> not)
+
         let readiness =
             classifyLiveProofHost facts
             |> sprintf "%A"
             |> fun value -> value.ToLowerInvariant()
 
-        { ProfileId = $"feature153-{environmentToken}-{readiness}"
-          Backend = backendLabel
-          Renderer = renderer
-          PresentMode = ViewerPresentMode.DirectToSwapchain
-          FramebufferSize = { Width = 640; Height = 480 }
-          Scale = Some 1.0
-          DisplayEnvironment = environment
-          ProofAlgorithmVersion = CompositorProof.proofAlgorithmVersion }
+        {
+            ProfileId = $"feature153-{environmentToken}-{readiness}"
+            Backend = backendLabel
+            Renderer = renderer
+            PresentMode = ViewerPresentMode.DirectToSwapchain
+            FramebufferSize = { Width = 640; Height = 480 }
+            Scale = Some 1.0
+            DisplayEnvironment = environment
+            ProofAlgorithmVersion = CompositorProof.proofAlgorithmVersion
+        }
 
     let bind result next =
         match result with
@@ -1028,17 +1210,25 @@ module GlHost =
                 let glInterface = GRGlInterface.CreateOpenGl getProc
 
                 if isNull glInterface then
-                    Result.Error(Diagnostics.startupFailed GlContext "SkiaSharp could not assemble a GL interface from the active context.")
+                    Result.Error(
+                        Diagnostics.startupFailed
+                            GlContext
+                            "SkiaSharp could not assemble a GL interface from the active context."
+                    )
                 else
                     trace configuration "creating Skia GRContext (GL)"
                     let context = GRContext.CreateGl glInterface
 
                     if isNull context then
-                        Result.Error(Diagnostics.startupFailed SkiaContext "SkiaSharp did not create an OpenGL GPU context.")
+                        Result.Error(
+                            Diagnostics.startupFailed SkiaContext "SkiaSharp did not create an OpenGL GPU context."
+                        )
                     else
                         Ok(context, glInterface, gl)
         with ex ->
-            Result.Error(Diagnostics.startupFailed SkiaContext $"SkiaSharp OpenGL GPU context creation failed: {ex.Message}")
+            Result.Error(
+                Diagnostics.startupFailed SkiaContext $"SkiaSharp OpenGL GPU context creation failed: {ex.Message}"
+            )
 
     let private glRgba8 = uint32 (SKColorType.Rgba8888.ToGlSizedFormat())
 
@@ -1060,7 +1250,9 @@ module GlHost =
             try
                 let fbInfo = GRGlFramebufferInfo(0u, glRgba8)
                 let renderTarget = new GRBackendRenderTarget(width, height, 0, 8, fbInfo)
-                let surface = SKSurface.Create(context, renderTarget, GRSurfaceOrigin.BottomLeft, SKColorType.Rgba8888)
+
+                let surface =
+                    SKSurface.Create(context, renderTarget, GRSurfaceOrigin.BottomLeft, SKColorType.Rgba8888)
 
                 if renderTarget.IsValid && not (isNull surface) then
                     framebuffer.RenderTarget <- Some renderTarget
@@ -1071,8 +1263,15 @@ module GlHost =
                     Ok surface
                 else
                     renderTarget.Dispose()
-                    if not (isNull surface) then surface.Dispose()
-                    Result.Error(Diagnostics.startupFailed Framebuffer "SkiaSharp could not wrap the window's default framebuffer (FBO 0) as an SKSurface.")
+
+                    if not (isNull surface) then
+                        surface.Dispose()
+
+                    Result.Error(
+                        Diagnostics.startupFailed
+                            Framebuffer
+                            "SkiaSharp could not wrap the window's default framebuffer (FBO 0) as an SKSurface."
+                    )
             with ex ->
                 Result.Error(Diagnostics.startupFailed Framebuffer $"OpenGL framebuffer wrap failed: {ex.Message}")
 
@@ -1082,15 +1281,27 @@ module GlHost =
     /// in — the readback fits it onto the (physical) target exactly as the displayed frame does, so a
     /// HiDPI `OffscreenReadback` capture fills the surface instead of leaving the scene 1:1 in the
     /// top-left corner. Pass the target size itself for a 1:1 (identity-fit) render.
-    let renderSceneToPixels configuration (context: GRContext) (width: int) (height: int) (authoringSize: Size) (scene: Scene) =
+    let renderSceneToPixels
+        configuration
+        (context: GRContext)
+        (width: int)
+        (height: int)
+        (authoringSize: Size)
+        (scene: Scene)
+        =
         try
             let imageInfo = SKImageInfo(width, height, SKColorType.Rgba8888, SKAlphaType.Premul)
 
-            use surface =
-                SKSurface.Create(context, true, imageInfo, 1, GRSurfaceOrigin.TopLeft)
+            use surface = SKSurface.Create(context, true, imageInfo, 1, GRSurfaceOrigin.TopLeft)
 
             if isNull surface then
-                Result.Error(Diagnostics.create DiagnosticSeverity.Error FrameRender "SkiaSharp did not create an offscreen GL surface for scene rendering." None)
+                Result.Error(
+                    Diagnostics.create
+                        DiagnosticSeverity.Error
+                        FrameRender
+                        "SkiaSharp did not create an offscreen GL surface for scene rendering."
+                        None
+                )
             else
                 let clear =
                     configuration.ClearColor
@@ -1105,7 +1316,7 @@ module GlHost =
                 context.Submit(true)
 
                 let rowBytes = imageInfo.RowBytes
-                let pixels = Array.zeroCreate<byte> (rowBytes * height)
+                let pixels = Array.zeroCreate<byte>(rowBytes * height)
                 let handle = GCHandle.Alloc(pixels, GCHandleType.Pinned)
 
                 try
@@ -1114,17 +1325,31 @@ module GlHost =
                     if ok then
                         Ok pixels
                     else
-                        Result.Error(Diagnostics.create DiagnosticSeverity.Error FrameRender "SkiaSharp could not read the rendered scene pixels." None)
+                        Result.Error(
+                            Diagnostics.create
+                                DiagnosticSeverity.Error
+                                FrameRender
+                                "SkiaSharp could not read the rendered scene pixels."
+                                None
+                        )
                 finally
                     handle.Free()
         with ex ->
-            Result.Error(Diagnostics.create DiagnosticSeverity.Error FrameRender "Skia scene rendering failed." (Some ex.Message))
+            Result.Error(
+                Diagnostics.create DiagnosticSeverity.Error FrameRender "Skia scene rendering failed." (Some ex.Message)
+            )
 
     /// DirectToSwapchain (the GL default, FR-001/FR-007): draw the scene straight onto the
     /// FBO-0-bound `SKSurface` and present with the toolkit buffer swap — **no GPU→CPU readback**,
     /// no staging buffer, no command pool, no queue stall. Empty `Pixels` signals "no readback;
     /// capture renders on demand" (FR-004).
-    let renderFrameDirect configuration (window: IWindow) (context: GRContext) (framebuffer: FramebufferState) (scene: Scene) =
+    let renderFrameDirect
+        configuration
+        (window: IWindow)
+        (context: GRContext)
+        (framebuffer: FramebufferState)
+        (scene: Scene)
+        =
         try
             bind (ensureFramebufferSurface configuration window context framebuffer) (fun surface ->
                 let clear =
@@ -1151,17 +1376,25 @@ module GlHost =
                 lastComposeDuration <- composeSw.Elapsed
 
                 Ok
-                    { Width = framebuffer.Width
-                      Height = framebuffer.Height
-                      ColorType = SKColorType.Rgba8888
-                      Pixels = [||] })
+                    {
+                        Width = framebuffer.Width
+                        Height = framebuffer.Height
+                        ColorType = SKColorType.Rgba8888
+                        Pixels = [||]
+                    })
         with ex ->
             Result.Error(Diagnostics.frameRenderFailed ex.Message)
 
     /// Feature 122 (FR-001/002): re-present the cached last good frame onto the current swapchain
     /// buffer — a single image blit + buffer swap, NO scene walk — so an idle frame still fills the
     /// buffer it presents and a multi-buffer compositor never rotates an undrawn (black) buffer in.
-    let representLastGoodFrame configuration (window: IWindow) (context: GRContext) (framebuffer: FramebufferState) (image: SKImage) =
+    let representLastGoodFrame
+        configuration
+        (window: IWindow)
+        (context: GRContext)
+        (framebuffer: FramebufferState)
+        (image: SKImage)
+        =
         try
             bind (ensureFramebufferSurface configuration window context framebuffer) (fun surface ->
                 let paintSw = System.Diagnostics.Stopwatch.StartNew()
@@ -1176,17 +1409,25 @@ module GlHost =
                 lastComposeDuration <- composeSw.Elapsed
 
                 Ok
-                    { Width = framebuffer.Width
-                      Height = framebuffer.Height
-                      ColorType = SKColorType.Rgba8888
-                      Pixels = [||] })
+                    {
+                        Width = framebuffer.Width
+                        Height = framebuffer.Height
+                        ColorType = SKColorType.Rgba8888
+                        Pixels = [||]
+                    })
         with ex ->
             Result.Error(Diagnostics.frameRenderFailed ex.Message)
 
     /// OffscreenReadback present mode on GL: display the scene on the framebuffer AND read back
     /// the rendered pixels (snapshot carries them). The readback is the explicit, opt-in path;
     /// the live default is `renderFrameDirect`.
-    let renderFrameReadback configuration (window: IWindow) (context: GRContext) (framebuffer: FramebufferState) (scene: Scene) =
+    let renderFrameReadback
+        configuration
+        (window: IWindow)
+        (context: GRContext)
+        (framebuffer: FramebufferState)
+        (scene: Scene)
+        =
         try
             bind (ensureFramebufferSurface configuration window context framebuffer) (fun surface ->
                 let clear =
@@ -1213,19 +1454,31 @@ module GlHost =
                 // authoring space from `liveFitSizes`), so on a scaled display the opt-in
                 // `OffscreenReadback` capture fills the framebuffer instead of leaving the scene 1:1 in
                 // the top-left corner. At scale 1 the fit is the identity and this is byte-identical.
-                bind (renderSceneToPixels configuration context framebuffer.Width framebuffer.Height logicalSize scene) (fun pixels ->
-                    Ok
-                        { Width = framebuffer.Width
-                          Height = framebuffer.Height
-                          ColorType = SKColorType.Rgba8888
-                          Pixels = pixels }))
+                bind
+                    (renderSceneToPixels configuration context framebuffer.Width framebuffer.Height logicalSize scene)
+                    (fun pixels ->
+                        Ok
+                            {
+                                Width = framebuffer.Width
+                                Height = framebuffer.Height
+                                ColorType = SKColorType.Rgba8888
+                                Pixels = pixels
+                            }))
         with ex ->
             Result.Error(Diagnostics.frameRenderFailed ex.Message)
 
     /// Dispatch on the configured present mode. `DirectToSwapchain` is the readback-free default;
     /// `OffscreenReadback` keeps the readback path for evidence/fallback. `report` carries
     /// live-only, non-golden present diagnostics (FR-005/FR-007).
-    let renderFrame configuration (window: IWindow) (context: GRContext) (framebuffer: FramebufferState) (announced: bool ref) (report: RenderDiagnostic -> unit) (scene: Scene) =
+    let renderFrame
+        configuration
+        (window: IWindow)
+        (context: GRContext)
+        (framebuffer: FramebufferState)
+        (announced: bool ref)
+        (report: RenderDiagnostic -> unit)
+        (scene: Scene)
+        =
         // Feature 120/122 (US2 + FR-001/002): on the live DirectToSwapchain present, an unchanged scene
         // performs NO scene walk. But rather than skipping the buffer swap outright (feature 120, which
         // left an undrawn buffer to rotate in as black on a multi-buffer Wayland swapchain), the host
@@ -1233,7 +1486,9 @@ module GlHost =
         // number of idle frames until every buffer is populated, then fully idles (`SkipPresent`, the
         // byte-identical feature-120/121 no-work path). Readback present always renders.
         let fbSize = window.FramebufferSize
-        let sizeChanged = framebuffer.Width <> max 1 fbSize.X || framebuffer.Height <> max 1 fbSize.Y
+
+        let sizeChanged =
+            framebuffer.Width <> max 1 fbSize.X || framebuffer.Height <> max 1 fbSize.Y
 
         let directLive =
             configuration.PresentMode = ViewerPresentMode.DirectToSwapchain
@@ -1246,10 +1501,12 @@ module GlHost =
                 PresentAction.PaintAndPresent
 
         let idleSnapshot () =
-            { Width = framebuffer.Width
-              Height = framebuffer.Height
-              ColorType = SKColorType.Rgba8888
-              Pixels = [||] }
+            {
+                Width = framebuffer.Width
+                Height = framebuffer.Height
+                ColorType = SKColorType.Rgba8888
+                Pixels = [||]
+            }
 
         match action, FrameCache.current () with
         | PresentAction.SkipPresent, _ ->
@@ -1265,8 +1522,7 @@ module GlHost =
             idleRepresentsRemaining <- bufferFillDepth - 1
 
             match configuration.PresentMode with
-            | ViewerPresentMode.OffscreenReadback ->
-                renderFrameReadback configuration window context framebuffer scene
+            | ViewerPresentMode.OffscreenReadback -> renderFrameReadback configuration window context framebuffer scene
             | ViewerPresentMode.DirectToSwapchain ->
                 match renderFrameDirect configuration window context framebuffer scene with
                 | Ok snapshot ->
@@ -1274,14 +1530,20 @@ module GlHost =
                     // Stage→Category mapping), non-golden.
                     if not announced.Value then
                         announced.Value <- true
-                        report (Diagnostics.create DiagnosticSeverity.Info Framebuffer "present-mode=DirectToSwapchain readback=false (live frames render straight onto the default framebuffer)." None)
+
+                        report (
+                            Diagnostics.create
+                                DiagnosticSeverity.Info
+                                Framebuffer
+                                "present-mode=DirectToSwapchain readback=false (live frames render straight onto the default framebuffer)."
+                                None
+                        )
 
                     Ok snapshot
                 | Result.Error diagnostic -> Result.Error diagnostic
 
     let dispatchViewerEvent program dispatch event =
-        program.EventMapper event
-        |> Option.iter dispatch
+        program.EventMapper event |> Option.iter dispatch
 
     /// Close the renderer→application lifecycle loop only for a successful frame. RenderTick merely
     /// requests work; this callback is what lets consumers pair state polling with frames that really
@@ -1301,7 +1563,8 @@ module GlHost =
     let addDisposable (items: ResizeArray<IDisposable>) dispose =
         items.Add
             { new IDisposable with
-                member _.Dispose() = dispose () }
+                member _.Dispose() = dispose ()
+            }
 
     let attachWindowEventMapping program (window: IWindow) onClosing dispatch =
         let disposables = ResizeArray<IDisposable>()
@@ -1333,12 +1596,7 @@ module GlHost =
 
         let resizeHandler =
             Action<Vector2D<int>>(fun size ->
-                dispatchViewerEvent
-                    program
-                    dispatch
-                    (Resized
-                        { Width = size.X
-                          Height = size.Y }))
+                dispatchViewerEvent program dispatch (Resized { Width = size.X; Height = size.Y }))
 
         window.add_Resize resizeHandler
         addDisposable disposables (fun () -> window.remove_Resize resizeHandler)
@@ -1348,12 +1606,7 @@ module GlHost =
         // interactive host can advertise native resolution and rescale pointer input.
         let framebufferResizeHandler =
             Action<Vector2D<int>>(fun size ->
-                dispatchViewerEvent
-                    program
-                    dispatch
-                    (FramebufferResized
-                        { Width = size.X
-                          Height = size.Y }))
+                dispatchViewerEvent program dispatch (FramebufferResized { Width = size.X; Height = size.Y }))
 
         window.add_FramebufferResize framebufferResizeHandler
         addDisposable disposables (fun () -> window.remove_FramebufferResize framebufferResizeHandler)
@@ -1369,13 +1622,18 @@ module GlHost =
         { new IDisposable with
             member _.Dispose() =
                 for disposable in Seq.rev disposables do
-                    disposable.Dispose() }
+                    disposable.Dispose()
+        }
 
     let mapPointerButton (buttonCode: int) : ViewerPointerButton option =
-        if buttonCode = int MouseButton.Left then Some PrimaryButton
-        elif buttonCode = int MouseButton.Right then Some SecondaryButton
-        elif buttonCode = int MouseButton.Middle then Some MiddleButton
-        else None
+        if buttonCode = int MouseButton.Left then
+            Some PrimaryButton
+        elif buttonCode = int MouseButton.Right then
+            Some SecondaryButton
+        elif buttonCode = int MouseButton.Middle then
+            Some MiddleButton
+        else
+            None
 
     let attachInputEventMapping program (window: IWindow) dispatch =
         try
@@ -1410,7 +1668,10 @@ module GlHost =
                 | Some viewerButton ->
                     dispatchViewerEvent program dispatch (toEvent (float position.X) (float position.Y) viewerButton)
                 | None ->
-                    dispatchViewerEvent program dispatch (DiagnosticReported(Diagnostics.unmappedPointerButton (string button)))
+                    dispatchViewerEvent
+                        program
+                        dispatch
+                        (DiagnosticReported(Diagnostics.unmappedPointerButton (string button)))
 
             for mouse in input.Mice do
                 let pointerMoveHandler =
@@ -1438,7 +1699,11 @@ module GlHost =
                 let pointerScrollHandler =
                     Action<IMouse, ScrollWheel>(fun mouse wheel ->
                         let position = mouse.Position
-                        dispatchViewerEvent program dispatch (PointerScrolled(float position.X, float position.Y, float wheel.X, float wheel.Y)))
+
+                        dispatchViewerEvent
+                            program
+                            dispatch
+                            (PointerScrolled(float position.X, float position.Y, float wheel.X, float wheel.Y)))
 
                 mouse.add_Scroll pointerScrollHandler
                 addDisposable disposables (fun () -> mouse.remove_Scroll pointerScrollHandler)
@@ -1456,7 +1721,8 @@ module GlHost =
                 { new IDisposable with
                     member _.Dispose() =
                         for disposable in Seq.rev disposables do
-                            disposable.Dispose() }
+                            disposable.Dispose()
+                }
         with ex ->
             Result.Error(Diagnostics.startupFailed PlatformCheck $"Silk.NET input event mapping failed: {ex.Message}")
 
@@ -1479,7 +1745,10 @@ module GlHost =
                 use image = SKImage.FromPixels pixmap
 
                 if isNull image then
-                    Result.Error(Diagnostics.screenshotFailed "SkiaSharp could not create an image from the last rendered GL frame.")
+                    Result.Error(
+                        Diagnostics.screenshotFailed
+                            "SkiaSharp could not create an image from the last rendered GL frame."
+                    )
                 else
                     let format =
                         match request.Format with
@@ -1491,7 +1760,9 @@ module GlHost =
                     if isNull data then
                         Result.Error(Diagnostics.screenshotFailed "SkiaSharp could not encode the screenshot image.")
                     else
-                        use stream = File.Open(request.Destination, FileMode.Create, FileAccess.Write, FileShare.None)
+                        use stream =
+                            File.Open(request.Destination, FileMode.Create, FileAccess.Write, FileShare.None)
+
                         data.SaveTo stream
                         Ok()
             finally
@@ -1511,10 +1782,12 @@ module GlHost =
     /// so the GL binding stays out of this package's public surface (the surface-baseline reflector
     /// would have to resolve `Silk.NET.OpenGL` to enumerate this record).
     type FrameFailureFacts =
-        { GraphicsResetStatus: uint32
-          ContextAbandoned: bool
-          GlContextCurrent: bool
-          WindowSystemPresent: bool }
+        {
+            GraphicsResetStatus: uint32
+            ContextAbandoned: bool
+            GlContextCurrent: bool
+            WindowSystemPresent: bool
+        }
 
     [<RequireQualifiedAccess>]
     /// Issue #179: what a failed frame means, per Constitution VI — an implementation defect
@@ -1576,7 +1849,11 @@ module GlHost =
     let observeFramePresented (tracker: FrameFailureTracker) = tracker.ConsecutiveFailures <- 0
 
     /// Issue #179: fold a failed frame into the streak and decide what the run does about it.
-    let observeFrameFailed (tracker: FrameFailureTracker) (facts: FrameFailureFacts) (retryBudget: int) : FrameFailureAction =
+    let observeFrameFailed
+        (tracker: FrameFailureTracker)
+        (facts: FrameFailureFacts)
+        (retryBudget: int)
+        : FrameFailureAction =
         tracker.ConsecutiveFailures <- tracker.ConsecutiveFailures + 1
         decideFrameFailure (classifyFrameFailure facts) tracker.ConsecutiveFailures retryBudget
 
@@ -1599,7 +1876,10 @@ module GlHost =
         let dispatchGate = LoopDispatch.forCurrentThread ()
         let mutable currentModel = Unchecked.defaultof<_>
         let mutable window: IWindow option = None
-        let runtimeWindowController = createRuntimeWindowController program.Configuration.InitialSize
+
+        let runtimeWindowController =
+            createRuntimeWindowController program.Configuration.InitialSize
+
         let mutable windowEventMapping: IDisposable option = None
         let mutable inputEventMapping: IDisposable option = None
         let mutable activeSubscriptions: IDisposable list = []
@@ -1611,15 +1891,27 @@ module GlHost =
         // bounded number of times or made terminal, and a terminal one is what `run` returns.
         let frameFailures = newFrameFailureTracker ()
         let mutable fatalFrameDiagnostic: RenderDiagnostic option = None
-        let framebuffer: FramebufferState = { Surface = None; RenderTarget = None; Width = 0; Height = 0 }
+
+        let framebuffer: FramebufferState =
+            {
+                Surface = None
+                RenderTarget = None
+                Width = 0
+                Height = 0
+            }
+
         let announced = ref false
         let mutable pendingScene: Scene option = None
         let mutable pendingScreenshots: ScreenshotRequest list = []
-        let mutable renderScene: (Scene -> Result<FrameSnapshot, RenderDiagnostic>) option = None
+
+        let mutable renderScene: (Scene -> Result<FrameSnapshot, RenderDiagnostic>) option =
+            None
         // Feature 118/119 (FR-004): on-demand offscreen-readback capture, decoupled from the live
         // present (the direct present path performs no readback). `lastScene` is the most recent
         // rendered scene, re-rendered offscreen on demand for screenshots/evidence.
-        let mutable captureScene: (Scene -> Result<FrameSnapshot, RenderDiagnostic>) option = None
+        let mutable captureScene: (Scene -> Result<FrameSnapshot, RenderDiagnostic>) option =
+            None
+
         let mutable lastScene: Scene option = None
         let mutable lastFrame: FrameSnapshot option = None
         let mutable shutdownRequested = false
@@ -1660,8 +1952,7 @@ module GlHost =
             | None -> ()
 
         let disposeSubscriptions () =
-            activeSubscriptions
-            |> List.iter (fun subscription -> subscription.Dispose())
+            activeSubscriptions |> List.iter (fun subscription -> subscription.Dispose())
 
             activeSubscriptions <- []
 
@@ -1707,10 +1998,12 @@ module GlHost =
                         false
                 | None -> false
 
-            { GraphicsResetStatus = resetStatus
-              ContextAbandoned = abandoned
-              GlContextCurrent = contextCurrent
-              WindowSystemPresent = windowSystemPresent () }
+            {
+                GraphicsResetStatus = resetStatus
+                ContextAbandoned = abandoned
+                GlContextCurrent = contextCurrent
+                WindowSystemPresent = windowSystemPresent ()
+            }
 
         let frameFailureKindLabel kind =
             match kind with
@@ -1752,12 +2045,17 @@ module GlHost =
                         // Issue #179: only an actually-presented frame clears the failure streak,
                         // so the retry budget bounds *consecutive* failures, not failures overall.
                         observeFramePresented frameFailures
-                        let paint, present = lastPresentTiming()
+                        let paint, present = lastPresentTiming ()
+
                         RenderLagTrace.emit
                             "gl-render-success"
-                            [ "paintMs", paint.TotalMilliseconds.ToString("0.###", Globalization.CultureInfo.InvariantCulture)
-                              "presentMs", present.TotalMilliseconds.ToString("0.###", Globalization.CultureInfo.InvariantCulture)
-                              "readbackBytes", string snapshot.Pixels.Length ]
+                            [
+                                "paintMs",
+                                paint.TotalMilliseconds.ToString("0.###", Globalization.CultureInfo.InvariantCulture)
+                                "presentMs",
+                                present.TotalMilliseconds.ToString("0.###", Globalization.CultureInfo.InvariantCulture)
+                                "readbackBytes", string snapshot.Pixels.Length
+                            ]
 
                         // Publish the boundary only after the successful frame is committed as the
                         // host's last good frame. A callback may synchronously request capture or
@@ -1799,7 +2097,8 @@ module GlHost =
                             Result.Error diagnostic
                     | _ ->
                         let diagnostic =
-                            Diagnostics.screenshotFailed "Screenshot capture was requested before the first successful OpenGL/Skia frame."
+                            Diagnostics.screenshotFailed
+                                "Screenshot capture was requested before the first successful OpenGL/Skia frame."
 
                         dispatchViewerEvent program dispatch (DiagnosticReported diagnostic)
                         Result.Error diagnostic
@@ -1835,18 +2134,22 @@ module GlHost =
                     Result.Error diagnostic
                 | Some activeWindow ->
                     let target: RuntimeWindowTarget =
-                        { GetState = fun () -> activeWindow.WindowState
-                          SetState = fun value -> activeWindow.WindowState <- value
-                          GetBorder = fun () -> activeWindow.WindowBorder
-                          SetBorder = fun value -> activeWindow.WindowBorder <- value
-                          GetPosition = fun () -> activeWindow.Position
-                          SetPosition = fun value -> activeWindow.Position <- value
-                          GetSize = fun () -> activeWindow.Size
-                          SetSize = fun value -> activeWindow.Size <- value
-                          GetWorkArea = fun () ->
-                              try
-                                  tryResolveMonitorWorkArea activeWindow.Monitor
-                              with _ -> None }
+                        {
+                            GetState = fun () -> activeWindow.WindowState
+                            SetState = fun value -> activeWindow.WindowState <- value
+                            GetBorder = fun () -> activeWindow.WindowBorder
+                            SetBorder = fun value -> activeWindow.WindowBorder <- value
+                            GetPosition = fun () -> activeWindow.Position
+                            SetPosition = fun value -> activeWindow.Position <- value
+                            GetSize = fun () -> activeWindow.Size
+                            SetSize = fun value -> activeWindow.Size <- value
+                            GetWorkArea =
+                                fun () ->
+                                    try
+                                        tryResolveMonitorWorkArea activeWindow.Monitor
+                                    with _ ->
+                                        None
+                        }
 
                     match applyRuntimeWindowBehavior runtimeWindowController target behavior with
                     | Ok changed ->
@@ -1879,9 +2182,11 @@ module GlHost =
             | FrameFailureAction.RetryFrame attempt ->
                 RenderLagTrace.emit
                     "gl-frame-retry"
-                    [ "kind", frameFailureKindLabel kind
-                      "attempt", string attempt
-                      "budget", string transientFrameRetryBudget ]
+                    [
+                        "kind", frameFailureKindLabel kind
+                        "attempt", string attempt
+                        "budget", string transientFrameRetryBudget
+                    ]
 
                 dispatchViewerEvent program dispatch (DiagnosticReported diagnostic)
                 Result.Error diagnostic
@@ -1900,8 +2205,10 @@ module GlHost =
 
                 RenderLagTrace.emit
                     "gl-frame-abandoned"
-                    [ "kind", frameFailureKindLabel kind
-                      "failures", string frameFailures.ConsecutiveFailures ]
+                    [
+                        "kind", frameFailureKindLabel kind
+                        "failures", string frameFailures.ConsecutiveFailures
+                    ]
 
                 fatalFrameDiagnostic <- Some fatal
                 dispatchViewerEvent program dispatch (DiagnosticReported fatal)
@@ -1920,8 +2227,10 @@ module GlHost =
                 | Result.Error diagnostic ->
                     RenderLagTrace.emit
                         "gl-effect-failed"
-                        [ "stage", string diagnostic.Stage
-                          "terminal", string fatalFrameDiagnostic.IsSome ]
+                        [
+                            "stage", string diagnostic.Stage
+                            "terminal", string fatalFrameDiagnostic.IsSome
+                        ]
             | None ->
                 // Issue #365: a throwing product `Update` used to escape here, tear the persistent
                 // window down, and be mislabeled `frameRenderFailed`. Guard it: report an `App`-stage
@@ -1932,8 +2241,10 @@ module GlHost =
                 let reportProductFailure (diagnostic: RenderDiagnostic) =
                     RenderLagTrace.emit
                         "gl-product-update-failed"
-                        [ "stage", string diagnostic.Stage
-                          "message", diagnostic.Message.Replace(" ", "_") ]
+                        [
+                            "stage", string diagnostic.Stage
+                            "message", diagnostic.Message.Replace(" ", "_")
+                        ]
 
                     if program.Configuration.Diagnostics.Verbose then
                         Console.Error.WriteLine($"FS.GG.UI diagnostic: {diagnostic.Stage}: {diagnostic.Message}")
@@ -1959,6 +2270,7 @@ module GlHost =
         let runEventLoop (createdWindow: IWindow) =
             if not shutdownRequested then
                 trace program.Configuration "entering Silk.NET event loop"
+
                 let frameInterval =
                     program.Configuration.TargetFrameRate
                     |> Option.defaultValue 60
@@ -2005,11 +2317,20 @@ module GlHost =
                 initialCmd |> List.iter (fun effect -> effect dispatch)
                 startSubscriptions ()
 
-                bind (
-                    bind (
-                        bind (createWindow program.Configuration) (fun createdWindow ->
+                bind
+                    (bind
+                        (bind (createWindow program.Configuration) (fun createdWindow ->
                             window <- Some createdWindow
-                            windowEventMapping <- Some(attachWindowEventMapping program createdWindow (fun () -> requestShutdown false) dispatch)
+
+                            windowEventMapping <-
+                                Some(
+                                    attachWindowEventMapping
+                                        program
+                                        createdWindow
+                                        (fun () -> requestShutdown false)
+                                        dispatch
+                                )
+
                             bind (initializeWindow createdWindow) (fun () -> Ok createdWindow)))
                         (fun createdWindow ->
                             bind (attachInputEventMapping program createdWindow dispatch) (fun inputMapping ->
@@ -2027,28 +2348,53 @@ module GlHost =
                                 dispatchViewerEvent program dispatch (DiagnosticReported diagnostic)
 
                             renderScene <-
-                                Some(renderFrame program.Configuration createdWindow context framebuffer announced report)
+                                Some(
+                                    renderFrame
+                                        program.Configuration
+                                        createdWindow
+                                        context
+                                        framebuffer
+                                        announced
+                                        report
+                                )
 
                             // On-demand offscreen-readback capture routine (FR-004), independent of
                             // the present mode — sized from the live framebuffer.
                             captureScene <-
                                 Some(fun (scene: Scene) ->
-                                    let width = if framebuffer.Width > 0 then framebuffer.Width else max 1 createdWindow.FramebufferSize.X
-                                    let height = if framebuffer.Height > 0 then framebuffer.Height else max 1 createdWindow.FramebufferSize.Y
+                                    let width =
+                                        if framebuffer.Width > 0 then
+                                            framebuffer.Width
+                                        else
+                                            max 1 createdWindow.FramebufferSize.X
+
+                                    let height =
+                                        if framebuffer.Height > 0 then
+                                            framebuffer.Height
+                                        else
+                                            max 1 createdWindow.FramebufferSize.Y
 
                                     // Issue #400: this on-demand capture renders the (already SkiaViewer-fitted)
                                     // scene onto the framebuffer 1:1 — pass the target size as the authoring size
                                     // so the fit is the identity, preserving the prior behaviour exactly.
-                                    bind (renderSceneToPixels program.Configuration context width height { Width = width; Height = height } scene) (fun pixels ->
-                                        Ok
-                                            { Width = width
-                                              Height = height
-                                              ColorType = SKColorType.Rgba8888
-                                              Pixels = pixels }))
+                                    bind
+                                        (renderSceneToPixels
+                                            program.Configuration
+                                            context
+                                            width
+                                            height
+                                            { Width = width; Height = height }
+                                            scene)
+                                        (fun pixels ->
+                                            Ok
+                                                {
+                                                    Width = width
+                                                    Height = height
+                                                    ColorType = SKColorType.Rgba8888
+                                                    Pixels = pixels
+                                                }))
 
-                            let scene =
-                                pendingScene
-                                |> Option.defaultValue (program.View currentModel)
+                            let scene = pendingScene |> Option.defaultValue (program.View currentModel)
 
                             pendingScene <- None
 

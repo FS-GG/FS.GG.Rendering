@@ -23,4 +23,3 @@ module CompositorDamageReadiness =
     val statusText: status: CompositorDamageReadinessStatus -> string
     /// Feature 157: validate accepted, fallback-only, rejected, and environment-limited damage packages.
     val validate: check: CompositorDamageReadinessCheck -> CompositorDamageReadinessValidationResult
-

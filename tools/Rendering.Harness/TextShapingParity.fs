@@ -12,19 +12,23 @@ type TextShapingParityMode =
     | PureFallback
 
 type TextShapingParityCapture =
-    { FixtureId: string
-      Mode: TextShapingParityMode
-      Metrics: TextMetrics
-      Fingerprint: string
-      Diagnostics: string list }
+    {
+        FixtureId: string
+        Mode: TextShapingParityMode
+        Metrics: TextMetrics
+        Fingerprint: string
+        Diagnostics: string list
+    }
 
 module TextShapingParity =
     let capture mode (fixture: TextShapingFixture) result =
-        { FixtureId = fixture.Id
-          Mode = mode
-          Metrics = Scene.measureShapedText result
-          Fingerprint = result.Fingerprint
-          Diagnostics = result.Diagnostics }
+        {
+            FixtureId = fixture.Id
+            Mode = mode
+            Metrics = Scene.measureShapedText result
+            Fingerprint = result.Fingerprint
+            Diagnostics = result.Diagnostics
+        }
 
     let equivalent left right =
         left.Metrics = right.Metrics

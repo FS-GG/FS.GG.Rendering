@@ -27,28 +27,32 @@ type ViewerKeyDirection =
 
 /// Public contract type exposed by this FS.GG.UI package.
 type ViewerKeyEvent =
-    { RawKey: string
-      Direction: ViewerKeyDirection }
+    {
+        RawKey: string
+        Direction: ViewerKeyDirection
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
-type KeyboardBinding =
-    { Key: KeyId
-      Command: CommandId }
+type KeyboardBinding = { Key: KeyId; Command: CommandId }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type KeyboardDiagnostic =
-    { Code: string
-      Severity: string
-      Message: string
-      Key: KeyId option }
+    {
+        Code: string
+        Severity: string
+        Message: string
+        Key: KeyId option
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type KeyboardStateDisplay =
-    { PressedKeys: KeyId list
-      ActiveLayout: string
-      ActiveModeStack: string list
-      PendingSequence: KeyId list
-      LastCommand: CommandId option }
+    {
+        PressedKeys: KeyId list
+        ActiveLayout: string
+        ActiveModeStack: string list
+        PendingSequence: KeyId list
+        LastCommand: CommandId option
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type KeyboardEffect =
@@ -63,16 +67,18 @@ type KeyboardEffect =
 
 /// Public contract type exposed by this FS.GG.UI package.
 type KeyboardModel =
-    { Bindings: KeyboardBinding list
-      PressedKeys: Set<KeyId>
-      LastCommand: CommandId option
-      ActiveLayout: string
-      ActiveModeStack: string list
-      PersistentModeState: Map<string, string>
-      PendingSequence: KeyId list
-      Diagnostics: KeyboardDiagnostic list
-      RecentEffects: KeyboardEffect list
-      StateDisplay: KeyboardStateDisplay }
+    {
+        Bindings: KeyboardBinding list
+        PressedKeys: Set<KeyId>
+        LastCommand: CommandId option
+        ActiveLayout: string
+        ActiveModeStack: string list
+        PersistentModeState: Map<string, string>
+        PendingSequence: KeyId list
+        Diagnostics: KeyboardDiagnostic list
+        RecentEffects: KeyboardEffect list
+        StateDisplay: KeyboardStateDisplay
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type KeyboardMsg =
@@ -174,10 +180,12 @@ module Keymap =
 /// into `Unknown "Ctrl+L"` and loses; parsing them here makes chords as dependable as plain keys,
 /// with no backend change. A closed record of four bools — total, deterministic, equatable.
 type KeyModifiers =
-    { Ctrl: bool
-      Alt: bool
-      Shift: bool
-      Meta: bool }
+    {
+        Ctrl: bool
+        Alt: bool
+        Shift: bool
+        Meta: bool
+    }
 
 /// Command-agnostic keyboard intents shared by the SVG browser host and portable consumers.
 [<RequireQualifiedAccess>]
@@ -225,7 +233,7 @@ module ViewerKeyboard =
         isKeyDown: bool ->
         isComposing: bool ->
         isNativeEditableTarget: bool ->
-        SvgKeyboardIntent option
+            SvgKeyboardIntent option
 
     /// Issue 333 (epic 330): back a host `MapKey` seam with a `Keymap` so a **data** change re-routes a
     /// key with no code change. Given a `keymap` and a `mapCommand` that turns a resolved `CommandId`
@@ -235,8 +243,7 @@ module ViewerKeyboard =
     /// R3 ("wire the keymap into live dispatch") installs: set a host's `MapKey` to this and the keymap —
     /// pure data — drives the last (key) tier of the routing order (authored bindings -> focus -> chord ->
     /// key). Pure, total; never throws.
-    val mapKeyOfKeymap:
-        keymap: Keymap -> mapCommand: (CommandId -> 'msg option) -> (ViewerKey -> bool -> 'msg option)
+    val mapKeyOfKeymap: keymap: Keymap -> mapCommand: (CommandId -> 'msg option) -> (ViewerKey -> bool -> 'msg option)
 
     /// Issue 456 (epic FS-GG/.github#416): the `MapKey` seam that loses nothing — and the one a key-rebind
     /// CAPTURE must be built on, because `mapKeyOfKeymap` cannot serve one.

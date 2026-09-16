@@ -58,36 +58,42 @@ module Legibility =
 
     /// One reported issue (FR-006).
     type Finding =
-        { Channel: Channel
-          Severity: Severity
-          Message: string
-          /// 0-based indices into the scored set; [] for whole-board findings.
-          ///
-          /// For a per-unit `Error` this is the offending unit. For an overload `Warning` it is the
-          /// units holding the levels PAST the channel's capacity — the smallest set a re-map has to
-          /// move to bring the channel back inside capacity — NOT every unit on the board. Levels are
-          /// ranked by (frequency descending, first appearance ascending) and the ones after the
-          /// leading `Capacity` are the excess, so the named units are those carrying the
-          /// least-frequent levels. Deterministic for a given input (SC-001).
-          Units: int list }
+        {
+            Channel: Channel
+            Severity: Severity
+            Message: string
+            /// 0-based indices into the scored set; [] for whole-board findings.
+            ///
+            /// For a per-unit `Error` this is the offending unit. For an overload `Warning` it is the
+            /// units holding the levels PAST the channel's capacity — the smallest set a re-map has to
+            /// move to bring the channel back inside capacity — NOT every unit on the board. Levels are
+            /// ranked by (frequency descending, first appearance ascending) and the ones after the
+            /// leading `Capacity` are the excess, so the named units are those carrying the
+            /// least-frequent levels. Deterministic for a given input (SC-001).
+            Units: int list
+        }
 
     /// One row of the fixed capacity table (FR-002).
     type ChannelSpec =
-        { Channel: Channel
-          Kind: ChannelKind
-          /// How many distinct levels the eye separates — NOT how many the grammar can draw. Meaningful
-          /// for Categorical/Ordered; 0 for Continuous. `Speed` draws 0..6 beads but ranks ~4 of them,
-          /// so a fifth distinct speed is in-domain per unit and an overload per board.
-          Capacity: int }
+        {
+            Channel: Channel
+            Kind: ChannelKind
+            /// How many distinct levels the eye separates — NOT how many the grammar can draw. Meaningful
+            /// for Categorical/Ordered; 0 for Continuous. `Speed` draws 0..6 beads but ranks ~4 of them,
+            /// so a fifth distinct speed is in-domain per unit and an overload per board.
+            Capacity: int
+        }
 
     /// Per-channel usage evidence behind the findings (FR-007).
     type ChannelUsage =
-        { Channel: Channel
-          Kind: ChannelKind
-          /// for Continuous channels, the count of distinct raw values (informational — never drives an overload finding)
-          DistinctLevels: int
-          /// from the table; 0/ignored for Continuous
-          Capacity: int }
+        {
+            Channel: Channel
+            Kind: ChannelKind
+            /// for Continuous channels, the count of distinct raw values (informational — never drives an overload finding)
+            DistinctLevels: int
+            /// from the table; 0/ignored for Continuous
+            Capacity: int
+        }
 
     /// Overall one-line signal (FR-007). Clean iff no findings.
     type Verdict =
@@ -96,11 +102,13 @@ module Legibility =
 
     /// The linter's whole output (pure, reproducible from the input alone — SC-001).
     type Report =
-        { /// deterministic order: table order, then unit index
-          Findings: Finding list
-          /// one entry per per-unit channel (12; Motion and Label excluded), table order
-          Usage: ChannelUsage list
-          Verdict: Verdict }
+        {
+            /// deterministic order: table order, then unit index
+            Findings: Finding list
+            /// one entry per per-unit channel (12; Motion and Label excluded), table order
+            Usage: ChannelUsage list
+            Verdict: Verdict
+        }
 
     /// The fixed capacity table the linter scores against (FR-002) — exposed read-only, and the single
     /// source of the reliable-level counts the symbology skill's §4 prose table quotes.

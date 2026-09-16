@@ -18,9 +18,11 @@ type ControlKind = string
 /// derived geometry (scrollable, thumb height/position) is computed by the `ScrollState` module.
 /// Carried by `ControlRuntimeModel.ScrollOffsets`.
 type ScrollState =
-    { Offset: float
-      ContentHeight: float
-      ViewportHeight: float }
+    {
+        Offset: float
+        ContentHeight: float
+        ViewportHeight: float
+    }
 
 /// Feature 175 (FR-001/FR-002): pure transitions and derived geometry over `ScrollState`. Drag,
 /// wheel, and keyboard scroll all reduce to `applyScrollDelta`; the thumb derives from the
@@ -48,15 +50,19 @@ module ScrollState =
 /// A single plotted datum (`ChartPoint`): `X`/`Y` coordinates plus an optional `Label`
 /// for line, bar, pie, and scatter chart kinds.
 type ChartPoint =
-    { X: float
-      Y: float
-      Label: string option }
+    {
+        X: float
+        Y: float
+        Label: string option
+    }
 
 /// A named collection of points (`ChartSeries`): a display `Name` and the ordered
 /// `Points` it contributes to a chart control.
 type ChartSeries =
-    { Name: string
-      Points: ChartPoint list }
+    {
+        Name: string
+        Points: ChartPoint list
+    }
 
 [<RequireQualifiedAccess>]
 /// Closed enumeration (`KnownControl`) of the built-in control kinds the package
@@ -160,11 +166,13 @@ type StandardAttributeValue<'msg> =
 /// `RequiredAttributes` and `SupportedAttributes`, the `SupportedEvents` it raises, and
 /// whether `CustomAllowed` extension attributes are permitted.
 type ControlSchema =
-    { Kind: StandardControlKind
-      RequiredAttributes: StandardAttributeName list
-      SupportedAttributes: StandardAttributeName list
-      SupportedEvents: StandardEventKind list
-      CustomAllowed: bool }
+    {
+        Kind: StandardControlKind
+        RequiredAttributes: StandardAttributeName list
+        SupportedAttributes: StandardAttributeName list
+        SupportedEvents: StandardEventKind list
+        CustomAllowed: bool
+    }
 
 [<RequireQualifiedAccess>]
 /// Severity level of a `ControlDiagnostic` (`ControlDiagnosticSeverity`): `Info`,
@@ -248,17 +256,21 @@ type AccessibilityRole =
 /// the `ActivationKeys` that trigger it, and the `NavigationKeys` it consumes for
 /// internal movement.
 type KeyboardOperation =
-    { Focusable: bool
-      ActivationKeys: string list
-      NavigationKeys: string list }
+    {
+        Focusable: bool
+        ActivationKeys: string list
+        NavigationKeys: string list
+    }
 
 /// Recorded contrast measurement (`ContrastEvidence`): the `Foreground`/`Background`
 /// colors, the measured `Ratio`, and the `RequiredRatio` it is checked against.
 type ContrastEvidence =
-    { Foreground: Color
-      Background: Color
-      Ratio: float
-      RequiredRatio: float }
+    {
+        Foreground: Color
+        Background: Color
+        Ratio: float
+        RequiredRatio: float
+    }
 
 /// Declared value/range metadata (`NavRange`) for slider/progress/numeric roles.
 /// Feature 100 (R5): declared range metadata for value/range roles — the SOLE source of
@@ -266,10 +278,7 @@ type ContrastEvidence =
 /// DEFAULT-step slider declares <c>{ Step = 0.1; Min = 0.0; Max = 1.0 }</c> so the pre-R5
 /// numeric path is reproduced byte-identically (FR-007). Validation: <c>Min &lt;= Max</c>;
 /// <c>Step &gt; 0</c>.
-type NavRange =
-    { Step: float
-      Min: float
-      Max: float }
+type NavRange = { Step: float; Min: float; Max: float }
 
 /// Feature 114 (Phase 6): the logical size + current position of a virtualized collection
 /// (e.g. a DataGrid), reported to assistive technology INDEPENDENT of how many items are
@@ -278,28 +287,32 @@ type NavRange =
 /// within that total (<c>None</c> when nothing is focused). Both are computed from the logical
 /// model, never from the realized slice (FR-012).
 type CollectionPosition =
-    { TotalItems: int
-      FocusedIndex: int option }
+    {
+        TotalItems: int
+        FocusedIndex: int option
+    }
 
 /// Per-control accessibility record (`AccessibilityMetadata`): the semantic `Role`,
 /// `NameSource`, current `State` flags, optional `FocusOrder`, the `Keyboard` contract,
 /// optional `Contrast` evidence, optional value-range `Navigation` metadata, and the optional
 /// virtualized-`Collection` total/position.
 type AccessibilityMetadata =
-    { Role: AccessibilityRole
-      NameSource: string
-      State: string list
-      FocusOrder: int option
-      Keyboard: KeyboardOperation
-      Contrast: ContrastEvidence option
-      /// Feature 100 (R5): the declared value/range step + bounds for a range role
-      /// (<c>Some</c> for Slider/Progress/numeric value roles), <c>None</c> otherwise. Read by
-      /// both <c>Focus.route</c> and the host per-intent resolver.
-      Navigation: NavRange option
-      /// Feature 114 (Phase 6): the total logical item count + current focused position for a
-      /// virtualized collection control (<c>Some</c> for a virtualized DataGrid), <c>None</c> for
-      /// every non-collection control (so at-rest a11y for existing controls is byte-identical).
-      Collection: CollectionPosition option }
+    {
+        Role: AccessibilityRole
+        NameSource: string
+        State: string list
+        FocusOrder: int option
+        Keyboard: KeyboardOperation
+        Contrast: ContrastEvidence option
+        /// Feature 100 (R5): the declared value/range step + bounds for a range role
+        /// (<c>Some</c> for Slider/Progress/numeric value roles), <c>None</c> otherwise. Read by
+        /// both <c>Focus.route</c> and the host per-intent resolver.
+        Navigation: NavRange option
+        /// Feature 114 (Phase 6): the total logical item count + current focused position for a
+        /// virtualized collection control (<c>Some</c> for a virtualized DataGrid), <c>None</c> for
+        /// every non-collection control (so at-rest a11y for existing controls is byte-identical).
+        Collection: CollectionPosition option
+    }
 
 [<RequireQualifiedAccess>]
 /// Input source that produced a `ControlEvent` (`ControlEventOrigin`): `Pointer`,
@@ -327,10 +340,12 @@ type NavPayload =
 /// `Payload : string option` was removed; read the typed outcome via `Nav` or the
 /// `ControlEvent.navText`/`navValue`/`navCell` accessors below.
 type ControlEvent =
-    { Kind: string
-      ControlId: ControlId option
-      Origin: ControlEventOrigin
-      Nav: NavPayload option }
+    {
+        Kind: string
+        ControlId: ControlId option
+        Origin: ControlEventOrigin
+        Nav: NavPayload option
+    }
 
 /// Feature 184 (US3): typed projections of a `ControlEvent`'s `Nav` outcome — the single typed
 /// replacement for the retired stringly `Payload`. `navText` yields the string an event carries
@@ -370,17 +385,21 @@ type AttrCategory =
 /// identity, its `Attributes` and `Children`, optional text `Content`, and optional
 /// `Accessibility` metadata. The unit of the authoring tree and the reconciler diff.
 type Control<'msg> =
-    { Kind: ControlKind
-      Key: ControlId option
-      Attributes: Attr<'msg> list
-      Children: Control<'msg> list
-      Content: string option
-      Accessibility: AccessibilityMetadata option }
+    {
+        Kind: ControlKind
+        Key: ControlId option
+        Attributes: Attr<'msg> list
+        Children: Control<'msg> list
+        Content: string option
+        Accessibility: AccessibilityMetadata option
+    }
 
 and Attr<'msg> =
-    { Name: string
-      Category: AttrCategory
-      Value: AttrValue<'msg> }
+    {
+        Name: string
+        Category: AttrCategory
+        Value: AttrValue<'msg>
+    }
 
 and AttrValue<'msg> =
     | TextValue of string
@@ -422,36 +441,42 @@ and AttrValue<'msg> =
 /// and `ControlKind`, the diagnostic `Code` and `Severity`, a human-readable `Message`,
 /// and an optional `EvidencePath`.
 type ControlDiagnostic =
-    { ControlId: ControlId option
-      ControlKind: ControlKind
-      Code: ControlDiagnosticCode
-      Severity: ControlDiagnosticSeverity
-      Message: string
-      EvidencePath: string option }
+    {
+        ControlId: ControlId option
+        ControlKind: ControlKind
+        Code: ControlDiagnosticCode
+        Severity: ControlDiagnosticSeverity
+        Message: string
+        EvidencePath: string option
+    }
 
 /// A wired event handler (`ControlEventBinding<'msg>`): binds a `ControlId` and
 /// `EventKind` to a `Dispatch` function turning a `ControlEvent` into a host message.
 type ControlEventBinding<'msg> =
-    { ControlId: ControlId
-      EventKind: string
-      Dispatch: ControlEvent -> 'msg }
+    {
+        ControlId: ControlId
+        EventKind: string
+        Dispatch: ControlEvent -> 'msg
+    }
 
 /// Output of rendering a control tree (`ControlRenderResult<'msg>`): the painted `Scene`,
 /// the `Layout` root, the per-control `Bounds`, any `Diagnostics`, the `EventBindings` and
 /// their `BoundIds`, and the total `NodeCount`.
 type ControlRenderResult<'msg> =
-    { Scene: Scene
-      Layout: LayoutNode
-      /// Evaluated absolute bounds of every laid-out control, keyed by `ControlId`
-      /// (one entry per laid-out control instance). Populated by `Control.renderTree`
-      /// from the computed `LayoutResult`; the preview `Control.render` leaves it empty.
-      /// A host joins this with `EventBindings` (also keyed by `ControlId`) for hit-testing.
-      Bounds: (ControlId * Rect) list
-      Diagnostics: ControlDiagnostic list
-      EventBindings: ControlEventBinding<'msg> list
-      /// Canonical ids (the unified `Key ?? structural-path` scheme) of every node
-      /// carrying at least one event binding. The same scheme as `EventBindings` and
-      /// `Bounds`, so a recovered id is a direct membership/lookup key. Populated by
-      /// `renderTree` and `render` (and the retained path); read by `nearestAuthored`.
-      BoundIds: Set<ControlId>
-      NodeCount: int }
+    {
+        Scene: Scene
+        Layout: LayoutNode
+        /// Evaluated absolute bounds of every laid-out control, keyed by `ControlId`
+        /// (one entry per laid-out control instance). Populated by `Control.renderTree`
+        /// from the computed `LayoutResult`; the preview `Control.render` leaves it empty.
+        /// A host joins this with `EventBindings` (also keyed by `ControlId`) for hit-testing.
+        Bounds: (ControlId * Rect) list
+        Diagnostics: ControlDiagnostic list
+        EventBindings: ControlEventBinding<'msg> list
+        /// Canonical ids (the unified `Key ?? structural-path` scheme) of every node
+        /// carrying at least one event binding. The same scheme as `EventBindings` and
+        /// `Bounds`, so a recovered id is a direct membership/lookup key. Populated by
+        /// `renderTree` and `render` (and the retained path); read by `nearestAuthored`.
+        BoundIds: Set<ControlId>
+        NodeCount: int
+    }

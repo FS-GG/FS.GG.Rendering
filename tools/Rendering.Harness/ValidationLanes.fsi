@@ -33,105 +33,123 @@ module ValidationLanes =
         | ListOnlySelection
 
     type LaneCommand =
-        { FileName: string
-          Arguments: string list }
+        {
+            FileName: string
+            Arguments: string list
+        }
 
     type LaneDefinition =
-        { Id: string
-          DisplayName: string
-          Description: string
-          ReadinessRole: ReadinessRole
-          Command: LaneCommand
-          WorkingDirectory: string
-          Timeout: TimeSpan
-          NoProgressTimeout: TimeSpan option
-          ProgressInterval: TimeSpan
-          EvidenceDirectory: string
-          LogPath: string
-          ResultPath: string
-          DiagnosticsPath: string
-          OutputRoot: string
-          ConcurrencyGroup: string option
-          OutputScope: string option
-          IsAggregate: bool
-          SubstitutesFor: string option }
+        {
+            Id: string
+            DisplayName: string
+            Description: string
+            ReadinessRole: ReadinessRole
+            Command: LaneCommand
+            WorkingDirectory: string
+            Timeout: TimeSpan
+            NoProgressTimeout: TimeSpan option
+            ProgressInterval: TimeSpan
+            EvidenceDirectory: string
+            LogPath: string
+            ResultPath: string
+            DiagnosticsPath: string
+            OutputRoot: string
+            ConcurrencyGroup: string option
+            OutputScope: string option
+            IsAggregate: bool
+            SubstitutesFor: string option
+        }
 
     type RunRequest =
-        { RequestedLaneIds: string list
-          IncludeOptionalLaneIds: string list
-          OutDir: string
-          RunId: string option
-          ReplaceRun: bool
-          ListOnly: bool
-          AllowParallel: bool }
+        {
+            RequestedLaneIds: string list
+            IncludeOptionalLaneIds: string list
+            OutDir: string
+            RunId: string option
+            ReplaceRun: bool
+            ListOnly: bool
+            AllowParallel: bool
+        }
 
     type PreflightDiagnostic =
-        { Code: string
-          Message: string
-          LaneIds: string list }
+        {
+            Code: string
+            Message: string
+            LaneIds: string list
+        }
 
     type LaneRunPlan =
-        { Request: RunRequest
-          RunId: string
-          SelectionMode: SelectionMode
-          ArtifactRoot: string
-          SelectedLanes: LaneDefinition list
-          Diagnostics: PreflightDiagnostic list
-          ReplacementNotice: string option }
+        {
+            Request: RunRequest
+            RunId: string
+            SelectionMode: SelectionMode
+            ArtifactRoot: string
+            SelectedLanes: LaneDefinition list
+            Diagnostics: PreflightDiagnostic list
+            ReplacementNotice: string option
+        }
 
     type LaneResult =
-        { LaneId: string
-          ReadinessRole: ReadinessRole
-          Status: LaneStatus
-          Command: string
-          StartedUtc: DateTime option
-          CompletedUtc: DateTime option
-          Elapsed: TimeSpan option
-          TimeoutBudget: TimeSpan option
-          LastActivityUtc: DateTime option
-          LastActivityText: string option
-          ExitCode: int option
-          LogPath: string
-          ResultPath: string
-          DiagnosticsPath: string
-          ResultArtifacts: string list
-          RuntimeDiagnostics: FS.GG.UI.Diagnostics.DiagnosticSummary option
-          Reason: string option
-          Diagnostics: string list
-          Caveats: string list
-          AcceptedEnvironmentLimitation: string option
-          Substitution: string option
-          IsAggregate: bool }
+        {
+            LaneId: string
+            ReadinessRole: ReadinessRole
+            Status: LaneStatus
+            Command: string
+            StartedUtc: DateTime option
+            CompletedUtc: DateTime option
+            Elapsed: TimeSpan option
+            TimeoutBudget: TimeSpan option
+            LastActivityUtc: DateTime option
+            LastActivityText: string option
+            ExitCode: int option
+            LogPath: string
+            ResultPath: string
+            DiagnosticsPath: string
+            ResultArtifacts: string list
+            RuntimeDiagnostics: FS.GG.UI.Diagnostics.DiagnosticSummary option
+            Reason: string option
+            Diagnostics: string list
+            Caveats: string list
+            AcceptedEnvironmentLimitation: string option
+            Substitution: string option
+            IsAggregate: bool
+        }
 
     type ValidationSummary =
-        { RunId: string
-          PolicyVersion: string
-          OverallReadiness: OverallReadiness
-          ArtifactRoot: string
-          StartedUtc: DateTime
-          CompletedUtc: DateTime
-          FirstBlockingRequiredLane: string option
-          LaneResults: LaneResult list
-          Caveats: string list
-          ReplacementNotice: string option }
+        {
+            RunId: string
+            PolicyVersion: string
+            OverallReadiness: OverallReadiness
+            ArtifactRoot: string
+            StartedUtc: DateTime
+            CompletedUtc: DateTime
+            FirstBlockingRequiredLane: string option
+            LaneResults: LaneResult list
+            Caveats: string list
+            ReplacementNotice: string option
+        }
 
     type ResponsivenessSummaryResult =
-        { SummaryPath: string
-          OverallReadiness: string
-          RecordCount: int
-          FirstFailedBudget: string option
-          EnvironmentLimitations: string list
-          Diagnostics: string list }
+        {
+            SummaryPath: string
+            OverallReadiness: string
+            RecordCount: int
+            FirstFailedBudget: string option
+            EnvironmentLimitations: string list
+            Diagnostics: string list
+        }
 
     type Model =
-        { LaneDefinitions: LaneDefinition list
-          RunPlan: LaneRunPlan option
-          ActiveLaneId: string option
-          PendingLaneIds: string list
-          CompletedResults: LaneResult list
-          CanceledLaneIds: string list
-          Summary: ValidationSummary option
-          Diagnostics: string list }
+        {
+            LaneDefinitions: LaneDefinition list
+            RunPlan: LaneRunPlan option
+            ActiveLaneId: string option
+            PendingLaneIds: string list
+            CompletedResults: LaneResult list
+            CanceledLaneIds: string list
+            Summary: ValidationSummary option
+            Diagnostics: string list
+        }
 
     type Msg =
         | RunRequested of RunRequest
@@ -223,10 +241,12 @@ module ValidationLanes =
     /// Preserves the TimedOut vs NoProgressTimedOut distinction (contract C-4).
     /// Monitor returns the terminal (status, exitCode, reason, diagnostics).
     type TimeoutManager =
-        { LaneId: string
-          WallClock: TimeSpan
-          NoProgress: TimeSpan option
-          ProgressInterval: TimeSpan }
+        {
+            LaneId: string
+            WallClock: TimeSpan
+            NoProgress: TimeSpan option
+            ProgressInterval: TimeSpan
+        }
 
         member Monitor:
             runner: ProcessRunner * output: OutputBuffer * started: DateTime ->

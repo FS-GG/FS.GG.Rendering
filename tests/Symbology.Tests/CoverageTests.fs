@@ -37,7 +37,10 @@ let private tokenFor (element: GameElement) : Coverage.Representation =
         | Enemy -> Sigil.Fang
         | StealthAmbusher -> Sigil.Fang
 
-    Coverage.Shown { Symbology.defaultToken with Sigil = sigil }
+    Coverage.Shown
+        { Symbology.defaultToken with
+            Sigil = sigil
+        }
 
 /// The COMPLETE, correct mapping: every visible element -> a Token, the one stealth element -> an
 /// explicit reasoned opt-out. This is what a shipped game keeps green.
@@ -52,101 +55,102 @@ let coverageTests =
         "Issue989 Coverage — visual exhaustiveness"
         [
 
-          // ---- THE PRODUCT TEST PATTERN (copy this into a game's own test suite) --------------------
-          test "productCoverageGate — every declared element has a visual or a reasoned opt-out" {
-              let report = Coverage.check declaredElements completeMapping
+            // ---- THE PRODUCT TEST PATTERN (copy this into a game's own test suite) --------------------
+            test "productCoverageGate — every declared element has a visual or a reasoned opt-out" {
+                let report = Coverage.check declaredElements completeMapping
 
-              // The whole gate is one assertion: a clean coverage verdict. A forgotten element (below)
-              // reds this before ship, exactly as a missing match arm reds the compiler.
-              Expect.equal report.Verdict Coverage.Covered "the roster must be fully covered"
-              Expect.isEmpty report.Findings "no element may be silently unrepresented"
-          }
+                // The whole gate is one assertion: a clean coverage verdict. A forgotten element (below)
+                // reds this before ship, exactly as a missing match arm reds the compiler.
+                Expect.equal report.Verdict Coverage.Covered "the roster must be fully covered"
+                Expect.isEmpty report.Findings "no element may be silently unrepresented"
+            }
 
-          test "a forgotten element (no token, no opt-out) is a Missing finding — the silent omission" {
-              // The game adds `Enemy` to the roster but forgets to map it: `resolve` returns `None`.
-              let forgetful element =
-                  match element with
-                  | Enemy -> None
-                  | e -> completeMapping e
+            test "a forgotten element (no token, no opt-out) is a Missing finding — the silent omission" {
+                // The game adds `Enemy` to the roster but forgets to map it: `resolve` returns `None`.
+                let forgetful element =
+                    match element with
+                    | Enemy -> None
+                    | e -> completeMapping e
 
-              let report = Coverage.check declaredElements forgetful
+                let report = Coverage.check declaredElements forgetful
 
-              Expect.equal report.Verdict Coverage.HasGaps "a forgotten element must fail coverage"
-              Expect.equal report.Findings.Length 1 "exactly the forgotten element is reported"
-              let f = report.Findings.Head
-              Expect.equal f.Element Enemy "the finding names the forgotten element"
-              Expect.equal f.Gap Coverage.Missing "the gap is Missing (no token, no opt-out)"
-              Expect.stringContains f.Message "no visible representation" "the message explains the defect"
-          }
+                Expect.equal report.Verdict Coverage.HasGaps "a forgotten element must fail coverage"
+                Expect.equal report.Findings.Length 1 "exactly the forgotten element is reported"
+                let f = report.Findings.Head
+                Expect.equal f.Element Enemy "the finding names the forgotten element"
+                Expect.equal f.Gap Coverage.Missing "the gap is Missing (no token, no opt-out)"
+                Expect.stringContains f.Message "no visible representation" "the message explains the defect"
+            }
 
-          test "an explicit Hidden opt-out with a reason passes and lands in the OptedOut ledger" {
-              let report = Coverage.check declaredElements completeMapping
+            test "an explicit Hidden opt-out with a reason passes and lands in the OptedOut ledger" {
+                let report = Coverage.check declaredElements completeMapping
 
-              Expect.equal report.Verdict Coverage.Covered "a reasoned opt-out is covered"
+                Expect.equal report.Verdict Coverage.Covered "a reasoned opt-out is covered"
 
-              Expect.equal
-                  (report.OptedOut |> List.map fst)
-                  [ StealthAmbusher ]
-                  "only the deliberately-hidden element is on the ledger"
+                Expect.equal
+                    (report.OptedOut |> List.map fst)
+                    [ StealthAmbusher ]
+                    "only the deliberately-hidden element is on the ledger"
 
-              let _, reason = report.OptedOut.Head
-              Expect.stringContains reason "stealth" "the ledger carries the stated mechanic"
-          }
+                let _, reason = report.OptedOut.Head
+                Expect.stringContains reason "stealth" "the ledger carries the stated mechanic"
+            }
 
-          test "a blank-reason opt-out is Unreasoned — indistinguishable from forgetting, so rejected" {
-              let blankOptOut element =
-                  match element with
-                  | StealthAmbusher -> Some(Coverage.Hidden "   ")
-                  | e -> completeMapping e
+            test "a blank-reason opt-out is Unreasoned — indistinguishable from forgetting, so rejected" {
+                let blankOptOut element =
+                    match element with
+                    | StealthAmbusher -> Some(Coverage.Hidden "   ")
+                    | e -> completeMapping e
 
-              let report = Coverage.check declaredElements blankOptOut
+                let report = Coverage.check declaredElements blankOptOut
 
-              Expect.equal report.Verdict Coverage.HasGaps "a blank opt-out must not pass"
-              Expect.equal report.Findings.Head.Gap Coverage.Unreasoned "the gap is Unreasoned"
-              Expect.isEmpty report.OptedOut "a blank-reason opt-out is not a ledger row"
-          }
+                Expect.equal report.Verdict Coverage.HasGaps "a blank opt-out must not pass"
+                Expect.equal report.Findings.Head.Gap Coverage.Unreasoned "the gap is Unreasoned"
+                Expect.isEmpty report.OptedOut "a blank-reason opt-out is not a ledger row"
+            }
 
-          test "multiple gaps are reported in DECLARED-element order (deterministic)" {
-              // Forget Door and Explosion; leave the rest correct.
-              let mapping element =
-                  match element with
-                  | Door -> None
-                  | Explosion -> None
-                  | e -> completeMapping e
+            test "multiple gaps are reported in DECLARED-element order (deterministic)" {
+                // Forget Door and Explosion; leave the rest correct.
+                let mapping element =
+                    match element with
+                    | Door -> None
+                    | Explosion -> None
+                    | e -> completeMapping e
 
-              let report = Coverage.check declaredElements mapping
+                let report = Coverage.check declaredElements mapping
 
-              Expect.equal
-                  (report.Findings |> List.map (fun f -> f.Element))
-                  [ Door; Explosion ]
-                  "findings follow the declared order, not resolution or hash order"
+                Expect.equal
+                    (report.Findings |> List.map (fun f -> f.Element))
+                    [ Door; Explosion ]
+                    "findings follow the declared order, not resolution or hash order"
 
-              // Determinism: re-checking an equal input yields an equal report.
-              let again = Coverage.check declaredElements mapping
-              Expect.equal report again "equal input => equal report"
-          }
+                // Determinism: re-checking an equal input yields an equal report.
+                let again = Coverage.check declaredElements mapping
+                Expect.equal report again "equal input => equal report"
+            }
 
-          test "checkMap ≡ check over Map.tryFind — a forgotten element is simply an absent key" {
-              // The canonical pattern: the mapping is a lookup table; a new element with no row returns
-              // `None` from `tryFind` and reds coverage.
-              let table =
-                  declaredElements
-                  |> List.choose (fun e -> completeMapping e |> Option.map (fun r -> e, r))
-                  |> Map.ofList
-                  // drop Bomb's row to simulate a forgotten element
-                  |> Map.remove Bomb
+            test "checkMap ≡ check over Map.tryFind — a forgotten element is simply an absent key" {
+                // The canonical pattern: the mapping is a lookup table; a new element with no row returns
+                // `None` from `tryFind` and reds coverage.
+                let table =
+                    declaredElements
+                    |> List.choose (fun e -> completeMapping e |> Option.map (fun r -> e, r))
+                    |> Map.ofList
+                    // drop Bomb's row to simulate a forgotten element
+                    |> Map.remove Bomb
 
-              let viaMap = Coverage.checkMap declaredElements table
-              let viaCheck = Coverage.check declaredElements (fun e -> Map.tryFind e table)
+                let viaMap = Coverage.checkMap declaredElements table
+                let viaCheck = Coverage.check declaredElements (fun e -> Map.tryFind e table)
 
-              Expect.equal viaMap viaCheck "checkMap is check over Map.tryFind"
-              Expect.equal viaMap.Verdict Coverage.HasGaps "the absent Bomb key reds coverage"
-              Expect.equal viaMap.Findings.Head.Element Bomb "the absent key is the reported gap"
-          }
+                Expect.equal viaMap viaCheck "checkMap is check over Map.tryFind"
+                Expect.equal viaMap.Verdict Coverage.HasGaps "the absent Bomb key reds coverage"
+                Expect.equal viaMap.Findings.Head.Element Bomb "the absent key is the reported gap"
+            }
 
-          test "the empty roster is trivially Covered" {
-              let report = Coverage.check ([]: GameElement list) completeMapping
-              Expect.equal report.Verdict Coverage.Covered "no elements => nothing to omit"
-              Expect.isEmpty report.Findings "no findings on an empty roster"
-              Expect.isEmpty report.OptedOut "no ledger rows on an empty roster"
-          } ]
+            test "the empty roster is trivially Covered" {
+                let report = Coverage.check ([]: GameElement list) completeMapping
+                Expect.equal report.Verdict Coverage.Covered "no elements => nothing to omit"
+                Expect.isEmpty report.Findings "no findings on an empty roster"
+                Expect.isEmpty report.OptedOut "no ledger rows on an empty roster"
+            }
+        ]

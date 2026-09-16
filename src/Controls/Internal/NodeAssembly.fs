@@ -27,9 +27,12 @@ module internal NodeAssembly =
         let label = c.Content |> Option.defaultValue c.Kind
 
         let fill =
-            if disabledOrReadOnly c then theme.Muted
-            elif boolValue "selected" false c.Attributes then theme.Accent
-            else theme.Background
+            if disabledOrReadOnly c then
+                theme.Muted
+            elif boolValue "selected" false c.Attributes then
+                theme.Accent
+            else
+                theme.Background
 
         let fontSize =
             fittedFontSize theme.FontSize 6.0 box.Width box.Height theme.FontFamily label
@@ -42,13 +45,22 @@ module internal NodeAssembly =
             ellipsize theme.FontFamily fontSize (box.Width - 2.0 * theme.SpaceSm) label
 
         let labelRun =
-            { Text = shown
-              Position = { X = box.X + theme.SpaceSm; Y = textY }
-              Font = { Family = theme.FontFamily; Size = fontSize; Weight = None }
-              Paint = Paint.fill theme.Foreground }
+            {
+                Text = shown
+                Position = { X = box.X + theme.SpaceSm; Y = textY }
+                Font =
+                    {
+                        Family = theme.FontFamily
+                        Size = fontSize
+                        Weight = None
+                    }
+                Paint = Paint.fill theme.Foreground
+            }
 
-        [ Scene.rectangle (box.X, box.Y, box.Width, box.Height) fill
-          Scene.clipped (RectClip box) (Scene.textRun labelRun) ]
+        [
+            Scene.rectangle (box.X, box.Y, box.Width, box.Height) fill
+            Scene.clipped (RectClip box) (Scene.textRun labelRun)
+        ]
 
     let renderNode (theme: Theme) y (control: Control<'msg>) =
         let width = nodeWidth control
@@ -61,19 +73,43 @@ module internal NodeAssembly =
             // Title band on top; control-specific geometry below it (within the canvas).
             let pad = theme.SpaceSm
             let titleH = theme.ControlHeight
-            let box: Rect = { X = pad; Y = y + titleH; Width = width - 2.0 * pad; Height = height - titleH - pad }
+
+            let box: Rect =
+                {
+                    X = pad
+                    Y = y + titleH
+                    Width = width - 2.0 * pad
+                    Height = height - titleH - pad
+                }
             // Title band shows the control's NAME (the schematic below shows its content); this
             // fixes composite-lowering title bleed and content duplication for rich families.
             let title =
                 Scene.clipped
-                    (RectClip { X = 0.0; Y = y; Width = width; Height = titleH })
+                    (RectClip
+                        {
+                            X = 0.0
+                            Y = y
+                            Width = width
+                            Height = titleH
+                        })
                     (mkText theme theme.SpaceSm (y + 19.0) 13.0 theme.Foreground (prettyKind control.Kind))
+
             Scene.group (title :: faithfulContent theme box control)
         else
             // Text / container controls: the control IS its text, so box + clipped label is faithful.
             // The box here is this node's flatten-and-stack slot; `leafContent` makes the content
             // decision (fill/fit/ellipsize) identical to the product paint, which uses the real Yoga box.
-            Scene.group (leafContent theme { X = 0.0; Y = y; Width = width; Height = height } control)
+            Scene.group (
+                leafContent
+                    theme
+                    {
+                        X = 0.0
+                        Y = y
+                        Width = width
+                        Height = height
+                    }
+                    control
+            )
 
     let renderScene (theme: Theme) (control: Control<'msg>) =
         let controls = recursively (fun control -> [ control ]) control
@@ -139,7 +175,13 @@ module internal NodeAssembly =
         match Map.tryFind id boundsById with
         | None -> []
         | Some(b: FS.GG.UI.Layout.LayoutBounds) ->
-            let box: Rect = { X = b.X; Y = b.Y; Width = b.Width; Height = b.Height }
+            let box: Rect =
+                {
+                    X = b.X
+                    Y = b.Y
+                    Width = b.Width
+                    Height = b.Height
+                }
 
             if List.isEmpty c.Children then
                 paintLeaf theme box c
@@ -153,12 +195,16 @@ module internal NodeAssembly =
                     // Feature 150: the scroll affordance uses the same intrinsic extent path exposed by
                     // `Control.scrollViewport`, not a rendered descendant-bounds walk.
                     let layoutNode = toLayout path c
-                    let extent = FS.GG.UI.Layout.Layout.contentExtent box.Width box.Height (layoutNode.Children |> List.tryHead)
+
+                    let extent =
+                        FS.GG.UI.Layout.Layout.contentExtent box.Width box.Height (layoutNode.Children |> List.tryHead)
                     // Feature 175: thread the live offset (stamped by the host) so the thumb tracks.
                     let scroll: ScrollState =
-                        { Offset = scrollOffsetOf c.Attributes
-                          ContentHeight = extent.ContentHeight
-                          ViewportHeight = box.Height }
+                        {
+                            Offset = scrollOffsetOf c.Attributes
+                            ContentHeight = extent.ContentHeight
+                            ViewportHeight = box.Height
+                        }
 
                     frame @ scrollAffordance theme box scroll
                 else

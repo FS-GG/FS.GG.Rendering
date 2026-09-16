@@ -38,9 +38,11 @@ module Coverage =
     /// One reported coverage issue: the offending element plus a human-readable message. `'element` is the
     /// game's own element type.
     type Finding<'element> =
-        { Element: 'element
-          Gap: Gap
-          Message: string }
+        {
+            Element: 'element
+            Gap: Gap
+            Message: string
+        }
 
     /// Overall one-line signal — a pure function of the input. `Covered` iff `Findings` is empty.
     type Verdict =
@@ -49,13 +51,15 @@ module Coverage =
 
     /// The check's whole output — reproducible from the input alone.
     type Report<'element> =
-        { /// findings in DECLARED-element order; re-checking an equal input yields an equal report.
-          Findings: Finding<'element> list
-          /// the explicit opt-out ledger: every element deliberately `Hidden`, paired with its stated
-          /// mechanic, in declared order — the audit trail proving each non-render was a DECISION, not an
-          /// omission. Only reasoned opt-outs appear here; a blank-reason one is a `Finding`, not a row.
-          OptedOut: ('element * string) list
-          Verdict: Verdict }
+        {
+            /// findings in DECLARED-element order; re-checking an equal input yields an equal report.
+            Findings: Finding<'element> list
+            /// the explicit opt-out ledger: every element deliberately `Hidden`, paired with its stated
+            /// mechanic, in declared order — the audit trail proving each non-render was a DECISION, not an
+            /// omission. Only reasoned opt-outs appear here; a blank-reason one is a `Finding`, not a row.
+            OptedOut: ('element * string) list
+            Verdict: Verdict
+        }
 
     /// The coverage check. `elements` is the game's DECLARED renderable-element set; `resolve` is its
     /// element->visual mapping — `Some representation` for a handled element, `None` for one the mapping
@@ -68,5 +72,4 @@ module Coverage =
     /// `check` against a lookup `Map` — the canonical pattern spelled out: a forgotten element is an
     /// absent key. `checkMap elements table` is exactly `check elements (fun e -> Map.tryFind e table)`.
     val checkMap:
-        elements: 'element list -> table: Map<'element, Representation> -> Report<'element>
-            when 'element: comparison
+        elements: 'element list -> table: Map<'element, Representation> -> Report<'element> when 'element: comparison

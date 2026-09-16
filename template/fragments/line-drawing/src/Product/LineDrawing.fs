@@ -45,18 +45,23 @@ module LineDrawing =
         // rounding-mode drift — the same endpoints always produce the same steps.
         let mutable err = dx - dy
         let mutable go = true
+
         while go do
             acc.Add { Col = x; Row = y }
+
             if x = b.Col && y = b.Row then
                 go <- false
             else
                 let e2 = 2L * err
+
                 if e2 > -dy then
                     err <- err - dy
                     x <- x + sx
+
                 if e2 < dx then
                     err <- err + dx
                     y <- y + sy
+
         List.ofSeq acc
 
     /// The ordered tiles the segment from `a` to `b` *touches* — the **supercover** walk, strictly
@@ -85,15 +90,19 @@ module LineDrawing =
         // 4-connected rather than cutting the corner diagonally.
         let mutable ix = 0L
         let mutable iy = 0L
+
         while ix < nx || iy < ny do
             let cmp = (1L + 2L * ix) * ny - (1L + 2L * iy) * nx
+
             if iy >= ny || (ix < nx && cmp <= 0L) then
                 x <- x + sx
                 ix <- ix + 1L
             else
                 y <- y + sy
                 iy <- iy + 1L
+
             acc.Add { Col = x; Row = y }
+
         List.ofSeq acc
 
     /// Grid line-of-sight: `true` when no tile strictly between `a` and `b` fails `isTransparent`
@@ -102,5 +111,4 @@ module LineDrawing =
     /// through a diagonal wall join. The endpoints themselves are never tested (you can look FROM and AT
     /// an opaque tile). `a = b` returns `true`. Total on an always-false / always-true predicate.
     let lineOfSight (isTransparent: Cell -> bool) (a: Cell) (b: Cell) : bool =
-        supercover a b
-        |> List.forall (fun c -> c = a || c = b || isTransparent c)
+        supercover a b |> List.forall (fun c -> c = a || c = b || isTransparent c)

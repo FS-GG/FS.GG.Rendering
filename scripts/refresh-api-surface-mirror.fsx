@@ -95,7 +95,9 @@ open FsGg.ApiSurface
 let repoRoot = Path.GetFullPath(Path.Combine(__SOURCE_DIRECTORY__, ".."))
 let manifestPath = Path.Combine(repoRoot, "scripts", "api-surface-manifest.txt")
 let mirrorRoot = Path.Combine(repoRoot, "template", "base", "docs", "api-surface")
-let pinsProps = Path.Combine(repoRoot, "template", "base", "Directory.Packages.props")
+
+let pinsProps =
+    Path.Combine(repoRoot, "template", "base", "Directory.Packages.props")
 
 // #1101 — THE PRE-#782 BRIDGE IS GONE. There is no `legacyPre782Surfaces` map any more, and no
 // `scripts/legacy-api-surfaces/`. Every package, FS.GG.Contracts included, is read from its own packed
@@ -190,6 +192,7 @@ let pins =
 /// only honest source for them, and it can answer.
 let releaseWindowProjects: Map<string, string> =
     let pin = pins |> Map.find "FS.GG.UI.Scene"
+
     let pending =
         match ReleaseWindow.versionAheadOfTags repoRoot "fs-gg-ui/v*" "fs-gg-ui/v" pin with
         | Ok value -> value
@@ -213,7 +216,8 @@ let releaseLocalFeed =
         None
     else
         match Environment.GetEnvironmentVariable "FS_GG_PRODUCT_LOCAL_FEED" with
-        | null | "" -> fail "FS_GG_PRODUCT_LOCAL_FEED is required during the exact-head release window"
+        | null
+        | "" -> fail "FS_GG_PRODUCT_LOCAL_FEED is required during the exact-head release window"
         | feed when not (Path.IsPathFullyQualified feed) ->
             fail $"FS_GG_PRODUCT_LOCAL_FEED must be an absolute path, got {feed}"
         | feed when not (Directory.Exists feed) -> fail $"FS_GG_PRODUCT_LOCAL_FEED does not exist: {feed}"
@@ -221,8 +225,10 @@ let releaseLocalFeed =
             for KeyValue(id, _) in releaseWindowProjects do
                 let version = pins |> Map.find id
                 let package = Path.Combine(feed, $"{id}.{version}.nupkg")
+
                 if not (File.Exists package) then
                     fail $"exact-head release feed is missing {id} {version}: {package}"
+
             Some feed
 
 // ---------------------------------------------------------------------------------------------
@@ -273,7 +279,8 @@ let restorePins () =
 
         let releaseSource =
             match releaseLocalFeed with
-            | Some feed -> $"""    <add key="exact-head-release" value="{Security.SecurityElement.Escape feed}" />
+            | Some feed ->
+                $"""    <add key="exact-head-release" value="{Security.SecurityElement.Escape feed}" />
 """
             | None -> ""
 
@@ -298,13 +305,20 @@ let restorePins () =
 
         // Bounded: an unbounded wait turns a feed outage into a hung gate rather than a red one.
         if not (p.WaitForExit(10 * 60 * 1000)) then
-            (try p.Kill true with _ -> ())
+            (try
+                p.Kill true
+             with _ ->
+                 ())
+
             fail "restore of the pinned packages timed out after 10 minutes"
 
         if p.ExitCode <> 0 then
             fail $"restore of the pinned packages failed:\n{out}\n{err}"
     finally
-        try Directory.Delete(work, true) with _ -> ()
+        try
+            Directory.Delete(work, true)
+        with _ ->
+            ()
 
 // ---------------------------------------------------------------------------------------------
 // #1101 AC3 — WHEN A PIN CARRIES NO `api-surface/`, SAY WHAT CAN ACTUALLY BE DONE ABOUT IT.
@@ -347,6 +361,7 @@ let private versionKey (v: string) =
         | _ -> 0
 
     let seg = v.Split('.')
+
     (part (Array.tryItem 0 seg |> Option.defaultValue "0"),
      part (Array.tryItem 1 seg |> Option.defaultValue "0"),
      part (Array.tryItem 2 seg |> Option.defaultValue "0"))
@@ -359,7 +374,10 @@ let packingReleaseAtOrAbove (id: string) (pinned: string) : Result<string option
 
     try
         let http = probeHttp.Force()
-        let indexUrl = $"https://api.nuget.org/v3-flatcontainer/{id.ToLowerInvariant()}/index.json"
+
+        let indexUrl =
+            $"https://api.nuget.org/v3-flatcontainer/{id.ToLowerInvariant()}/index.json"
+
         let resp = http.GetAsync(indexUrl).GetAwaiter().GetResult()
 
         if not resp.IsSuccessStatusCode then
@@ -452,7 +470,10 @@ let loadPinSurface () =
             Path.Combine(probePackagesDir, id.ToLowerInvariant(), version, "api-surface")
 
         let surfaceDir =
-            if Directory.Exists dir then dir else fail (noSurfaceFailure id version)
+            if Directory.Exists dir then
+                dir
+            else
+                fail (noSurfaceFailure id version)
 
         let sources =
             Directory.GetFiles(surfaceDir, "*.fsi", SearchOption.AllDirectories)
@@ -465,7 +486,8 @@ let loadPinSurface () =
                 let nodes, unparsed = parseFsi (File.ReadAllLines f |> Array.toList)
 
                 if not unparsed.IsEmpty then
-                    fail $"{id}/{rel}: {unparsed.Length} line(s) the .fsi reader could not classify, first: {unparsed.Head.Trim()}"
+                    fail
+                        $"{id}/{rel}: {unparsed.Length} line(s) the .fsi reader could not classify, first: {unparsed.Head.Trim()}"
 
                 rel, nodes)
             |> Map.ofList
@@ -481,32 +503,36 @@ let loadPinSurface () =
 // ---------------------------------------------------------------------------------------------
 
 type Include =
-    { Source: string // the pin's `.fsi`, e.g. "Types.fsi"
-      Kind: string
-      Path: string } // dotted path within that file
+    {
+        Source: string // the pin's `.fsi`, e.g. "Types.fsi"
+        Kind: string
+        Path: string
+    } // dotted path within that file
 
 type Stanza =
-    { File: string // mirror-relative, e.g. "Scene/Scene.fsi"
-      Skill: string option
-      Header: string list // verbatim extra header lines (the "Mirrored from" note)
-      Namespace: string
-      Package: string
-      Opens: string list
-      Includes: Include list
-      /// (source, kind, path) -> the doc lead that REPLACES the pin's. The mirror-only prose.
-      Prose: Map<string * string * string, string list>
-      /// (source, kind, path) -> (anchor line, the doc block to splice in ABOVE it).
-      ///
-      /// A type is emitted VERBATIM — the mirror has never curated the inside of one, which is what
-      /// makes that safe — so prose that teaches a single UNION CASE has nowhere to attach as a lead.
-      /// 63 doc lines are exactly this: `KeyboardEffect`'s "Issue 456: NOT INTERPRETED BY ANY HOST"
-      /// warning sits on the `| RequestHostKeyCapture` case and would otherwise be dropped on the
-      /// floor by a generator that copies the pin's type text and nothing else.
-      ///
-      /// Anchored on the TEXT of the line it precedes rather than on a line number: a line number
-      /// silently re-targets the moment the pin re-orders a case, and would splice a warning onto the
-      /// wrong case — worse than losing it. An anchor that no longer matches is a hard error.
-      BodyProse: Map<string * string * string, (string * string list) list> }
+    {
+        File: string // mirror-relative, e.g. "Scene/Scene.fsi"
+        Skill: string option
+        Header: string list // verbatim extra header lines (the "Mirrored from" note)
+        Namespace: string
+        Package: string
+        Opens: string list
+        Includes: Include list
+        /// (source, kind, path) -> the doc lead that REPLACES the pin's. The mirror-only prose.
+        Prose: Map<string * string * string, string list>
+        /// (source, kind, path) -> (anchor line, the doc block to splice in ABOVE it).
+        ///
+        /// A type is emitted VERBATIM — the mirror has never curated the inside of one, which is what
+        /// makes that safe — so prose that teaches a single UNION CASE has nowhere to attach as a lead.
+        /// 63 doc lines are exactly this: `KeyboardEffect`'s "Issue 456: NOT INTERPRETED BY ANY HOST"
+        /// warning sits on the `| RequestHostKeyCapture` case and would otherwise be dropped on the
+        /// floor by a generator that copies the pin's type text and nothing else.
+        ///
+        /// Anchored on the TEXT of the line it precedes rather than on a line number: a line number
+        /// silently re-targets the moment the pin re-orders a case, and would splice a warning onto the
+        /// wrong case — worse than losing it. An anchor that no longer matches is a hard error.
+        BodyProse: Map<string * string * string, (string * string list) list>
+    }
 
 let parseManifest (path: string) : Stanza list * Coverage.MemberKey list =
     if not (File.Exists path) then
@@ -534,12 +560,21 @@ let parseManifest (path: string) : Stanza list * Coverage.MemberKey list =
             ()
         elif s.StartsWith "| " || s = "|" then
             // a prose continuation line
-            let body = if s = "|" then "" else line.Substring(line.IndexOf "| " + 2)
+            let body =
+                if s = "|" then
+                    ""
+                else
+                    line.Substring(line.IndexOf "| " + 2)
 
             match cur, proseKey, bodyKey with
             | Some c, Some k, _ ->
                 let existing = c.Prose |> Map.tryFind k |> Option.defaultValue []
-                cur <- Some { c with Prose = c.Prose |> Map.add k (existing @ [ body ]) }
+
+                cur <-
+                    Some
+                        { c with
+                            Prose = c.Prose |> Map.add k (existing @ [ body ])
+                        }
             | Some c, None, Some(src, kind, p, anchor) ->
                 let key = (src, kind, p)
                 let existing = c.BodyProse |> Map.tryFind key |> Option.defaultValue []
@@ -548,7 +583,11 @@ let parseManifest (path: string) : Stanza list * Coverage.MemberKey list =
                     existing
                     |> List.map (fun (a, ls) -> if a = anchor then a, ls @ [ body ] else a, ls)
 
-                cur <- Some { c with BodyProse = c.BodyProse |> Map.add key updated }
+                cur <-
+                    Some
+                        { c with
+                            BodyProse = c.BodyProse |> Map.add key updated
+                        }
             | _ -> fail $"manifest: prose line outside a `prose`/`proseat` stanza: {s}"
         else
             proseKey <- None
@@ -566,15 +605,17 @@ let parseManifest (path: string) : Stanza list * Coverage.MemberKey list =
 
                 cur <-
                     Some
-                        { File = String.concat " " rest
-                          Skill = None
-                          Header = []
-                          Namespace = ""
-                          Package = ""
-                          Opens = []
-                          Includes = []
-                          Prose = Map.empty
-                          BodyProse = Map.empty }
+                        {
+                            File = String.concat " " rest
+                            Skill = None
+                            Header = []
+                            Namespace = ""
+                            Package = ""
+                            Opens = []
+                            Includes = []
+                            Prose = Map.empty
+                            BodyProse = Map.empty
+                        }
             | _ ->
                 match cur with
                 | None -> fail $"manifest: `{parts.Head}` before any `file` stanza"
@@ -591,10 +632,16 @@ let parseManifest (path: string) : Stanza list * Coverage.MemberKey list =
                         cur <-
                             Some
                                 { c with
-                                    Includes = c.Includes @ [ { Source = src; Kind = kind; Path = p } ] }
+                                    Includes = c.Includes @ [ { Source = src; Kind = kind; Path = p } ]
+                                }
                     | [ "prose"; src; kind; p ] ->
                         proseKey <- Some(src, kind, p)
-                        cur <- Some { c with Prose = c.Prose |> Map.add (src, kind, p) [] }
+
+                        cur <-
+                            Some
+                                { c with
+                                    Prose = c.Prose |> Map.add (src, kind, p) []
+                                }
                     | "proseat" :: _ ->
                         // `proseat <src> <kind> <path> ::: <anchor line, verbatim>`
                         let body = s.Substring(s.IndexOf "proseat" + 7).Trim()
@@ -606,7 +653,12 @@ let parseManifest (path: string) : Stanza list * Coverage.MemberKey list =
                                 bodyKey <- Some(src, kind, p, anchor)
                                 let key = (src, kind, p)
                                 let existing = c.BodyProse |> Map.tryFind key |> Option.defaultValue []
-                                cur <- Some { c with BodyProse = c.BodyProse |> Map.add key (existing @ [ (anchor, []) ]) }
+
+                                cur <-
+                                    Some
+                                        { c with
+                                            BodyProse = c.BodyProse |> Map.add key (existing @ [ (anchor, []) ])
+                                        }
                             | _ -> fail $"manifest: malformed proseat target: {head}"
                         | _ -> fail $"manifest: proseat needs `<src> <kind> <path> ::: <anchor>`: {s}"
                     | _ -> fail $"manifest: unrecognised line: {s}"
@@ -626,27 +678,33 @@ let private isInternal (n: Node) =
 
 /// Project a parse `Node` onto the minimal shape the coverage decision consumes.
 let rec private toDecl (n: Node) : Coverage.Decl =
-    { Kind = n.Kind
-      Name = n.Name
-      Internal = isInternal n
-      Children = n.Children |> List.map toDecl }
+    {
+        Kind = n.Kind
+        Name = n.Name
+        Internal = isInternal n
+        Children = n.Children |> List.map toDecl
+    }
 
 /// Every public `type`/`val`/`and` the pinned packages export, as coverage keys. The pruning and the
 /// group-accessibility inheritance live in `Coverage.publicMembers` (tested there); this only restores the
 /// surface and projects it.
 let publicUniverse (surface: Map<string, Map<string, Node list>>) : Coverage.MemberKey list =
-    [ for KeyValue(pkg, files) in surface do
-        for KeyValue(source, nodes) in files do
-            yield! Coverage.publicMembers pkg source (nodes |> List.map toDecl) ]
+    [
+        for KeyValue(pkg, files) in surface do
+            for KeyValue(source, nodes) in files do
+                yield! Coverage.publicMembers pkg source (nodes |> List.map toDecl)
+    ]
 
 /// The manifest's taught set, restricted to the kinds the universe carries: each stanza's `+` includes,
 /// keyed by that stanza's package. (`+ ... module` lines are structural, like the modules they name, and
 /// are not coverage keys.)
 let taughtSet (stanzas: Stanza list) : Set<Coverage.MemberKey> =
-    [ for st in stanzas do
-        for inc in st.Includes do
-            if inc.Kind = "type" || inc.Kind = "val" || inc.Kind = "and" then
-                yield Coverage.key st.Package inc.Source inc.Kind inc.Path ]
+    [
+        for st in stanzas do
+            for inc in st.Includes do
+                if inc.Kind = "type" || inc.Kind = "val" || inc.Kind = "and" then
+                    yield Coverage.key st.Package inc.Source inc.Kind inc.Path
+    ]
     |> Set.ofList
 
 // ---------------------------------------------------------------------------------------------
@@ -669,6 +727,7 @@ let render (surface: Map<string, Map<string, Node list>>) (st: Stanza) : string 
 
     if not st.Opens.IsEmpty then
         sb.AppendLine() |> ignore
+
         for o in st.Opens do
             sb.AppendLine($"open {o}") |> ignore
 
@@ -774,8 +833,8 @@ let render (surface: Map<string, Map<string, Node list>>) (st: Stanza) : string 
             let siblings = nodes |> List.map (fun n -> n.Kind, n.Name)
 
             match siblings |> List.tryFindIndex (fun (k, nm) -> nm = inc.Path && k = "and") with
-            | None | Some 0 ->
-                fail $"{st.File}: `and {inc.Path}` is not a continuation in {st.Package}/{inc.Source}."
+            | None
+            | Some 0 -> fail $"{st.File}: `and {inc.Path}` is not a continuation in {st.Package}/{inc.Source}."
             | Some idx ->
                 let pk, pn = siblings.[idx - 1]
 
@@ -817,7 +876,13 @@ let render (surface: Map<string, Map<string, Node list>>) (st: Stanza) : string 
                 // Physics`'s "Every type here is scoped to `Physics` rather than promoted alongside
                 // `Point`/`Rect`" — has no way to reach the page.
                 let ancLead =
-                    leadOf { Source = inc.Source; Kind = "module"; Path = apath } anode
+                    leadOf
+                        {
+                            Source = inc.Source
+                            Kind = "module"
+                            Path = apath
+                        }
+                        anode
 
                 for l in reindent (indent - srcIndent) (ancLead @ anode.Decl) do
                     sb.AppendLine l |> ignore)
@@ -835,7 +900,10 @@ let render (surface: Map<string, Map<string, Node list>>) (st: Stanza) : string 
                     sb.AppendLine l |> ignore
         else
             let indent = ancestors.Length * 4
-            let text = leadOf inc node @ spliceBody inc (node.Text |> List.skip node.Lead.Length)
+
+            let text =
+                leadOf inc node @ spliceBody inc (node.Text |> List.skip node.Lead.Length)
+
             let srcIndent = node.Decl.Head.Length - node.Decl.Head.TrimStart().Length
 
             if node.Spaced then
@@ -884,7 +952,13 @@ let malformed =
     |> List.choose (fun st ->
         let includes =
             st.Includes
-            |> List.map (fun (inc: Include) -> ({ Source = inc.Source; Kind = inc.Kind; Path = inc.Path }: Coverage.Include))
+            |> List.map (fun (inc: Include) ->
+                ({
+                    Source = inc.Source
+                    Kind = inc.Kind
+                    Path = inc.Path
+                }
+                : Coverage.Include))
 
         match Coverage.duplicateIncludes includes with
         | [] -> None
@@ -893,10 +967,17 @@ let malformed =
 if not (List.isEmpty malformed) then
     for file, dups in malformed do
         for d in dups do
-            eprintfn "duplicate include in %s: `+ %s %s %s` is listed more than once — it renders that many times (the Pathfinding Step/Reach triplication, TowerDefense1#4)." file d.Source d.Kind d.Path
+            eprintfn
+                "duplicate include in %s: `+ %s %s %s` is listed more than once — it renders that many times (the Pathfinding Step/Reach triplication, TowerDefense1#4)."
+                file
+                d.Source
+                d.Kind
+                d.Path
 
     let total = malformed |> List.sumBy (fun (_, dups) -> List.length dups)
-    fail $"{total} duplicate `+` include(s) across {List.length malformed} stanza(s) — delete the repeated line(s). Each `+` renders once, so a member listed N times appears N times in the mirror."
+
+    fail
+        $"{total} duplicate `+` include(s) across {List.length malformed} stanza(s) — delete the repeated line(s). Each `+` renders once, so a member listed N times appears N times in the mirror."
 
 // #925 — reconcile the pin's public surface against the manifest's teach + waive decisions. Computed in
 // every mode: you cannot "regenerate" your way out of an untaught member — it must be taught or waived, so
@@ -919,13 +1000,18 @@ if emitWaivers then
 let mutable drift = 0
 
 for st in stanzas do
-    let target = Path.Combine(mirrorRoot, st.File.Replace('/', Path.DirectorySeparatorChar))
+    let target =
+        Path.Combine(mirrorRoot, st.File.Replace('/', Path.DirectorySeparatorChar))
+
     let text = render surface st
 
     Directory.CreateDirectory(Path.GetDirectoryName target) |> ignore
 
     let existing =
-        if File.Exists target then File.ReadAllText(target).Replace("\r\n", "\n") else ""
+        if File.Exists target then
+            File.ReadAllText(target).Replace("\r\n", "\n")
+        else
+            ""
 
     if existing <> text then
         drift <- drift + 1
@@ -938,7 +1024,9 @@ for st in stanzas do
 // A mirror file nobody's stanza claims is a file the generator does not own — and after this item the
 // generator owns the whole tree. Report it rather than leaving an orphan the gate then blesses forever.
 let declared =
-    stanzas |> List.map (fun s -> Path.GetFullPath(Path.Combine(mirrorRoot, s.File))) |> Set.ofList
+    stanzas
+    |> List.map (fun s -> Path.GetFullPath(Path.Combine(mirrorRoot, s.File)))
+    |> Set.ofList
 
 let orphans =
     if Directory.Exists mirrorRoot then
@@ -969,9 +1057,7 @@ if not (List.isEmpty coverage.StaleWaivers) then
 // #925 — the gap this item closes: a public member the pin ships that is taught NOWHERE and waived
 // nowhere. Silent under the drift check (the mirror and its regeneration agree on omitting it), loud here.
 if not (List.isEmpty coverage.Untaught) then
-    eprintfn
-        "%d public member(s) the pin ships are neither taught nor waived:"
-        coverage.Untaught.Length
+    eprintfn "%d public member(s) the pin ships are neither taught nor waived:" coverage.Untaught.Length
 
     for m in coverage.Untaught do
         eprintfn "  %s %s %s %s" m.Package m.Source m.Kind m.Path
@@ -1009,8 +1095,4 @@ if not (List.isEmpty profileGaps) then
 if checkOnly && drift > 0 then
     fail $"{drift} mirror file(s) differ from what the pin + manifest generate"
 
-printfn
-    "api-surface mirror: %d file(s) from %d pinned package(s); %d rewritten"
-    stanzas.Length
-    pins.Count
-    drift
+printfn "api-surface mirror: %d file(s) from %d pinned package(s); %d rewritten" stanzas.Length pins.Count drift

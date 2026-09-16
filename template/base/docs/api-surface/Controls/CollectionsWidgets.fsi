@@ -7,33 +7,43 @@ open FS.GG.UI.Controls
 /// required. Reuses the existing `Collections` model — no parallel state type
 /// (FR-004/SC-003). `OnSelected = None` lowers to no binding.
 type ListViewProps<'msg> =
-    { Id: ControlId
-      Items: string list
-      OnSelected: (string -> 'msg) option }
+    {
+        Id: ControlId
+        Items: string list
+        OnSelected: (string -> 'msg) option
+    }
 
 /// Immutable, compiler-checked authoring surface for a single-selection list box.
 type ListBoxProps<'msg> =
-    { Id: ControlId
-      Items: string list
-      OnSelected: (string -> 'msg) option }
+    {
+        Id: ControlId
+        Items: string list
+        OnSelected: (string -> 'msg) option
+    }
 
 /// Immutable, compiler-checked authoring surface for a multi-selection list.
 type MultiSelectListProps<'msg> =
-    { Id: ControlId
-      Items: string list
-      OnChanged: (string list -> 'msg) option }
+    {
+        Id: ControlId
+        Items: string list
+        OnChanged: (string list -> 'msg) option
+    }
 
 /// Immutable, compiler-checked authoring surface for a compact combo box.
 type ComboBoxProps<'msg> =
-    { Id: ControlId
-      Items: string list
-      OnChanged: (string -> 'msg) option }
+    {
+        Id: ControlId
+        Items: string list
+        OnChanged: (string -> 'msg) option
+    }
 
 /// Immutable, compiler-checked authoring surface for a hierarchical tree view.
 type TreeViewProps<'msg> =
-    { Id: ControlId
-      Items: string list
-      OnSelected: (string -> 'msg) option }
+    {
+        Id: ControlId
+        Items: string list
+        OnSelected: (string -> 'msg) option
+    }
 
 /// Typed Props front door for the `ListView` control.
 module ListView =

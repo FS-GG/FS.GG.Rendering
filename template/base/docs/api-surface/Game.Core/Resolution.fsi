@@ -60,9 +60,11 @@ module Resolution =
     /// `Entered` is what a per-cell terrain tick folds over — a unit shoved across two lava tiles takes
     /// the tick twice — and it is the part the old `knockback` threw away.
     type Push =
-        { Entered: Cell list
-          Final: Cell
-          Outcome: PushStop }
+        {
+            Entered: Cell list
+            Final: Cell
+            Outcome: PushStop
+        }
 
     /// Public contract function exposed by the FS.GG.Game.Core package.
     /// Discrete grid displacement: advance from `start` by the per-cell delta `step` up to `distance`

@@ -35,11 +35,11 @@ module Animation =
                 let periodMs = max 1.0 interval.TotalMilliseconds
                 let period = int64 periodMs
 
-                let timer =
-                    new Timer((fun _ -> dispatch (toMsg interval)), null, period, period)
+                let timer = new Timer((fun _ -> dispatch (toMsg interval)), null, period, period)
 
                 { new IDisposable with
-                    member _.Dispose() = timer.Dispose() }
+                    member _.Dispose() = timer.Dispose()
+                }
 
             [ subId, start ]
         else

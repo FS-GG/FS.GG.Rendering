@@ -27,8 +27,8 @@ let stepped = clamp zero playfield (add pos (scale dt vel))
 printfn "pos %A + %g*vel -> %A (in [0,0]..%A)" pos dt stepped playfield
 
 // Cross into the scene vocabulary for rendering/layout — the one place bare Scene literals appear.
-let asPoint : Point = toPoint stepped
-let asRect : Rect = toRect stepped 24.0 24.0   // centered 24x24 hitbox, NO Width/Height labels on any model record
+let asPoint: Point = toPoint stepped
+let asRect: Rect = toRect stepped 24.0 24.0 // centered 24x24 hitbox, NO Width/Height labels on any model record
 printfn "toPoint -> %A" asPoint
 printfn "toRect (centered 24x24) -> %A" asRect
 

@@ -10,11 +10,13 @@ open FS.GG.UI.SkiaViewer
 
 module internal ViewerLaunchSupport =
     let makeFailure stage classification category message (lastDiagnostic: ViewerDiagnosticEvent option) =
-        { BlockedStage = stage
-          Classification = classification
-          DiagnosticCategory = category
-          Message = message
-          LastDiagnosticSummary = lastDiagnostic |> Option.map _.Message }
+        {
+            BlockedStage = stage
+            Classification = classification
+            DiagnosticCategory = category
+            Message = message
+            LastDiagnosticSummary = lastDiagnostic |> Option.map _.Message
+        }
 
     /// Issue #396: guard the FIRST product `View` — the startup frame produced before a persistent
     /// window opens, and the single frame of a one-shot run. Unlike `tryProductStep` (which drops a
@@ -39,13 +41,17 @@ module internal ViewerLaunchSupport =
             Result.Error(makeFailure App ProductDefect Startup "Viewer title must not be empty." None)
         elif options.InitialSize.Width <= 0 || options.InitialSize.Height <= 0 then
             Result.Error(makeFailure Window ProductDefect Startup "Viewer initial output size must be positive." None)
-        elif (match options.FrameRateCap with
-              | Some cap -> cap <= 0
-              | None -> false) then
+        elif
+            (match options.FrameRateCap with
+             | Some cap -> cap <= 0
+             | None -> false)
+        then
             Result.Error(makeFailure Window ProductDefect Startup "Viewer frame-rate cap must be positive." None)
-        elif (match options.LogicalSize with
-              | Some logical -> logical.Width <= 0 || logical.Height <= 0
-              | None -> false) then
+        elif
+            (match options.LogicalSize with
+             | Some logical -> logical.Width <= 0 || logical.Height <= 0
+             | None -> false)
+        then
             Result.Error(makeFailure Window ProductDefect Startup "Viewer logical size must be positive." None)
         else
             Result.Ok()
@@ -71,11 +77,27 @@ module internal ViewerLaunchSupport =
         let isSupportedOs = OperatingSystem.IsWindows() || OperatingSystem.IsLinux()
 
         if not isSupportedOs then
-            Some(makeFailure Window UnsupportedEnvironment EnvironmentSession $"Viewer smoke is unsupported on {Environment.OSVersion.Platform}." None)
-        elif OperatingSystem.IsLinux()
-             && String.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable "DISPLAY")
-             && String.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable "WAYLAND_DISPLAY") then
-            Some(makeFailure Window UnsupportedEnvironment EnvironmentSession "Viewer smoke requires DISPLAY or WAYLAND_DISPLAY on Linux." None)
+            Some(
+                makeFailure
+                    Window
+                    UnsupportedEnvironment
+                    EnvironmentSession
+                    $"Viewer smoke is unsupported on {Environment.OSVersion.Platform}."
+                    None
+            )
+        elif
+            OperatingSystem.IsLinux()
+            && String.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable "DISPLAY")
+            && String.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable "WAYLAND_DISPLAY")
+        then
+            Some(
+                makeFailure
+                    Window
+                    UnsupportedEnvironment
+                    EnvironmentSession
+                    "Viewer smoke requires DISPLAY or WAYLAND_DISPLAY on Linux."
+                    None
+            )
         else
             None
 
@@ -92,37 +114,38 @@ module internal ViewerLaunchSupport =
         let appCloseObserved = closeReason = Some AppRequestedClose
         let evidenceCloseObserved = closeReason = Some EvidenceRequestedClose
 
-        { Status = "ok"
-          Mode = "interactive-window"
-          Command = None
-          // A successful interactive launch presented through the live OpenGL host; name that
-          // backend from the single source of truth rather than a fixed guess (#135).
-          RendererMode = Host.GlHost.backendLabel
-          WindowOpened = windowOpened
-          WindowVisible =
-            if windowOpened && firstFramePresented then
-                ViewerObservedValue.Observed true
-            else
-                ViewerObservedValue.Observed false
-          FirstFramePresented = firstFramePresented
-          CloseReason = closeReason
-          UserCloseObserved = userCloseObserved
-          AppCloseObserved = appCloseObserved
-          EvidenceCloseObserved = evidenceCloseObserved
-          SelfClosedForEvidence = false
-          InputDispatch = inputDispatch
-          ExitPath = closeReason.IsSome
-          WindowDiagnostics = windowDiagnostics
-          OptionResults = optionResults
-          VisualEvidence = []
-          FailureClass = None
-          BlockedStage = None
-          Classification = None
-          Category = None
-          Message = message }
+        {
+            Status = "ok"
+            Mode = "interactive-window"
+            Command = None
+            // A successful interactive launch presented through the live OpenGL host; name that
+            // backend from the single source of truth rather than a fixed guess (#135).
+            RendererMode = Host.GlHost.backendLabel
+            WindowOpened = windowOpened
+            WindowVisible =
+                if windowOpened && firstFramePresented then
+                    ViewerObservedValue.Observed true
+                else
+                    ViewerObservedValue.Observed false
+            FirstFramePresented = firstFramePresented
+            CloseReason = closeReason
+            UserCloseObserved = userCloseObserved
+            AppCloseObserved = appCloseObserved
+            EvidenceCloseObserved = evidenceCloseObserved
+            SelfClosedForEvidence = false
+            InputDispatch = inputDispatch
+            ExitPath = closeReason.IsSome
+            WindowDiagnostics = windowDiagnostics
+            OptionResults = optionResults
+            VisualEvidence = []
+            FailureClass = None
+            BlockedStage = None
+            Classification = None
+            Category = None
+            Message = message
+        }
 
-    let toNativeSize (size: Size) =
-        Vector2D<int>(size.Width, size.Height)
+    let toNativeSize (size: Size) = Vector2D<int>(size.Width, size.Height)
 
     /// Resolve the default monitor's work-area origin/size for windowed-fullscreen
     /// coverage. Returns None on a headless / no-display host so callers degrade to
@@ -151,8 +174,7 @@ module internal ViewerLaunchSupport =
         with _ ->
             Unavailable
 
-    let nodeToScene node : Scene =
-        { Nodes = [ node ] }
+    let nodeToScene node : Scene = { Nodes = [ node ] }
 
     let toViewerFailure (diagnostic: Host.RenderDiagnostic) =
         let stage =

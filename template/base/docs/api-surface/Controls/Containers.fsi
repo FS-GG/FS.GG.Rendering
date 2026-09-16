@@ -5,27 +5,35 @@ open FS.GG.UI.Controls
 
 /// Immutable, compiler-checked authoring surface for a structured grid container.
 type GridProps<'msg> =
-    { Id: ControlId option
-      Children: Widget<'msg> list }
+    {
+        Id: ControlId option
+        Children: Widget<'msg> list
+    }
 
 /// Immutable, compiler-checked authoring surface for a docked-region container.
 type DockProps<'msg> =
-    { Id: ControlId option
-      Children: Widget<'msg> list }
+    {
+        Id: ControlId option
+        Children: Widget<'msg> list
+    }
 
 /// Immutable, compiler-checked authoring surface for a wrapping container.
 type WrapProps<'msg> =
-    { Id: ControlId option
-      Orientation: StackOrientation
-      Spacing: float
-      Children: Widget<'msg> list }
+    {
+        Id: ControlId option
+        Orientation: StackOrientation
+        Spacing: float
+        Children: Widget<'msg> list
+    }
 
 /// Immutable, compiler-checked authoring surface for a single-child border.
 type BorderProps<'msg> =
-    { Id: ControlId option
-      Thickness: float
-      Padding: float
-      Child: Widget<'msg> }
+    {
+        Id: ControlId option
+        Thickness: float
+        Padding: float
+        Child: Widget<'msg>
+    }
 
 /// Immutable, compiler-checked authoring surface for a general-purpose panel.
 /// Feature 095 (E5): `Header` / `Footer` are the two CLOSED, typed chrome-region slots a consumer
@@ -34,24 +42,30 @@ type BorderProps<'msg> =
 /// unfilled panel is byte-identical, FR-003). A filled `Header` lands ahead of `Children`, a
 /// filled `Footer` after — both inheriting E1–E4 + E2 retained identity by construction (FR-005).
 type PanelProps<'msg> =
-    { Id: ControlId option
-      Header: Widget<'msg> option
-      Footer: Widget<'msg> option
-      Children: Widget<'msg> list }
+    {
+        Id: ControlId option
+        Header: Widget<'msg> option
+        Footer: Widget<'msg> option
+        Children: Widget<'msg> list
+    }
 
 /// Immutable, compiler-checked authoring surface for a scrollable viewport. `child`
 /// required. `OnChanged = None` lowers to no binding.
 type ScrollViewerProps<'msg> =
-    { Id: ControlId
-      Child: Widget<'msg>
-      OnChanged: (float -> 'msg) option }
+    {
+        Id: ControlId
+        Child: Widget<'msg>
+        OnChanged: (float -> 'msg) option
+    }
 
 /// Immutable, compiler-checked authoring surface for a resizable two-region split.
 type SplitViewProps<'msg> =
-    { Id: ControlId option
-      Orientation: StackOrientation
-      Children: Widget<'msg> list
-      OnChanged: (float -> 'msg) option }
+    {
+        Id: ControlId option
+        Orientation: StackOrientation
+        Children: Widget<'msg> list
+        OnChanged: (float -> 'msg) option
+    }
 
 /// Typed Props front door for the `Grid` control.
 module Grid =

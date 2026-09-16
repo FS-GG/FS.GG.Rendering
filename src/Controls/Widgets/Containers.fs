@@ -3,41 +3,55 @@ namespace FS.GG.UI.Controls.Typed
 open FS.GG.UI.Controls
 
 type GridProps<'msg> =
-    { Id: ControlId option
-      Children: Widget<'msg> list }
+    {
+        Id: ControlId option
+        Children: Widget<'msg> list
+    }
 
 type DockProps<'msg> =
-    { Id: ControlId option
-      Children: Widget<'msg> list }
+    {
+        Id: ControlId option
+        Children: Widget<'msg> list
+    }
 
 type WrapProps<'msg> =
-    { Id: ControlId option
-      Orientation: StackOrientation
-      Spacing: float
-      Children: Widget<'msg> list }
+    {
+        Id: ControlId option
+        Orientation: StackOrientation
+        Spacing: float
+        Children: Widget<'msg> list
+    }
 
 type BorderProps<'msg> =
-    { Id: ControlId option
-      Thickness: float
-      Padding: float
-      Child: Widget<'msg> }
+    {
+        Id: ControlId option
+        Thickness: float
+        Padding: float
+        Child: Widget<'msg>
+    }
 
 type PanelProps<'msg> =
-    { Id: ControlId option
-      Header: Widget<'msg> option
-      Footer: Widget<'msg> option
-      Children: Widget<'msg> list }
+    {
+        Id: ControlId option
+        Header: Widget<'msg> option
+        Footer: Widget<'msg> option
+        Children: Widget<'msg> list
+    }
 
 type ScrollViewerProps<'msg> =
-    { Id: ControlId
-      Child: Widget<'msg>
-      OnChanged: (float -> 'msg) option }
+    {
+        Id: ControlId
+        Child: Widget<'msg>
+        OnChanged: (float -> 'msg) option
+    }
 
 type SplitViewProps<'msg> =
-    { Id: ControlId option
-      Orientation: StackOrientation
-      Children: Widget<'msg> list
-      OnChanged: (float -> 'msg) option }
+    {
+        Id: ControlId option
+        Orientation: StackOrientation
+        Children: Widget<'msg> list
+        OnChanged: (float -> 'msg) option
+    }
 
 // File-private lowering helpers — children/content lower through `Widget.toControl`
 // with order preserved (the 065 Stack pattern). Hidden by absence from Containers.fsi.
@@ -78,15 +92,22 @@ module Dock =
 
 module Wrap =
     let defaults: WrapProps<'msg> =
-        { Id = None; Orientation = Horizontal; Spacing = 0.0; Children = [] }
+        {
+            Id = None
+            Orientation = Horizontal
+            Spacing = 0.0
+            Children = []
+        }
 
     let view (props: WrapProps<'msg>) : Widget<'msg> =
         let children = props.Children |> List.map Widget.toControl
 
         let attrs =
-            [ ContainerLowering.orientationAttr props.Orientation
-              ContainerLowering.spacingAttr props.Spacing
-              FS.GG.UI.Controls.Wrap.children children ]
+            [
+                ContainerLowering.orientationAttr props.Orientation
+                ContainerLowering.spacingAttr props.Spacing
+                FS.GG.UI.Controls.Wrap.children children
+            ]
 
         FS.GG.UI.Controls.Wrap.create attrs
         |> WidgetLowering.withKeyOpt props.Id
@@ -94,38 +115,55 @@ module Wrap =
 
 module Border =
     let defaults (child: Widget<'msg>) : BorderProps<'msg> =
-        { Id = None; Thickness = 1.0; Padding = 0.0; Child = child }
+        {
+            Id = None
+            Thickness = 1.0
+            Padding = 0.0
+            Child = child
+        }
 
     let view (props: BorderProps<'msg>) : Widget<'msg> =
         let attrs =
-            [ FS.GG.UI.Controls.Border.child (Widget.toControl props.Child)
-              Attr.create "thickness" Layout (FloatValue props.Thickness)
-              Attr.padding props.Padding ]
+            [
+                FS.GG.UI.Controls.Border.child (Widget.toControl props.Child)
+                Attr.create "thickness" Layout (FloatValue props.Thickness)
+                Attr.padding props.Padding
+            ]
 
         FS.GG.UI.Controls.Border.create attrs
         |> WidgetLowering.withKeyOpt props.Id
         |> Widget.ofControl
 
 module Panel =
-    let defaults: PanelProps<'msg> = { Id = None; Header = None; Footer = None; Children = [] }
+    let defaults: PanelProps<'msg> =
+        {
+            Id = None
+            Header = None
+            Footer = None
+            Children = []
+        }
 
     let view (props: PanelProps<'msg>) : Widget<'msg> =
         let children = props.Children |> List.map Widget.toControl
         // Feature 095 (E5): the ordered (region-name, fill) pairs for the chrome slots filled.
         // `None` for both ⇒ `[]` ⇒ no slot attribute ⇒ `lowerSlots` is a no-op ⇒ byte-identical.
         let slots =
-            [ match props.Header with
-              | Some w -> yield "header", Widget.toControl w
-              | None -> ()
-              match props.Footer with
-              | Some w -> yield "footer", Widget.toControl w
-              | None -> () ]
+            [
+                match props.Header with
+                | Some w -> yield "header", Widget.toControl w
+                | None -> ()
+                match props.Footer with
+                | Some w -> yield "footer", Widget.toControl w
+                | None -> ()
+            ]
 
         let attrs =
-            [ yield FS.GG.UI.Controls.Panel.children children
-              match slots with
-              | [] -> ()
-              | fills -> yield ControlInternals.slotFill fills ]
+            [
+                yield FS.GG.UI.Controls.Panel.children children
+                match slots with
+                | [] -> ()
+                | fills -> yield ControlInternals.slotFill fills
+            ]
 
         FS.GG.UI.Controls.Panel.create attrs
         |> WidgetLowering.withKeyOpt props.Id
@@ -134,14 +172,20 @@ module Panel =
 
 module ScrollViewer =
     let defaults (controlId: ControlId) (child: Widget<'msg>) : ScrollViewerProps<'msg> =
-        { Id = controlId; Child = child; OnChanged = None }
+        {
+            Id = controlId
+            Child = child
+            OnChanged = None
+        }
 
     let view (props: ScrollViewerProps<'msg>) : Widget<'msg> =
         let attrs =
-            [ yield Attr.child (Widget.toControl props.Child)
-              match props.OnChanged with
-              | Some map -> yield ContainerLowering.onFloat "onChanged" map
-              | None -> () ]
+            [
+                yield Attr.child (Widget.toControl props.Child)
+                match props.OnChanged with
+                | Some map -> yield ContainerLowering.onFloat "onChanged" map
+                | None -> ()
+            ]
 
         Control.standard (StandardControlKind.Custom "scroll-viewer") attrs
         |> Control.withKey props.Id
@@ -149,17 +193,24 @@ module ScrollViewer =
 
 module SplitView =
     let defaults: SplitViewProps<'msg> =
-        { Id = None; Orientation = Horizontal; Children = []; OnChanged = None }
+        {
+            Id = None
+            Orientation = Horizontal
+            Children = []
+            OnChanged = None
+        }
 
     let view (props: SplitViewProps<'msg>) : Widget<'msg> =
         let children = props.Children |> List.map Widget.toControl
 
         let attrs =
-            [ yield Attr.children children
-              yield ContainerLowering.orientationAttr props.Orientation
-              match props.OnChanged with
-              | Some map -> yield ContainerLowering.onFloat "onChanged" map
-              | None -> () ]
+            [
+                yield Attr.children children
+                yield ContainerLowering.orientationAttr props.Orientation
+                match props.OnChanged with
+                | Some map -> yield ContainerLowering.onFloat "onChanged" map
+                | None -> ()
+            ]
 
         Control.standard (StandardControlKind.Custom "split-view") attrs
         |> WidgetLowering.withKeyOpt props.Id

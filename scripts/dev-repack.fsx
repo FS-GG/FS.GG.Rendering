@@ -37,16 +37,23 @@ let flagValues flag =
     args
     |> Array.indexed
     |> Array.choose (fun (i, a) ->
-        if a = flag && i + 1 < args.Length then Some args.[i + 1] else None)
+        if a = flag && i + 1 < args.Length then
+            Some args.[i + 1]
+        else
+            None)
     |> Array.toList
 
 let flagValue flag = flagValues flag |> List.tryHead
 let hasFlag flag = args |> Array.contains flag
 
 let samples = flagValues "--sample"
+
 let feed =
     flagValue "--feed"
-    |> Option.defaultValue (Path.Combine(Environment.GetFolderPath Environment.SpecialFolder.UserProfile, ".local", "share", "nuget-local"))
+    |> Option.defaultValue (
+        Path.Combine(Environment.GetFolderPath Environment.SpecialFolder.UserProfile, ".local", "share", "nuget-local")
+    )
+
 let doRestore = not (hasFlag "--no-restore")
 
 if samples.IsEmpty then
@@ -59,6 +66,7 @@ if samples.IsEmpty then
 let controlsVersion () =
     let proj = Path.Combine(repoRoot, "src", "Controls", "Controls.fsproj")
     let doc = XDocument.Load proj
+
     doc.Descendants()
     |> Seq.tryFind (fun e -> e.Name.LocalName = "Version")
     |> Option.map (fun e -> e.Value.Trim())
@@ -91,9 +99,22 @@ printfn "dev-repack: version %s  ->  feed %s\n" version feed
 Directory.CreateDirectory feed |> ignore
 
 printfn "[1/3] pack FS.GG.Rendering.slnx -c Release -p:Version=%s" version
+
 let packExit =
-    run repoRoot "dotnet"
-        [ "pack"; "FS.GG.Rendering.slnx"; "-c"; "Release"; "-p:Version=" + version; "--no-restore"; "-o"; feed ]
+    run
+        repoRoot
+        "dotnet"
+        [
+            "pack"
+            "FS.GG.Rendering.slnx"
+            "-c"
+            "Release"
+            "-p:Version=" + version
+            "--no-restore"
+            "-o"
+            feed
+        ]
+
 if packExit <> 0 then
     eprintfn "dev-repack: pack failed (exit %d)" packExit
     exit packExit
@@ -102,31 +123,46 @@ if packExit <> 0 then
 let retargetProject (projectPath: string) =
     let doc = XDocument.Load projectPath
     let mutable changed = false
+
     for el in doc.Descendants() |> Seq.filter (fun e -> e.Name.LocalName = "PackageReference") do
         let include' =
             el.Attributes()
             |> Seq.tryFind (fun a -> a.Name.LocalName = "Include" || a.Name.LocalName = "Update")
             |> Option.map (fun a -> a.Value.Trim())
+
         match include' with
         | Some id when id.StartsWith("FS.GG.UI.", StringComparison.Ordinal) ->
             let attr = el.Attributes() |> Seq.tryFind (fun a -> a.Name.LocalName = "Version")
+
             match attr with
-            | Some a when a.Value <> version -> a.Value <- version; changed <- true
+            | Some a when a.Value <> version ->
+                a.Value <- version
+                changed <- true
             | Some _ -> ()
             | None ->
                 let child = el.Elements() |> Seq.tryFind (fun e -> e.Name.LocalName = "Version")
+
                 match child with
-                | Some c when c.Value <> version -> c.Value <- version; changed <- true
+                | Some c when c.Value <> version ->
+                    c.Value <- version
+                    changed <- true
                 | Some _ -> ()
-                | None -> el.SetAttributeValue(XName.Get "Version", version); changed <- true
+                | None ->
+                    el.SetAttributeValue(XName.Get "Version", version)
+                    changed <- true
         | _ -> ()
-    if changed then doc.Save projectPath
+
+    if changed then
+        doc.Save projectPath
+
     changed
 
 printfn "\n[2/3] retarget pins -> %s" version
 let mutable retargeted = 0
+
 for sample in samples do
     let dir = Path.GetFullPath(Path.Combine(repoRoot, sample))
+
     if not (Directory.Exists dir) then
         eprintfn "  ! sample not found: %s" sample
     else
@@ -135,40 +171,58 @@ for sample in samples do
                 retargeted <- retargeted + 1
                 printfn "  pinned %s" (rel proj)
 
-if retargeted = 0 then printfn "  (no pins changed — already at %s)" version
+if retargeted = 0 then
+    printfn "  (no pins changed — already at %s)" version
 
 // --- 4: restore the sample(s) against the feed ------------------------------
 let mutable restoreFailures = 0
+
 if doRestore then
     printfn "\n[3/3] restore samples against the local feed"
+
     for sample in samples do
         let dir = Path.GetFullPath(Path.Combine(repoRoot, sample))
+
         if Directory.Exists dir then
             for proj in Directory.GetFiles(dir, "*.fsproj", SearchOption.AllDirectories) do
                 let exit = run dir "dotnet" [ "restore"; proj ]
+
                 if exit <> 0 then
                     restoreFailures <- restoreFailures + 1
                     eprintfn "  ! restore failed: %s (exit %d)" (rel proj) exit
-    if restoreFailures = 0 then printfn "  all sample projects restored cleanly at %s" version
+
+    if restoreFailures = 0 then
+        printfn "  all sample projects restored cleanly at %s" version
 else
     printfn "\n[3/3] restore skipped (--no-restore)"
 
 // --- cross-sample consistency surfacing -------------------------------------
 let allSamples =
     let root = Path.Combine(repoRoot, "samples")
+
     if Directory.Exists root then
         Directory.GetDirectories root
         |> Array.map (fun d -> "samples/" + Path.GetFileName d)
         |> Array.sort
         |> Array.toList
-    else []
+    else
+        []
 
 let touched = samples |> List.map (fun s -> s.TrimEnd('/', '\\')) |> Set.ofList
 let untouched = allSamples |> List.filter (fun s -> not (touched.Contains s))
+
 if not untouched.IsEmpty then
-    printfn "\nNOTE (cross-sample consistency): left untouched at their existing pins — %s." (String.concat ", " untouched)
+    printfn
+        "\nNOTE (cross-sample consistency): left untouched at their existing pins — %s."
+        (String.concat ", " untouched)
+
     printfn "      They still restore from their old feed packages but do NOT see this %s build." version
     printfn "      Re-run with --sample <path> for any you also want on this build."
 
-printfn "\ndev-repack done: version %s, %d project(s) re-pinned, %d restore failure(s)." version retargeted restoreFailures
+printfn
+    "\ndev-repack done: version %s, %d project(s) re-pinned, %d restore failure(s)."
+    version
+    retargeted
+    restoreFailures
+
 exit (if restoreFailures = 0 then 0 else 1)

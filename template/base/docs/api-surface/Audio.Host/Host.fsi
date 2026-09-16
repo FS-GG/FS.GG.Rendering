@@ -14,8 +14,10 @@ open FS.GG.Audio.Core
 /// reason once, on stderr (#28). See `AssetDiagnostics`. The Null backend records the request
 /// regardless — it resolves nothing, so its evidence says "requested", never "audible".
 type AssetResolver =
-    { ResolveSound: SoundId -> byte[] option
-      ResolveTrack: TrackId -> byte[] option }
+    {
+        ResolveSound: SoundId -> byte[] option
+        ResolveTrack: TrackId -> byte[] option
+    }
 
 /// Public contract type. The narrow device seam (FR-001). Implementations: the Null/record
 /// backend (default, deterministic) and the OpenAL backend (Silk.NET). Game-facing code holds an
@@ -56,18 +58,20 @@ module Wav =
 
     /// Decoded payload of a WAV file.
     type PcmData =
-        { /// The `wFormatTag` from the `fmt ` chunk: which codec `Data` is actually in.
-          /// `FormatPcm` (1) is the only one this component can play — see `tryParse`.
-          ///
-          /// Already resolved through `WAVE_FORMAT_EXTENSIBLE` (0xFFFE): a PCM file written in the
-          /// extensible form — routine for multichannel exports — reports `FormatPcm` here, not
-          /// 0xFFFE. It stays 0xFFFE only when the subformat GUID could not be read at all, which is
-          /// not a claim that the file is PCM.
-          FormatTag: int
-          Channels: int
-          BitsPerSample: int
-          SampleRate: int
-          Data: byte[] }
+        {
+            /// The `wFormatTag` from the `fmt ` chunk: which codec `Data` is actually in.
+            /// `FormatPcm` (1) is the only one this component can play — see `tryParse`.
+            ///
+            /// Already resolved through `WAVE_FORMAT_EXTENSIBLE` (0xFFFE): a PCM file written in the
+            /// extensible form — routine for multichannel exports — reports `FormatPcm` here, not
+            /// 0xFFFE. It stays 0xFFFE only when the subformat GUID could not be read at all, which is
+            /// not a claim that the file is PCM.
+            FormatTag: int
+            Channels: int
+            BitsPerSample: int
+            SampleRate: int
+            Data: byte[]
+        }
 
     /// Parse a minimal WAV (RIFF/WAVE, fmt + data chunks). Total; returns None on anything it does
     /// not understand rather than throwing, and terminates on any input — including a corrupt chunk
@@ -124,14 +128,16 @@ module VoicePool =
     /// be transposed. In the OpenAL backend: `GenSource`, a `SourceState = Stopped` test,
     /// `SourceStop`, and `DeleteSource`.
     type Ops =
-        { /// Allocate a fresh source handle.
-          Gen: unit -> uint
-          /// True once a handed-out voice has finished (is reclaimable).
-          IsStopped: uint -> bool
-          /// Stop a still-sounding voice so its handle can be reused or deleted.
-          Stop: uint -> unit
-          /// Release a handle for good.
-          Delete: uint -> unit }
+        {
+            /// Allocate a fresh source handle.
+            Gen: unit -> uint
+            /// True once a handed-out voice has finished (is reclaimable).
+            IsStopped: uint -> bool
+            /// Stop a still-sounding voice so its handle can be reused or deleted.
+            Stop: uint -> unit
+            /// Release a handle for good.
+            Delete: uint -> unit
+        }
 
     /// A bounded pool of one-shot voice handles.
     [<Sealed>]

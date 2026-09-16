@@ -22,5 +22,4 @@ module FixedStep =
 
     /// Drain with an explicit spiral-of-death clamp `maxFrameTime` (seconds), e.g. a tighter 0.05.
     val drainWith:
-        maxFrameTime: float -> interval: float -> frameTime: float -> accumulator: float ->
-            struct (int * float)
+        maxFrameTime: float -> interval: float -> frameTime: float -> accumulator: float -> struct (int * float)

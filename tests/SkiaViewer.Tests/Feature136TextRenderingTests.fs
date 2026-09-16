@@ -13,41 +13,60 @@ open SkiaSharp
 open FS.GG.UI.Scene
 open FS.GG.UI.SkiaViewer
 
-let private font: FontSpec = { Family = None; Size = 16.0; Weight = None }
+let private font: FontSpec =
+    {
+        Family = None
+        Size = 16.0
+        Weight = None
+    }
 
 /// 一 — no bundled coverage in any face, so it always renders as a disclosed tofu box.
 let private tofuChar = Char.ConvertFromUtf32 0x4E00
 
 let private renderToPngBytes (w: int) (h: int) (scene: SceneNode) =
-    let path = IO.Path.Combine(IO.Path.GetTempPath(), sprintf "fs136-%s.png" (Guid.NewGuid().ToString("N")))
+    let path =
+        IO.Path.Combine(IO.Path.GetTempPath(), sprintf "fs136-%s.png" (Guid.NewGuid().ToString("N")))
 
     let request: ScreenshotEvidenceRequest =
-        { Command = "screenshot"
-          AppOrSample = "feature136"
-          OutputPath = path
-          Width = w
-          Height = h
-          RendererMode = "viewer-render-target"
-          CaptureMode = ViewerRenderTargetPng
-          HostFacts = []
-          Timeout = TimeSpan.FromSeconds 5.0 }
+        {
+            Command = "screenshot"
+            AppOrSample = "feature136"
+            OutputPath = path
+            Width = w
+            Height = h
+            RendererMode = "viewer-render-target"
+            CaptureMode = ViewerRenderTargetPng
+            HostFacts = []
+            Timeout = TimeSpan.FromSeconds 5.0
+        }
 
     let options: ViewerOptions =
-        { Title = "feature136"
-          InitialSize = { Width = w; Height = h }
-          PresentMode = ViewerPresentMode.OffscreenReadback
-          FrameRateCap = None; LogicalSize = None }
+        {
+            Title = "feature136"
+            InitialSize = { Width = w; Height = h }
+            PresentMode = ViewerPresentMode.OffscreenReadback
+            FrameRateCap = None
+            LogicalSize = None
+        }
 
     Viewer.captureScreenshotEvidence request options scene |> ignore
-    let bytes = if IO.File.Exists path then IO.File.ReadAllBytes path else [||]
+
+    let bytes =
+        if IO.File.Exists path then
+            IO.File.ReadAllBytes path
+        else
+            [||]
+
     bytes
 
 let private textScene (text: string) =
     (Scene.textRun
-        { Text = text
-          Position = { X = 20.0; Y = 40.0 }
-          Font = font
-          Paint = Paint.fill (Colors.rgb 20uy 20uy 20uy) })
+        {
+            Text = text
+            Position = { X = 20.0; Y = 40.0 }
+            Font = font
+            Paint = Paint.fill (Colors.rgb 20uy 20uy 20uy)
+        })
         .Nodes
     |> List.head
 
@@ -57,19 +76,22 @@ let private rasterAvailable: bool =
     try
         use s = SKSurface.Create(SKImageInfo(8, 8))
         not (isNull s)
-    with _ -> false
+    with _ ->
+        false
 
 /// Run the raster body when the surface tier is present; otherwise record a deterministic skip-with-tier
 /// (Constitution VI) — never an intermittent red, never a faked pass. A genuine defect on a raster-capable
 /// host still fails loudly inside `body`. (The pure font-resolution test above needs no surface and is
 /// not guarded.)
 let private withRaster (what: string) (body: unit -> unit) =
-    if rasterAvailable then body ()
+    if rasterAvailable then
+        body ()
     else
         skiptest (
             sprintf
                 "SKIPPED(tier=T1 raster/pixel GL): offscreen SKSurface unavailable on this host (SkiaSharp native/headless) — %s requires the raster/pixel render tier; recorded skipped-with-tier, not a pass (Constitution VI)."
-                what)
+                what
+        )
 
 // Sequenced (feature 203, US4/T024): the byte-identical render proof and the tofu-disclosure render
 // read the shared, non-thread-safe `SceneRenderer` (and the process-wide fallback accumulator). Running
@@ -82,104 +104,126 @@ let tests =
     <| testList
         "Feature136 text rendering (US1)"
         [ // T007
-          test "@ renders as @ (not 7), mixed case preserved, decoratives authored-or-deliberate" {
-              let at = Fonts.resolveText font "ada@example.com" |> List.find (fun rc -> rc.Original = '@')
+            test "@ renders as @ (not 7), mixed case preserved, decoratives authored-or-deliberate" {
+                let at =
+                    Fonts.resolveText font "ada@example.com"
+                    |> List.find (fun rc -> rc.Original = '@')
 
-              match at.Resolution with
-              | Fonts.FallbackResolution.Authored _ -> ()
-              | other -> failtestf "@ must be authored, was %A" other
+                match at.Resolution with
+                | Fonts.FallbackResolution.Authored _ -> ()
+                | other -> failtestf "@ must be authored, was %A" other
 
-              Expect.equal at.Rendered '@' "@ renders as @, never the 7-wildcard"
+                Expect.equal at.Rendered '@' "@ renders as @, never the 7-wildcard"
 
-              let stable = Fonts.resolveText font "Stable" |> List.map (fun r -> r.Rendered) |> String.Concat
-              Expect.equal stable "Stable" "mixed case preserved (not STABLE)"
+                let stable =
+                    Fonts.resolveText font "Stable"
+                    |> List.map (fun r -> r.Rendered)
+                    |> String.Concat
 
-              for c in [ '#'; '—'; '▸'; '·' ] do
-                  let rc = Fonts.resolveText font (string c) |> List.head
+                Expect.equal stable "Stable" "mixed case preserved (not STABLE)"
 
-                  match rc.Resolution with
-                  | Fonts.FallbackResolution.Authored _ -> Expect.equal rc.Rendered c (sprintf "%c authored as itself" c)
-                  | Fonts.FallbackResolution.Substituted(o, _, _) -> Expect.equal o c (sprintf "%c deliberately substituted" c)
-                  | Fonts.FallbackResolution.Tofu _ -> failtestf "%c must not be tofu (the bundled chain covers it)" c
-          }
+                for c in [ '#'; '—'; '▸'; '·' ] do
+                    let rc = Fonts.resolveText font (string c) |> List.head
 
-          // T009
-          test "two same-seed headless text renders are byte-identical (SC-005)" {
-              withRaster "byte-identical headless text render" (fun () ->
-              let scene = textScene "ada@example.com Stable —#▸·"
-              let b1 = renderToPngBytes 360 80 scene
-              let b2 = renderToPngBytes 360 80 scene
-              Expect.isGreaterThan b1.Length 0 "rendered PNG is non-empty"
-              Expect.equal b1 b2 "byte-identical across two same-seed renders (host-independent fonts)")
-          }
+                    match rc.Resolution with
+                    | Fonts.FallbackResolution.Authored _ ->
+                        Expect.equal rc.Rendered c (sprintf "%c authored as itself" c)
+                    | Fonts.FallbackResolution.Substituted(o, _, _) ->
+                        Expect.equal o c (sprintf "%c deliberately substituted" c)
+                    | Fonts.FallbackResolution.Tofu _ -> failtestf "%c must not be tofu (the bundled chain covers it)" c
+            }
 
-          // T010 — reads the process-wide disclosure accumulator after a render (the whole list is
-          // already sequenced above, so this no longer needs its own sequencing).
-          test "tofu disclosed; no plausible-wrong glyph is ever produced (FR-001)" {
-              withRaster "tofu disclosure after a live render" (fun () ->
-              let tofu = Char.ConvertFromUtf32 0x4E00 // 一 — no bundled coverage in any face
-              let resolved = Fonts.resolveText font (sprintf "A%sB" tofu)
+            // T009
+            test "two same-seed headless text renders are byte-identical (SC-005)" {
+                withRaster "byte-identical headless text render" (fun () ->
+                    let scene = textScene "ada@example.com Stable —#▸·"
+                    let b1 = renderToPngBytes 360 80 scene
+                    let b2 = renderToPngBytes 360 80 scene
+                    Expect.isGreaterThan b1.Length 0 "rendered PNG is non-empty"
+                    Expect.equal b1 b2 "byte-identical across two same-seed renders (host-independent fonts)")
+            }
 
-              match resolved.[1].Resolution with
-              | Fonts.FallbackResolution.Tofu o -> Expect.equal o tofu.[0] "uncovered char disclosed as tofu"
-              | other -> failtestf "uncovered char must be tofu, was %A" other
+            // T010 — reads the process-wide disclosure accumulator after a render (the whole list is
+            // already sequenced above, so this no longer needs its own sequencing).
+            test "tofu disclosed; no plausible-wrong glyph is ever produced (FR-001)" {
+                withRaster "tofu disclosure after a live render" (fun () ->
+                    let tofu = Char.ConvertFromUtf32 0x4E00 // 一 — no bundled coverage in any face
+                    let resolved = Fonts.resolveText font (sprintf "A%sB" tofu)
 
-              // Invariant: only Authored/Substituted/Tofu, and the rendered glyph is the original, a
-              // deliberate substitute, or (tofu) the original — never an unrelated plausible glyph.
-              for rc in Fonts.resolveText font "ada@example.com Stable —#▸·" do
-                  match rc.Resolution with
-                  | Fonts.FallbackResolution.Authored _ -> Expect.equal rc.Rendered rc.Original "authored renders the original"
-                  | Fonts.FallbackResolution.Substituted(o, s, _) ->
-                      Expect.equal rc.Rendered s "substituted renders the deliberate substitute"
-                      Expect.equal o rc.Original "substituted records the original"
-                  | Fonts.FallbackResolution.Tofu o -> Expect.equal o rc.Original "tofu records the original"
+                    match resolved.[1].Resolution with
+                    | Fonts.FallbackResolution.Tofu o -> Expect.equal o tofu.[0] "uncovered char disclosed as tofu"
+                    | other -> failtestf "uncovered char must be tofu, was %A" other
 
-              // Disclosure surfaced through SkiaViewer after a render that contains the tofu char.
-              renderToPngBytes 140 50 (textScene (sprintf "x%sy" tofu)) |> ignore
-              let report = Text.fallbackReport ()
-              Expect.isTrue (report.TofuCount >= 1) "tofu disclosed in the per-page report"
-              Expect.isNonEmpty (Text.fallbackDiagnostics ()) "structured fallback diagnostics emitted")
-          }
+                    // Invariant: only Authored/Substituted/Tofu, and the rendered glyph is the original, a
+                    // deliberate substitute, or (tofu) the original — never an unrelated plausible glyph.
+                    for rc in Fonts.resolveText font "ada@example.com Stable —#▸·" do
+                        match rc.Resolution with
+                        | Fonts.FallbackResolution.Authored _ ->
+                            Expect.equal rc.Rendered rc.Original "authored renders the original"
+                        | Fonts.FallbackResolution.Substituted(o, s, _) ->
+                            Expect.equal rc.Rendered s "substituted renders the deliberate substitute"
+                            Expect.equal o rc.Original "substituted records the original"
+                        | Fonts.FallbackResolution.Tofu o -> Expect.equal o rc.Original "tofu records the original"
 
-          // Issue #176 — the disclosure accumulator was reset only on the screenshot path. Every other
-          // present path (the live GL loop, the CPU raster PNG) appended a `ResolvedChar` per non-authored
-          // glyph per frame and never cleared, so a long-lived interactive window grew without bound and
-          // `Text.fallbackReport` returned every frame since the window opened. `SceneRenderer.drawScene`
-          // is now the one frame boundary all three paths share.
-          test "the frame boundary scopes the fallback accumulator per frame (#176)" {
-              withRaster "per-frame fallback disclosure scoping" (fun () ->
-              let scene = { Nodes = [ textScene (sprintf "x%sy" tofuChar) ] }
-              use surface = SKSurface.Create(SKImageInfo(140, 50))
+                    // Disclosure surfaced through SkiaViewer after a render that contains the tofu char.
+                    renderToPngBytes 140 50 (textScene (sprintf "x%sy" tofu)) |> ignore
+                    let report = Text.fallbackReport ()
+                    Expect.isTrue (report.TofuCount >= 1) "tofu disclosed in the per-page report"
+                    Expect.isNonEmpty (Text.fallbackDiagnostics ()) "structured fallback diagnostics emitted")
+            }
 
-              let disclosuresAfter frames =
-                  for _ in 1..frames do
-                      SceneRenderer.drawScene surface.Canvas scene
+            // Issue #176 — the disclosure accumulator was reset only on the screenshot path. Every other
+            // present path (the live GL loop, the CPU raster PNG) appended a `ResolvedChar` per non-authored
+            // glyph per frame and never cleared, so a long-lived interactive window grew without bound and
+            // `Text.fallbackReport` returned every frame since the window opened. `SceneRenderer.drawScene`
+            // is now the one frame boundary all three paths share.
+            test "the frame boundary scopes the fallback accumulator per frame (#176)" {
+                withRaster "per-frame fallback disclosure scoping" (fun () ->
+                    let scene =
+                        {
+                            Nodes = [ textScene (sprintf "x%sy" tofuChar) ]
+                        }
 
-                  SceneRenderer.fallbackEvents.Count
+                    use surface = SKSurface.Create(SKImageInfo(140, 50))
 
-              let afterOne = disclosuresAfter 1
-              let afterMany = disclosuresAfter 8
+                    let disclosuresAfter frames =
+                        for _ in 1..frames do
+                            SceneRenderer.drawScene surface.Canvas scene
 
-              Expect.isGreaterThan afterOne 0 "the tofu glyph is disclosed at all (else this proves nothing)"
-              Expect.equal afterMany afterOne "disclosure is per-frame, not cumulative across frames")
-          }
+                        SceneRenderer.fallbackEvents.Count
 
-          // Issue #176 — the same invariant through a real, public present path. `renderScenePngResult`
-          // painted straight through `paintNode`, so N renders disclosed N times over.
-          test "N renders through the public raster present path disclose once, not N times (#176)" {
-              withRaster "per-render fallback disclosure on the CPU raster path" (fun () ->
-              let scene = { Nodes = [ textScene (sprintf "x%sy" tofuChar) ] }
-              let size: Size = { Width = 140; Height = 50 }
+                    let afterOne = disclosuresAfter 1
+                    let afterMany = disclosuresAfter 8
 
-              let tofuReportedAfter renders =
-                  for _ in 1..renders do
-                      ReferenceRendering.renderScenePngResult size scene |> ignore
+                    Expect.isGreaterThan afterOne 0 "the tofu glyph is disclosed at all (else this proves nothing)"
+                    Expect.equal afterMany afterOne "disclosure is per-frame, not cumulative across frames")
+            }
 
-                  (Text.fallbackReport ()).TofuCount
+            // Issue #176 — the same invariant through a real, public present path. `renderScenePngResult`
+            // painted straight through `paintNode`, so N renders disclosed N times over.
+            test "N renders through the public raster present path disclose once, not N times (#176)" {
+                withRaster "per-render fallback disclosure on the CPU raster path" (fun () ->
+                    let scene =
+                        {
+                            Nodes = [ textScene (sprintf "x%sy" tofuChar) ]
+                        }
 
-              let afterOne = tofuReportedAfter 1
-              let afterMany = tofuReportedAfter 8
+                    let size: Size = { Width = 140; Height = 50 }
 
-              Expect.isGreaterThan afterOne 0 "the tofu glyph is disclosed at all (else this proves nothing)"
-              Expect.equal afterMany afterOne "the report describes the render just performed, not every render so far")
-          } ]
+                    let tofuReportedAfter renders =
+                        for _ in 1..renders do
+                            ReferenceRendering.renderScenePngResult size scene |> ignore
+
+                        (Text.fallbackReport ()).TofuCount
+
+                    let afterOne = tofuReportedAfter 1
+                    let afterMany = tofuReportedAfter 8
+
+                    Expect.isGreaterThan afterOne 0 "the tofu glyph is disclosed at all (else this proves nothing)"
+
+                    Expect.equal
+                        afterMany
+                        afterOne
+                        "the report describes the render just performed, not every render so far")
+            }
+        ]

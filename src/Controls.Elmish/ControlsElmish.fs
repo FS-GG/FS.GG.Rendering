@@ -16,19 +16,26 @@ module private RenderLagTrace =
     let emit eventName fields =
         if enabled then
             let fieldsText =
-                fields
-                |> List.map (fun (name, value) -> $"{name}={value}")
-                |> String.concat " "
+                fields |> List.map (fun (name, value) -> $"{name}={value}") |> String.concat " "
 
-            let suffix = if String.IsNullOrWhiteSpace fieldsText then "" else " " + fieldsText
-            let ts = DateTimeOffset.UtcNow.ToString("O", Globalization.CultureInfo.InvariantCulture)
+            let suffix =
+                if String.IsNullOrWhiteSpace fieldsText then
+                    ""
+                else
+                    " " + fieldsText
+
+            let ts =
+                DateTimeOffset.UtcNow.ToString("O", Globalization.CultureInfo.InvariantCulture)
+
             let ticks = System.Diagnostics.Stopwatch.GetTimestamp()
             Console.Error.WriteLine($"FS_GG_RENDER_LAG_TRACE ts={ts} ticks={ticks} event={eventName}{suffix}")
 
 type AdapterDiagnostic =
-    { Code: string
-      Message: string
-      Source: string }
+    {
+        Code: string
+        Message: string
+        Source: string
+    }
 
 type AdapterEffect<'msg> =
     | DispatchProductMessage of 'msg
@@ -40,14 +47,18 @@ type AdapterEffect<'msg> =
 type AdapterCommand<'msg> = AdapterEffect<'msg> list
 
 type AdapterSubscription<'msg> =
-    { Id: string
-      Subscribe: unit -> AdapterCommand<'msg> }
+    {
+        Id: string
+        Subscribe: unit -> AdapterCommand<'msg>
+    }
 
 type AdapterProgram<'model, 'msg> =
-    { Init: unit -> 'model * AdapterCommand<'msg>
-      Update: 'msg -> 'model -> 'model * AdapterCommand<'msg>
-      View: 'model -> Control<'msg>
-      Subscriptions: 'model -> AdapterSubscription<'msg> list }
+    {
+        Init: unit -> 'model * AdapterCommand<'msg>
+        Update: 'msg -> 'model -> 'model * AdapterCommand<'msg>
+        View: 'model -> Control<'msg>
+        Subscriptions: 'model -> AdapterSubscription<'msg> list
+    }
 
 /// Feature 111 (US1, FR-001): the closed trigger taxonomy naming why a frame ran (see ControlsElmish.fsi).
 [<RequireQualifiedAccess>]
@@ -62,74 +73,84 @@ type FrameCause =
 
 /// Feature 108/109/110/111 (US1, FR-001/002): per-frame structured work/timing signal (see ControlsElmish.fsi).
 type FrameMetrics =
-    { ProductModelChanged: bool
-      ViewCalled: bool
-      FullRenderCount: int
-      RemeasuredNodeCount: int
-      MemoHitCount: int
-      MemoMissCount: int
-      VirtualItemsMaterialized: int
-      VirtualItemsTotal: int
-      RepaintedNodeCount: int
-      DirtyRectCount: int
-      DirtyArea: int
-      PictureCacheHitCount: int
-      PictureCacheMissCount: int
-      PictureCacheEntryCount: int
-      TextMeasureCacheHitCount: int
-      TextMeasureCacheMissCount: int
-      LayoutInvalidatedNodeCount: int
-      PointerSamplesReceived: int
-      PointerMovesProcessed: int
-      FullRenderFallbackCount: int
-      FrameCause: FrameCause
-      DiffRan: bool
-      LayoutRan: bool
-      PaintRan: bool
-      FrameDuration: TimeSpan
-      // Feature 120 (US1): non-golden live per-phase present timing (Zero on the deterministic path).
-      PaintDuration: TimeSpan
-      ComposeDuration: TimeSpan
-      // Feature 120 (US3, FR-014): backend replay-cache per-frame counters (deterministic golden model).
-      ReplayHitCount: int
-      ReplayMissCount: int
-      ReplayRecordCount: int
-      ReplaySkippedNodeCount: int
-      ReplayCacheNativeBytes: int }
+    {
+        ProductModelChanged: bool
+        ViewCalled: bool
+        FullRenderCount: int
+        RemeasuredNodeCount: int
+        MemoHitCount: int
+        MemoMissCount: int
+        VirtualItemsMaterialized: int
+        VirtualItemsTotal: int
+        RepaintedNodeCount: int
+        DirtyRectCount: int
+        DirtyArea: int
+        PictureCacheHitCount: int
+        PictureCacheMissCount: int
+        PictureCacheEntryCount: int
+        TextMeasureCacheHitCount: int
+        TextMeasureCacheMissCount: int
+        LayoutInvalidatedNodeCount: int
+        PointerSamplesReceived: int
+        PointerMovesProcessed: int
+        FullRenderFallbackCount: int
+        FrameCause: FrameCause
+        DiffRan: bool
+        LayoutRan: bool
+        PaintRan: bool
+        FrameDuration: TimeSpan
+        // Feature 120 (US1): non-golden live per-phase present timing (Zero on the deterministic path).
+        PaintDuration: TimeSpan
+        ComposeDuration: TimeSpan
+        // Feature 120 (US3, FR-014): backend replay-cache per-frame counters (deterministic golden model).
+        ReplayHitCount: int
+        ReplayMissCount: int
+        ReplayRecordCount: int
+        ReplaySkippedNodeCount: int
+        ReplayCacheNativeBytes: int
+    }
 
 type CompositorFrameDiagnostics =
-    { ProofStatus: string
-      DamageUnionArea: int
-      ScissorCandidateArea: int
-      FallbackReason: string option
-      PromotionDecisionCount: int
-      ReuseHitCount: int
-      ReuseMissCount: int
-      DemotionCount: int
-      SnapshotResourceBytes: int }
+    {
+        ProofStatus: string
+        DamageUnionArea: int
+        ScissorCandidateArea: int
+        FallbackReason: string option
+        PromotionDecisionCount: int
+        ReuseHitCount: int
+        ReuseMissCount: int
+        DemotionCount: int
+        SnapshotResourceBytes: int
+    }
 
 type LayoutWorkMetrics =
-    { LayoutWorkCount: int
-      IntrinsicQueryWorkCount: int
-      IntrinsicCacheHitCount: int
-      IntrinsicCacheMissCount: int
-      IntrinsicInvalidationCount: int }
+    {
+        LayoutWorkCount: int
+        IntrinsicQueryWorkCount: int
+        IntrinsicCacheHitCount: int
+        IntrinsicCacheMissCount: int
+        IntrinsicInvalidationCount: int
+    }
 
 type ResponsivenessTimingContribution =
-    { RoutingDuration: TimeSpan
-      UpdateDuration: TimeSpan
-      RetainedStepDuration: TimeSpan
-      LayoutDuration: TimeSpan
-      TextDuration: TimeSpan
-      ProductMessageCount: int
-      ProductModelChanged: bool
-      RuntimeStateChanged: bool
-      NoVisibleResponseReason: string option }
+    {
+        RoutingDuration: TimeSpan
+        UpdateDuration: TimeSpan
+        RetainedStepDuration: TimeSpan
+        LayoutDuration: TimeSpan
+        TextDuration: TimeSpan
+        ProductMessageCount: int
+        ProductModelChanged: bool
+        RuntimeStateChanged: bool
+        NoVisibleResponseReason: string option
+    }
 
 type DiagnosticsDisabledCompatibility =
-    { FrameMetricsUnchanged: bool
-      RecordsWritten: int
-      ClockFreePerfScript: bool }
+    {
+        FrameMetricsUnchanged: bool
+        RecordsWritten: int
+        ClockFreePerfScript: bool
+    }
 
 /// Feature 108 (US3, FR-009): one ordered step of the deterministic perf driver.
 [<RequireQualifiedAccess>]
@@ -140,32 +161,40 @@ type FrameInput<'msg> =
     | Idle
 
 type LiveScriptRunResult =
-    { Outcome: ViewerLaunchOutcome
-      Metrics: FrameMetrics list }
+    {
+        Outcome: ViewerLaunchOutcome
+        Metrics: FrameMetrics list
+    }
 
 /// Deterministic, headless evidence for the Controls paced-pointer composition.  The queue drains
 /// come from the Viewer runner; `ModelUpdates` counts messages actually folded through the Controls
 /// host, so a receipt cannot claim a coalesced aim merely because it was accepted by the lower queue.
 type internal DeterministicPointerPacingResult<'model> =
-    { Model: 'model
-      Drains: ViewerFrameDrain list
-      Metrics: ViewerPointerPacingMetrics list }
+    {
+        Model: 'model
+        Drains: ViewerFrameDrain list
+        Metrics: ViewerPointerPacingMetrics list
+    }
 
 type InteractiveAppHost<'model, 'msg> =
-    { Init: unit -> 'model * ViewerEffect list
-      Update: 'msg -> 'model -> 'model * ViewerEffect list
-      View: Size -> 'model -> Control<'msg>
-      Theme: Theme
-      MapKey: ViewerKey -> bool -> 'msg option
-      MapPointer: PointerInteraction -> 'msg option
-      Tick: TimeSpan -> 'msg option
-      MapKeyChord: ViewerKey -> KeyModifiers -> 'msg option
-      OnFrameMetrics: FrameMetrics -> unit
-      Diagnostics: ViewerDiagnosticsOptions }
+    {
+        Init: unit -> 'model * ViewerEffect list
+        Update: 'msg -> 'model -> 'model * ViewerEffect list
+        View: Size -> 'model -> Control<'msg>
+        Theme: Theme
+        MapKey: ViewerKey -> bool -> 'msg option
+        MapPointer: PointerInteraction -> 'msg option
+        Tick: TimeSpan -> 'msg option
+        MapKeyChord: ViewerKey -> KeyModifiers -> 'msg option
+        OnFrameMetrics: FrameMetrics -> unit
+        Diagnostics: ViewerDiagnosticsOptions
+    }
 
 type InteractiveAppGamepadHost<'model, 'msg> =
-    { Host: InteractiveAppHost<'model, 'msg>
-      Gamepad: GamepadFrameSource<'msg> }
+    {
+        Host: InteractiveAppHost<'model, 'msg>
+        Gamepad: GamepadFrameSource<'msg>
+    }
 
 /// Verdict of a responds-proof (feature 090, FR-006): `Responsive` when a real input applied to the
 /// running host produced a visible change in the rendered output (`before` ≠ `after`), `Inert` when
@@ -181,9 +210,11 @@ type RespondsVerdict =
 /// route probe (model layer only): an app that renders but does not respond yields identical frames and
 /// an `Inert` verdict, so "renders" cannot be passed off as "responds".
 type RespondsProof =
-    { Before: Scene
-      After: Scene
-      Verdict: RespondsVerdict }
+    {
+        Before: Scene
+        After: Scene
+        Verdict: RespondsVerdict
+    }
 
 module AdapterCmd =
     let none: Cmd<'msg> = Cmd.none
@@ -285,14 +316,15 @@ module ControlsElmish =
 
             frame
             |> List.indexed
-            |> List.filter (fun (i, interaction) ->
-                not (isSupersedablePosition interaction) || Some i = lastPositional)
+            |> List.filter (fun (i, interaction) -> not (isSupersedablePosition interaction) || Some i = lastPositional)
             |> List.map snd
 
     let diagnostic source code message =
-        { Source = source
-          Code = code
-          Message = message }
+        {
+            Source = source
+            Code = code
+            Message = message
+        }
 
     // Issue #457: `pointer/UnresolvedControlId` — a routed `PointerInteraction` named a `ControlId` that
     // NO control in the frame carries. Deliberately NOT the existing `HitTestMiss`, which the geometric
@@ -321,7 +353,10 @@ module ControlsElmish =
     // what it sees — the filter is the product's policy, not a hardcoded drop. Both levels below pass
     // the default options (`MinimumLevel = Info`, `Categories` includes `Input`). A host with no sink —
     // the default — observes nothing and behaves byte-identically to before (SC: at-rest unchanged).
-    let internal routeAdapterDiagnostics (options: ViewerDiagnosticsOptions) (command: AdapterCommand<'msg>) : 'msg list =
+    let internal routeAdapterDiagnostics
+        (options: ViewerDiagnosticsOptions)
+        (command: AdapterCommand<'msg>)
+        : 'msg list =
         match options.Sink with
         | Some sink ->
             command
@@ -336,12 +371,14 @@ module ControlsElmish =
                         ViewerDiagnosticLevel.Info
 
                 let event =
-                    { Level = level
-                      Category = ViewerDiagnosticCategory.Input
-                      Message = $"[{d.Source}/{d.Code}] {d.Message}"
-                      FrameIndex = None
-                      Stage = None
-                      Elapsed = None }
+                    {
+                        Level = level
+                        Category = ViewerDiagnosticCategory.Input
+                        Message = $"[{d.Source}/{d.Code}] {d.Message}"
+                        FrameIndex = None
+                        Stage = None
+                        Elapsed = None
+                    }
 
                 if Viewer.shouldCaptureDiagnostic options event then
                     sink event)
@@ -384,38 +421,40 @@ module ControlsElmish =
         let replayHits, replayMisses, replayRecords, replaySkipped, replayBytes = replay
         let textHits, textMisses = textCache
 
-        { ProductModelChanged = productModelChanged
-          ViewCalled = viewCalled
-          FullRenderCount = fullRenderCount
-          RemeasuredNodeCount = remeasuredNodeCount
-          MemoHitCount = memoHits
-          MemoMissCount = memoMisses
-          VirtualItemsMaterialized = virtualMaterialized
-          VirtualItemsTotal = virtualTotal
-          RepaintedNodeCount = repaintedNodeCount
-          DirtyRectCount = dirtyRectCount
-          DirtyArea = dirtyArea
-          PictureCacheHitCount = pictureHits
-          PictureCacheMissCount = pictureMisses
-          PictureCacheEntryCount = pictureEntries
-          TextMeasureCacheHitCount = textHits
-          TextMeasureCacheMissCount = textMisses
-          LayoutInvalidatedNodeCount = layoutInvalidatedNodeCount
-          PointerSamplesReceived = pointerSamplesReceived
-          PointerMovesProcessed = pointerMovesProcessed
-          FullRenderFallbackCount = fullRenderFallbackCount
-          FrameCause = frameCause
-          DiffRan = diffRan
-          LayoutRan = layoutRan
-          PaintRan = paintRan
-          FrameDuration = frameDuration
-          PaintDuration = paintDuration
-          ComposeDuration = composeDuration
-          ReplayHitCount = replayHits
-          ReplayMissCount = replayMisses
-          ReplayRecordCount = replayRecords
-          ReplaySkippedNodeCount = replaySkipped
-          ReplayCacheNativeBytes = replayBytes }
+        {
+            ProductModelChanged = productModelChanged
+            ViewCalled = viewCalled
+            FullRenderCount = fullRenderCount
+            RemeasuredNodeCount = remeasuredNodeCount
+            MemoHitCount = memoHits
+            MemoMissCount = memoMisses
+            VirtualItemsMaterialized = virtualMaterialized
+            VirtualItemsTotal = virtualTotal
+            RepaintedNodeCount = repaintedNodeCount
+            DirtyRectCount = dirtyRectCount
+            DirtyArea = dirtyArea
+            PictureCacheHitCount = pictureHits
+            PictureCacheMissCount = pictureMisses
+            PictureCacheEntryCount = pictureEntries
+            TextMeasureCacheHitCount = textHits
+            TextMeasureCacheMissCount = textMisses
+            LayoutInvalidatedNodeCount = layoutInvalidatedNodeCount
+            PointerSamplesReceived = pointerSamplesReceived
+            PointerMovesProcessed = pointerMovesProcessed
+            FullRenderFallbackCount = fullRenderFallbackCount
+            FrameCause = frameCause
+            DiffRan = diffRan
+            LayoutRan = layoutRan
+            PaintRan = paintRan
+            FrameDuration = frameDuration
+            PaintDuration = paintDuration
+            ComposeDuration = composeDuration
+            ReplayHitCount = replayHits
+            ReplayMissCount = replayMisses
+            ReplayRecordCount = replayRecords
+            ReplaySkippedNodeCount = replaySkipped
+            ReplayCacheNativeBytes = replayBytes
+        }
 
     let interpretKeyboardEffect mapCommand effect =
         match effect with
@@ -426,23 +465,31 @@ module ControlsElmish =
         | PendingSequenceChanged _
         | StateDisplayChanged _ -> []
         | RequestHostKeyCapture key ->
-            [ ReportAdapterDiagnostic(
-                  diagnostic
-                      "keyboard-input"
-                      hostKeyCaptureNotInterpretedCode
-                      $"RequestHostKeyCapture '{key}' is not interpreted by any host: no ViewerEffect carries a KeyboardEffect, so the request never reaches one and the capture never fires. Capture the key in the product instead: forward the raw key out of the host's MapKey — MapKey = fun key isDown -> Some(YourMsg(ViewerKeyboard.toKeyId key, isDown)) — and route it in update, where the keymap and the capture state live."
-              ) ]
+            [
+                ReportAdapterDiagnostic(
+                    diagnostic
+                        "keyboard-input"
+                        hostKeyCaptureNotInterpretedCode
+                        $"RequestHostKeyCapture '{key}' is not interpreted by any host: no ViewerEffect carries a KeyboardEffect, so the request never reaches one and the capture never fires. Capture the key in the product instead: forward the raw key out of the host's MapKey — MapKey = fun key isDown -> Some(YourMsg(ViewerKeyboard.toKeyId key, isDown)) — and route it in update, where the keymap and the capture state live."
+                )
+            ]
         | ReportKeyboardDiagnostic keyboardDiagnostic ->
-            [ ReportAdapterDiagnostic(diagnostic "keyboard-input" keyboardDiagnostic.Code keyboardDiagnostic.Message) ]
+            [
+                ReportAdapterDiagnostic(diagnostic "keyboard-input" keyboardDiagnostic.Code keyboardDiagnostic.Message)
+            ]
 
     let interpretControlEffect mapRuntime effect =
         match effect with
         | FocusChanged controlId ->
-            [ DispatchControlRuntimeMessage(FocusControl controlId)
-              DispatchProductMessage(mapRuntime (FocusControl controlId)) ]
+            [
+                DispatchControlRuntimeMessage(FocusControl controlId)
+                DispatchProductMessage(mapRuntime (FocusControl controlId))
+            ]
         | HoverChanged controlId ->
-            [ DispatchControlRuntimeMessage(HoverControl controlId)
-              DispatchProductMessage(mapRuntime (HoverControl controlId)) ]
+            [
+                DispatchControlRuntimeMessage(HoverControl controlId)
+                DispatchProductMessage(mapRuntime (HoverControl controlId))
+            ]
         | PressedControlsChanged _
         | CaretChanged _
         | SelectionChanged _
@@ -453,25 +500,45 @@ module ControlsElmish =
         | ScrollChanged _
         | CancelledInteraction _ -> []
         | StaleTarget controlId ->
-            [ ReportAdapterDiagnostic(diagnostic "control-runtime" "StaleTarget" $"Stale control target '{controlId}' was ignored by the Controls adapter.") ]
+            [
+                ReportAdapterDiagnostic(
+                    diagnostic
+                        "control-runtime"
+                        "StaleTarget"
+                        $"Stale control target '{controlId}' was ignored by the Controls adapter."
+                )
+            ]
         | ReportControlRuntimeDiagnostic controlDiagnostic ->
-            [ ReportAdapterDiagnostic(diagnostic "control-runtime" (string controlDiagnostic.Code) controlDiagnostic.Message) ]
+            [
+                ReportAdapterDiagnostic(
+                    diagnostic "control-runtime" (string controlDiagnostic.Code) controlDiagnostic.Message
+                )
+            ]
 
     let interpretOverlayEffect mapOpen mapDispatch mapFocus effect =
         match effect with
         | RequestOpenStateChange(surface, isOpen) -> [ AdapterEffect.DispatchProductMessage(mapOpen surface isOpen) ]
-        | OverlayEffect.DispatchProductMessage(surface, payload) -> [ AdapterEffect.DispatchProductMessage(mapDispatch surface payload) ]
+        | OverlayEffect.DispatchProductMessage(surface, payload) ->
+            [ AdapterEffect.DispatchProductMessage(mapDispatch surface payload) ]
         | RequestFocus focus ->
-            [ yield DispatchControlRuntimeMessage(FocusControl focus)
-              match mapFocus focus with
-              | Some msg -> yield AdapterEffect.DispatchProductMessage msg
-              | None -> () ]
+            [
+                yield DispatchControlRuntimeMessage(FocusControl focus)
+                match mapFocus focus with
+                | Some msg -> yield AdapterEffect.DispatchProductMessage msg
+                | None -> ()
+            ]
         | ReportOverlayDiagnostic controlDiagnostic ->
-            [ ReportAdapterDiagnostic(diagnostic "overlay-state" (string controlDiagnostic.Code) controlDiagnostic.Message) ]
+            [
+                ReportAdapterDiagnostic(
+                    diagnostic "overlay-state" (string controlDiagnostic.Code) controlDiagnostic.Message
+                )
+            ]
         | ConsumeInput
         | AllowPassThrough -> []
         | RecordTopmostHit decision ->
-            [ ReportAdapterDiagnostic(diagnostic "overlay-state" "TopmostHit" decision.Input) ]
+            [
+                ReportAdapterDiagnostic(diagnostic "overlay-state" "TopmostHit" decision.Input)
+            ]
 
     let interpretOverlayOutcome mapOpen mapDispatch mapFocus effects =
         effects |> List.collect (interpretOverlayEffect mapOpen mapDispatch mapFocus)
@@ -479,7 +546,9 @@ module ControlsElmish =
     let interpretPointerEffect (mapInteraction: PointerInteraction -> 'msg option) (interaction: PointerInteraction) =
         match interaction with
         | Diagnostic pointerDiagnostic ->
-            [ ReportAdapterDiagnostic(diagnostic "pointer" (string pointerDiagnostic.Code) pointerDiagnostic.Message) ]
+            [
+                ReportAdapterDiagnostic(diagnostic "pointer" (string pointerDiagnostic.Code) pointerDiagnostic.Message)
+            ]
         | meaningful ->
             match mapInteraction meaningful with
             | Some msg -> [ DispatchProductMessage msg ]
@@ -500,22 +569,38 @@ module ControlsElmish =
             else
                 fallbackReason |> Option.orElse (Some "present proof is not ready")
 
-        { ProofStatus = if proofReady then "passed" else "not-ready"
-          DamageUnionArea = metrics.DirtyArea
-          ScissorCandidateArea = if proofReady && fallback.IsNone then metrics.DirtyArea else 0
-          FallbackReason = fallback
-          PromotionDecisionCount = metrics.PictureCacheHitCount + metrics.PictureCacheMissCount
-          ReuseHitCount = metrics.PictureCacheHitCount + metrics.ReplayHitCount
-          ReuseMissCount = metrics.PictureCacheMissCount + metrics.ReplayMissCount
-          DemotionCount = if metrics.ReplaySkippedNodeCount = 0 && metrics.ReplayMissCount > 0 then 1 else 0
-          SnapshotResourceBytes = metrics.ReplayCacheNativeBytes }
+        {
+            ProofStatus = if proofReady then "passed" else "not-ready"
+            DamageUnionArea = metrics.DirtyArea
+            ScissorCandidateArea =
+                if proofReady && fallback.IsNone then
+                    metrics.DirtyArea
+                else
+                    0
+            FallbackReason = fallback
+            PromotionDecisionCount = metrics.PictureCacheHitCount + metrics.PictureCacheMissCount
+            ReuseHitCount = metrics.PictureCacheHitCount + metrics.ReplayHitCount
+            ReuseMissCount = metrics.PictureCacheMissCount + metrics.ReplayMissCount
+            DemotionCount =
+                if metrics.ReplaySkippedNodeCount = 0 && metrics.ReplayMissCount > 0 then
+                    1
+                else
+                    0
+            SnapshotResourceBytes = metrics.ReplayCacheNativeBytes
+        }
 
     let layoutMetrics (metrics: FrameMetrics) =
-        { LayoutWorkCount = metrics.RemeasuredNodeCount
-          IntrinsicQueryWorkCount = 0
-          IntrinsicCacheHitCount = 0
-          IntrinsicCacheMissCount = if metrics.LayoutRan then metrics.LayoutInvalidatedNodeCount else 0
-          IntrinsicInvalidationCount = metrics.LayoutInvalidatedNodeCount }
+        {
+            LayoutWorkCount = metrics.RemeasuredNodeCount
+            IntrinsicQueryWorkCount = 0
+            IntrinsicCacheHitCount = 0
+            IntrinsicCacheMissCount =
+                if metrics.LayoutRan then
+                    metrics.LayoutInvalidatedNodeCount
+                else
+                    0
+            IntrinsicInvalidationCount = metrics.LayoutInvalidatedNodeCount
+        }
 
     let responsivenessTimingContribution (metrics: FrameMetrics) =
         let nonNegative (value: TimeSpan) =
@@ -525,23 +610,33 @@ module ControlsElmish =
             metrics.FrameDuration - metrics.PaintDuration - metrics.ComposeDuration
             |> nonNegative
 
-        { RoutingDuration = TimeSpan.Zero
-          UpdateDuration = if metrics.ProductModelChanged then framePreparation else TimeSpan.Zero
-          RetainedStepDuration = framePreparation
-          LayoutDuration = if metrics.LayoutRan then framePreparation else TimeSpan.Zero
-          TextDuration = TimeSpan.Zero
-          ProductMessageCount = if metrics.ProductModelChanged then 1 else 0
-          ProductModelChanged = metrics.ProductModelChanged
-          RuntimeStateChanged =
-            metrics.PointerSamplesReceived > 0
-            || metrics.PointerMovesProcessed > 0
-            || metrics.FrameCause = FrameCause.Resize
-            || metrics.FrameCause = FrameCause.Theme
-          NoVisibleResponseReason =
-            if metrics.ProductModelChanged || metrics.PaintRan || metrics.LayoutRan then
-                None
-            else
-                Some "no product/runtime/paint change" }
+        {
+            RoutingDuration = TimeSpan.Zero
+            UpdateDuration =
+                if metrics.ProductModelChanged then
+                    framePreparation
+                else
+                    TimeSpan.Zero
+            RetainedStepDuration = framePreparation
+            LayoutDuration =
+                if metrics.LayoutRan then
+                    framePreparation
+                else
+                    TimeSpan.Zero
+            TextDuration = TimeSpan.Zero
+            ProductMessageCount = if metrics.ProductModelChanged then 1 else 0
+            ProductModelChanged = metrics.ProductModelChanged
+            RuntimeStateChanged =
+                metrics.PointerSamplesReceived > 0
+                || metrics.PointerMovesProcessed > 0
+                || metrics.FrameCause = FrameCause.Resize
+                || metrics.FrameCause = FrameCause.Theme
+            NoVisibleResponseReason =
+                if metrics.ProductModelChanged || metrics.PaintRan || metrics.LayoutRan then
+                    None
+                else
+                    Some "no product/runtime/paint change"
+        }
 
     let private deterministicFrameMetricsShape (metrics: FrameMetrics) =
         metrics.ProductModelChanged,
@@ -580,37 +675,36 @@ module ControlsElmish =
         let beforeShape = before |> List.map deterministicFrameMetricsShape
         let afterShape = after |> List.map deterministicFrameMetricsShape
 
-        { FrameMetricsUnchanged = beforeShape = afterShape
-          RecordsWritten = 0
-          ClockFreePerfScript =
-            after
-            |> List.forall (fun metrics ->
-                metrics.FrameDuration = TimeSpan.Zero
-                && metrics.PaintDuration = TimeSpan.Zero
-                && metrics.ComposeDuration = TimeSpan.Zero) }
+        {
+            FrameMetricsUnchanged = beforeShape = afterShape
+            RecordsWritten = 0
+            ClockFreePerfScript =
+                after
+                |> List.forall (fun metrics ->
+                    metrics.FrameDuration = TimeSpan.Zero
+                    && metrics.PaintDuration = TimeSpan.Zero
+                    && metrics.ComposeDuration = TimeSpan.Zero)
+        }
 
     let subscriptions (keyboard: AdapterSubscription<'msg> list) (controls: AdapterSubscription<'msg> list) =
         keyboard @ controls
 
     let program init update view subscriptions =
-        { Init = init
-          Update = update
-          View = view
-          Subscriptions = subscriptions }
+        {
+            Init = init
+            Update = update
+            View = view
+            Subscriptions = subscriptions
+        }
 
-    let widgetView (view: 'model -> Widget<'msg>) : 'model -> Control<'msg> =
-        view >> Widget.toControl
+    let widgetView (view: 'model -> Widget<'msg>) : 'model -> Control<'msg> = view >> Widget.toControl
 
     let programOfWidget init update view subscriptions =
         program init update (widgetView view) subscriptions
 
     let adapterDiagnosticToRuntimeDiagnostic context diagnostic =
         let source =
-            FS.GG.UI.Diagnostics.RuntimeDiagnostics.source
-                (Some "FS.GG.UI.Controls.Elmish")
-                diagnostic.Source
-                None
-                None
+            FS.GG.UI.Diagnostics.RuntimeDiagnostics.source (Some "FS.GG.UI.Controls.Elmish") diagnostic.Source None None
 
         FS.GG.UI.Diagnostics.RuntimeDiagnostics.create
             source
@@ -630,6 +724,7 @@ module ControlsElmish =
     let private tryFindControlById (root: Control<'msg>) (controlId: ControlId) : Control<'msg> option =
         let rec loop path (control: Control<'msg>) =
             let id = control.Key |> Option.defaultValue path
+
             if id = controlId then
                 Some control
             else
@@ -649,10 +744,12 @@ module ControlsElmish =
         bindings
         |> List.map (fun binding ->
             binding.Dispatch
-                { Kind = kind
-                  ControlId = Some controlId
-                  Origin = origin
-                  Nav = nav })
+                {
+                    Kind = kind
+                    ControlId = Some controlId
+                    Origin = origin
+                    Nav = nav
+                })
 
     let private sliderChangedMessages
         (rendered: ControlRenderResult<'msg>)
@@ -717,7 +814,9 @@ module ControlsElmish =
                 // Feature 184 (US3): report the new boolean state typed as `SteppedValue 1.0/0.0`
                 // (read back by `ChangeAdapters.onChangedBool` as `>= 0.5`).
                 let newState = if not current then 1.0 else 0.0
-                dispatchBindings origin authored "changed" (Some(SteppedValue newState)) bindings |> Some
+
+                dispatchBindings origin authored "changed" (Some(SteppedValue newState)) bindings
+                |> Some
         | _ -> None
 
     // Feature 241 (Review P10 / C3): the value-from-position discrete-option kinds. `radio-group`
@@ -770,6 +869,7 @@ module ControlsElmish =
                 let rowH = min theme.ControlHeight (bounds.Height / float n)
                 let index = Math.Clamp(int (floor ((y - bounds.Y) / max 1.0 rowH)), 0, n - 1)
                 let value = List.item index items
+
                 dispatchBindings origin authored "changed" (Some(MovedSelection(index, Some value))) bindings
                 |> Some
         | _ -> None
@@ -794,6 +894,7 @@ module ControlsElmish =
                 let tabWidth = bounds.Width / float n
                 let index = Math.Clamp(int (floor ((x - bounds.X) / max 1.0 tabWidth)), 0, n - 1)
                 let value = List.item index items
+
                 dispatchBindings origin authored "changed" (Some(MovedSelection(index, Some value))) bindings
                 |> Some
         | _ -> None
@@ -824,7 +925,8 @@ module ControlsElmish =
                             None)
                     |> Option.defaultValue 0.0
 
-                dispatchBindings origin authored "changed" (Some(SteppedValue current)) bindings |> Some
+                dispatchBindings origin authored "changed" (Some(SteppedValue current)) bindings
+                |> Some
         | _ -> None
 
     /// F3 — the activation-value contract: how a control kind computes its `changed` payload from a
@@ -833,7 +935,13 @@ module ControlsElmish =
     /// through to the generic `Payload = None` click bindings. (Feature 241 threads y so a vertically
     /// laid-out kind — `radio-group` — can resolve the option under the cursor.)
     type private ActivationValueComputer<'msg> =
-        ControlRenderResult<'msg> -> Control<'msg> -> ControlId -> float -> float -> ControlEventOrigin -> 'msg list option
+        ControlRenderResult<'msg>
+            -> Control<'msg>
+            -> ControlId
+            -> float
+            -> float
+            -> ControlEventOrigin
+            -> 'msg list option
 
     /// The activation-value REGISTRY: control kind → its activation-value computer. `bindingMessagesFor`
     /// consults this (keyed by the control's `Kind`) before the generic `Payload = None` fallback, so a
@@ -851,12 +959,16 @@ module ControlsElmish =
     // `theme` is threaded in so the geometry-mirroring computers (radio-group) can cap on the SAME
     // `theme.ControlHeight` the painter uses (F-CTL-1); kinds with no theme-dependent geometry ignore it.
     let private activationValueComputers (theme: Theme) : (string * ActivationValueComputer<'msg>) list =
-        [ "slider", (fun rendered root authored x _ origin -> sliderChangedMessages rendered root authored x origin)
-          "switch", (fun rendered root authored _ _ origin -> toggleChangedMessages rendered root authored origin)
-          "check-box", (fun rendered root authored _ _ origin -> toggleChangedMessages rendered root authored origin)
-          "radio-group", (fun rendered root authored _ y origin -> radioGroupChangedMessages theme rendered root authored y origin)
-          "tabs", (fun rendered root authored x _ origin -> tabsChangedMessages rendered root authored x origin)
-          "numeric-input", (fun rendered root authored _ _ origin -> numericInputChangedMessages rendered root authored origin) ]
+        [
+            "slider", (fun rendered root authored x _ origin -> sliderChangedMessages rendered root authored x origin)
+            "switch", (fun rendered root authored _ _ origin -> toggleChangedMessages rendered root authored origin)
+            "check-box", (fun rendered root authored _ _ origin -> toggleChangedMessages rendered root authored origin)
+            "radio-group",
+            (fun rendered root authored _ y origin -> radioGroupChangedMessages theme rendered root authored y origin)
+            "tabs", (fun rendered root authored x _ origin -> tabsChangedMessages rendered root authored x origin)
+            "numeric-input",
+            (fun rendered root authored _ _ origin -> numericInputChangedMessages rendered root authored origin)
+        ]
 
     /// Consult the activation-value registry for the authored control's kind. The registry key is
     /// authoritative: an unregistered kind returns `None` (→ generic `Payload = None` click bindings).
@@ -875,7 +987,12 @@ module ControlsElmish =
             |> List.tryFind (fun (kind, _) -> kind = control.Kind)
             |> Option.bind (fun (_, compute) -> compute rendered root authored x y origin))
 
-    let bindingMessagesFor (theme: Theme) (rendered: ControlRenderResult<'msg>) (root: Control<'msg>) (interaction: PointerInteraction) : 'msg list option =
+    let bindingMessagesFor
+        (theme: Theme)
+        (rendered: ControlRenderResult<'msg>)
+        (root: Control<'msg>)
+        (interaction: PointerInteraction)
+        : 'msg list option =
         match interaction with
         | Click(control, _, x, y) ->
             match Control.nearestAuthored rendered control with
@@ -897,10 +1014,12 @@ module ControlsElmish =
                         bindings
                         |> List.map (fun binding ->
                             binding.Dispatch
-                                { Kind = binding.EventKind
-                                  ControlId = Some authored
-                                  Origin = ControlEventOrigin.Pointer
-                                  Nav = None })
+                                {
+                                    Kind = binding.EventKind
+                                    ControlId = Some authored
+                                    Origin = ControlEventOrigin.Pointer
+                                    Nav = None
+                                })
                         |> Some
             | None -> None
         | DragMove(control, PointerButton.Primary, x, _)
@@ -930,12 +1049,14 @@ module ControlsElmish =
             rendered.Bounds |> List.exists (fun (known, _) -> known = id)
 
         let unresolved (id: ControlId) =
-            [ ReportAdapterDiagnostic(
-                  diagnostic
-                      "pointer"
-                      unresolvedControlIdCode
-                      $"Pointer interaction named control id '{id}', which no control in the current frame carries — it dispatched nothing. Check for a typo'd, mis-cased, or stale ControlId, or a control that is not currently rendered."
-              ) ]
+            [
+                ReportAdapterDiagnostic(
+                    diagnostic
+                        "pointer"
+                        unresolvedControlIdCode
+                        $"Pointer interaction named control id '{id}', which no control in the current frame carries — it dispatched nothing. Check for a typo'd, mis-cased, or stale ControlId, or a control that is not currently rendered."
+                )
+            ]
 
         match interaction with
         | Click(id, _, _, _) when not (carried id) -> unresolved id
@@ -990,12 +1111,14 @@ module ControlsElmish =
                 | ViewerPointerButtonKind.Secondary -> PointerButton.Secondary
                 | ViewerPointerButtonKind.Middle -> PointerButton.Middle)
 
-        { Phase = phase
-          X = input.X
-          Y = input.Y
-          Button = button
-          DeltaX = input.DeltaX
-          DeltaY = input.DeltaY }
+        {
+            Phase = phase
+            X = input.X
+            Y = input.Y
+            Button = button
+            DeltaX = input.DeltaX
+            DeltaY = input.DeltaY
+        }
 
     // Feature 191 (US2, C6/FR-006): a `canvas` bound via `Canvas.onPointer` carries its raw-sample
     // handler as a boxed `UntypedValue` under the "onPointer" attribute (it forwards the RAW
@@ -1036,7 +1159,11 @@ module ControlsElmish =
     // Forward the raw pointer sample (in canvas-local coordinates) to every keyed `canvas` bound to
     // `onPointer` whose laid-out box contains the sample. An out-of-box sample dispatches nothing
     // (FR-006). Keyed canvases only — the canvas id (its `Key`) joins the sample to its `Bounds` box.
-    let private canvasPointerMessages (rendered: ControlRenderResult<'msg>) (root: Control<'msg>) (sample: PointerSample) : 'msg list =
+    let private canvasPointerMessages
+        (rendered: ControlRenderResult<'msg>)
+        (root: Control<'msg>)
+        (sample: PointerSample)
+        : 'msg list =
         collectControls root
         |> List.choose (fun c ->
             match c.Kind, c.Key with
@@ -1052,7 +1179,13 @@ module ControlsElmish =
                             && sample.Y >= box.Y
                             && sample.Y <= box.Y + box.Height
                         then
-                            Some(handler { sample with X = sample.X - box.X; Y = sample.Y - box.Y })
+                            Some(
+                                handler
+                                    { sample with
+                                        X = sample.X - box.X
+                                        Y = sample.Y - box.Y
+                                    }
+                            )
                         else
                             None))
             | _ -> None)
@@ -1079,10 +1212,12 @@ module ControlsElmish =
             let rendered = Control.renderTree host.Theme size current
 
             let available: FS.GG.UI.Layout.AvailableSpace =
-                { Width = float size.Width
-                  WidthMode = FS.GG.UI.Layout.Exactly
-                  Height = float size.Height
-                  HeightMode = FS.GG.UI.Layout.Exactly }
+                {
+                    Width = float size.Width
+                    WidthMode = FS.GG.UI.Layout.Exactly
+                    Height = float size.Height
+                    HeightMode = FS.GG.UI.Layout.Exactly
+                }
 
             let layoutResult = FS.GG.UI.Layout.Layout.evaluate available rendered.Layout
             let policy = FS.GG.UI.Layout.Defaults.pixelSnapPolicy 1.0
@@ -1146,7 +1281,8 @@ module ControlsElmish =
             | None -> None, true
             | Some _ -> bindingMessagesFor theme render retained.Root.Control interaction, false
         | DragMove(_, PointerButton.Primary, _, _)
-        | DragEnd(_, PointerButton.Primary, _, _) -> bindingMessagesFor theme render retained.Root.Control interaction, false
+        | DragEnd(_, PointerButton.Primary, _, _) ->
+            bindingMessagesFor theme render retained.Root.Control interaction, false
         | _ -> None, false
 
     // Feature 110 (FR-001/FR-002/FR-003): route ONE already-resolved interaction from the retained frame.
@@ -1187,11 +1323,21 @@ module ControlsElmish =
     let rec private collectScrollViewerIds (path: string) (c: Control<'msg>) : ControlId list =
         let id = c.Key |> Option.defaultValue path
         let here = if c.Kind = "scroll-viewer" then [ id ] else []
-        here @ (c.Children |> List.mapi (fun i ch -> collectScrollViewerIds (path + "." + string i) ch) |> List.concat)
+
+        here
+        @ (c.Children
+           |> List.mapi (fun i ch -> collectScrollViewerIds (path + "." + string i) ch)
+           |> List.concat)
 
     // Feature 175: the innermost `scroll-viewer` whose painted bounds contain (x, y), or None.
-    let private enclosingScrollViewer (retained: RetainedRender<'msg>) (render: ControlRenderResult<'msg>) (x: float) (y: float) : ControlId option =
+    let private enclosingScrollViewer
+        (retained: RetainedRender<'msg>)
+        (render: ControlRenderResult<'msg>)
+        (x: float)
+        (y: float)
+        : ControlId option =
         let svIds = collectScrollViewerIds "0" retained.Root.Control |> Set.ofList
+
         render.Bounds
         |> List.filter (fun (id, _) -> svIds.Contains id)
         |> List.filter (fun (_, r: Rect) -> x >= r.X && x < r.X + r.Width && y >= r.Y && y < r.Y + r.Height)
@@ -1202,7 +1348,11 @@ module ControlsElmish =
     // Feature 175 (FR-001): resolve each `Scroll` interaction to (scroll-viewer id, deltaY,
     // contentHeight, viewportHeight) so the host can advance its persistent offset (clamped). A scroll
     // over no scroll-viewer, or a viewer whose extent can't be measured, is dropped.
-    let private resolveScrollDeltas (retained: RetainedRender<'msg>) (render: ControlRenderResult<'msg>) (interactions: PointerInteraction list) =
+    let private resolveScrollDeltas
+        (retained: RetainedRender<'msg>)
+        (render: ControlRenderResult<'msg>)
+        (interactions: PointerInteraction list)
+        =
         interactions
         |> List.choose (fun interaction ->
             match interaction with
@@ -1323,17 +1473,20 @@ module ControlsElmish =
                         let controlId =
                             RetainedRender.retainedCanonicalId id retained
                             |> Option.defaultValue (node.Control.Key |> Option.defaultValue node.Control.Kind)
+
                         fst (TextInput.init controlId (lineModeOf node.Control) (controlTextValue node.Control))
 
                 let model', _effects = TextInput.update msg model0
 
                 let newState =
                     { (priorState |> Option.defaultValue { Animation = None; Text = None }) with
-                        Text = Some model' }
+                        Text = Some model'
+                    }
 
                 let retained' =
                     { retained with
-                        StateByIdentity = Map.add id newState retained.StateByIdentity }
+                        StateByIdentity = Map.add id newState retained.StateByIdentity
+                    }
 
                 // FR-006: dispatch EVERY matched `onChanged` binding on the focused control (the 090
                 // path dropped all but the first via `List.tryHead`).
@@ -1342,11 +1495,13 @@ module ControlsElmish =
                     |> List.filter (fun binding -> binding.EventKind = "changed")
                     |> List.map (fun binding ->
                         binding.Dispatch
-                            { Kind = "changed"
-                              ControlId = Some binding.ControlId
-                              Origin = ControlEventOrigin.Text
-                              // Feature 184 (US3): edited text now rides the typed `Nav` as `EditedText`.
-                              Nav = Some(EditedText model'.DraftText) })
+                            {
+                                Kind = "changed"
+                                ControlId = Some binding.ControlId
+                                Origin = ControlEventOrigin.Text
+                                // Feature 184 (US3): edited text now rides the typed `Nav` as `EditedText`.
+                                Nav = Some(EditedText model'.DraftText)
+                            })
 
                 retained', productMessages
             | None -> retained, []
@@ -1432,16 +1587,23 @@ module ControlsElmish =
         bindings
         |> List.map (fun b ->
             b.Dispatch
-                { Kind = kind
-                  ControlId = Some nodeId
-                  Origin = ControlEventOrigin.Keyboard
-                  Nav = Some nav })
+                {
+                    Kind = kind
+                    ControlId = Some nodeId
+                    Origin = ControlEventOrigin.Keyboard
+                    Nav = Some nav
+                })
 
     // FR-002/FR-007: a value/range role's step. `delta` is the signed step (or a Home/End jump) from
     // `Focus.route`; the host reads the live value + declared `NavRange` and clamps. A default-step
     // slider ({0.1;0;1}) produces a value byte-identical to the pre-R5 `steppedValue` path; a clamp
     // no-op (`target = current`, already at the bound) dispatches NOTHING (FR-009).
-    let private resolveValueStep (c: Control<'msg>) (nodeId: ControlId) (ownBindings: ControlEventBinding<'msg> list) (delta: float) : 'msg list =
+    let private resolveValueStep
+        (c: Control<'msg>)
+        (nodeId: ControlId)
+        (ownBindings: ControlEventBinding<'msg> list)
+        (delta: float)
+        : 'msg list =
         let range =
             c.Accessibility
             |> Option.bind (fun m -> m.Navigation)
@@ -1462,14 +1624,22 @@ module ControlsElmish =
     // FR-003/FR-009: a linear-selection role's move. Reads the item count + current index; an empty
     // group or an unresolvable current index dispatches NOTHING; the new index is clamped to
     // [0, n-1] and a clamp no-op (clamped = current) dispatches NOTHING.
-    let private resolveSelectionMove (c: Control<'msg>) (nodeId: ControlId) (ownBindings: ControlEventBinding<'msg> list) (dir: Direction) : 'msg list =
+    let private resolveSelectionMove
+        (c: Control<'msg>)
+        (nodeId: ControlId)
+        (ownBindings: ControlEventBinding<'msg> list)
+        (dir: Direction)
+        : 'msg list =
         let items = controlItems c
         let n = List.length items
 
         if n = 0 then
             []
         else
-            match controlSelectedItem c |> Option.bind (fun sel -> items |> List.tryFindIndex (fun item -> item = sel)) with
+            match
+                controlSelectedItem c
+                |> Option.bind (fun sel -> items |> List.tryFindIndex (fun item -> item = sel))
+            with
             | None -> []
             | Some i ->
                 let target =
@@ -1490,7 +1660,12 @@ module ControlsElmish =
     // FR-004/FR-009: a grid role's 2-D move. Reads dims (row/column counts) + current cell; an empty
     // grid or an unresolvable current cell dispatches NOTHING; the new cell is clamped to the grid
     // and an edge clamp no-op dispatches NOTHING.
-    let private resolveGridMove (c: Control<'msg>) (nodeId: ControlId) (ownBindings: ControlEventBinding<'msg> list) (rowDelta: int, colDelta: int) : 'msg list =
+    let private resolveGridMove
+        (c: Control<'msg>)
+        (nodeId: ControlId)
+        (ownBindings: ControlEventBinding<'msg> list)
+        (rowDelta: int, colDelta: int)
+        : 'msg list =
         let rowKeys = dataGridRowKeys c
         let colKeys = dataGridColumnKeys c
         let rows = List.length rowKeys
@@ -1502,7 +1677,10 @@ module ControlsElmish =
             match dataGridFocusedCell c with
             | None -> []
             | Some cell ->
-                match (rowKeys |> List.tryFindIndex (fun k -> k = cell.RowKey)), (colKeys |> List.tryFindIndex (fun k -> k = cell.ColumnKey)) with
+                match
+                    (rowKeys |> List.tryFindIndex (fun k -> k = cell.RowKey)),
+                    (colKeys |> List.tryFindIndex (fun k -> k = cell.ColumnKey))
+                with
                 | Some r, Some col ->
                     let newRow = max 0 (min (rows - 1) (r + rowDelta))
                     let newCol = max 0 (min (cols - 1) (col + colDelta))
@@ -1515,7 +1693,12 @@ module ControlsElmish =
 
     // FR-006: the uniform per-intent resolver. Branches on the INTENT (not the control kind) — the
     // only role-specific logic is `Focus.route`'s role -> `NavIntent` classification. Pure.
-    let private resolveNavIntent (node: RetainedNode<'msg>) (nodeId: ControlId) (ownBindings: ControlEventBinding<'msg> list) (intent: NavIntent) : 'msg list =
+    let private resolveNavIntent
+        (node: RetainedNode<'msg>)
+        (nodeId: ControlId)
+        (ownBindings: ControlEventBinding<'msg> list)
+        (intent: NavIntent)
+        : 'msg list =
         match intent with
         | ValueStep delta -> resolveValueStep node.Control nodeId ownBindings delta
         | SelectionMove dir -> resolveSelectionMove node.Control nodeId ownBindings dir
@@ -1570,7 +1753,15 @@ module ControlsElmish =
                 // modifiers BEFORE default navigation. routeFocusedKey carries only `shift`, so the other
                 // modifiers are reported false here (the chord path carries the full set when wired).
                 let handler = (canvasKeyHandler node.Control).Value
-                let mods: KeyModifiers = { Ctrl = false; Alt = false; Shift = shift; Meta = false }
+
+                let mods: KeyModifiers =
+                    {
+                        Ctrl = false
+                        Alt = false
+                        Shift = shift
+                        Meta = false
+                    }
+
                 retained, [], [ handler key mods ]
             | Some node ->
                 // Feature 232 (#44): the focused node's UNIFIED full-tree id (`Key ?? path`), resolved
@@ -1584,9 +1775,11 @@ module ControlsElmish =
                     node.Control.Accessibility
                     |> Option.map (fun m -> m.Keyboard)
                     |> Option.defaultValue
-                        { Focusable = false
-                          ActivationKeys = []
-                          NavigationKeys = [] }
+                        {
+                            Focusable = false
+                            ActivationKeys = []
+                            NavigationKeys = []
+                        }
 
                 let keyName, isTab = normalizeFocusKey key
 
@@ -1618,10 +1811,12 @@ module ControlsElmish =
                         |> List.filter (fun b -> List.contains b.EventKind clickEquivalentKinds)
                         |> List.map (fun b ->
                             b.Dispatch
-                                { Kind = b.EventKind
-                                  ControlId = Some nodeId
-                                  Origin = ControlEventOrigin.Keyboard
-                                  Nav = None })
+                                {
+                                    Kind = b.EventKind
+                                    ControlId = Some nodeId
+                                    Origin = ControlEventOrigin.Keyboard
+                                    Nav = None
+                                })
 
                     retained, [], messages
                 | Navigate intent ->
@@ -1640,9 +1835,11 @@ module ControlsElmish =
     /// `Responsive` when the frames differ (a real input produced a visible change), `Inert` when
     /// identical. The reusable core the pointer and text responds-proof captures share.
     let respondsProofOf (before: Scene) (after: Scene) : RespondsProof =
-        { Before = before
-          After = after
-          Verdict = (if before <> after then Responsive else Inert) }
+        {
+            Before = before
+            After = after
+            Verdict = (if before <> after then Responsive else Inert)
+        }
 
     /// Capture an input→visible-change responds-proof for a pointer interaction on the running host
     /// (feature 090, FR-006/FR-007): render the BEFORE frame, route the interaction through the real
@@ -1660,7 +1857,10 @@ module ControlsElmish =
         : RespondsProof =
         let before = (Control.renderTree host.Theme size (host.View size model)).Scene
         let _, messages = routeInteractivePointer host state size model input
-        let model' = messages |> List.fold (fun current msg -> fst (host.Update msg current)) model
+
+        let model' =
+            messages |> List.fold (fun current msg -> fst (host.Update msg current)) model
+
         let after = (Control.renderTree host.Theme size (host.View size model')).Scene
         respondsProofOf before after
 
@@ -1688,7 +1888,7 @@ module ControlsElmish =
         // Feature 182/issue #1046: the interpreter-edge cells and their pointer/diagnostic transitions
         // live behind the typed `FrameLoopLifecycle` seam. This remains runtime state, NOT the Elmish
         // `Model` (constitution IV).
-        let loopState = FrameLoopLifecycle.create<'model, 'msg> ()
+        let loopState = FrameLoopLifecycle.create<'model, 'msg>()
 
         let surface (diags: ControlDiagnostic list) =
             for d in diags do
@@ -1722,7 +1922,8 @@ module ControlsElmish =
                 FocusedControl = focusedControlId
                 // Feature 175: carry the host's persistent scroll offsets into the runtime model so the
                 // scroll bridge (`applyScrollOffsets`) can stamp them onto the tree this frame.
-                ScrollOffsets = loopState.ScrollOffsets }
+                ScrollOffsets = loopState.ScrollOffsets
+            }
 
         // Produce the production scene for (size, model) through the retained reconciler. The first
         // frame seeds the retained structure and paints ONCE (FR-009 — no second `Control.renderTree`,
@@ -1737,7 +1938,9 @@ module ControlsElmish =
         // the caller (it always runs — FR-009), so output is byte-identical.
         let viewFor (size: Size) (model: 'model) : Control<'msg> =
             match loopState.LastView with
-            | Some(cachedSize, cachedModel, cachedView) when cachedSize = size && obj.ReferenceEquals(model, cachedModel) ->
+            | Some(cachedSize, cachedModel, cachedView) when
+                cachedSize = size && obj.ReferenceEquals(model, cachedModel)
+                ->
                 RenderLagTrace.emit "elmish-product-view-cache-hit" []
                 cachedView
             | _ ->
@@ -1745,9 +1948,14 @@ module ControlsElmish =
                 RenderLagTrace.emit "elmish-product-view-start" []
                 let v = host.View size model
                 sw.Stop()
+
                 RenderLagTrace.emit
                     "elmish-product-view-end"
-                    [ "durationMs", sw.Elapsed.TotalMilliseconds.ToString("0.###", Globalization.CultureInfo.InvariantCulture) ]
+                    [
+                        "durationMs",
+                        sw.Elapsed.TotalMilliseconds.ToString("0.###", Globalization.CultureInfo.InvariantCulture)
+                    ]
+
                 loopState.LastView <- Some(size, model, v)
                 v
 
@@ -1761,27 +1969,42 @@ module ControlsElmish =
                 let stampSw = System.Diagnostics.Stopwatch.StartNew()
                 let stamp = ControlRuntime.runtimeStampFor None runtimeModel (viewFor size model)
                 stampSw.Stop()
+
                 RenderLagTrace.emit
                     "elmish-runtime-stamp-end"
-                    [ "path", "init"
-                      "durationMs", stampSw.Elapsed.TotalMilliseconds.ToString("0.###", Globalization.CultureInfo.InvariantCulture) ]
+                    [
+                        "path", "init"
+                        "durationMs",
+                        stampSw.Elapsed.TotalMilliseconds.ToString("0.###", Globalization.CultureInfo.InvariantCulture)
+                    ]
+
                 loopState.LastRuntimeModel <- Some runtimeModel
                 // Feature 175: stamp live scroll offsets after the visual-state stamp (identity at rest).
                 let stampedScene = ControlRuntime.applyScrollOffsets runtimeModel stamp.Stamped
                 let initSw = System.Diagnostics.Stopwatch.StartNew()
                 let r0 = RetainedRender.init host.Theme size stampedScene
                 initSw.Stop()
+
                 RenderLagTrace.emit
                     "elmish-retained-init-end"
-                    [ "durationMs", initSw.Elapsed.TotalMilliseconds.ToString("0.###", Globalization.CultureInfo.InvariantCulture) ]
+                    [
+                        "durationMs",
+                        initSw.Elapsed.TotalMilliseconds.ToString("0.###", Globalization.CultureInfo.InvariantCulture)
+                    ]
+
                 surface r0.Diagnostics
                 loopState.Retained <- Some r0.Retained
                 loopState.LastRender <- Some r0.Render
                 totalSw.Stop()
+
                 RenderLagTrace.emit
                     "elmish-render-retained-end"
-                    [ "path", "init"
-                      "durationMs", totalSw.Elapsed.TotalMilliseconds.ToString("0.###", Globalization.CultureInfo.InvariantCulture) ]
+                    [
+                        "path", "init"
+                        "durationMs",
+                        totalSw.Elapsed.TotalMilliseconds.ToString("0.###", Globalization.CultureInfo.InvariantCulture)
+                    ]
+
                 r0.Render.Scene
             | Some prev ->
                 let totalSw = System.Diagnostics.Stopwatch.StartNew()
@@ -1797,8 +2020,8 @@ module ControlsElmish =
 
                 RenderLagTrace.emit
                     "elmish-render-retained-start"
-                    [ "path", "step"
-                      "modelUnchanged", string modelUnchanged ]
+                    [ "path", "step"; "modelUnchanged", string modelUnchanged ]
+
                 let fresh = viewFor size model
 
                 let prior =
@@ -1810,33 +2033,48 @@ module ControlsElmish =
                 let stampSw = System.Diagnostics.Stopwatch.StartNew()
                 let stamp = ControlRuntime.runtimeStampFor prior runtimeModel fresh
                 stampSw.Stop()
+
                 RenderLagTrace.emit
                     "elmish-runtime-stamp-end"
-                    [ "path", "step"
-                      "durationMs", stampSw.Elapsed.TotalMilliseconds.ToString("0.###", Globalization.CultureInfo.InvariantCulture) ]
+                    [
+                        "path", "step"
+                        "durationMs",
+                        stampSw.Elapsed.TotalMilliseconds.ToString("0.###", Globalization.CultureInfo.InvariantCulture)
+                    ]
+
                 loopState.LastRuntimeModel <- Some runtimeModel
                 // Feature 175: stamp live scroll offsets after the visual-state stamp (identity at rest).
                 let stampedScene = ControlRuntime.applyScrollOffsets runtimeModel stamp.Stamped
                 let stepSw = System.Diagnostics.Stopwatch.StartNew()
                 let s = RetainedRender.step host.Theme size prev stampedScene
                 stepSw.Stop()
+
                 RenderLagTrace.emit
                     "elmish-retained-step-end"
-                    [ "durationMs", stepSw.Elapsed.TotalMilliseconds.ToString("0.###", Globalization.CultureInfo.InvariantCulture)
-                      "remeasured", string s.WorkReduction.RemeasuredNodeCount
-                      "repainted", string s.WorkReduction.RepaintedNodeCount
-                      "dirtyRects", string s.WorkReduction.DirtyRectCount
-                      "replayHits", string s.WorkReduction.ReplayHits
-                      "replayMisses", string s.WorkReduction.ReplayMisses ]
+                    [
+                        "durationMs",
+                        stepSw.Elapsed.TotalMilliseconds.ToString("0.###", Globalization.CultureInfo.InvariantCulture)
+                        "remeasured", string s.WorkReduction.RemeasuredNodeCount
+                        "repainted", string s.WorkReduction.RepaintedNodeCount
+                        "dirtyRects", string s.WorkReduction.DirtyRectCount
+                        "replayHits", string s.WorkReduction.ReplayHits
+                        "replayMisses", string s.WorkReduction.ReplayMisses
+                    ]
+
                 surface s.Diagnostics
                 loopState.LastWorkReduction <- Some s.WorkReduction
                 loopState.Retained <- Some s.Retained
                 loopState.LastRender <- Some s.Render
                 totalSw.Stop()
+
                 RenderLagTrace.emit
                     "elmish-render-retained-end"
-                    [ "path", "step"
-                      "durationMs", totalSw.Elapsed.TotalMilliseconds.ToString("0.###", Globalization.CultureInfo.InvariantCulture) ]
+                    [
+                        "path", "step"
+                        "durationMs",
+                        totalSw.Elapsed.TotalMilliseconds.ToString("0.###", Globalization.CultureInfo.InvariantCulture)
+                    ]
+
                 s.Render.Scene
 
         // A focused node is a TEXT control (the E1 seam owns its printable keys); every other
@@ -1860,7 +2098,9 @@ module ControlsElmish =
                 if nId = controlId then
                     Some n.Identity
                 else
-                    n.Children |> List.mapi (fun i c -> i, c) |> List.tryPick (fun (i, c) -> find (path + "." + string i) c)
+                    n.Children
+                    |> List.mapi (fun i c -> i, c)
+                    |> List.tryPick (fun (i, c) -> find (path + "." + string i) c)
 
             find "0" r.Root
 
@@ -1877,12 +2117,21 @@ module ControlsElmish =
         // it can run is a counted oracle fallback (so `ViewCalled`/`DiffRan` track that), and the
         // model-driven repaint is the viewer's SEPARATE `renderRetained` cycle (not observed here), so
         // `PaintRan`/`LayoutRan` stay `false`. The authoritative, full per-phase record is `Perf.runScript`.
-        let emitFrameMetrics (cause: FrameCause) (samples: int) (movesProcessed: int) (productModelChanged: bool) (fullRenderFallbackCount: int) (duration: TimeSpan) =
+        let emitFrameMetrics
+            (cause: FrameCause)
+            (samples: int)
+            (movesProcessed: int)
+            (productModelChanged: bool)
+            (fullRenderFallbackCount: int)
+            (duration: TimeSpan)
+            =
             // Feature 186 (US1): delegate the 32-field construction to `buildFrameMetrics`. Values are
             // read into locals in the SAME order as the former record-field initialisation so the
             // live present-timing side effect (Feature 120) still runs between the work-reduction reads
             // and the replay reads — byte-identical to the hand-spelled record (FR-007).
-            let geti (f: WorkReductionRecord -> int) = loopState.LastWorkReduction |> Option.map f |> Option.defaultValue 0
+            let geti (f: WorkReductionRecord -> int) =
+                loopState.LastWorkReduction |> Option.map f |> Option.defaultValue 0
+
             let viewCalled = fullRenderFallbackCount > 0
             let remeasured = geti (fun w -> w.RemeasuredNodeCount)
             // Feature 113 (Phase 5): the last retained-step's memo tally (live `OnFrameMetrics` sink).
@@ -1890,16 +2139,32 @@ module ControlsElmish =
             // Feature 114 (Phase 6): the last retained-step's virtualization tally (live sink).
             let virtual' = geti (fun w -> w.VirtualMaterialized), geti (fun w -> w.VirtualTotal)
             // Feature 116 (Phase 7): the last retained-step's damage + picture-cache tallies (live sink).
-            let damage = geti (fun w -> w.RepaintedNodeCount), geti (fun w -> w.DirtyRectCount), geti (fun w -> w.DirtyArea)
-            let picture = geti (fun w -> w.PictureCacheHits), geti (fun w -> w.PictureCacheMisses), geti (fun w -> w.PictureCacheEntryCount)
+            let damage =
+                geti (fun w -> w.RepaintedNodeCount), geti (fun w -> w.DirtyRectCount), geti (fun w -> w.DirtyArea)
+
+            let picture =
+                geti (fun w -> w.PictureCacheHits),
+                geti (fun w -> w.PictureCacheMisses),
+                geti (fun w -> w.PictureCacheEntryCount)
             // Feature 117 (Phase 8): the last retained-step's text-cache tally + dirty-set size (live sink).
-            let textCache = geti (fun w -> w.TextMeasureCacheHits), geti (fun w -> w.TextMeasureCacheMisses)
+            let textCache =
+                geti (fun w -> w.TextMeasureCacheHits), geti (fun w -> w.TextMeasureCacheMisses)
+
             let layoutInvalidated = geti (fun w -> w.LayoutInvalidatedNodeCount)
             // Feature 120 (US1): live backend present timing (non-golden), read from the OpenGL host's
             // last present (one-frame lag, live diagnostic only); (US3) replay model counts.
-            let paintDuration = (loopState.LastPresentTiming <- FS.GG.UI.SkiaViewer.Host.GlHost.lastPresentTiming(); fst loopState.LastPresentTiming)
+            let paintDuration =
+                (loopState.LastPresentTiming <- FS.GG.UI.SkiaViewer.Host.GlHost.lastPresentTiming ()
+                 fst loopState.LastPresentTiming)
+
             let composeDuration = snd loopState.LastPresentTiming
-            let replay = geti (fun w -> w.ReplayHits), geti (fun w -> w.ReplayMisses), geti (fun w -> w.ReplayRecords), geti (fun w -> w.ReplaySkippedNodes), geti (fun w -> w.ReplayCacheNativeBytes)
+
+            let replay =
+                geti (fun w -> w.ReplayHits),
+                geti (fun w -> w.ReplayMisses),
+                geti (fun w -> w.ReplayRecords),
+                geti (fun w -> w.ReplaySkippedNodes),
+                geti (fun w -> w.ReplayCacheNativeBytes)
 
             host.OnFrameMetrics(
                 buildFrameMetrics
@@ -1923,7 +2188,8 @@ module ControlsElmish =
                     picture
                     replay
                     textCache
-                    layoutInvalidated)
+                    layoutInvalidated
+            )
 
         // The single pointer-routing step (the pre-108 `mapPointer` body): focus-on-click + the feature-
         // 110 RETAINED route (`routeRetainedPointer`) — no per-sample `host.View` + `Control.renderTree`.
@@ -1941,17 +2207,17 @@ module ControlsElmish =
                  match resolveFocus r input.X input.Y with
                  | Some id ->
                      match tryFindNode id r.Root with
-                     | Some node when
-                         node.Control.Accessibility
-                         |> Option.exists (fun m -> m.Keyboard.Focusable)
-                         -> loopState.Focused <- Some id
+                     | Some node when node.Control.Accessibility |> Option.exists (fun m -> m.Keyboard.Focusable) ->
+                         loopState.Focused <- Some id
                      | _ -> ()
                  | None -> ()
              | _ -> ())
 
             match loopState.Retained, loopState.LastRender with
             | Some r, Some render ->
-                let state', messages, fallbacks, scrollDeltas = routeRetainedPointer host r render loopState.PointerState size model input
+                let state', messages, fallbacks, scrollDeltas =
+                    routeRetainedPointer host r render loopState.PointerState size model input
+
                 loopState.PointerState <- state'
                 // Feature 175 (FR-001/FR-002): advance the persistent scroll offset for each scrolled
                 // viewer (re-clamped against the measured extent; wheel-down increases the offset). The
@@ -1964,6 +2230,7 @@ module ControlsElmish =
                         |> Option.defaultValue ScrollState.empty
                         |> ScrollState.withExtent contentHeight viewportHeight
                         |> ScrollState.applyScrollDelta (-deltaY * wheelScrollStep)
+
                     loopState.ScrollOffsets <- Map.add svId next loopState.ScrollOffsets
                 // The viewer's pacing policy has already selected this sample. Preserve the Controls
                 // route first, then offer that same folded sample to the raw fallback.
@@ -1972,7 +2239,9 @@ module ControlsElmish =
                 // No retained frame yet (a pointer sample before the first paint seeded the frame, not
                 // expected in the live loop where paint precedes input): fall back to the preserved
                 // oracle so routing is still correct, counting the full render it performs.
-                let state', messages = routeInteractivePointer host loopState.PointerState size model input
+                let state', messages =
+                    routeInteractivePointer host loopState.PointerState size model input
+
                 loopState.PointerState <- state'
                 messages @ mapRawPointer input size model, 1
 
@@ -2002,8 +2271,7 @@ module ControlsElmish =
 
                 let flushedMsgs, flushedFallbacks =
                     match FrameLoopLifecycle.takePendingMove loopState with
-                    | Some prev ->
-                        processInput prev size model
+                    | Some prev -> processInput prev size model
                     | None -> [], 0
 
                 sw.Stop()
@@ -2013,7 +2281,13 @@ module ControlsElmish =
                 let samples = FrameLoopLifecycle.completeMoveBoundary loopState
 
                 if samples > 0 then
-                    emitFrameMetrics FrameCause.PointerMove samples 1 (not (List.isEmpty flushedMsgs)) flushedFallbacks sw.Elapsed
+                    emitFrameMetrics
+                        FrameCause.PointerMove
+                        samples
+                        1
+                        (not (List.isEmpty flushedMsgs))
+                        flushedFallbacks
+                        sw.Elapsed
 
                 flushedMsgs
             | _ ->
@@ -2025,8 +2299,7 @@ module ControlsElmish =
 
                 let moveFlushed, (moveMsgs, moveFallbacks) =
                     match FrameLoopLifecycle.takePendingMove loopState with
-                    | Some prev ->
-                        true, processInput prev size model
+                    | Some prev -> true, processInput prev size model
                     | None -> false, ([], 0)
 
                 let discreteMsgs, discreteFallbacks = processInput input size model
@@ -2034,7 +2307,15 @@ module ControlsElmish =
                 let samples = FrameLoopLifecycle.completeDiscreteBoundary loopState
                 let msgs = moveMsgs @ discreteMsgs
                 let fallbackCount = moveFallbacks + discreteFallbacks
-                emitFrameMetrics FrameCause.PointerDiscrete samples (if moveFlushed then 1 else 0) (not (List.isEmpty msgs)) fallbackCount sw.Elapsed
+
+                emitFrameMetrics
+                    FrameCause.PointerDiscrete
+                    samples
+                    (if moveFlushed then 1 else 0)
+                    (not (List.isEmpty msgs))
+                    fallbackCount
+                    sw.Elapsed
+
                 msgs
 
         // Feature 108 (US5, FR-016): the unconsumed-key fallthrough. The modifier-aware `MapKeyChord`
@@ -2047,7 +2328,11 @@ module ControlsElmish =
                 match key with
                 | ViewerKey.Unknown raw ->
                     let bk, _, m =
-                        ViewerKeyboard.normalizeEventWithModifiers { RawKey = raw; Direction = ViewerKeyDirection.KeyDown }
+                        ViewerKeyboard.normalizeEventWithModifiers
+                            {
+                                RawKey = raw
+                                Direction = ViewerKeyDirection.KeyDown
+                            }
 
                     bk, m
                 | _ -> key, ViewerKeyboard.noModifiers
@@ -2093,15 +2378,16 @@ module ControlsElmish =
                                 | ViewerKey.Unknown raw -> raw.StartsWith("Shift+", StringComparison.OrdinalIgnoreCase)
                                 | _ -> false
 
-                            let r', controlMsgs, productMsgs = routeFocusedKey r loopState.Focused order key shift
+                            let r', controlMsgs, productMsgs =
+                                routeFocusedKey r loopState.Focused order key shift
+
                             loopState.Retained <- Some r'
 
                             // Apply focus-update messages to the host's focus identity (map the next
                             // ControlId back to its stable RetainedId).
                             for cm in controlMsgs do
                                 match cm with
-                                | FocusControl next ->
-                                    loopState.Focused <- next |> Option.bind (retainedIdOfControl r')
+                                | FocusControl next -> loopState.Focused <- next |> Option.bind (retainedIdOfControl r')
                                 | _ -> ()
 
                             // (3) Fall through to the chord/`host.MapKey` seam only when nothing was consumed.
@@ -2137,13 +2423,15 @@ module ControlsElmish =
             host.Tick delta
 
         let viewerHost: InteractiveViewerHost<'model, 'msg> =
-            { Init = host.Init
-              Update = host.Update
-              View = fun size model -> SceneNode.Group [ renderRetained size model ]
-              MapKey = mapKey
-              MapPointer = mapPointer
-              Tick = wrappedTick
-              Diagnostics = host.Diagnostics }
+            {
+                Init = host.Init
+                Update = host.Update
+                View = fun size model -> SceneNode.Group [ renderRetained size model ]
+                MapKey = mapKey
+                MapPointer = mapPointer
+                Tick = wrappedTick
+                Diagnostics = host.Diagnostics
+            }
 
         launch options viewerHost
 
@@ -2158,18 +2446,17 @@ module ControlsElmish =
         runInteractiveAppWithLauncher
             (fun launchOptions viewerHost ->
                 let viewerGamepadHost: InteractiveViewerGamepadHost<'model, 'msg> =
-                    { Host = viewerHost
-                      Gamepad = gamepadHost.Gamepad }
+                    {
+                        Host = viewerHost
+                        Gamepad = gamepadHost.Gamepad
+                    }
 
                 launch launchOptions viewerGamepadHost)
             options
             ignoreRawPointer
             gamepadHost.Host
 
-    let runInteractiveAppWithGamepad
-        (options: ViewerOptions)
-        (gamepadHost: InteractiveAppGamepadHost<'model, 'msg>)
-        =
+    let runInteractiveAppWithGamepad (options: ViewerOptions) (gamepadHost: InteractiveAppGamepadHost<'model, 'msg>) =
         runInteractiveAppWithGamepadLauncher Viewer.runInteractiveViewerWithGamepad options gamepadHost
 
     /// Issue #1159: compose the lower viewer's frame-paced input route with the retained Controls host.
@@ -2181,7 +2468,8 @@ module ControlsElmish =
         (host: InteractiveAppHost<'model, 'msg>)
         =
         runInteractiveAppWithLauncher
-            (fun launchOptions viewerHost -> Viewer.runInteractiveViewerWithPointerPacing launchOptions pointerPacing viewerHost)
+            (fun launchOptions viewerHost ->
+                Viewer.runInteractiveViewerWithPointerPacing launchOptions pointerPacing viewerHost)
             options
             mapRawPointer
             host
@@ -2242,8 +2530,7 @@ module ControlsElmish =
     /// fold had quietly stopped honouring `PlayAudio` while its twin still did, and nothing objected
     /// because each copy was locally correct. Pair it with `Perf.runScriptToEffects`, which is the
     /// headless fold that produces the `ViewerEffect list` this narrows.
-    let audioRequests (effects: ViewerEffect list) : AudioEffect list =
-        GeneratedAppHost.audioRequests effects
+    let audioRequests (effects: ViewerEffect list) : AudioEffect list = GeneratedAppHost.audioRequests effects
 
     module Live =
         let internal runDeterministicPointerPacing policy receivedAt frames =
@@ -2264,6 +2551,7 @@ module ControlsElmish =
             : DeterministicPointerPacingResult<'model> =
             let payloads = System.Collections.Generic.Dictionary<string, ViewerPointerInput>()
             let mutable nextPayload = 0
+
             let queueFrames =
                 frames
                 |> List.map (fun samples ->
@@ -2272,10 +2560,12 @@ module ControlsElmish =
                         let payload = string nextPayload
                         nextPayload <- nextPayload + 1
                         payloads.Add(payload, input)
+
                         let kind =
                             match input.Phase with
                             | ViewerPointerPhaseKind.Moved -> ViewerResponsivenessInputKind.PointerMove
                             | _ -> ViewerResponsivenessInputKind.PointerDiscrete
+
                         kind, payload))
 
             let drains = Viewer.runDeterministicPacing policy receivedAt queueFrames
@@ -2286,51 +2576,76 @@ module ControlsElmish =
             drains
             |> List.iteri (fun frameIndex drain ->
                 let inputs =
-                    drain.DiscreteInputs
-                    @ (drain.CoalescedPointer |> Option.toList)
+                    drain.DiscreteInputs @ (drain.CoalescedPointer |> Option.toList)
                     |> List.map (fun envelope -> payloads.[envelope.Payload])
+
                 let mutable updateCount = 0
+
                 for input in inputs do
                     let nextState, messages =
                         routeInteractivePointerWithRawFallback host mapRawPointer pointerState size model input
+
                     pointerState <- nextState
+
                     for message in messages do
                         let nextModel, _ = host.Update message model
                         model <- nextModel
                         updateCount <- updateCount + 1
+
                 let repaintCause =
                     match drain.DiscreteInputs.IsEmpty, drain.CoalescedPointer.IsSome with
                     | false, true -> ViewerPointerRepaintCause.MixedPointer
                     | false, false -> ViewerPointerRepaintCause.DiscretePointer
                     | true, true -> ViewerPointerRepaintCause.ContinuousPointer
                     | true, false -> ViewerPointerRepaintCause.ContinuousPointer
-                metrics.Add
-                    { RawSamplesReceived = frames.[frameIndex].Length
-                      FoldedSamplesApplied = inputs.Length
-                      CoalescedSamples = drain.CoalescedMovementCount
-                      ModelUpdates = updateCount
-                      PresentedFrames = int64 (frameIndex + 1)
-                      RepaintCause = repaintCause
-                      FullRenderFallbacks = 0 })
 
-            { Model = model
-              Drains = drains
-              Metrics = metrics |> Seq.toList }
+                metrics.Add
+                    {
+                        RawSamplesReceived = frames.[frameIndex].Length
+                        FoldedSamplesApplied = inputs.Length
+                        CoalescedSamples = drain.CoalescedMovementCount
+                        ModelUpdates = updateCount
+                        PresentedFrames = int64 (frameIndex + 1)
+                        RepaintCause = repaintCause
+                        FullRenderFallbacks = 0
+                    })
+
+            {
+                Model = model
+                Drains = drains
+                Metrics = metrics |> Seq.toList
+            }
 
         /// Issue #1159: drive a raw viewer script through the public paced Controls launcher.
         let runPointerPacingScript options pointerPacing mapRawPointer host script =
             let observed = ResizeArray<FrameMetrics>()
-            let observingHost = { host with OnFrameMetrics = fun metric -> observed.Add metric; host.OnFrameMetrics metric }
+
+            let observingHost =
+                { host with
+                    OnFrameMetrics =
+                        fun metric ->
+                            observed.Add metric
+                            host.OnFrameMetrics metric
+                }
 
             match
                 runInteractiveAppWithLauncher
                     (fun launchOptions viewerHost ->
-                        Viewer.runInteractiveViewerScriptWithPointerPacing launchOptions pointerPacing script viewerHost)
+                        Viewer.runInteractiveViewerScriptWithPointerPacing
+                            launchOptions
+                            pointerPacing
+                            script
+                            viewerHost)
                     options
                     mapRawPointer
                     observingHost
             with
-            | Result.Ok outcome -> Result.Ok { Outcome = outcome; Metrics = observed |> Seq.toList }
+            | Result.Ok outcome ->
+                Result.Ok
+                    {
+                        Outcome = outcome
+                        Metrics = observed |> Seq.toList
+                    }
             | Result.Error failure -> Result.Error failure
 
         let private viewerButton button =
@@ -2341,12 +2656,14 @@ module ControlsElmish =
 
         let private pointer phase x y button deltaX deltaY =
             ViewerScriptInput.Pointer
-                { Phase = phase
-                  X = x
-                  Y = y
-                  Button = button
-                  DeltaX = deltaX
-                  DeltaY = deltaY }
+                {
+                    Phase = phase
+                    X = x
+                    Y = y
+                    Button = button
+                    DeltaX = deltaX
+                    DeltaY = deltaY
+                }
 
         let private moved x y =
             pointer ViewerPointerPhaseKind.Moved x y None 0.0 0.0
@@ -2362,10 +2679,16 @@ module ControlsElmish =
 
         let private keyWithModifiers key (mods: KeyModifiers) =
             let prefixes =
-                [ if mods.Ctrl then "Ctrl"
-                  if mods.Alt then "Alt"
-                  if mods.Shift then "Shift"
-                  if mods.Meta then "Meta" ]
+                [
+                    if mods.Ctrl then
+                        "Ctrl"
+                    if mods.Alt then
+                        "Alt"
+                    if mods.Shift then
+                        "Shift"
+                    if mods.Meta then
+                        "Meta"
+                ]
 
             match prefixes with
             | [] -> key
@@ -2417,7 +2740,8 @@ module ControlsElmish =
                     OnFrameMetrics =
                         fun metric ->
                             observed.Add metric
-                            host.OnFrameMetrics metric }
+                            host.OnFrameMetrics metric
+                }
 
             let viewerScript = toViewerScript script
 
@@ -2436,8 +2760,10 @@ module ControlsElmish =
             with
             | Result.Ok outcome ->
                 Result.Ok
-                    { Outcome = outcome
-                      Metrics = observed |> Seq.toList }
+                    {
+                        Outcome = outcome
+                        Metrics = observed |> Seq.toList
+                    }
             | Result.Error failure -> Result.Error failure
 
         let runScriptWithWindowBehavior
@@ -2514,13 +2840,15 @@ module ControlsElmish =
         /// fields preserve the exact set/clear order (a frame that runs no render reports zeros).
         /// Internal by absence from `ControlsElmish.fsi`.
         type private FrameScriptState =
-            { mutable LastMemo: int * int // mutable: hot path
-              mutable LastVirtual: int * int // mutable: hot path
-              mutable LastDamage: int * int * int // mutable: hot path
-              mutable LastPicture: int * int * int // mutable: hot path
-              mutable LastReplay: int * int * int * int * int // mutable: hot path
-              mutable LastTextCache: int * int // mutable: hot path
-              mutable LastInvalidated: int } // mutable: hot path
+            {
+                mutable LastMemo: int * int // mutable: hot path
+                mutable LastVirtual: int * int // mutable: hot path
+                mutable LastDamage: int * int * int // mutable: hot path
+                mutable LastPicture: int * int * int // mutable: hot path
+                mutable LastReplay: int * int * int * int * int // mutable: hot path
+                mutable LastTextCache: int * int // mutable: hot path
+                mutable LastInvalidated: int
+            } // mutable: hot path
 
         // Issue #641: ONE fold, parameterised by the sink — the same shape the scripted Live runners
         // take (#438), and deliberately not a sinkless copy plus a recording copy: two folds that must
@@ -2555,13 +2883,15 @@ module ControlsElmish =
             //   native-bytes) — Feature 120; LastTextCache (hits, misses) + LastInvalidated
             //   (layout dirty-set size) — Feature 117.
             let fs =
-                { LastMemo = 0, 0
-                  LastVirtual = 0, 0
-                  LastDamage = 0, 0, 0
-                  LastPicture = 0, 0, 0
-                  LastReplay = 0, 0, 0, 0, 0
-                  LastTextCache = 0, 0
-                  LastInvalidated = 0 }
+                {
+                    LastMemo = 0, 0
+                    LastVirtual = 0, 0
+                    LastDamage = 0, 0, 0
+                    LastPicture = 0, 0, 0
+                    LastReplay = 0, 0, 0, 0, 0
+                    LastTextCache = 0, 0
+                    LastInvalidated = 0
+                }
 
             // Render the retained step for the current model, returning the frame's
             // RemeasuredNodeCount (the first frame seeds via `init`, which has no work record -> 0).
@@ -2582,9 +2912,22 @@ module ControlsElmish =
                     lastRender <- Some s.Render
                     fs.LastMemo <- s.WorkReduction.MemoHits, s.WorkReduction.MemoMisses
                     fs.LastVirtual <- s.WorkReduction.VirtualMaterialized, s.WorkReduction.VirtualTotal
-                    fs.LastDamage <- s.WorkReduction.RepaintedNodeCount, s.WorkReduction.DirtyRectCount, s.WorkReduction.DirtyArea
-                    fs.LastPicture <- s.WorkReduction.PictureCacheHits, s.WorkReduction.PictureCacheMisses, s.WorkReduction.PictureCacheEntryCount
-                    fs.LastReplay <- s.WorkReduction.ReplayHits, s.WorkReduction.ReplayMisses, s.WorkReduction.ReplayRecords, s.WorkReduction.ReplaySkippedNodes, s.WorkReduction.ReplayCacheNativeBytes
+
+                    fs.LastDamage <-
+                        s.WorkReduction.RepaintedNodeCount, s.WorkReduction.DirtyRectCount, s.WorkReduction.DirtyArea
+
+                    fs.LastPicture <-
+                        s.WorkReduction.PictureCacheHits,
+                        s.WorkReduction.PictureCacheMisses,
+                        s.WorkReduction.PictureCacheEntryCount
+
+                    fs.LastReplay <-
+                        s.WorkReduction.ReplayHits,
+                        s.WorkReduction.ReplayMisses,
+                        s.WorkReduction.ReplayRecords,
+                        s.WorkReduction.ReplaySkippedNodes,
+                        s.WorkReduction.ReplayCacheNativeBytes
+
                     fs.LastTextCache <- s.WorkReduction.TextMeasureCacheHits, s.WorkReduction.TextMeasureCacheMisses
                     fs.LastInvalidated <- s.WorkReduction.LayoutInvalidatedNodeCount
                     s.WorkReduction.RemeasuredNodeCount
@@ -2603,9 +2946,22 @@ module ControlsElmish =
                     lastRender <- Some s.Render
                     fs.LastMemo <- s.WorkReduction.MemoHits, s.WorkReduction.MemoMisses
                     fs.LastVirtual <- s.WorkReduction.VirtualMaterialized, s.WorkReduction.VirtualTotal
-                    fs.LastDamage <- s.WorkReduction.RepaintedNodeCount, s.WorkReduction.DirtyRectCount, s.WorkReduction.DirtyArea
-                    fs.LastPicture <- s.WorkReduction.PictureCacheHits, s.WorkReduction.PictureCacheMisses, s.WorkReduction.PictureCacheEntryCount
-                    fs.LastReplay <- s.WorkReduction.ReplayHits, s.WorkReduction.ReplayMisses, s.WorkReduction.ReplayRecords, s.WorkReduction.ReplaySkippedNodes, s.WorkReduction.ReplayCacheNativeBytes
+
+                    fs.LastDamage <-
+                        s.WorkReduction.RepaintedNodeCount, s.WorkReduction.DirtyRectCount, s.WorkReduction.DirtyArea
+
+                    fs.LastPicture <-
+                        s.WorkReduction.PictureCacheHits,
+                        s.WorkReduction.PictureCacheMisses,
+                        s.WorkReduction.PictureCacheEntryCount
+
+                    fs.LastReplay <-
+                        s.WorkReduction.ReplayHits,
+                        s.WorkReduction.ReplayMisses,
+                        s.WorkReduction.ReplayRecords,
+                        s.WorkReduction.ReplaySkippedNodes,
+                        s.WorkReduction.ReplayCacheNativeBytes
+
                     fs.LastTextCache <- s.WorkReduction.TextMeasureCacheHits, s.WorkReduction.TextMeasureCacheMisses
                     fs.LastInvalidated <- s.WorkReduction.LayoutInvalidatedNodeCount
                     s.WorkReduction.RemeasuredNodeCount
@@ -2716,9 +3072,12 @@ module ControlsElmish =
                 fs.LastInvalidated <- 0
 
                 match frame with
-                | FrameInput.Pointer _ :: _ when frame |> List.forall (function
-                                                                       | FrameInput.Pointer p -> Coalescing.isMoveInteraction p
-                                                                       | _ -> false) ->
+                | FrameInput.Pointer _ :: _ when
+                    frame
+                    |> List.forall (function
+                        | FrameInput.Pointer p -> Coalescing.isMoveInteraction p
+                        | _ -> false)
+                    ->
                     // Coalesced move frame: K samples, ONE processed move. Feature 110: the move routes
                     // from the retained frame and performs ZERO routing full renders (`FullRenderCount`
                     // no longer counts a routing render); only a model-driven re-render (`hasMsgs`) or a
@@ -2784,7 +3143,8 @@ module ControlsElmish =
                         FrameCause = FrameCause.PointerMove
                         DiffRan = hasMsgs
                         LayoutRan = remeasured > 0
-                        PaintRan = hasMsgs }
+                        PaintRan = hasMsgs
+                    }
                 | [ FrameInput.Idle ] -> zero
                 | [ FrameInput.Tick delta ] ->
                     // Advance every live clock by the injected delta. Feature 111 (FR-004): an
@@ -2806,7 +3166,10 @@ module ControlsElmish =
                                     StateByIdentity =
                                         r.StateByIdentity
                                         |> Map.map (fun _ s ->
-                                            { s with Animation = s.Animation |> Option.map (RetainedRender.advance delta) }) }
+                                            { s with
+                                                Animation = s.Animation |> Option.map (RetainedRender.advance delta)
+                                            })
+                                }
                     | None -> ()
 
                     let before = model
@@ -2846,7 +3209,8 @@ module ControlsElmish =
                         FrameCause = FrameCause.Tick
                         DiffRan = viewRan
                         LayoutRan = remeasured > 0
-                        PaintRan = paintRan }
+                        PaintRan = paintRan
+                    }
                 | [ FrameInput.Key(k, mods) ] ->
                     let before = model
 
@@ -2886,7 +3250,8 @@ module ControlsElmish =
                         FrameCause = FrameCause.Key
                         DiffRan = hasMsgs
                         LayoutRan = remeasured > 0
-                        PaintRan = hasMsgs }
+                        PaintRan = hasMsgs
+                    }
                 | [ FrameInput.Pointer interaction ] ->
                     // A discrete pointer interaction: one sample, never a coalesced move. Feature 110:
                     // routing resolves from the retained frame and performs ZERO routing full renders;
@@ -2927,7 +3292,8 @@ module ControlsElmish =
                         FrameCause = FrameCause.PointerDiscrete
                         DiffRan = hasMsgs
                         LayoutRan = remeasured > 0
-                        PaintRan = hasMsgs }
+                        PaintRan = hasMsgs
+                    }
                 | _ -> zero)
             // `List.map` is eager, so the mutable `model` now holds the FINAL post-script model.
             |> fun frames -> model, frames
@@ -2942,8 +3308,7 @@ module ControlsElmish =
         /// POST-interaction frame — e.g. capture an offscreen screenshot of the scene AFTER a
         /// scroll/hover/focus/click script — closing the "drive interaction → see resulting frame"
         /// loop without a live window (Feature 175 S1). Same pure, headless, byte-stable fold.
-        let runScriptToModel host size script : 'model * FrameMetrics list =
-            runScriptCore ignore host size script
+        let runScriptToModel host size script : 'model * FrameMetrics list = runScriptCore ignore host size script
 
         /// Issue #641: as `runScriptToModel`, but ALSO returns every `ViewerEffect` the script's
         /// `Init` and `Update` calls REQUESTED, in dispatch order (`Init`'s batch first). Same pure,
@@ -2972,5 +3337,8 @@ module ControlsElmish =
         /// asserts what the TEST does, and the bug being hunted is the product loop doing something else.
         let runScriptToEffects host size script : 'model * ViewerEffect list * FrameMetrics list =
             let requested = ResizeArray<ViewerEffect>()
-            let model, frames = runScriptCore (fun batch -> requested.AddRange batch) host size script
+
+            let model, frames =
+                runScriptCore (fun batch -> requested.AddRange batch) host size script
+
             model, List.ofSeq requested, frames

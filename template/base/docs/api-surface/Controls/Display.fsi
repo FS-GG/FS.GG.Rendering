@@ -5,47 +5,39 @@ open FS.GG.UI.Controls
 
 /// Immutable, compiler-checked authoring surface for rich text. `runs` required.
 type RichTextProps<'msg> =
-    { Id: ControlId option
-      Runs: RichTextRun list }
+    {
+        Id: ControlId option
+        Runs: RichTextRun list
+    }
 
 /// Immutable, compiler-checked authoring surface for a short-form label.
-type LabelProps<'msg> =
-    { Id: ControlId option
-      Text: string }
+type LabelProps<'msg> = { Id: ControlId option; Text: string }
 
 /// Immutable, compiler-checked authoring surface for an image. `value` required.
-type ImageProps<'msg> =
-    { Id: ControlId option
-      Value: string }
+type ImageProps<'msg> = { Id: ControlId option; Value: string }
 
 /// Immutable, compiler-checked authoring surface for an icon glyph. `text` required.
-type IconProps<'msg> =
-    { Id: ControlId option
-      Text: string }
+type IconProps<'msg> = { Id: ControlId option; Text: string }
 
 /// Immutable, compiler-checked authoring surface for a visual separator.
-type SeparatorProps<'msg> =
-    { Id: ControlId option }
+type SeparatorProps<'msg> = { Id: ControlId option }
 
 /// Immutable, compiler-checked authoring surface for a compact status badge.
-type BadgeProps<'msg> =
-    { Id: ControlId option
-      Text: string }
+type BadgeProps<'msg> = { Id: ControlId option; Text: string }
 
 /// Immutable, compiler-checked authoring surface for a determinate progress bar.
-type ProgressBarProps<'msg> =
-    { Id: ControlId option
-      Value: float }
+type ProgressBarProps<'msg> = { Id: ControlId option; Value: float }
 
 /// Immutable, compiler-checked authoring surface for an indeterminate spinner.
-type SpinnerProps<'msg> =
-    { Id: ControlId option }
+type SpinnerProps<'msg> = { Id: ControlId option }
 
 /// Immutable, compiler-checked authoring surface for a validation message.
 type ValidationMessageProps<'msg> =
-    { Id: ControlId option
-      Text: string
-      Severity: ValidationState }
+    {
+        Id: ControlId option
+        Text: string
+        Severity: ValidationState
+    }
 
 /// Typed Props front door for the `RichText` control.
 module RichText =

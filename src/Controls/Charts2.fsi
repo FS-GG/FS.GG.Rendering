@@ -6,7 +6,6 @@ namespace FS.GG.UI.Controls
 /// state. They render neutrally under `Themes.Default` and Ant-styled under `Themes.AntDesign`
 /// through a theme-role-derived palette, branching on no theme identity. `ChartPoint`/`ChartSeries`
 /// are declared in `Types.fsi` (feature 080).
-
 /// Area chart — a filled region under a series outline.
 module AreaChart =
     /// Builds an `area-chart` `Control` from the given attributes.

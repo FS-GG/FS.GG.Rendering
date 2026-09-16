@@ -2,9 +2,11 @@ namespace FS.GG.UI.Scene
 
 /// Metadata required when untrusted SVG XML crosses into the typed document boundary.
 type SvgImportRequest =
-    { AssetNamespace: string
-      DocumentId: string
-      Limits: SvgDocumentLimits }
+    {
+        AssetNamespace: string
+        DocumentId: string
+        Limits: SvgDocumentLimits
+    }
 
 /// Safe SVG XML import operations.
 [<RequireQualifiedAccess>]
@@ -15,16 +17,20 @@ module SvgImport =
 
 /// Detached exact-byte font resource accepted by the narrow resource-aware interchange API.
 type SvgFontResource =
-    { DefinitionId: string
-      Family: string
-      FileName: string
-      Sha256: string
-      License: string
-      Base64: string }
+    {
+        DefinitionId: string
+        Family: string
+        FileName: string
+        Sha256: string
+        License: string
+        Base64: string
+    }
 
 type SvgResourceDocument =
-    { Document: SvgDocument
-      Fonts: SvgFontResource list }
+    {
+        Document: SvgDocument
+        Fonts: SvgFontResource list
+    }
 
 [<RequireQualifiedAccess>]
 module SvgResourceInterchange =
@@ -37,29 +43,33 @@ module SvgResourceInterchange =
 
 /// Rights metadata retained with every reusable asset revision.
 type SvgAssetRights =
-    { License: string
-      Attribution: string option
-      Source: string option }
+    {
+        License: string
+        Attribution: string option
+        Source: string option
+    }
 
 /// Exact dependency on another catalog asset revision.
-type SvgAssetReference =
-    { AssetId: string
-      Revision: int }
+type SvgAssetReference = { AssetId: string; Revision: int }
 
 /// Immutable versioned asset. `ContentHash` is the lowercase SHA-256 of the canonical document bytes.
 type SvgAssetEnvelope =
-    { Schema: string
-      AssetId: string
-      Revision: int
-      ContentHash: string
-      Rights: SvgAssetRights
-      Dependencies: SvgAssetReference list
-      Document: SvgDocument }
+    {
+        Schema: string
+        AssetId: string
+        Revision: int
+        ContentHash: string
+        Rights: SvgAssetRights
+        Dependencies: SvgAssetReference list
+        Document: SvgDocument
+    }
 
 /// A separately versioned collection of immutable asset revisions.
 type SvgAssetCatalog =
-    { Schema: string
-      Assets: SvgAssetEnvelope list }
+    {
+        Schema: string
+        Assets: SvgAssetEnvelope list
+    }
 
 [<RequireQualifiedAccess>]
 /// Authorable properties supported by prefab overrides.
@@ -83,49 +93,67 @@ type SvgPrefabOverrideValue =
 
 /// One distinguishable property override on an asset-local element.
 type SvgPrefabOverride =
-    { ElementId: string
-      Property: SvgPrefabProperty
-      Value: SvgPrefabOverrideValue }
+    {
+        ElementId: string
+        Property: SvgPrefabProperty
+        Value: SvgPrefabOverrideValue
+    }
 
 /// A prefab instance pinned to its last explicitly accepted asset revision.
 type SvgPrefabInstance =
-    { InstanceId: string
-      AssetId: string
-      AcceptedRevision: int
-      Overrides: SvgPrefabOverride list }
+    {
+        InstanceId: string
+        AssetId: string
+        AcceptedRevision: int
+        Overrides: SvgPrefabOverride list
+    }
 
 /// Reviewable conflict produced when a retained override cannot apply to a revision.
 type SvgPrefabConflict =
-    { InstanceId: string
-      ElementId: string
-      Property: SvgPrefabProperty
-      Message: string }
+    {
+        InstanceId: string
+        ElementId: string
+        Property: SvgPrefabProperty
+        Message: string
+    }
 
 [<RequireQualifiedAccess>]
 /// Product-neutral values attached to a scene entity. Products define the meaning through descriptors.
-type SvgScenePropertyValue = Text of string | Number of float | Flag of bool | Coordinate of Point
+type SvgScenePropertyValue =
+    | Text of string
+    | Number of float
+    | Flag of bool
+    | Coordinate of Point
 
 /// One bounded, typed property on a scene entity.
-type SvgSceneProperty = { Key: string; Value: SvgScenePropertyValue }
+type SvgSceneProperty =
+    {
+        Key: string
+        Value: SvgScenePropertyValue
+    }
 
 /// Stable scene identity connected to exactly one document element or pinned prefab instance.
 type SvgSceneEntity =
-    { EntityId: string
-      KindId: string
-      VisualElementId: string option
-      PrefabInstanceId: string option
-      Properties: SvgSceneProperty list }
+    {
+        EntityId: string
+        KindId: string
+        VisualElementId: string option
+        PrefabInstanceId: string option
+        Properties: SvgSceneProperty list
+    }
 
 /// Optional document-space grid. Both steps must be positive and finite.
 type SvgSceneGrid = { Origin: Point; Step: Point }
 
 /// Product-neutral scene metadata stored in the same authoring checkpoint as visual and asset state.
 type SvgSceneMetadata =
-    { SceneId: string
-      Layers: string list
-      Entities: SvgSceneEntity list
-      Grid: SvgSceneGrid option
-      ResourceReferences: string list }
+    {
+        SceneId: string
+        Layers: string list
+        Entities: SvgSceneEntity list
+        Grid: SvgSceneGrid option
+        ResourceReferences: string list
+    }
 
 [<RequireQualifiedAccess>]
 /// One operation inside an all-or-nothing authoring transaction.
@@ -145,44 +173,54 @@ type SvgAuthoringOperation =
 
 /// Named group of operations that commits as one revision and undo entry.
 type SvgAuthoringTransaction =
-    { Schema: string
-      Id: string
-      Operations: SvgAuthoringOperation list }
+    {
+        Schema: string
+        Id: string
+        Operations: SvgAuthoringOperation list
+    }
 
 /// Immutable play handoff containing canonical document bytes and persistent catalog values.
 type SvgAuthoringSnapshot =
-    { SourceRevision: int
-      SerializedDocument: string
-      Catalog: SvgAssetCatalog
-      Instances: SvgPrefabInstance list
-      Metadata: SvgSceneMetadata }
+    {
+        SourceRevision: int
+        SerializedDocument: string
+        Catalog: SvgAssetCatalog
+        Instances: SvgPrefabInstance list
+        Metadata: SvgSceneMetadata
+    }
 
 /// Complete accepted value restored by undo and redo.
 type SvgAuthoringCheckpoint =
-    { Metadata: SvgSceneMetadata
-      Document: SvgDocument
-      Catalog: SvgAssetCatalog
-      Instances: SvgPrefabInstance list
-      Conflicts: SvgPrefabConflict list }
+    {
+        Metadata: SvgSceneMetadata
+        Document: SvgDocument
+        Catalog: SvgAssetCatalog
+        Instances: SvgPrefabInstance list
+        Conflicts: SvgPrefabConflict list
+    }
 
 /// Validated candidate kept outside accepted content and history until commit.
 type SvgAuthoringPreview =
-    { TransactionId: string
-      BaseRevision: int
-      Candidate: SvgAuthoringCheckpoint }
+    {
+        TransactionId: string
+        BaseRevision: int
+        Candidate: SvgAuthoringCheckpoint
+    }
 
 /// Portable editor state for atomic scene metadata, document, catalog and prefab transactions.
 type SvgAuthoringState =
-    { Revision: int
-      Document: SvgDocument
-      Metadata: SvgSceneMetadata
-      Catalog: SvgAssetCatalog
-      Instances: SvgPrefabInstance list
-      Conflicts: SvgPrefabConflict list
-      Undo: SvgAuthoringCheckpoint list
-      Redo: SvgAuthoringCheckpoint list
-      Preview: SvgAuthoringPreview option
-      PlaySnapshot: SvgAuthoringSnapshot option }
+    {
+        Revision: int
+        Document: SvgDocument
+        Metadata: SvgSceneMetadata
+        Catalog: SvgAssetCatalog
+        Instances: SvgPrefabInstance list
+        Conflicts: SvgPrefabConflict list
+        Undo: SvgAuthoringCheckpoint list
+        Redo: SvgAuthoringCheckpoint list
+        Preview: SvgAuthoringPreview option
+        PlaySnapshot: SvgAuthoringSnapshot option
+    }
 
 [<RequireQualifiedAccess>]
 /// Explicit refusal from an authoring transition.
@@ -217,48 +255,57 @@ module SvgAsset =
     val contentHash: document: SvgDocument -> Result<string, SvgDocumentIssue list>
     /// Validate schema, identity, revision, rights, hash, dependencies and catalog cycles.
     val validateCatalog: catalog: SvgAssetCatalog -> SvgDocumentIssue list
+
     /// Resolve an accepted revision and apply typed overrides. Missing or incompatible values fail loud.
     val resolveInstance:
         catalog: SvgAssetCatalog ->
         instance: SvgPrefabInstance ->
-        Result<SvgDocument * SvgPrefabConflict list, SvgDocumentIssue list>
+            Result<SvgDocument * SvgPrefabConflict list, SvgDocumentIssue list>
 
 [<RequireQualifiedAccess>]
 /// Atomic authoring transitions over persistent typed values.
 module SvgAuthoring =
     /// Current transaction-envelope schema identifier.
     val transactionSchema: string
+
     /// Validate initial document, catalog and instances without accepting partial state.
     val tryCreate:
         revision: int ->
         document: SvgDocument ->
         catalog: SvgAssetCatalog ->
         instances: SvgPrefabInstance list ->
-        Result<SvgAuthoringState, SvgAuthoringError>
+            Result<SvgAuthoringState, SvgAuthoringError>
+
     /// Validate an initial scene metadata value together with all persistent authoring values.
     /// Validate and create one atomic scene-authoring authority.
-    val tryCreateScene: revision: int -> metadata: SvgSceneMetadata -> document: SvgDocument -> catalog: SvgAssetCatalog -> instances: SvgPrefabInstance list -> Result<SvgAuthoringState, SvgAuthoringError>
+    val tryCreateScene:
+        revision: int ->
+        metadata: SvgSceneMetadata ->
+        document: SvgDocument ->
+        catalog: SvgAssetCatalog ->
+        instances: SvgPrefabInstance list ->
+            Result<SvgAuthoringState, SvgAuthoringError>
 
     /// Commit all operations or none. A successful group creates exactly one undo entry and clears redo.
     val commit:
         expectedRevision: int ->
         transaction: SvgAuthoringTransaction ->
         state: SvgAuthoringState ->
-        Result<SvgAuthoringState, SvgAuthoringError>
+            Result<SvgAuthoringState, SvgAuthoringError>
 
     /// Start or replace a grouped preview without changing accepted state or history.
     val preview:
         expectedRevision: int ->
         transaction: SvgAuthoringTransaction ->
         state: SvgAuthoringState ->
-        Result<SvgAuthoringState, SvgAuthoringError>
+            Result<SvgAuthoringState, SvgAuthoringError>
 
     /// Commit the named validated preview as one revision and undo entry.
     val commitPreview:
         expectedRevision: int ->
         transactionId: string ->
         state: SvgAuthoringState ->
-        Result<SvgAuthoringState, SvgAuthoringError>
+            Result<SvgAuthoringState, SvgAuthoringError>
 
     /// Discard the named preview without changing accepted values or history.
     val cancelPreview: transactionId: string -> state: SvgAuthoringState -> Result<SvgAuthoringState, SvgAuthoringError>
@@ -266,5 +313,7 @@ module SvgAuthoring =
     val undo: expectedRevision: int -> state: SvgAuthoringState -> Result<SvgAuthoringState, SvgAuthoringError>
     /// Restore the complete next checkpoint as one new revision.
     val redo: expectedRevision: int -> state: SvgAuthoringState -> Result<SvgAuthoringState, SvgAuthoringError>
+
     /// Capture canonical immutable values for a play/session handoff.
-    val takePlaySnapshot: expectedRevision: int -> state: SvgAuthoringState -> Result<SvgAuthoringState, SvgAuthoringError>
+    val takePlaySnapshot:
+        expectedRevision: int -> state: SvgAuthoringState -> Result<SvgAuthoringState, SvgAuthoringError>

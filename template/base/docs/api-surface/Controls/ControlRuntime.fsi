@@ -2,28 +2,28 @@
 namespace FS.GG.UI.Controls
 
 /// The text caret position (`Index`) within a focused control identified by `ControlId`.
-type ControlCaret =
-    { ControlId: ControlId
-      Index: int }
+type ControlCaret = { ControlId: ControlId; Index: int }
 
 /// A text selection range (`Start`..`End`) within the control identified by `ControlId`.
 type ControlSelection =
-    { ControlId: ControlId
-      Start: int
-      End: int }
+    {
+        ControlId: ControlId
+        Start: int
+        End: int
+    }
 
 /// In-flight IME composition `Text` being entered into the control identified by `ControlId`.
-type ControlComposition =
-    { ControlId: ControlId
-      Text: string }
+type ControlComposition = { ControlId: ControlId; Text: string }
 
 /// An active pointer drag on `ControlId`, tracking start (`StartX`/`StartY`) and current (`CurrentX`/`CurrentY`) coordinates.
 type ControlDrag =
-    { ControlId: ControlId
-      StartX: float
-      StartY: float
-      CurrentX: float
-      CurrentY: float }
+    {
+        ControlId: ControlId
+        StartX: float
+        StartY: float
+        CurrentX: float
+        CurrentY: float
+    }
 
 /// An observable side effect emitted by `ControlRuntime.update` when interaction state changes (focus, hover, caret, selection, drag, scroll, diagnostics).
 type ControlRuntimeEffect =
@@ -42,17 +42,19 @@ type ControlRuntimeEffect =
 
 /// The aggregate runtime interaction state: focused/hovered/pressed controls, `Caret`, `Selection`, `Composition`, `ActiveDrag`, and accumulated `Diagnostics`.
 type ControlRuntimeModel =
-    { FocusedControl: ControlId option
-      HoveredControl: ControlId option
-      PressedControls: Set<ControlId>
-      Caret: ControlCaret option
-      Selection: ControlSelection option
-      Composition: ControlComposition option
-      ActiveDrag: ControlDrag option
-      /// Feature 175: per-`scroll-viewer` scroll model, keyed by ControlId. Absent ⇒ `ScrollState.empty`.
-      ScrollOffsets: Map<ControlId, ScrollState>
-      Diagnostics: ControlDiagnostic list
-      RecentEffects: ControlRuntimeEffect list }
+    {
+        FocusedControl: ControlId option
+        HoveredControl: ControlId option
+        PressedControls: Set<ControlId>
+        Caret: ControlCaret option
+        Selection: ControlSelection option
+        Composition: ControlComposition option
+        ActiveDrag: ControlDrag option
+        /// Feature 175: per-`scroll-viewer` scroll model, keyed by ControlId. Absent ⇒ `ScrollState.empty`.
+        ScrollOffsets: Map<ControlId, ScrollState>
+        Diagnostics: ControlDiagnostic list
+        RecentEffects: ControlRuntimeEffect list
+    }
 
 /// An input message driving the runtime transition, e.g. `FocusControl`, `HoverControl`, `PressControl`, `SetCaret`, `StartDrag`, or `Reset`.
 type ControlRuntimeMsg =

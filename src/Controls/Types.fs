@@ -12,9 +12,11 @@ type ControlKind = string
 /// derived geometry (scrollable, thumb height/position) is computed by the `ScrollState` module.
 /// Defined here (before Control.fs) so both the paint path and `ControlRuntimeModel` can use it.
 type ScrollState =
-    { Offset: float
-      ContentHeight: float
-      ViewportHeight: float }
+    {
+        Offset: float
+        ContentHeight: float
+        ViewportHeight: float
+    }
 
 /// Feature 175 (FR-001/FR-002): pure transitions and derived geometry over `ScrollState`. Drag,
 /// wheel, and keyboard scroll all reduce to `applyScrollDelta`; the thumb derives from the ratio.
@@ -25,48 +27,73 @@ module ScrollState =
     // Minimum thumb height so a tall page's thumb stays grabbable.
     let minThumb = 12.0
 
-    let empty = { Offset = 0.0; ContentHeight = 0.0; ViewportHeight = 0.0 }
+    let empty =
+        {
+            Offset = 0.0
+            ContentHeight = 0.0
+            ViewportHeight = 0.0
+        }
 
     /// max(0, ContentHeight - ViewportHeight) — the largest valid offset.
-    let maxOffset (state: ScrollState) = max 0.0 (state.ContentHeight - state.ViewportHeight)
+    let maxOffset (state: ScrollState) =
+        max 0.0 (state.ContentHeight - state.ViewportHeight)
 
     /// The region can scroll only when content exceeds the viewport beyond the dead-zone.
-    let scrollable (state: ScrollState) = state.ContentHeight > state.ViewportHeight + deadZone
+    let scrollable (state: ScrollState) =
+        state.ContentHeight > state.ViewportHeight + deadZone
 
     /// Record measured extents (host sets these per frame); re-clamp so a shrink cannot leave a
     /// stale over-scroll offset.
     let withExtent (contentHeight: float) (viewportHeight: float) (state: ScrollState) =
-        let next = { state with ContentHeight = contentHeight; ViewportHeight = viewportHeight }
-        { next with Offset = next.Offset |> max 0.0 |> min (maxOffset next) }
+        let next =
+            { state with
+                ContentHeight = contentHeight
+                ViewportHeight = viewportHeight
+            }
+
+        { next with
+            Offset = next.Offset |> max 0.0 |> min (maxOffset next)
+        }
 
     /// Offset' = clamp(Offset + delta, 0, maxOffset). No overscroll at either bound (FR-001/FR-002).
     let applyScrollDelta (delta: float) (state: ScrollState) =
-        { state with Offset = state.Offset + delta |> max 0.0 |> min (maxOffset state) }
+        { state with
+            Offset = state.Offset + delta |> max 0.0 |> min (maxOffset state)
+        }
 
     /// Thumb height from the viewport/content ratio; 0 (no draggable thumb) when not scrollable.
     let thumbHeight (state: ScrollState) =
-        if not (scrollable state) then 0.0
-        else max minThumb (state.ViewportHeight * state.ViewportHeight / state.ContentHeight)
+        if not (scrollable state) then
+            0.0
+        else
+            max minThumb (state.ViewportHeight * state.ViewportHeight / state.ContentHeight)
 
     /// Thumb top within a track of `trackHeight`, monotonically tracking the offset; 0 when not
     /// scrollable.
     let thumbPosition (trackHeight: float) (state: ScrollState) =
         let m = maxOffset state
-        if not (scrollable state) || m <= 0.0 then 0.0
-        else state.Offset / m * max 0.0 (trackHeight - thumbHeight state)
+
+        if not (scrollable state) || m <= 0.0 then
+            0.0
+        else
+            state.Offset / m * max 0.0 (trackHeight - thumbHeight state)
 
 // Chart data records (feature 080): defined here in Types.fs — which compiles before
 // Control.fs — so the renderer/extraction in Control.fs can read X/Y/Label. The public
 // `FS.GG.UI.Controls.ChartPoint`/`ChartSeries` names are unchanged (surface-neutral move
 // out of Charts.fs); the chart authoring modules stay in Charts.fs.
 type ChartPoint =
-    { X: float
-      Y: float
-      Label: string option }
+    {
+        X: float
+        Y: float
+        Label: string option
+    }
 
 type ChartSeries =
-    { Name: string
-      Points: ChartPoint list }
+    {
+        Name: string
+        Points: ChartPoint list
+    }
 
 [<RequireQualifiedAccess>]
 type KnownControl =
@@ -151,11 +178,13 @@ type StandardAttributeValue<'msg> =
     | StandardUntyped of obj
 
 type ControlSchema =
-    { Kind: StandardControlKind
-      RequiredAttributes: StandardAttributeName list
-      SupportedAttributes: StandardAttributeName list
-      SupportedEvents: StandardEventKind list
-      CustomAllowed: bool }
+    {
+        Kind: StandardControlKind
+        RequiredAttributes: StandardAttributeName list
+        SupportedAttributes: StandardAttributeName list
+        SupportedEvents: StandardEventKind list
+        CustomAllowed: bool
+    }
 
 // #459 — `Error` here shadows `Result.Error` for every consumer that opens this namespace. See the
 // signature file for why this attribute is not optional on this particular type.
@@ -209,34 +238,39 @@ type AccessibilityRole =
     | Custom
 
 type KeyboardOperation =
-    { Focusable: bool
-      ActivationKeys: string list
-      NavigationKeys: string list }
+    {
+        Focusable: bool
+        ActivationKeys: string list
+        NavigationKeys: string list
+    }
 
 type ContrastEvidence =
-    { Foreground: Color
-      Background: Color
-      Ratio: float
-      RequiredRatio: float }
+    {
+        Foreground: Color
+        Background: Color
+        Ratio: float
+        RequiredRatio: float
+    }
 
-type NavRange =
-    { Step: float
-      Min: float
-      Max: float }
+type NavRange = { Step: float; Min: float; Max: float }
 
 type CollectionPosition =
-    { TotalItems: int
-      FocusedIndex: int option }
+    {
+        TotalItems: int
+        FocusedIndex: int option
+    }
 
 type AccessibilityMetadata =
-    { Role: AccessibilityRole
-      NameSource: string
-      State: string list
-      FocusOrder: int option
-      Keyboard: KeyboardOperation
-      Contrast: ContrastEvidence option
-      Navigation: NavRange option
-      Collection: CollectionPosition option }
+    {
+        Role: AccessibilityRole
+        NameSource: string
+        State: string list
+        FocusOrder: int option
+        Keyboard: KeyboardOperation
+        Contrast: ContrastEvidence option
+        Navigation: NavRange option
+        Collection: CollectionPosition option
+    }
 
 [<RequireQualifiedAccess>]
 type ControlEventOrigin =
@@ -254,10 +288,12 @@ type NavPayload =
     | EditedText of text: string
 
 type ControlEvent =
-    { Kind: string
-      ControlId: ControlId option
-      Origin: ControlEventOrigin
-      Nav: NavPayload option }
+    {
+        Kind: string
+        ControlId: ControlId option
+        Origin: ControlEventOrigin
+        Nav: NavPayload option
+    }
 
 /// Feature 184 (US3): typed projections of a `ControlEvent`'s `Nav` outcome — the single typed
 /// replacement for the retired stringly `Payload : string option`. `navText` yields the string an
@@ -294,17 +330,21 @@ type AttrCategory =
     | Slot
 
 type Control<'msg> =
-    { Kind: ControlKind
-      Key: ControlId option
-      Attributes: Attr<'msg> list
-      Children: Control<'msg> list
-      Content: string option
-      Accessibility: AccessibilityMetadata option }
+    {
+        Kind: ControlKind
+        Key: ControlId option
+        Attributes: Attr<'msg> list
+        Children: Control<'msg> list
+        Content: string option
+        Accessibility: AccessibilityMetadata option
+    }
 
 and Attr<'msg> =
-    { Name: string
-      Category: AttrCategory
-      Value: AttrValue<'msg> }
+    {
+        Name: string
+        Category: AttrCategory
+        Value: AttrValue<'msg>
+    }
 
 and AttrValue<'msg> =
     | TextValue of string
@@ -325,23 +365,29 @@ and AttrValue<'msg> =
     | UntypedValue of obj
 
 type ControlDiagnostic =
-    { ControlId: ControlId option
-      ControlKind: ControlKind
-      Code: ControlDiagnosticCode
-      Severity: ControlDiagnosticSeverity
-      Message: string
-      EvidencePath: string option }
+    {
+        ControlId: ControlId option
+        ControlKind: ControlKind
+        Code: ControlDiagnosticCode
+        Severity: ControlDiagnosticSeverity
+        Message: string
+        EvidencePath: string option
+    }
 
 type ControlEventBinding<'msg> =
-    { ControlId: ControlId
-      EventKind: string
-      Dispatch: ControlEvent -> 'msg }
+    {
+        ControlId: ControlId
+        EventKind: string
+        Dispatch: ControlEvent -> 'msg
+    }
 
 type ControlRenderResult<'msg> =
-    { Scene: Scene
-      Layout: LayoutNode
-      Bounds: (ControlId * Rect) list
-      Diagnostics: ControlDiagnostic list
-      EventBindings: ControlEventBinding<'msg> list
-      BoundIds: Set<ControlId>
-      NodeCount: int }
+    {
+        Scene: Scene
+        Layout: LayoutNode
+        Bounds: (ControlId * Rect) list
+        Diagnostics: ControlDiagnostic list
+        EventBindings: ControlEventBinding<'msg> list
+        BoundIds: Set<ControlId>
+        NodeCount: int
+    }

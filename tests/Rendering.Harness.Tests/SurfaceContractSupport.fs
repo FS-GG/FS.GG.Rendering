@@ -47,7 +47,8 @@ let repositoryRoot = RepositoryRoot.value
 /// compared against this and never against a hand-written expectation: a test that asserted today's
 /// six correct entries would pass on the day a seventh surface is added with no entry at all, which
 /// is the whole complaint of #1099 and #1111.
-let declaredSurfaces () = SkillParity.discoverDefaultSurfaces repositoryRoot
+let declaredSurfaces () =
+    SkillParity.discoverDefaultSurfaces repositoryRoot
 
 /// Every `SurfaceSelector` case, by reflection, so a case added tomorrow is covered without anyone
 /// remembering to extend a test file. All cases are nullary today; a case that ever takes fields is
@@ -83,7 +84,8 @@ let singleSpan (text: string) =
 
 /// What is left of a fragment once its code spans are removed. A cell that spells part of its value
 /// in prose leaves residue here and is rejected by the callers that enforce a grammar.
-let residue (text: string) = codeSpanPattern.Replace(text, "").Trim()
+let residue (text: string) =
+    codeSpanPattern.Replace(text, "").Trim()
 
 // ---------------------------------------------------------------------------------------------
 // The comparison
@@ -93,27 +95,33 @@ let residue (text: string) = codeSpanPattern.Replace(text, "").Trim()
 /// `Kind` is `option` at BOTH levels on purpose: `None` means the document published no kind cell,
 /// and whether that is a disagreement is the subject's `ComparesKind`, not this type's business.
 type SurfaceRestatement =
-    { SurfaceId: string
-      Kind: string option
-      Roots: string list
-      Selector: string option }
+    {
+        SurfaceId: string
+        Kind: string option
+        Roots: string list
+        Selector: string option
+    }
 
 /// Everything a document yielded: the restatements that parsed AND the ones that did not. A
 /// restatement the parser could not read is a disagreement, never an absence — dropping it would
 /// report the surface as merely unmentioned, which is a lie about why, and would make a malformed
 /// entry naming a surface that does not exist vanish completely.
 type ParsedRestatements =
-    { Entries: SurfaceRestatement list
-      Unreadable: string list }
+    {
+        Entries: SurfaceRestatement list
+        Unreadable: string list
+    }
 
 /// How one document is named in a verdict, and what it publishes.
 type RestatementSubject =
-    { /// The document or section, as it should read in a sentence: "the Required Inventory table".
-      Document: string
-      /// The singular noun for one restatement in it: "row", "bullet".
-      Entry: string
-      /// Whether this document publishes `Kind`, and is therefore checked on it. See the header.
-      ComparesKind: bool }
+    {
+        /// The document or section, as it should read in a sentence: "the Required Inventory table".
+        Document: string
+        /// The singular noun for one restatement in it: "row", "bullet".
+        Entry: string
+        /// Whether this document publishes `Kind`, and is therefore checked on it. See the header.
+        ComparesKind: bool
+    }
 
 /// Every way a document's restatement and the code disagree, as sentences. Empty means they agree.
 ///
@@ -129,8 +137,11 @@ let disagreements
     (restated: ParsedRestatements)
     (surfaces: SkillParity.SkillSurface list)
     =
-    let entryIds = restated.Entries |> List.map (fun entry -> entry.SurfaceId) |> Set.ofList
-    let surfaceIds = surfaces |> List.map (fun surface -> surface.SurfaceId) |> Set.ofList
+    let entryIds =
+        restated.Entries |> List.map (fun entry -> entry.SurfaceId) |> Set.ofList
+
+    let surfaceIds =
+        surfaces |> List.map (fun surface -> surface.SurfaceId) |> Set.ofList
 
     let unreadable =
         restated.Unreadable
@@ -179,30 +190,32 @@ let disagreements
                 let expectedSelector = SkillParity.surfaceSelectorToken surface.Selector
                 let expectedKind = SkillParity.surfaceKindToken surface.Kind
 
-                [ if entry.Roots <> surface.Roots then
-                      yield
-                          sprintf
-                              "surface '%s': %s publishes roots %A and the resolver reads %A"
-                              surface.SurfaceId
-                              subject.Document
-                              entry.Roots
-                              surface.Roots
-                  if entry.Selector <> Some expectedSelector then
-                      yield
-                          sprintf
-                              "surface '%s': %s publishes selector %A and the resolver uses '%s'"
-                              surface.SurfaceId
-                              subject.Document
-                              entry.Selector
-                              expectedSelector
-                  if subject.ComparesKind && entry.Kind <> Some expectedKind then
-                      yield
-                          sprintf
-                              "surface '%s': %s publishes kind %A and the resolver declares '%s'"
-                              surface.SurfaceId
-                              subject.Document
-                              entry.Kind
-                              expectedKind ]))
+                [
+                    if entry.Roots <> surface.Roots then
+                        yield
+                            sprintf
+                                "surface '%s': %s publishes roots %A and the resolver reads %A"
+                                surface.SurfaceId
+                                subject.Document
+                                entry.Roots
+                                surface.Roots
+                    if entry.Selector <> Some expectedSelector then
+                        yield
+                            sprintf
+                                "surface '%s': %s publishes selector %A and the resolver uses '%s'"
+                                surface.SurfaceId
+                                subject.Document
+                                entry.Selector
+                                expectedSelector
+                    if subject.ComparesKind && entry.Kind <> Some expectedKind then
+                        yield
+                            sprintf
+                                "surface '%s': %s publishes kind %A and the resolver declares '%s'"
+                                surface.SurfaceId
+                                subject.Document
+                                entry.Kind
+                                expectedKind
+                ]))
 
     unreadable @ repeated @ missingEntries @ extraEntries @ cellMismatches
 
@@ -221,7 +234,9 @@ let withMovedRoot (surfaces: SkillParity.SkillSurface list) =
     surfaces
     |> List.mapi (fun index surface ->
         if index = 0 then
-            { surface with Roots = [ "docs/product/ant-design/skill/SKILL.md" ] }
+            { surface with
+                Roots = [ "docs/product/ant-design/skill/SKILL.md" ]
+            }
         else
             surface)
 
@@ -266,7 +281,9 @@ let withOtherKind (surfaces: SkillParity.SkillSurface list) =
 
 /// Whether a repository-relative root names something that exists in this tree.
 let rootResolves (root: string) =
-    let absolute = Path.Combine(repositoryRoot, root.Replace('/', Path.DirectorySeparatorChar))
+    let absolute =
+        Path.Combine(repositoryRoot, root.Replace('/', Path.DirectorySeparatorChar))
+
     File.Exists absolute || Directory.Exists absolute
 
 /// What to say when it does not — and, FIRST, what to check.

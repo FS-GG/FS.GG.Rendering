@@ -18,33 +18,43 @@ open FS.GG.UI.Themes.Default
 let private size: Size = { Width = 1024; Height = 768 }
 
 let private modelFor (pageId: string) =
-    { Host.initModel with CurrentPage = pageId }
+    { Host.initModel with
+        CurrentPage = pageId
+    }
 
 /// Render the page's scene and attempt an offscreen screenshot.
-let private capture (pageId: string) (outPath: string): ScreenshotEvidenceResult =
+let private capture (pageId: string) (outPath: string) : ScreenshotEvidenceResult =
     let model = modelFor pageId
     let theme = GalleryTheme.resolve model.Mode model.Accent
     let rendered = Control.renderTree theme size (Shell.view size model)
     let scene = SceneNode.Group [ rendered.Scene ]
+
     let request: ScreenshotEvidenceRequest =
-        { Command = "evidence"
-          AppOrSample = "controls-gallery"
-          OutputPath = outPath
-          Width = size.Width
-          Height = size.Height
-          RendererMode = "viewer-render-target"
-          CaptureMode = ViewerRenderTargetPng
-          HostFacts = []
-          Timeout = TimeSpan.FromSeconds 10.0 }
+        {
+            Command = "evidence"
+            AppOrSample = "controls-gallery"
+            OutputPath = outPath
+            Width = size.Width
+            Height = size.Height
+            RendererMode = "viewer-render-target"
+            CaptureMode = ViewerRenderTargetPng
+            HostFacts = []
+            Timeout = TimeSpan.FromSeconds 10.0
+        }
+
     let options: ViewerOptions =
-        { Title = "controls-gallery-evidence"
-          InitialSize = size
-          PresentMode = ViewerPresentMode.OffscreenReadback
-          FrameRateCap = None; LogicalSize = None }
+        {
+            Title = "controls-gallery-evidence"
+            InitialSize = size
+            PresentMode = ViewerPresentMode.OffscreenReadback
+            FrameRateCap = None
+            LogicalSize = None
+        }
+
     Viewer.captureScreenshotEvidence request options scene
 
 /// Produce and persist one page's evidence record.
-let runPage (seed: int) (outDir: string) (page: GalleryPage): Evidence.PageEvidenceRecord =
+let runPage (seed: int) (outDir: string) (page: GalleryPage) : Evidence.PageEvidenceRecord =
     let dir = Path.Combine(outDir, string seed, page.Id)
     Directory.CreateDirectory(dir) |> ignore
 
@@ -55,10 +65,17 @@ let runPage (seed: int) (outDir: string) (page: GalleryPage): Evidence.PageEvide
 
     // 2. screenshot — degrade-and-disclose on any GL/capture failure.
     let framePath = Path.Combine(dir, "frame.png")
+
     let summary =
         try
             let shot = capture page.Id framePath
-            let path = if shot.ProvesScreenshot && File.Exists framePath then Some "frame.png" else None
+
+            let path =
+                if shot.ProvesScreenshot && File.Exists framePath then
+                    Some "frame.png"
+                else
+                    None
+
             Evidence.ofScreenshotResult shot path
         with ex ->
             Evidence.degraded (sprintf "screenshot capture raised: %s" ex.Message)
@@ -75,17 +92,24 @@ let runPage (seed: int) (outDir: string) (page: GalleryPage): Evidence.PageEvide
 
 /// Run evidence over all pages (or one via `pageFilter`). Always exits 0 on success,
 /// including disclosed degraded runs (FR-016).
-let run (seed: int) (outDir: string) (pageFilter: string option): int =
+let run (seed: int) (outDir: string) (pageFilter: string option) : int =
     let pages =
         match pageFilter with
         | Some id -> Pages.all |> List.filter (fun p -> p.Id = id)
         | None -> Pages.all
+
     if List.isEmpty pages then
         eprintfn "controls-gallery: no page matched '%s'." (Option.defaultValue "" pageFilter)
         2
     else
         let records = pages |> List.map (runPage seed outDir)
+
         for r in records do
-            printfn "  %-22s provesScreenshot=%-5b notAuthoritativeFor=[%s]" r.PageId r.Screenshot.ProvesScreenshot (String.concat "; " r.NotAuthoritativeFor)
+            printfn
+                "  %-22s provesScreenshot=%-5b notAuthoritativeFor=[%s]"
+                r.PageId
+                r.Screenshot.ProvesScreenshot
+                (String.concat "; " r.NotAuthoritativeFor)
+
         printfn "controls-gallery: wrote %d page evidence record(s) under %s/%d" (List.length records) outDir seed
         0

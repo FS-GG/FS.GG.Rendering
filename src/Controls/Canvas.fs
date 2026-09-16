@@ -14,9 +14,11 @@ module Canvas =
     // A generalizable record literal (all fields are syntactic values) so the value-typed attribute
     // generalizes to `Attr<'msg>` without tripping the value restriction.
     let volatile': Attr<'msg> =
-        { Name = ControlPrimitives.CanvasVolatileAttr
-          Category = AttrCategory.State
-          Value = BoolValue true }
+        {
+            Name = ControlPrimitives.CanvasVolatileAttr
+            Category = AttrCategory.State
+            Value = BoolValue true
+        }
 
     // Raw input handlers ride `UntypedValue` (the same boxing the standard event channel uses); the
     // Controls.Elmish router unboxes them for `canvas` nodes (C6). Looked up by the attribute name.

@@ -3,12 +3,14 @@ namespace Rendering.Harness
 module RunPlan =
 
     type RunPlan =
-        { Tier: Tier
-          ClaimableProof: ProofLevel
-          AuthoritativeFor: string list
-          NotAuthoritativeFor: string list
-          Degradation: Degradation
-          VsyncFaithfulAllowed: bool }
+        {
+            Tier: Tier
+            ClaimableProof: ProofLevel
+            AuthoritativeFor: string list
+            NotAuthoritativeFor: string list
+            Degradation: Degradation
+            VsyncFaithfulAllowed: bool
+        }
 
     let proofFor tier =
         match tier with
@@ -20,7 +22,13 @@ module RunPlan =
 
     let authoritativeFor tier =
         match tier with
-        | T0 -> [ "determinism"; "tree-equality"; "retained-routing"; "non-blank-offscreen-png" ]
+        | T0 ->
+            [
+                "determinism"
+                "tree-equality"
+                "retained-routing"
+                "non-blank-offscreen-png"
+            ]
         | T1 -> [ "renderer-pixels" ]
         | T2 -> [ "window-creation"; "visibility"; "focus"; "real-input"; "desktop-screenshot" ]
         | T3 -> [ "frame-interval"; "paint-compose-swap-timing" ]
@@ -31,7 +39,11 @@ module RunPlan =
         | T0 -> [ "renderer-vs-desktop-pixels"; "live-host"; "timing" ]
         | T1 -> [ "desktop-visibility"; "focus"; "live-input" ]
         | T2 -> [ "timing"; "vsync-fidelity" ]
-        | T3 -> if vsyncOk then [ "functional-correctness" ] else [ "functional-correctness"; "vsync-faithful" ]
+        | T3 ->
+            if vsyncOk then
+                [ "functional-correctness" ]
+            else
+                [ "functional-correctness"; "vsync-faithful" ]
         | TUinput -> [ "determinism"; "renderer-pixels"; "live-host"; "timing" ]
 
     let plan (tier: Tier) (facts: ProbeFacts) : RunPlan =
@@ -49,12 +61,16 @@ module RunPlan =
                 | Wayland -> FailClassified "effective backend is Wayland, not X11"
                 | X11 -> Run
             | TUinput ->
-                if facts.UinputAvailable then Run
-                else Skip "opt-in unavailable: requires host /dev/uinput + /dev/input pass-through"
+                if facts.UinputAvailable then
+                    Run
+                else
+                    Skip "opt-in unavailable: requires host /dev/uinput + /dev/input pass-through"
 
-        { Tier = tier
-          ClaimableProof = proofFor tier
-          AuthoritativeFor = authoritativeFor tier
-          NotAuthoritativeFor = notAuthoritativeFor tier vsyncOk
-          Degradation = degradation
-          VsyncFaithfulAllowed = vsyncOk }
+        {
+            Tier = tier
+            ClaimableProof = proofFor tier
+            AuthoritativeFor = authoritativeFor tier
+            NotAuthoritativeFor = notAuthoritativeFor tier vsyncOk
+            Degradation = degradation
+            VsyncFaithfulAllowed = vsyncOk
+        }

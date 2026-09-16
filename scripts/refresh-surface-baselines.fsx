@@ -88,25 +88,29 @@ let repoRoot = Path.GetFullPath(Path.Combine(scriptDir, ".."))
 
 // Every package → its src project folder (assembly name == package name). One row per committed baseline.
 let packages =
-    [ "FS.GG.UI.Build", "Build"
-      "FS.GG.UI.Layout", "Layout"
-      "FS.GG.UI.KeyboardInput", "KeyboardInput"
-      "FS.GG.UI.Canvas", "Canvas"
-      "FS.GG.UI.Controls", "Controls"
-      "FS.GG.UI.Controls.Elmish", "Controls.Elmish"
-      "FS.GG.UI.DesignSystem", "DesignSystem"
-      "FS.GG.UI.Diagnostics", "Diagnostics"
-      "FS.GG.UI.Themes.AntDesign", "Themes.AntDesign"
-      "FS.GG.UI.Themes.Default", "Themes.Default"
-      "FS.GG.UI.Elmish", "Elmish"
-      "FS.GG.UI.Scene", "Scene"
-      "FS.GG.UI.Scene.SvgBrowser", "Scene.SvgBrowser"
-      "FS.GG.UI.SkiaViewer", "SkiaViewer"
-      "FS.GG.UI.Symbology", "Symbology"
-      "FS.GG.UI.Symbology.Render", "Symbology.Render"
-      "FS.GG.UI.Testing", "Testing" ]
+    [
+        "FS.GG.UI.Build", "Build"
+        "FS.GG.UI.Layout", "Layout"
+        "FS.GG.UI.KeyboardInput", "KeyboardInput"
+        "FS.GG.UI.Canvas", "Canvas"
+        "FS.GG.UI.Controls", "Controls"
+        "FS.GG.UI.Controls.Elmish", "Controls.Elmish"
+        "FS.GG.UI.DesignSystem", "DesignSystem"
+        "FS.GG.UI.Diagnostics", "Diagnostics"
+        "FS.GG.UI.Themes.AntDesign", "Themes.AntDesign"
+        "FS.GG.UI.Themes.Default", "Themes.Default"
+        "FS.GG.UI.Elmish", "Elmish"
+        "FS.GG.UI.Scene", "Scene"
+        "FS.GG.UI.Scene.SvgBrowser", "Scene.SvgBrowser"
+        "FS.GG.UI.SkiaViewer", "SkiaViewer"
+        "FS.GG.UI.Symbology", "Symbology"
+        "FS.GG.UI.Symbology.Render", "Symbology.Render"
+        "FS.GG.UI.Testing", "Testing"
+    ]
 
-let binDir proj = Path.Combine(repoRoot, "src", proj, "bin", "Debug", "net10.0")
+let binDir proj =
+    Path.Combine(repoRoot, "src", proj, "bin", "Debug", "net10.0")
+
 let binDirs = packages |> List.map (snd >> binDir)
 
 // Third-party dependencies are NOT copied into a library project's bin/ (only executables and test
@@ -173,7 +177,9 @@ let private restoredAssemblies () =
 
     for (_, proj) in packages do
         let assets = Path.Combine(repoRoot, "src", proj, "obj", "project.assets.json")
-        if File.Exists assets then harvest assets
+
+        if File.Exists assets then
+            harvest assets
 
     probe
 
@@ -181,7 +187,7 @@ let private restored = restoredAssemblies ()
 
 // Resolve cross-assembly dependencies from a package bin dir first (so FS.GG.UI.* bind to the copies
 // just built), then from the restore graph, so reflection can walk a full public signature.
-AppDomain.CurrentDomain.add_AssemblyResolve(
+AppDomain.CurrentDomain.add_AssemblyResolve (
     ResolveEventHandler(fun _ args ->
         let name = AssemblyName(args.Name).Name
 
@@ -194,7 +200,8 @@ AppDomain.CurrentDomain.add_AssemblyResolve(
             | true, path -> Some path
             | _ -> None)
         |> Option.map Assembly.LoadFrom
-        |> Option.toObj))
+        |> Option.toObj)
+)
 
 // LF, explicitly. `WriteAllLines` separates with `Environment.NewLine`, so a contributor
 // regenerating on Windows would rewrite every line of every baseline as CRLF — the whole file reads
@@ -219,6 +226,8 @@ let write packageName (assembly: Assembly) =
 
 for (packageName, proj) in packages do
     let dll = Path.Combine(binDir proj, packageName + ".dll")
+
     if not (File.Exists dll) then
         failwithf "missing %s — build the solution (Debug) before refreshing baselines" dll
+
     write packageName (Assembly.LoadFrom dll)

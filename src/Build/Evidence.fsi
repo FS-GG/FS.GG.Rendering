@@ -20,13 +20,15 @@ type EvidenceState =
 /// the product's `readiness/` tree (it graphs the available surface; absent optional artifacts
 /// are not failures) and records one node per recognized artifact present.
 type EvidenceNode =
-    { /// Path of the sensed artifact, relative to the product root (e.g. `readiness/layout-evidence.txt`).
-      ArtifactPath: string
-      /// Evidence kind (layout / scene / launch / image / screenshot / pixel-readback /
-      /// window-diagnostics / window-options / bounded-smoke / window-visibility / generated-validation).
-      Kind: string
-      /// The artifact's derived state.
-      State: EvidenceState }
+    {
+        /// Path of the sensed artifact, relative to the product root (e.g. `readiness/layout-evidence.txt`).
+        ArtifactPath: string
+        /// Evidence kind (layout / scene / launch / image / screenshot / pixel-readback /
+        /// window-diagnostics / window-options / bounded-smoke / window-visibility / generated-validation).
+        Kind: string
+        /// The artifact's derived state.
+        State: EvidenceState
+    }
 
 /// The pass/fail judgement the EvidenceAudit target emits.
 [<RequireQualifiedAccess>]

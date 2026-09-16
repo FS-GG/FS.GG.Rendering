@@ -19,36 +19,44 @@ type PointerPhase =
     | Exited
 
 type PointerSample =
-    { Phase: PointerPhase
-      X: float
-      Y: float
-      Button: PointerButton option
-      DeltaX: float
-      DeltaY: float }
+    {
+        Phase: PointerPhase
+        X: float
+        Y: float
+        Button: PointerButton option
+        DeltaX: float
+        DeltaY: float
+    }
 
 type PressCandidate =
-    { Control: ControlId
-      StartX: float
-      StartY: float
-      Dragging: bool }
+    {
+        Control: ControlId
+        StartX: float
+        StartY: float
+        Dragging: bool
+    }
 
 type PointerState =
-    { Hover: ControlId option
-      Presses: Map<PointerButton, PressCandidate>
-      LastX: float
-      LastY: float
-      DragThreshold: float }
+    {
+        Hover: ControlId option
+        Presses: Map<PointerButton, PressCandidate>
+        LastX: float
+        LastY: float
+        DragThreshold: float
+    }
 
 type PointerDiagnosticCode =
     | HitTestMiss
     | StaleTarget
 
 type PointerDiagnostic =
-    { Code: PointerDiagnosticCode
-      Message: string
-      Control: ControlId option
-      X: float
-      Y: float }
+    {
+        Code: PointerDiagnosticCode
+        Message: string
+        Control: ControlId option
+        X: float
+        Y: float
+    }
 
 type PointerInteraction =
     | HoverEnter of control: ControlId * x: float * y: float
@@ -65,11 +73,13 @@ type PointerInteraction =
     | Diagnostic of PointerDiagnostic
 
 type PointerOverlayRoutingResult =
-    { State: OverlayState
-      Decision: TopmostHitDecision
-      Effects: OverlayEffect list
-      PassThrough: bool
-      Diagnostics: ControlDiagnostic list }
+    {
+        State: OverlayState
+        Decision: TopmostHitDecision
+        Effects: OverlayEffect list
+        PassThrough: bool
+        Diagnostics: ControlDiagnostic list
+    }
 
 type PointerMsg =
     | Move of x: float * y: float
@@ -104,11 +114,13 @@ module Pointer =
         | _ -> None
 
     let init () : PointerState =
-        { Hover = None
-          Presses = Map.empty
-          LastX = 0.0
-          LastY = 0.0
-          DragThreshold = 4.0 }
+        {
+            Hover = None
+            Presses = Map.empty
+            LastX = 0.0
+            LastY = 0.0
+            DragThreshold = 4.0
+        }
 
     let toMsg (sample: PointerSample) : PointerMsg option =
         match sample.Phase with
@@ -120,7 +132,8 @@ module Pointer =
 
     // --- internal helpers ---------------------------------------------------
 
-    let private hitTest policy layout x y : ControlId option = Layout.hitTestComputed policy layout x y
+    let private hitTest policy layout x y : ControlId option =
+        Layout.hitTestComputed policy layout x y
 
     let private controlExists (layout: LayoutResult) (control: ControlId) =
         layout.Bounds |> List.exists (fun item -> item.NodeId = control)
@@ -141,9 +154,18 @@ module Pointer =
 
     // Drag bookkeeping for a single held button on a Move. Returns the (possibly
     // updated) candidate plus the ordered interactions and runtime messages.
-    let private advanceDrag (button: PointerButton) (candidate: PressCandidate) (threshold: float) (x: float) (y: float) =
+    let private advanceDrag
+        (button: PointerButton)
+        (candidate: PressCandidate)
+        (threshold: float)
+        (x: float)
+        (y: float)
+        =
         if candidate.Dragging then
-            { candidate with StartX = candidate.StartX; StartY = candidate.StartY },
+            { candidate with
+                StartX = candidate.StartX
+                StartY = candidate.StartY
+            },
             [ DragMove(candidate.Control, button, x, y) ],
             [ MoveDrag(x, y) ]
         elif beyondThreshold threshold candidate.StartX candidate.StartY x y then
@@ -170,12 +192,21 @@ module Pointer =
                 |> Map.toList
                 |> List.fold
                     (fun (presses, interactions, runtimeMsgs) (button, candidate) ->
-                        let candidate', newInteractions, newRuntime = advanceDrag button candidate state.DragThreshold x y
+                        let candidate', newInteractions, newRuntime =
+                            advanceDrag button candidate state.DragThreshold x y
+
                         Map.add button candidate' presses, interactions @ newInteractions, runtimeMsgs @ newRuntime)
                     (state.Presses, [], [])
 
             let presses, interactions, runtimeMsgs = folded
-            { state with Presses = presses; LastX = x; LastY = y }, interactions, runtimeMsgs
+
+            { state with
+                Presses = presses
+                LastX = x
+                LastY = y
+            },
+            interactions,
+            runtimeMsgs
 
         | Move(x, y) ->
             let hit = hitTest policy layout x y
@@ -193,12 +224,24 @@ module Pointer =
                     | Some next -> [ HoverEnter(next, x, y) ]
                     | None -> []
 
-                { state with Hover = hit; LastX = x; LastY = y }, leave @ enter, [ HoverControl hit ]
+                { state with
+                    Hover = hit
+                    LastX = x
+                    LastY = y
+                },
+                leave @ enter,
+                [ HoverControl hit ]
 
         | Down(button, x, y) ->
             match hitTest policy layout x y with
             | Some control ->
-                let candidate = { Control = control; StartX = x; StartY = y; Dragging = false }
+                let candidate =
+                    {
+                        Control = control
+                        StartX = x
+                        StartY = y
+                        Dragging = false
+                    }
 
                 let focusInteractions, focusRuntime =
                     match button with
@@ -209,17 +252,20 @@ module Pointer =
                 { state with
                     Presses = Map.add button candidate state.Presses
                     LastX = x
-                    LastY = y },
+                    LastY = y
+                },
                 PressedDown(control, button, x, y) :: focusInteractions,
                 PressControl control :: focusRuntime
 
             | None ->
                 let diagnostic =
-                    { Code = HitTestMiss
-                      Message = "Pointer press resolved to no control inside the window."
-                      Control = None
-                      X = x
-                      Y = y }
+                    {
+                        Code = HitTestMiss
+                        Message = "Pointer press resolved to no control inside the window."
+                        Control = None
+                        X = x
+                        Y = y
+                    }
 
                 { state with LastX = x; LastY = y }, [ Diagnostic diagnostic ], []
 
@@ -227,18 +273,30 @@ module Pointer =
             match Map.tryFind button state.Presses with
             | Some candidate ->
                 let presses = Map.remove button state.Presses
-                let nextState = { state with Presses = presses; LastX = x; LastY = y }
+
+                let nextState =
+                    { state with
+                        Presses = presses
+                        LastX = x
+                        LastY = y
+                    }
 
                 if candidate.Dragging then
-                    nextState, [ DragEnd(candidate.Control, button, x, y) ], [ EndDrag; ReleaseControl candidate.Control ]
+                    nextState,
+                    [ DragEnd(candidate.Control, button, x, y) ],
+                    [ EndDrag; ReleaseControl candidate.Control ]
                 elif not (controlExists layout candidate.Control) then
                     let diagnostic =
-                        { Code = StaleTarget
-                          Message =
-                            sprintf "Pointer release targeted stale control '%s'; no click dispatched." candidate.Control
-                          Control = Some candidate.Control
-                          X = x
-                          Y = y }
+                        {
+                            Code = StaleTarget
+                            Message =
+                                sprintf
+                                    "Pointer release targeted stale control '%s'; no click dispatched."
+                                    candidate.Control
+                            Control = Some candidate.Control
+                            X = x
+                            Y = y
+                        }
 
                     nextState, [ Diagnostic diagnostic ], [ RecoverStaleTarget candidate.Control ]
                 else
@@ -281,7 +339,12 @@ module Pointer =
                 | FocusLost -> [ ControlRuntimeMsg.FocusLost ]
                 | _ -> [ CancelInteraction None; HoverControl None ]
 
-            { state with Presses = Map.empty; Hover = None }, cancelled @ hoverLeave, runtimeMsgs
+            { state with
+                Presses = Map.empty
+                Hover = None
+            },
+            cancelled @ hoverLeave,
+            runtimeMsgs
 
     let routeOverlay
         (overlay: OverlayState)
@@ -295,25 +358,33 @@ module Pointer =
             match active with
             | Some surface when surface.Modal && not (isInsideSurface surface chosenTarget) ->
                 Some surface.Id.SurfaceId, None
-            | Some surface when not (isInsideSurface surface chosenTarget) ->
-                None, Some surface.Id.SurfaceId
+            | Some surface when not (isInsideSurface surface chosenTarget) -> None, Some surface.Id.SurfaceId
             | _ -> None, None
 
         let decision =
-            { Input = input
-              CandidateLayers = candidateLayers
-              ChosenTarget = chosenTarget
-              BlockedByModal = blockedByModal
-              OutsideOfSurface = outsideOfSurface }
+            {
+                Input = input
+                CandidateLayers = candidateLayers
+                ChosenTarget = chosenTarget
+                BlockedByModal = blockedByModal
+                OutsideOfSurface = outsideOfSurface
+            }
 
         let next, effects = OverlayState.update (PointerRouted decision) overlay
-        let passThrough = effects |> List.exists (function AllowPassThrough -> true | _ -> false)
 
-        { State = next
-          Decision = decision
-          Effects = effects
-          PassThrough = passThrough
-          Diagnostics = OverlayState.diagnostics next }
+        let passThrough =
+            effects
+            |> List.exists (function
+                | AllowPassThrough -> true
+                | _ -> false)
+
+        {
+            State = next
+            Decision = decision
+            Effects = effects
+            PassThrough = passThrough
+            Diagnostics = OverlayState.diagnostics next
+        }
 
     let replay
         (policy: PixelSnapPolicy)

@@ -30,41 +30,59 @@ let private size: Size = { Width = 1024; Height = 768 }
 let private baselineRoot =
     Path.GetFullPath(Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "docs", "reports", "_baselines"))
 
-let private beforePath = Path.Combine(baselineRoot, "2026-06-12-controls-corpus-before.md")
-let private afterPath = Path.Combine(baselineRoot, "2026-06-12-controls-corpus-after.md")
-let private regen = not (String.IsNullOrEmpty(Environment.GetEnvironmentVariable "PERF_BASELINE_REGEN"))
-let private scheduled = Environment.GetEnvironmentVariable("FSGG_SCHEDULED_PENDING_TESTS") = "1"
+let private beforePath =
+    Path.Combine(baselineRoot, "2026-06-12-controls-corpus-before.md")
+
+let private afterPath =
+    Path.Combine(baselineRoot, "2026-06-12-controls-corpus-after.md")
+
+let private regen =
+    not (String.IsNullOrEmpty(Environment.GetEnvironmentVariable "PERF_BASELINE_REGEN"))
+
+let private scheduled =
+    Environment.GetEnvironmentVariable("FSGG_SCHEDULED_PENDING_TESTS") = "1"
 
 // A button grid host whose pointer hover produces no product message (the coalescing target).
 let private buttonsHost (n: int) : InteractiveAppHost<int, Msg> =
     let view (_: int) =
         Stack.create
-            [ Stack.children
-                  [ for i in 0 .. n - 1 ->
-                        Button.create [ Button.text (sprintf "b%d" i) ] |> Control.withKey (sprintf "b%d" i) ] ]
+            [
+                Stack.children
+                    [
+                        for i in 0 .. n - 1 ->
+                            Button.create [ Button.text (sprintf "b%d" i) ]
+                            |> Control.withKey (sprintf "b%d" i)
+                    ]
+            ]
 
-    { Init = fun () -> 0, []
-      Update = fun Bump model -> model + 1, []
-      View = fun _ model -> view model
-      Theme = Theme.light
-      MapKey = fun _ _ -> None
-      MapPointer = fun _ -> None
-      Tick = fun _ -> None
-      MapKeyChord = fun _ _ -> None
-      OnFrameMetrics = ignore
-      Diagnostics = Viewer.defaultDiagnostics }
+    {
+        Init = fun () -> 0, []
+        Update = fun Bump model -> model + 1, []
+        View = fun _ model -> view model
+        Theme = Theme.light
+        MapKey = fun _ _ -> None
+        MapPointer = fun _ -> None
+        Tick = fun _ -> None
+        MapKeyChord = fun _ _ -> None
+        OnFrameMetrics = ignore
+        Diagnostics = Viewer.defaultDiagnostics
+    }
 
-let private hoverSample (i: int) = FrameInput.Pointer(HoverEnter("b0", float i, float i))
+let private hoverSample (i: int) =
+    FrameInput.Pointer(HoverEnter("b0", float i, float i))
 
 // Median wall-clock (ms) over a few iterations (after a warm-up) — coarse, environment-dependent.
 let private medianMs (iterations: int) (work: unit -> unit) : float =
     work () // warm-up
+
     let samples =
-        [ for _ in 1..iterations ->
-              let sw = Stopwatch.StartNew()
-              work ()
-              sw.Stop()
-              sw.Elapsed.TotalMilliseconds ]
+        [
+            for _ in 1..iterations ->
+                let sw = Stopwatch.StartNew()
+                work ()
+                sw.Stop()
+                sw.Elapsed.TotalMilliseconds
+        ]
         |> List.sort
 
     samples.[samples.Length / 2]
@@ -83,7 +101,8 @@ let private burstBefore (host: InteractiveAppHost<int, Msg>) (n: int) () =
         ControlsElmish.Perf.runScript host size [ hoverSample i ] |> ignore
 
 let private burstAfter (host: InteractiveAppHost<int, Msg>) (n: int) () =
-    ControlsElmish.Perf.runScript host size [ for i in 0 .. n - 1 -> hoverSample i ] |> ignore
+    ControlsElmish.Perf.runScript host size [ for i in 0 .. n - 1 -> hoverSample i ]
+    |> ignore
 
 let private missingCounters =
     "MissingCounters: paint, composite, hit-test, layout — NOT yet captured (paint/composite/hit-test "
@@ -93,28 +112,34 @@ let private missingCounters =
 
 let private writeBefore (n: int) (beforeMs: float) (beforeAlloc: int64) =
     let body =
-        [ "# Controls corpus baseline — BEFORE feature-108 coalescing (hover/pointer-move burst)"
-          ""
-          "Non-golden, human-facing, NON-GATING evidence (FR-016/017/019). Timing/allocation are"
-          "environment-dependent; the gating surface is the deterministic counts golden (see the"
-          "cross-linked `readiness/perf-corpus/*.golden.txt`). Regenerate with `PERF_BASELINE_REGEN=1`."
-          ""
-          "## Hover/pointer-move burst — coalescing OFF (each raw sample processed = N full renders)"
-          ""
-          sprintf "- Scenario: hover-burst-%d (each of %d raw moves processed individually)" n n
-          "- Phase: before"
-          sprintf "- TimingMs: %.3f (median of measured iterations)" beforeMs
-          sprintf "- AllocatedBytes: %d" beforeAlloc
-          sprintf "- CounterSnapshot: PointerSamplesReceived=%d PointerMovesProcessed=%d FullRenderCount=%d (one render PER sample, un-coalesced)" n n n
-          "- Cross-link: specs/109-perf-metrics-baseline/readiness/perf-corpus/hover-sweep-* (the count goldens)"
-          ""
-          "## Regression threshold policy (FR-018)"
-          ""
-          "Counts FIRST, timing SECOND: a regression is a change in the deterministic count/boolean"
-          "golden surface; timing/allocation only INFORM (they never gate, being environment-dependent)."
-          ""
-          "## " + missingCounters
-          "" ]
+        [
+            "# Controls corpus baseline — BEFORE feature-108 coalescing (hover/pointer-move burst)"
+            ""
+            "Non-golden, human-facing, NON-GATING evidence (FR-016/017/019). Timing/allocation are"
+            "environment-dependent; the gating surface is the deterministic counts golden (see the"
+            "cross-linked `readiness/perf-corpus/*.golden.txt`). Regenerate with `PERF_BASELINE_REGEN=1`."
+            ""
+            "## Hover/pointer-move burst — coalescing OFF (each raw sample processed = N full renders)"
+            ""
+            sprintf "- Scenario: hover-burst-%d (each of %d raw moves processed individually)" n n
+            "- Phase: before"
+            sprintf "- TimingMs: %.3f (median of measured iterations)" beforeMs
+            sprintf "- AllocatedBytes: %d" beforeAlloc
+            sprintf
+                "- CounterSnapshot: PointerSamplesReceived=%d PointerMovesProcessed=%d FullRenderCount=%d (one render PER sample, un-coalesced)"
+                n
+                n
+                n
+            "- Cross-link: specs/109-perf-metrics-baseline/readiness/perf-corpus/hover-sweep-* (the count goldens)"
+            ""
+            "## Regression threshold policy (FR-018)"
+            ""
+            "Counts FIRST, timing SECOND: a regression is a change in the deterministic count/boolean"
+            "golden surface; timing/allocation only INFORM (they never gate, being environment-dependent)."
+            ""
+            "## " + missingCounters
+            ""
+        ]
 
     File.WriteAllText(beforePath, String.concat "\n" body + "\n")
 
@@ -122,82 +147,118 @@ let private writeAfter (n: int) (afterMs: float) (afterAlloc: int64) (beforeMs: 
     let speedup = if afterMs > 0.0 then beforeMs / afterMs else 0.0
 
     let body =
-        [ "# Controls corpus baseline — AFTER (current path, feature-108 coalescing ON)"
-          ""
-          "Non-golden, human-facing, NON-GATING evidence (FR-016/017). Timing/allocation are"
-          "environment-dependent; the gating surface is the deterministic counts goldens under"
-          "`specs/109-perf-metrics-baseline/readiness/perf-corpus/`. Regenerate with `PERF_BASELINE_REGEN=1`."
-          ""
-          "## Hover/pointer-move burst — coalescing ON (one processed move = one full render)"
-          ""
-          sprintf "- Scenario: hover-burst-%d (the SAME %d raw moves, coalesced to one processed move)" n n
-          "- Phase: after"
-          sprintf "- TimingMs: %.3f (median of measured iterations)" afterMs
-          sprintf "- AllocatedBytes: %d" afterAlloc
-          sprintf "- CounterSnapshot: PointerSamplesReceived=%d PointerMovesProcessed=1 FullRenderCount=1 (coalesced)" n
-          sprintf "- Observed coalescing speedup vs before: ~%.1fx wall-clock (informational only)" speedup
-          "- Cross-link: specs/109-perf-metrics-baseline/readiness/perf-corpus/hover-sweep-* (the count goldens)"
-          ""
-          "## Corpus scenarios (current path)"
-          ""
-          "Each corpus scenario's deterministic count/boolean snapshot is its scheduled artifact; the"
-          "timing/allocation below is the non-gating wall-clock the report generator captured."
-          "" ]
+        [
+            "# Controls corpus baseline — AFTER (current path, feature-108 coalescing ON)"
+            ""
+            "Non-golden, human-facing, NON-GATING evidence (FR-016/017). Timing/allocation are"
+            "environment-dependent; the gating surface is the deterministic counts goldens under"
+            "`specs/109-perf-metrics-baseline/readiness/perf-corpus/`. Regenerate with `PERF_BASELINE_REGEN=1`."
+            ""
+            "## Hover/pointer-move burst — coalescing ON (one processed move = one full render)"
+            ""
+            sprintf "- Scenario: hover-burst-%d (the SAME %d raw moves, coalesced to one processed move)" n n
+            "- Phase: after"
+            sprintf "- TimingMs: %.3f (median of measured iterations)" afterMs
+            sprintf "- AllocatedBytes: %d" afterAlloc
+            sprintf
+                "- CounterSnapshot: PointerSamplesReceived=%d PointerMovesProcessed=1 FullRenderCount=1 (coalesced)"
+                n
+            sprintf "- Observed coalescing speedup vs before: ~%.1fx wall-clock (informational only)" speedup
+            "- Cross-link: specs/109-perf-metrics-baseline/readiness/perf-corpus/hover-sweep-* (the count goldens)"
+            ""
+            "## Corpus scenarios (current path)"
+            ""
+            "Each corpus scenario's deterministic count/boolean snapshot is its scheduled artifact; the"
+            "timing/allocation below is the non-gating wall-clock the report generator captured."
+            ""
+        ]
 
     File.WriteAllText(afterPath, String.concat "\n" body + "\n")
 
 [<Tests>]
 let tests =
-    let cases = [
+    let cases =
+        [
 
-        test "the before/after coalescing baselines are generated as scheduled evidence (FR-019 / SC-007)" {
-            if regen then
-                Directory.CreateDirectory baselineRoot |> ignore
-                let n = 300
-                let host = buttonsHost 200
-                let beforeMs = medianMs 3 (burstBefore host n)
-                let afterMs = medianMs 3 (burstAfter host n)
-                let beforeAlloc = allocBytes (burstBefore host n)
-                let afterAlloc = allocBytes (burstAfter host n)
-                GC.Collect() // release the burst-measurement allocations before the rest of the suite runs
-                writeBefore n beforeMs beforeAlloc
-                writeAfter n afterMs afterAlloc beforeMs
+            test "the before/after coalescing baselines are generated as scheduled evidence (FR-019 / SC-007)" {
+                if regen then
+                    Directory.CreateDirectory baselineRoot |> ignore
+                    let n = 300
+                    let host = buttonsHost 200
+                    let beforeMs = medianMs 3 (burstBefore host n)
+                    let afterMs = medianMs 3 (burstAfter host n)
+                    let beforeAlloc = allocBytes (burstBefore host n)
+                    let afterAlloc = allocBytes (burstAfter host n)
+                    GC.Collect() // release the burst-measurement allocations before the rest of the suite runs
+                    writeBefore n beforeMs beforeAlloc
+                    writeAfter n afterMs afterAlloc beforeMs
 
-            Expect.isTrue (File.Exists beforePath) "the before-coalescing hover-burst baseline was generated (FR-019)"
-            Expect.isTrue (File.Exists afterPath) "the after-coalescing hover-burst baseline was generated (FR-019)"
-        }
+                Expect.isTrue
+                    (File.Exists beforePath)
+                    "the before-coalescing hover-burst baseline was generated (FR-019)"
 
-        test "the baselines carry timing+allocation, count-first thresholds, and an explicit MissingCounters line (FR-015/018)" {
-            let before = File.ReadAllText beforePath
-            let after = File.ReadAllText afterPath
+                Expect.isTrue (File.Exists afterPath) "the after-coalescing hover-burst baseline was generated (FR-019)"
+            }
 
-            for content in [ before; after ] do
-                Expect.isTrue (content.Contains "TimingMs:") "timing is recorded"
-                Expect.isTrue (content.Contains "AllocatedBytes:") "allocation is recorded"
+            test
+                "the baselines carry timing+allocation, count-first thresholds, and an explicit MissingCounters line (FR-015/018)" {
+                let before = File.ReadAllText beforePath
+                let after = File.ReadAllText afterPath
 
-            Expect.isTrue (before.Contains "Counts FIRST, timing SECOND") "thresholds are defined counts-first (FR-018)"
-            Expect.isTrue (before.Contains "MissingCounters:") "the not-yet-captured phase counters are stated explicitly (FR-015)"
-            Expect.isTrue (before.Contains "Phase: before" && after.Contains "Phase: after") "both coalescing phases are recorded (SC-007)"
-        }
+                for content in [ before; after ] do
+                    Expect.isTrue (content.Contains "TimingMs:") "timing is recorded"
+                    Expect.isTrue (content.Contains "AllocatedBytes:") "allocation is recorded"
 
-        test "no timing/allocation field leaks into any deterministic golden (SC-009)" {
-            let corpusRoot =
-                Path.GetFullPath(
-                    Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "specs", "109-perf-metrics-baseline", "readiness", "perf-corpus")
-                )
+                Expect.isTrue
+                    (before.Contains "Counts FIRST, timing SECOND")
+                    "thresholds are defined counts-first (FR-018)"
 
-            if Directory.Exists corpusRoot then
-                for f in Directory.GetFiles(corpusRoot, "*.golden.txt") do
-                    let text = File.ReadAllText f
-                    Expect.isFalse (text.Contains "TimingMs") (sprintf "%s carries no timing field" (Path.GetFileName f))
-                    Expect.isFalse (text.Contains "AllocatedBytes") (sprintf "%s carries no allocation field" (Path.GetFileName f))
-                    Expect.isFalse (text.Contains "FrameDuration") (sprintf "%s carries no FrameDuration field" (Path.GetFileName f))
-        }
-    ]
+                Expect.isTrue
+                    (before.Contains "MissingCounters:")
+                    "the not-yet-captured phase counters are stated explicitly (FR-015)"
+
+                Expect.isTrue
+                    (before.Contains "Phase: before" && after.Contains "Phase: after")
+                    "both coalescing phases are recorded (SC-007)"
+            }
+
+            test "no timing/allocation field leaks into any deterministic golden (SC-009)" {
+                let corpusRoot =
+                    Path.GetFullPath(
+                        Path.Combine(
+                            __SOURCE_DIRECTORY__,
+                            "..",
+                            "..",
+                            "specs",
+                            "109-perf-metrics-baseline",
+                            "readiness",
+                            "perf-corpus"
+                        )
+                    )
+
+                if Directory.Exists corpusRoot then
+                    for f in Directory.GetFiles(corpusRoot, "*.golden.txt") do
+                        let text = File.ReadAllText f
+
+                        Expect.isFalse
+                            (text.Contains "TimingMs")
+                            (sprintf "%s carries no timing field" (Path.GetFileName f))
+
+                        Expect.isFalse
+                            (text.Contains "AllocatedBytes")
+                            (sprintf "%s carries no allocation field" (Path.GetFileName f))
+
+                        Expect.isFalse
+                            (text.Contains "FrameDuration")
+                            (sprintf "%s carries no FrameDuration field" (Path.GetFileName f))
+            }
+        ]
 
     if scheduled then
         testSequenced
-        <| testList "Feature 109 scheduled non-golden timing/allocation baselines (US4, FR-016/017/018/019, SC-007/009)" cases
+        <| testList
+            "Feature 109 scheduled non-golden timing/allocation baselines (US4, FR-016/017/018/019, SC-007/009)"
+            cases
     else
         // PendingTest: owner=FS-GG/FS.GG.Rendering#1047 review-by=2026-10-26
         ptestList "Feature 109 timing/allocation baselines — runs in pending-tests.yml scheduled cadence" cases

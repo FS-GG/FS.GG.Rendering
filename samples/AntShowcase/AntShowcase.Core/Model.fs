@@ -27,11 +27,13 @@ type FormPhase =
 
 /// The form template's parent-owned state.
 type FormState =
-    { Name: string
-      Email: string
-      Role: string
-      Agree: bool
-      Phase: FormPhase }
+    {
+        Name: string
+        Email: string
+        Role: string
+        Agree: bool
+        Phase: FormPhase
+    }
 
 /// Per-control seeded interactive state, shared by every page's `view`. Populated so no
 /// control renders empty (FR-004) and so interactive controls have somewhere to record a
@@ -40,44 +42,45 @@ type FormState =
 /// values are fields here.
 type DemoState =
     { // Text / numeric
-      TextValue: string
-      AreaValue: string
-      NumericValue: float
-      SliderValue: float
-      RateValue: float
-      AutoCompleteValue: string
-      UploadValue: string
-      // Buttons
-      ButtonClicks: int
-      ToggleOn: bool
-      // Selection / toggles
-      Checked: bool
-      SwitchOn: bool
-      RadioSelected: string
-      SegmentedSelected: string
-      ComboSelected: string
-      ListSelected: string
-      MultiSelected: string list
-      TreeSelected: string
-      CascaderSelected: string
-      ColorSelected: string
-      // Navigation
-      Tab: string
-      MenuSelected: string
-      StepsCurrent: int
-      PaginationPage: int
-      CollapseOpen: string
-      // Feedback / overlays
-      ProgressValue: float
-      OverlayOpen: bool
-      DialogOpen: bool
-      DrawerOpen: bool
-      // Feature 144 reference flow: product-owned transient calendar state.
-      DatePickerOpen: bool
-      DatePickerSelected: DateOnly option
-      DatePickerFocused: ControlId option
-      // Enterprise form template
-      Form: FormState }
+        TextValue: string
+        AreaValue: string
+        NumericValue: float
+        SliderValue: float
+        RateValue: float
+        AutoCompleteValue: string
+        UploadValue: string
+        // Buttons
+        ButtonClicks: int
+        ToggleOn: bool
+        // Selection / toggles
+        Checked: bool
+        SwitchOn: bool
+        RadioSelected: string
+        SegmentedSelected: string
+        ComboSelected: string
+        ListSelected: string
+        MultiSelected: string list
+        TreeSelected: string
+        CascaderSelected: string
+        ColorSelected: string
+        // Navigation
+        Tab: string
+        MenuSelected: string
+        StepsCurrent: int
+        PaginationPage: int
+        CollapseOpen: string
+        // Feedback / overlays
+        ProgressValue: float
+        OverlayOpen: bool
+        DialogOpen: bool
+        DrawerOpen: bool
+        // Feature 144 reference flow: product-owned transient calendar state.
+        DatePickerOpen: bool
+        DatePickerSelected: DateOnly option
+        DatePickerFocused: ControlId option
+        // Enterprise form template
+        Form: FormState
+    }
 
 /// Control-interaction events routed to the active page (FR-014). Kept flat and pure;
 /// each case maps to a single field transition in `updatePage` (interaction-contract.md).
@@ -116,62 +119,71 @@ type PageMsg =
     | FormSubmitted
 
 /// A piece of user feedback captured on a page, saved so it can be acted upon later.
-type FeedbackEntry =
-    { PageId: string
-      Text: string }
+type FeedbackEntry = { PageId: string; Text: string }
 
 /// Top-level showcase events.
 type AntShowcaseMsg =
     | NavigateTo of pageId: string
     | ToggleMode
     | PageMsg of PageMsg
-    | FeedbackChanged of string        // edit the current feedback draft
-    | FeedbackSubmitted                // save the draft as a FeedbackEntry for the current page
+    | FeedbackChanged of string // edit the current feedback draft
+    | FeedbackSubmitted // save the draft as a FeedbackEntry for the current page
 
 /// A navigable page (data-model §2). `view` builds the body from seeded state.
 type Page =
-    { Id: string
-      Title: string
-      Kind: PageKind
-      ControlIds: string list
-      View: DemoState -> Control<AntShowcaseMsg> }
+    {
+        Id: string
+        Title: string
+        Kind: PageKind
+        ControlIds: string list
+        View: DemoState -> Control<AntShowcaseMsg>
+    }
 
 /// The MVU model (data-model §3). `FeedbackDraft` is the in-progress feedback text for the
 /// current page; `Feedback` is the accumulated saved feedback (newest first), persisted by
 /// the App edge so it can be acted upon later.
 type AntShowcaseModel =
-    { CurrentPage: string
-      Mode: ThemeMode
-      PageState: DemoState
-      FeedbackDraft: string
-      Feedback: FeedbackEntry list }
+    {
+        CurrentPage: string
+        Mode: ThemeMode
+        PageState: DemoState
+        FeedbackDraft: string
+        Feedback: FeedbackEntry list
+    }
 
 /// Outcome of the coverage check (FR-003): empty/empty ⇒ pass (data-model §6).
 type CoverageResult =
-    { Unreferenced: string list
-      Duplicated: string list }
+    {
+        Unreferenced: string list
+        Duplicated: string list
+    }
 
-let isClean (r: CoverageResult): bool =
+let isClean (r: CoverageResult) : bool =
     List.isEmpty r.Unreferenced && List.isEmpty r.Duplicated
 
 // --- form validation (pure; data-model §5a / contracts/enterprise-templates.md) -------
 
 /// Validate the form, returning the (field, message) errors. Empty ⇒ valid.
-let validateForm (form: FormState): (string * string) list =
-    [ if System.String.IsNullOrWhiteSpace form.Name then
-          "Name", "Name is required"
-      if not (form.Email.Contains "@" && form.Email.Contains ".") then
-          "Email", "Enter a valid email address"
-      if not form.Agree then
-          "Agree", "You must accept the terms" ]
+let validateForm (form: FormState) : (string * string) list =
+    [
+        if System.String.IsNullOrWhiteSpace form.Name then
+            "Name", "Name is required"
+        if not (form.Email.Contains "@" && form.Email.Contains ".") then
+            "Email", "Enter a valid email address"
+        if not form.Agree then
+            "Agree", "You must accept the terms"
+    ]
 
 // --- reducers -------------------------------------------------------------------------
 
 /// Pure interaction reducer for the active page. The form transitions (FR-006/SC-009):
 /// field edits move to `Editing`; submit validates → `Invalid errors` or `Submitted`.
-let updatePage (msg: PageMsg) (state: DemoState): DemoState =
+let updatePage (msg: PageMsg) (state: DemoState) : DemoState =
     match msg with
-    | ButtonClicked -> { state with ButtonClicks = state.ButtonClicks + 1 }
+    | ButtonClicked ->
+        { state with
+            ButtonClicks = state.ButtonClicks + 1
+        }
     | TextChanged v -> { state with TextValue = v }
     | AreaChanged v -> { state with AreaValue = v }
     | NumericChanged v -> { state with NumericValue = v }
@@ -203,10 +215,12 @@ let updatePage (msg: PageMsg) (state: DemoState): DemoState =
         { state with
             DatePickerSelected = Some v
             DatePickerOpen = false
-            DatePickerFocused = Some "date-picker-trigger" }
+            DatePickerFocused = Some "date-picker-trigger"
+        }
     | DatePickerFocusChanged v -> { state with DatePickerFocused = v }
     | FormFieldChanged(field, value) ->
         let f = state.Form
+
         let f' =
             match field with
             | "Name" -> { f with Name = value }
@@ -214,15 +228,21 @@ let updatePage (msg: PageMsg) (state: DemoState): DemoState =
             | "Role" -> { f with Role = value }
             | "Agree" -> { f with Agree = (value = "true") }
             | _ -> f
-        { state with Form = { f' with Phase = Editing } }
+
+        { state with
+            Form = { f' with Phase = Editing }
+        }
     | FormSubmitted ->
         let errors = validateForm state.Form
         let phase = if List.isEmpty errors then Submitted else Invalid errors
-        { state with Form = { state.Form with Phase = phase } }
+
+        { state with
+            Form = { state.Form with Phase = phase }
+        }
 
 /// Pure top-level reducer (Principle IV). Mode changes alter only resolved visuals
 /// downstream — never the control-tree shape (FR-008/SC-003).
-let update (msg: AntShowcaseMsg) (model: AntShowcaseModel): AntShowcaseModel =
+let update (msg: AntShowcaseMsg) (model: AntShowcaseModel) : AntShowcaseModel =
     match msg with
     | NavigateTo id -> { model with CurrentPage = id }
     | ToggleMode ->
@@ -230,8 +250,12 @@ let update (msg: AntShowcaseMsg) (model: AntShowcaseModel): AntShowcaseModel =
             match model.Mode with
             | Light -> Dark
             | Dark -> Light
+
         { model with Mode = flipped }
-    | PageMsg pm -> { model with PageState = updatePage pm model.PageState }
+    | PageMsg pm ->
+        { model with
+            PageState = updatePage pm model.PageState
+        }
     | FeedbackChanged text -> { model with FeedbackDraft = text }
     | FeedbackSubmitted ->
         // Save the draft as a page-tagged entry (newest first) and clear the draft. A blank
@@ -239,23 +263,36 @@ let update (msg: AntShowcaseMsg) (model: AntShowcaseModel): AntShowcaseModel =
         if System.String.IsNullOrWhiteSpace model.FeedbackDraft then
             model
         else
-            let entry = { PageId = model.CurrentPage; Text = model.FeedbackDraft.Trim() }
-            { model with Feedback = entry :: model.Feedback; FeedbackDraft = "" }
+            let entry =
+                {
+                    PageId = model.CurrentPage
+                    Text = model.FeedbackDraft.Trim()
+                }
+
+            { model with
+                Feedback = entry :: model.Feedback
+                FeedbackDraft = ""
+            }
 
 // --- feedback persistence encoding (pure; tab-separated, newline/tab-escaped) ----------
 
-let private escapeField (s: string): string =
+let private escapeField (s: string) : string =
     s.Replace("\\", "\\\\").Replace("\t", "\\t").Replace("\n", "\\n")
 
-let private unescapeField (s: string): string =
+let private unescapeField (s: string) : string =
     s.Replace("\\n", "\n").Replace("\\t", "\t").Replace("\\\\", "\\")
 
 /// Serialize a feedback entry to one storable line: `<pageId>\t<escaped text>`.
-let encodeFeedbackLine (e: FeedbackEntry): string =
+let encodeFeedbackLine (e: FeedbackEntry) : string =
     escapeField e.PageId + "\t" + escapeField e.Text
 
 /// Parse a stored feedback line back into an entry (None for a malformed/blank line).
-let decodeFeedbackLine (line: string): FeedbackEntry option =
+let decodeFeedbackLine (line: string) : FeedbackEntry option =
     match line.Split([| '\t' |], 2) with
-    | [| pageId; text |] when pageId <> "" -> Some { PageId = unescapeField pageId; Text = unescapeField text }
+    | [| pageId; text |] when pageId <> "" ->
+        Some
+            {
+                PageId = unescapeField pageId
+                Text = unescapeField text
+            }
     | _ -> None

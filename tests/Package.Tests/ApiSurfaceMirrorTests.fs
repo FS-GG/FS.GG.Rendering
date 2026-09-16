@@ -77,29 +77,39 @@ let private repositoryPath (relativePath: string) =
     Path.Combine(repositoryRoot, relativePath.Replace('/', Path.DirectorySeparatorChar))
 
 let private apiSurfaceRoot = repositoryPath "template/base/docs/api-surface"
-let private productProjPath = repositoryPath "template/base/src/Product/Product.fsproj"
-let private templatePackagesPath = repositoryPath "template/base/Directory.Packages.props"
+
+let private productProjPath =
+    repositoryPath "template/base/src/Product/Product.fsproj"
+
+let private templatePackagesPath =
+    repositoryPath "template/base/Directory.Packages.props"
+
 let private productSkillsRoot = repositoryPath "template/product-skills"
 
 /// FS.GG.UI.Controls.Elmish -> Controls.Elmish; FS.GG.Audio.Core -> Audio.Core; FS.GG.Game.Core -> Game.Core.
 /// The bundled directory is the package id with its org prefix stripped — longest prefix first.
 let private surfaceDirectoryFor (packageId: string) =
-    if packageId.StartsWith "FS.GG.UI." then packageId.Substring("FS.GG.UI.".Length)
-    elif packageId.StartsWith "FS.GG." then packageId.Substring("FS.GG.".Length)
-    else failwithf "not an FS.GG package id: %s" packageId
+    if packageId.StartsWith "FS.GG.UI." then
+        packageId.Substring("FS.GG.UI.".Length)
+    elif packageId.StartsWith "FS.GG." then
+        packageId.Substring("FS.GG.".Length)
+    else
+        failwithf "not an FS.GG package id: %s" packageId
 
 /// Mirrors copied verbatim from ANOTHER FS-GG repo. Each carries a provenance stamp, because a
 /// cross-repo copy is the one that can outlive the package it claims (ADR-0024). Keyed by bundled
 /// directory -> the source repo it was copied from, and the template property pinning that repo.
 let private crossRepoMirrors =
     Map
-        [ "Audio.Core", ("FS.GG.Audio", "FsGgAudioVersion")
-          "Audio.Host", ("FS.GG.Audio", "FsGgAudioVersion")
-          "Audio.Engine", ("FS.GG.Audio", "FsGgAudioVersion")
-          "Audio.Elmish", ("FS.GG.Audio", "FsGgAudioVersion")
-          "Contracts", ("FS.GG.SDD", "FsGgContractsVersion")
-          "Game.Core", ("FS.GG.Game", "FsGgGameVersion")
-          "Game.Harness", ("FS.GG.Game", "FsGgGameVersion") ]
+        [
+            "Audio.Core", ("FS.GG.Audio", "FsGgAudioVersion")
+            "Audio.Host", ("FS.GG.Audio", "FsGgAudioVersion")
+            "Audio.Engine", ("FS.GG.Audio", "FsGgAudioVersion")
+            "Audio.Elmish", ("FS.GG.Audio", "FsGgAudioVersion")
+            "Contracts", ("FS.GG.SDD", "FsGgContractsVersion")
+            "Game.Core", ("FS.GG.Game", "FsGgGameVersion")
+            "Game.Harness", ("FS.GG.Game", "FsGgGameVersion")
+        ]
 
 /// A bundled directory is cross-repo exactly when this repo has no `src/<dir>` to have copied it from.
 /// Derived, not trusted: it lets the suite CHECK the table above is complete rather than take its word,
@@ -170,7 +180,11 @@ let private shippedProductSkills () =
     |> Set.ofArray
 
 let private pinnedVersion (property: string) =
-    let m = Regex.Match(File.ReadAllText templatePackagesPath, $"<{Regex.Escape property}>([^<]+)</{Regex.Escape property}>")
+    let m =
+        Regex.Match(
+            File.ReadAllText templatePackagesPath,
+            $"<{Regex.Escape property}>([^<]+)</{Regex.Escape property}>"
+        )
 
     if m.Success then
         m.Groups.[1].Value
@@ -191,175 +205,190 @@ let apiSurfaceMirrorTests =
     testList
         "api-surface-mirror"
         [
-          // M-REF — the fails-open gap this issue is really about. Today a package can be referenced
-          // with no bundled surface and nothing complains.
-          test "every FS.GG.* package Product.fsproj references has a bundled api-surface directory" {
-              let missing =
-                  referencedFsGgPackages ()
-                  |> List.choose (fun pkg ->
-                      let name = surfaceDirectoryFor pkg
-                      let dir = Path.Combine(apiSurfaceRoot, name)
+            // M-REF — the fails-open gap this issue is really about. Today a package can be referenced
+            // with no bundled surface and nothing complains.
+            test "every FS.GG.* package Product.fsproj references has a bundled api-surface directory" {
+                let missing =
+                    referencedFsGgPackages ()
+                    |> List.choose (fun pkg ->
+                        let name = surfaceDirectoryFor pkg
+                        let dir = Path.Combine(apiSurfaceRoot, name)
 
-                      if Directory.Exists dir && Directory.GetFiles(dir, "*.fsi").Length > 0 then
-                          None
-                      else
-                          Some(pkg, name))
+                        if Directory.Exists dir && Directory.GetFiles(dir, "*.fsi").Length > 0 then
+                            None
+                        else
+                            Some(pkg, name))
 
-              Expect.isEmpty missing "each referenced FS.GG.* package bundles at least one api-surface .fsi"
-          }
+                Expect.isEmpty missing "each referenced FS.GG.* package bundles at least one api-surface .fsi"
+            }
 
-          test "the four packages #247 reported are bundled" {
-              [ "FS.GG.Audio.Host", "Audio.Host"
-                "FS.GG.Audio.Engine", "Audio.Engine"
-                "FS.GG.Audio.Elmish", "Audio.Elmish"
-                "FS.GG.UI.Controls.Elmish", "Controls.Elmish" ]
-              |> List.iter (fun (pkg, dir) ->
-                  Expect.isTrue
-                      (Directory.Exists(Path.Combine(apiSurfaceRoot, dir)))
-                      $"{pkg} bundles docs/api-surface/{dir}")
-          }
+            test "the four packages #247 reported are bundled" {
+                [
+                    "FS.GG.Audio.Host", "Audio.Host"
+                    "FS.GG.Audio.Engine", "Audio.Engine"
+                    "FS.GG.Audio.Elmish", "Audio.Elmish"
+                    "FS.GG.UI.Controls.Elmish", "Controls.Elmish"
+                ]
+                |> List.iter (fun (pkg, dir) ->
+                    Expect.isTrue
+                        (Directory.Exists(Path.Combine(apiSurfaceRoot, dir)))
+                        $"{pkg} bundles docs/api-surface/{dir}")
+            }
 
-          // M-PTR — §5.3: the .fsi and the SKILL.md were "two artifacts with no link in either direction".
-          // A pointer may name a skill this repo SHIPS, or one it OWNER-SOURCES (ADR-0063): both reach the
-          // scaffolded product, so both are a live link a reader can follow. Only a pointer to a skill that
-          // is neither is an unknown-skill offence.
-          test "every bundled .fsi carries exactly one See skill pointer naming a shipped or owner-sourced product skill" {
-              let skills = shippedProductSkills ()
-              let resolves skill = skills.Contains skill || ownerSourcedSkills.Contains skill
+            // M-PTR — §5.3: the .fsi and the SKILL.md were "two artifacts with no link in either direction".
+            // A pointer may name a skill this repo SHIPS, or one it OWNER-SOURCES (ADR-0063): both reach the
+            // scaffolded product, so both are a live link a reader can follow. Only a pointer to a skill that
+            // is neither is an unknown-skill offence.
+            test
+                "every bundled .fsi carries exactly one See skill pointer naming a shipped or owner-sourced product skill" {
+                let skills = shippedProductSkills ()
 
-              let offenders =
-                  bundledFsiFiles ()
-                  |> List.choose (fun file ->
-                      let rel = relativeToSurfaceRoot file
+                let resolves skill =
+                    skills.Contains skill || ownerSourcedSkills.Contains skill
 
-                      match skillPointers file with
-                      | _ when pointerExempt.Contains rel -> None
-                      | [ skill ] when resolves skill -> None
-                      | [ skill ] -> Some(rel, $"names unknown skill '{skill}'")
-                      | [] -> Some(rel, "no '// See skill:' pointer above its namespace")
-                      | many -> Some(rel, $"carries {many.Length} pointers"))
+                let offenders =
+                    bundledFsiFiles ()
+                    |> List.choose (fun file ->
+                        let rel = relativeToSurfaceRoot file
 
-              Expect.isEmpty offenders "each bundled .fsi points at exactly one shipped or owner-sourced product skill"
-          }
+                        match skillPointers file with
+                        | _ when pointerExempt.Contains rel -> None
+                        | [ skill ] when resolves skill -> None
+                        | [ skill ] -> Some(rel, $"names unknown skill '{skill}'")
+                        | [] -> Some(rel, "no '// See skill:' pointer above its namespace")
+                        | many -> Some(rel, $"carries {many.Length} pointers"))
 
-          test "the pointer exemptions still exist and still lack a pointer" {
-              // If someone writes a skill for Canvas's immediate-mode surface, delete the exemption.
-              pointerExempt
-              |> Set.iter (fun rel ->
-                  let file = Path.Combine(apiSurfaceRoot, rel.Replace('/', Path.DirectorySeparatorChar))
-                  Expect.isTrue (File.Exists file) $"exempt {rel} still exists"
-                  Expect.isEmpty (skillPointers file) $"exempt {rel} has no owning skill to point at")
-          }
+                Expect.isEmpty
+                    offenders
+                    "each bundled .fsi points at exactly one shipped or owner-sourced product skill"
+            }
 
-          // M-PROV — ADR-0024's objection, enforced. A cross-repo doc copy cannot outlive its package
-          // without failing here.
-          test "every cross-repo mirror records the source-repo version the template pins" {
-              let pins = pinnedVersions ()
+            test "the pointer exemptions still exist and still lack a pointer" {
+                // If someone writes a skill for Canvas's immediate-mode surface, delete the exemption.
+                pointerExempt
+                |> Set.iter (fun rel ->
+                    let file =
+                        Path.Combine(apiSurfaceRoot, rel.Replace('/', Path.DirectorySeparatorChar))
 
-              let offenders =
-                  bundledFsiFiles ()
-                  |> List.choose (fun file ->
-                      crossRepoMirrors
-                      |> Map.tryFind (owningPackageDirectory file)
-                      |> Option.bind (fun (repo, property) ->
-                          let pinned = pins.[property]
+                    Expect.isTrue (File.Exists file) $"exempt {rel} still exists"
+                    Expect.isEmpty (skillPointers file) $"exempt {rel} has no owning skill to point at")
+            }
 
-                          match provenanceVersion repo file with
-                          | None -> Some(relativeToSurfaceRoot file, $"<no 'Mirrored from FS-GG/{repo}' line>")
-                          | Some stamped when stamped <> pinned ->
-                              Some(relativeToSurfaceRoot file, $"stamped {stamped}, but {property} pins {pinned}")
-                          | Some _ -> None))
+            // M-PROV — ADR-0024's objection, enforced. A cross-repo doc copy cannot outlive its package
+            // without failing here.
+            test "every cross-repo mirror records the source-repo version the template pins" {
+                let pins = pinnedVersions ()
 
-              Expect.isEmpty offenders "each cross-repo mirror is stamped with the version its template property pins"
-          }
+                let offenders =
+                    bundledFsiFiles ()
+                    |> List.choose (fun file ->
+                        crossRepoMirrors
+                        |> Map.tryFind (owningPackageDirectory file)
+                        |> Option.bind (fun (repo, property) ->
+                            let pinned = pins.[property]
 
-          test "every cross-repo mirror directory declared here actually exists and is non-empty" {
-              // Keeps `crossRepoMirrors` from silently going stale into a no-op lookup, which would make
-              // M-PROV vacuously green — the exact way #259's Game.Core mirror went unchecked.
-              crossRepoMirrors
-              |> Map.iter (fun dir _ ->
-                  let path = Path.Combine(apiSurfaceRoot, dir)
-                  Expect.isTrue (Directory.Exists path) $"declared cross-repo mirror {dir} exists"
+                            match provenanceVersion repo file with
+                            | None -> Some(relativeToSurfaceRoot file, $"<no 'Mirrored from FS-GG/{repo}' line>")
+                            | Some stamped when stamped <> pinned ->
+                                Some(relativeToSurfaceRoot file, $"stamped {stamped}, but {property} pins {pinned}")
+                            | Some _ -> None))
 
-                  Expect.isGreaterThan
-                      (Directory.GetFiles(path, "*.fsi").Length)
-                      0
-                      $"declared cross-repo mirror {dir} bundles at least one .fsi to stamp")
-          }
+                Expect.isEmpty offenders "each cross-repo mirror is stamped with the version its template property pins"
+            }
 
-          // #259, generalized. The bug was not "Game.Core was missing from the table" but "the table was
-          // taken on trust". A bundled directory with no `src/` original can only have come from another
-          // repo, so membership is derivable — check it instead of asserting Game.Core by name, and the
-          // NEXT unstamped cross-repo mirror fails here on the day it is added.
-          test "every bundled mirror with no src/ original is registered as cross-repo" {
-              let unregistered =
-                  bundledSurfaceDirectories ()
-                  |> List.filter (fun dir -> not (hasInRepoSource dir) && not (crossRepoMirrors.ContainsKey dir))
+            test "every cross-repo mirror directory declared here actually exists and is non-empty" {
+                // Keeps `crossRepoMirrors` from silently going stale into a no-op lookup, which would make
+                // M-PROV vacuously green — the exact way #259's Game.Core mirror went unchecked.
+                crossRepoMirrors
+                |> Map.iter (fun dir _ ->
+                    let path = Path.Combine(apiSurfaceRoot, dir)
+                    Expect.isTrue (Directory.Exists path) $"declared cross-repo mirror {dir} exists"
 
-              Expect.isEmpty
-                  unregistered
-                  "a bundled surface with no src/ original is a cross-repo copy and must be registered in crossRepoMirrors so M-PROV stamps it"
-          }
+                    Expect.isGreaterThan
+                        (Directory.GetFiles(path, "*.fsi").Length)
+                        0
+                        $"declared cross-repo mirror {dir} bundles at least one .fsi to stamp")
+            }
 
-          test "no registered cross-repo mirror actually has a src/ original" {
-              // The converse. A mirror wrongly registered as cross-repo would be carrying a hand-written
-              // stamp for a package this repo builds itself — a provenance claim about somewhere else.
-              let misregistered =
-                  crossRepoMirrors |> Map.toList |> List.map fst |> List.filter hasInRepoSource
+            // #259, generalized. The bug was not "Game.Core was missing from the table" but "the table was
+            // taken on trust". A bundled directory with no `src/` original can only have come from another
+            // repo, so membership is derivable — check it instead of asserting Game.Core by name, and the
+            // NEXT unstamped cross-repo mirror fails here on the day it is added.
+            test "every bundled mirror with no src/ original is registered as cross-repo" {
+                let unregistered =
+                    bundledSurfaceDirectories ()
+                    |> List.filter (fun dir -> not (hasInRepoSource dir) && not (crossRepoMirrors.ContainsKey dir))
 
-              Expect.isEmpty misregistered "each registered cross-repo mirror has no in-repo src/ original to compare against"
-          }
+                Expect.isEmpty
+                    unregistered
+                    "a bundled surface with no src/ original is a cross-repo copy and must be registered in crossRepoMirrors so M-PROV stamps it"
+            }
 
-          // The surface #259 was actually missing. Anchored on the DECLARATION, not a bare substring:
-          // `slide` occurs inside `collide`, `Contact` inside `aabbContact`, so a substring probe could
-          // stay green on a surface that had dropped the member.
-          test "the bundled Game.Core surface declares the 0.2.0 collision layer" {
-              let declares file (declaration: string) =
-                  let text = File.ReadAllText(Path.Combine(apiSurfaceRoot, "Game.Core", file))
-                  Expect.stringContains text declaration $"bundled Game.Core/{file} declares '{declaration}'"
+            test "no registered cross-repo mirror actually has a src/ original" {
+                // The converse. A mirror wrongly registered as cross-repo would be carrying a hand-written
+                // stamp for a package this repo builds itself — a provenance claim about somewhere else.
+                let misregistered =
+                    crossRepoMirrors |> Map.toList |> List.map fst |> List.filter hasInRepoSource
 
-              [ "Resolution.fsi", [ "val pushOut:"; "val slide:"; "val knockback:" ]
-                "Primitives.fsi", [ "type Contact ="; "type Circle ="; "type RayHit ="; "type ConvexPolygon =" ]
-                "Geometry.fsi",
-                [ "val aabbContact:"
-                  "val circleContact:"
-                  "val circleAabbContact:"
-                  "val segmentAabbHit:"
-                  "val segmentCircleHit:"
-                  "val obbPolygon:"
-                  "val polygonContact:" ] ]
-              |> List.iter (fun (file, declarations) -> declarations |> List.iter (declares file))
-          }
+                Expect.isEmpty
+                    misregistered
+                    "each registered cross-repo mirror has no in-repo src/ original to compare against"
+            }
 
-          // §5.3 — the report's author hand-rolled `len * size * 0.6` centring while `measureText` sat
-          // in the very file they were reading, and slipped on the positional `Rectangle`/`Text` cases
-          // whose safe siblings carry an explicit warning.
-          test "the bundled Scene surface warns about the positional arity slip on its DU cases" {
-              let scenePath = Path.Combine(apiSurfaceRoot, "Scene", "Scene.fsi")
-              let lines = File.ReadAllLines scenePath
+            // The surface #259 was actually missing. Anchored on the DECLARATION, not a bare substring:
+            // `slide` occurs inside `collide`, `Contact` inside `aabbContact`, so a substring probe could
+            // stay green on a surface that had dropped the member.
+            test "the bundled Game.Core surface declares the 0.2.0 collision layer" {
+                let declares file (declaration: string) =
+                    let text = File.ReadAllText(Path.Combine(apiSurfaceRoot, "Game.Core", file))
+                    Expect.stringContains text declaration $"bundled Game.Core/{file} declares '{declaration}'"
 
-              // Only the doc-comment block DIRECTLY above the case counts — a 'nearby' warning on a
-              // neighbouring case must not satisfy this.
-              let docBlockAbove index =
-                  lines.[.. index - 1]
-                  |> Array.rev
-                  |> Array.takeWhile (fun line -> line.TrimStart().StartsWith "///")
-                  |> String.concat " "
+                [
+                    "Resolution.fsi", [ "val pushOut:"; "val slide:"; "val knockback:" ]
+                    "Primitives.fsi", [ "type Contact ="; "type Circle ="; "type RayHit ="; "type ConvexPolygon =" ]
+                    "Geometry.fsi",
+                    [
+                        "val aabbContact:"
+                        "val circleContact:"
+                        "val circleAabbContact:"
+                        "val segmentAabbHit:"
+                        "val segmentCircleHit:"
+                        "val obbPolygon:"
+                        "val polygonContact:"
+                    ]
+                ]
+                |> List.iter (fun (file, declarations) -> declarations |> List.iter (declares file))
+            }
 
-              [ "Rectangle"; "Text"; "SizedText" ]
-              |> List.iter (fun case ->
-                  match lines |> Array.tryFindIndex (fun l -> l.TrimStart().StartsWith $"| {case} of ") with
-                  | None -> failtestf "the bundled Scene surface no longer declares the %s case" case
-                  | Some index ->
-                      Expect.stringContains
-                          (docBlockAbove index)
-                          "arity slip"
-                          $"the {case} case carries an arity-slip warning directly above it")
+            // §5.3 — the report's author hand-rolled `len * size * 0.6` centring while `measureText` sat
+            // in the very file they were reading, and slipped on the positional `Rectangle`/`Text` cases
+            // whose safe siblings carry an explicit warning.
+            test "the bundled Scene surface warns about the positional arity slip on its DU cases" {
+                let scenePath = Path.Combine(apiSurfaceRoot, "Scene", "Scene.fsi")
+                let lines = File.ReadAllLines scenePath
 
-              Expect.stringContains
-                  (File.ReadAllText scenePath)
-                  "Scene.measureText"
-                  "the Scene surface points at measureText for text layout"
-          }
+                // Only the doc-comment block DIRECTLY above the case counts — a 'nearby' warning on a
+                // neighbouring case must not satisfy this.
+                let docBlockAbove index =
+                    lines.[.. index - 1]
+                    |> Array.rev
+                    |> Array.takeWhile (fun line -> line.TrimStart().StartsWith "///")
+                    |> String.concat " "
+
+                [ "Rectangle"; "Text"; "SizedText" ]
+                |> List.iter (fun case ->
+                    match lines |> Array.tryFindIndex (fun l -> l.TrimStart().StartsWith $"| {case} of ") with
+                    | None -> failtestf "the bundled Scene surface no longer declares the %s case" case
+                    | Some index ->
+                        Expect.stringContains
+                            (docBlockAbove index)
+                            "arity slip"
+                            $"the {case} case carries an arity-slip warning directly above it")
+
+                Expect.stringContains
+                    (File.ReadAllText scenePath)
+                    "Scene.measureText"
+                    "the Scene surface points at measureText for text layout"
+            }
 
         ]

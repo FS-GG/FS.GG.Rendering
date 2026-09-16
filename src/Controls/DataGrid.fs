@@ -7,45 +7,53 @@ type DataGridColumnType =
     | CustomColumn of string
 
 type DataGridColumn =
-    { Key: string
-      Header: string
-      Width: float
-      ColumnType: DataGridColumnType }
+    {
+        Key: string
+        Header: string
+        Width: float
+        ColumnType: DataGridColumnType
+    }
 
 type DataGridCell =
-    { RowKey: string
-      ColumnKey: string
-      Value: string }
+    {
+        RowKey: string
+        ColumnKey: string
+        Value: string
+    }
 
 type DataGridRow =
-    { Key: string
-      Cells: DataGridCell list }
+    {
+        Key: string
+        Cells: DataGridCell list
+    }
 
 type DataGridSortDirection =
     | Ascending
     | Descending
 
 type DataGridSort =
-    { ColumnKey: string
-      Direction: DataGridSortDirection }
+    {
+        ColumnKey: string
+        Direction: DataGridSortDirection
+    }
 
-type DataGridFocusedCell =
-    { RowKey: string
-      ColumnKey: string }
+type DataGridFocusedCell = { RowKey: string; ColumnKey: string }
 
 type DataGridModel =
-    { ControlId: ControlId
-      Columns: DataGridColumn list
-      RowCount: int
-      RowHeight: float
-      ViewportHeight: float
-      VisibleRange: VisibleRange
-      Overscan: int
-      SelectedRows: Set<string>
-      FocusedCell: DataGridFocusedCell option
-      Sort: DataGridSort option
-      FilterText: string option
-      Diagnostics: ControlDiagnostic list }
+    {
+        ControlId: ControlId
+        Columns: DataGridColumn list
+        RowCount: int
+        RowHeight: float
+        ViewportHeight: float
+        VisibleRange: VisibleRange
+        Overscan: int
+        SelectedRows: Set<string>
+        FocusedCell: DataGridFocusedCell option
+        Sort: DataGridSort option
+        FilterText: string option
+        Diagnostics: ControlDiagnostic list
+    }
 
 type DataGridMsg =
     | ScrollRowsTo of int
@@ -69,23 +77,25 @@ module DataGrid =
         Collections.visibleRange rowHeight viewportHeight (float firstRow * rowHeight) total overscan
 
     let viewportDiagnostics controlId rowHeight viewportHeight =
-        [ if rowHeight <= 0.0 then
-              yield
-                  Diagnostics.create
-                      (Some controlId)
-                      "data-grid"
-                      UnsupportedStateCombination
-                      ControlDiagnosticSeverity.Error
-                      "DataGrid rowHeight must be greater than zero."
+        [
+            if rowHeight <= 0.0 then
+                yield
+                    Diagnostics.create
+                        (Some controlId)
+                        "data-grid"
+                        UnsupportedStateCombination
+                        ControlDiagnosticSeverity.Error
+                        "DataGrid rowHeight must be greater than zero."
 
-          if viewportHeight <= 0.0 then
-              yield
-                  Diagnostics.create
-                      (Some controlId)
-                      "data-grid"
-                      UnsupportedStateCombination
-                      ControlDiagnosticSeverity.Error
-                      "DataGrid viewportHeight must be greater than zero." ]
+            if viewportHeight <= 0.0 then
+                yield
+                    Diagnostics.create
+                        (Some controlId)
+                        "data-grid"
+                        UnsupportedStateCombination
+                        ControlDiagnosticSeverity.Error
+                        "DataGrid viewportHeight must be greater than zero."
+        ]
 
     let withDiagnosticEffects effects diagnostics =
         effects @ (diagnostics |> List.map ReportDataGridDiagnostic)
@@ -95,18 +105,20 @@ module DataGrid =
         let visibleRange = range rowHeight viewportHeight 0 rowCount 0
         let diagnostics = viewportDiagnostics controlId rowHeight viewportHeight
 
-        { ControlId = controlId
-          Columns = columns
-          RowCount = rowCount
-          RowHeight = rowHeight
-          ViewportHeight = viewportHeight
-          VisibleRange = visibleRange
-          Overscan = 0
-          SelectedRows = Set.empty
-          FocusedCell = None
-          Sort = None
-          FilterText = None
-          Diagnostics = diagnostics },
+        {
+            ControlId = controlId
+            Columns = columns
+            RowCount = rowCount
+            RowHeight = rowHeight
+            ViewportHeight = viewportHeight
+            VisibleRange = visibleRange
+            Overscan = 0
+            SelectedRows = Set.empty
+            FocusedCell = None
+            Sort = None
+            FilterText = None
+            Diagnostics = diagnostics
+        },
         withDiagnosticEffects [ DataGridVisibleRangeChanged visibleRange ] diagnostics
 
     let update msg model =
@@ -116,11 +128,22 @@ module DataGrid =
             // widened by `model.Overscan` each side. The window RELOCATES (its first index jumps to the
             // clamped target) and stays bounded — it never expands to span the path (FR-003).
             let visibleRange =
-                range model.RowHeight model.ViewportHeight (max 0 (min firstRow (max 0 (model.RowCount - 1)))) model.RowCount model.Overscan
+                range
+                    model.RowHeight
+                    model.ViewportHeight
+                    (max 0 (min firstRow (max 0 (model.RowCount - 1))))
+                    model.RowCount
+                    model.Overscan
 
-            { model with VisibleRange = visibleRange }, [ DataGridVisibleRangeChanged visibleRange ]
+            { model with
+                VisibleRange = visibleRange
+            },
+            [ DataGridVisibleRangeChanged visibleRange ]
         | SelectRow rowKey ->
-            { model with SelectedRows = Set.singleton rowKey }, [ DataGridSelectionChanged [ rowKey ] ]
+            { model with
+                SelectedRows = Set.singleton rowKey
+            },
+            [ DataGridSelectionChanged [ rowKey ] ]
         | ToggleRow rowKey ->
             let selected =
                 if model.SelectedRows.Contains rowKey then
@@ -129,8 +152,7 @@ module DataGrid =
                     model.SelectedRows.Add rowKey
 
             { model with SelectedRows = selected }, [ DataGridSelectionChanged(Set.toList selected) ]
-        | FocusCell cell ->
-            { model with FocusedCell = cell }, [ DataGridFocusChanged cell ]
+        | FocusCell cell -> { model with FocusedCell = cell }, [ DataGridFocusChanged cell ]
         | SortBy columnKey ->
             if model.Columns |> List.exists (fun column -> column.Key = columnKey) |> not then
                 let diagnostic =
@@ -141,7 +163,10 @@ module DataGrid =
                         ControlDiagnosticSeverity.Warning
                         $"DataGrid sort column '{columnKey}' does not exist."
 
-                { model with Diagnostics = diagnostic :: model.Diagnostics }, [ ReportDataGridDiagnostic diagnostic ]
+                { model with
+                    Diagnostics = diagnostic :: model.Diagnostics
+                },
+                [ ReportDataGridDiagnostic diagnostic ]
             else
                 // Feature 108 (US5, FR-015): three-state cycle on the SAME column
                 //   None -> Asc -> Desc -> None; a DIFFERENT column restarts at Asc.
@@ -151,22 +176,36 @@ module DataGrid =
                     match model.Sort with
                     | Some current when current.ColumnKey = columnKey ->
                         match current.Direction with
-                        | Ascending -> Some { ColumnKey = columnKey; Direction = Descending }
+                        | Ascending ->
+                            Some
+                                {
+                                    ColumnKey = columnKey
+                                    Direction = Descending
+                                }
                         | Descending -> None
-                    | _ -> Some { ColumnKey = columnKey; Direction = Ascending }
+                    | _ ->
+                        Some
+                            {
+                                ColumnKey = columnKey
+                                Direction = Ascending
+                            }
 
                 { model with Sort = sort }, [ DataGridSortChanged sort ]
-        | ApplyFilter filterText ->
-            { model with FilterText = filterText }, [ DataGridFilterChanged filterText ]
+        | ApplyFilter filterText -> { model with FilterText = filterText }, [ DataGridFilterChanged filterText ]
         | ReplaceRowCount count ->
             let count = max 0 count
-            let visibleRange = range model.RowHeight model.ViewportHeight model.VisibleRange.FirstIndex count model.Overscan
-            { model with RowCount = count; VisibleRange = visibleRange }, [ DataGridVisibleRangeChanged visibleRange ]
+
+            let visibleRange =
+                range model.RowHeight model.ViewportHeight model.VisibleRange.FirstIndex count model.Overscan
+
+            { model with
+                RowCount = count
+                VisibleRange = visibleRange
+            },
+            [ DataGridVisibleRangeChanged visibleRange ]
 
     let tryLast (name: string) (attrs: Attr<'msg> list) =
-        attrs
-        |> List.rev
-        |> List.tryFind (fun attr -> attr.Name = name)
+        attrs |> List.rev |> List.tryFind (fun attr -> attr.Name = name)
 
     let rowsFrom (attrs: Attr<'msg> list) : DataGridRow list =
         AttrKeys.tryKey AttrKeys.Rows attrs
@@ -183,7 +222,12 @@ module DataGrid =
             match attr.Value with
             | UntypedValue(:? VisibleRange as visibleRange) -> Some visibleRange
             | _ -> None)
-        |> Option.defaultValue { FirstIndex = 0; Count = min rows.Length 30; Total = rows.Length }
+        |> Option.defaultValue
+            {
+                FirstIndex = 0
+                Count = min rows.Length 30
+                Total = rows.Length
+            }
 
     let hasAttr (name: string) (attrs: Attr<'msg> list) =
         attrs |> List.exists (fun attr -> attr.Name = name)
@@ -197,23 +241,26 @@ module DataGrid =
     let cellControl (row: DataGridRow) (column: DataGridColumn) : Control<'msg> =
         Control.create
             "data-grid-cell"
-            [ Attr.text (cellValue row column)
-              Attr.create "columnKey" Data (TextValue column.Key)
-              Attr.create "rowKey" Data (TextValue row.Key) ]
+            [
+                Attr.text (cellValue row column)
+                Attr.create "columnKey" Data (TextValue column.Key)
+                Attr.create "rowKey" Data (TextValue row.Key)
+            ]
         |> Control.withKey $"{row.Key}:{column.Key}"
 
     let headerCell (column: DataGridColumn) : Control<'msg> =
         Control.create
             "data-grid-header-cell"
-            [ Attr.text column.Header
-              Attr.create "columnKey" Data (TextValue column.Key) ]
+            [ Attr.text column.Header; Attr.create "columnKey" Data (TextValue column.Key) ]
         |> Control.withKey $"header:{column.Key}"
 
     let rowControl (columns: DataGridColumn list) (row: DataGridRow) : Control<'msg> =
         Control.create
             "data-grid-row"
-            [ Attr.create "rowKey" Data (TextValue row.Key)
-              Attr.children (columns |> List.map (cellControl row)) ]
+            [
+                Attr.create "rowKey" Data (TextValue row.Key)
+                Attr.children (columns |> List.map (cellControl row))
+            ]
         |> Control.withKey row.Key
 
     let visibleRows (rows: DataGridRow list) (visibleRange: VisibleRange) =
@@ -232,8 +279,12 @@ module DataGrid =
     let create (columns: DataGridColumn list) (attrs: Attr<'msg> list) =
         let rows = rowsFrom attrs
         let visibleRange = visibleRangeFrom rows attrs
-        let header = Control.create "data-grid-header" [ Attr.children (columns |> List.map headerCell) ]
-        let children = header :: (visibleRows rows visibleRange |> List.map (rowControl columns))
+
+        let header =
+            Control.create "data-grid-header" [ Attr.children (columns |> List.map headerCell) ]
+
+        let children =
+            header :: (visibleRows rows visibleRange |> List.map (rowControl columns))
 
         // Feature 114 (FR-012): report the LOGICAL total + focused position to assistive technology,
         // computed from the logical model (the visible range's `Total` and the focused row's index in the
@@ -245,13 +296,33 @@ module DataGrid =
 
         let collectionMetadata =
             { Accessibility.defaultFor "data-grid" "data-grid" with
-                Collection = Some { TotalItems = visibleRange.Total; FocusedIndex = focusedIndex } }
+                Collection =
+                    Some
+                        {
+                            TotalItems = visibleRange.Total
+                            FocusedIndex = focusedIndex
+                        }
+            }
 
         let attrs =
             attrs
-            |> fun attrs -> if AttrKeys.hasKey AttrKeys.Columns attrs then attrs else Attr.create (AttrKeys.nameOf AttrKeys.Columns) Data (UntypedValue columns) :: attrs
-            |> fun attrs -> if AttrKeys.hasKey AttrKeys.VisibleRange attrs then attrs else Attr.create (AttrKeys.nameOf AttrKeys.VisibleRange) State (UntypedValue visibleRange) :: attrs
-            |> fun attrs -> if AttrKeys.hasKey AttrKeys.Accessibility attrs then attrs else Attr.accessibility collectionMetadata :: attrs
+            |> fun attrs ->
+                if AttrKeys.hasKey AttrKeys.Columns attrs then
+                    attrs
+                else
+                    Attr.create (AttrKeys.nameOf AttrKeys.Columns) Data (UntypedValue columns)
+                    :: attrs
+            |> fun attrs ->
+                if AttrKeys.hasKey AttrKeys.VisibleRange attrs then
+                    attrs
+                else
+                    Attr.create (AttrKeys.nameOf AttrKeys.VisibleRange) State (UntypedValue visibleRange)
+                    :: attrs
+            |> fun attrs ->
+                if AttrKeys.hasKey AttrKeys.Accessibility attrs then
+                    attrs
+                else
+                    Attr.accessibility collectionMetadata :: attrs
 
         Control.create "data-grid" (Attr.children children :: attrs)
 

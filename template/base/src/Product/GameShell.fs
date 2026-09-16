@@ -58,35 +58,37 @@ type DisplayMode =
 
 /// The display half of settings: the fixed logical resolution the game renders in (letterboxed
 /// onto whatever surface via `LogicalCanvas`) plus how the window presents.
-type DisplaySettings =
-    { Resolution: Size
-      Mode: DisplayMode }
+type DisplaySettings = { Resolution: Size; Mode: DisplayMode }
 
 /// The state a game supplies once to parameterize the shell for itself.
 type Config =
-    { /// The game's name — the title label on the main menu.
-      Title: string
-      /// Stable player-facing actions, including labels/order and optional default bindings.
-      Actions: KeyRebindAction list
-      /// The display modes the settings screen offers, in menu order.
-      DisplayModes: DisplayMode list
-      /// The resolutions the settings screen offers, in menu order.
-      Resolutions: Size list
-      /// The display settings the game starts in.
-      InitialDisplay: DisplaySettings }
+    {
+        /// The game's name — the title label on the main menu.
+        Title: string
+        /// Stable player-facing actions, including labels/order and optional default bindings.
+        Actions: KeyRebindAction list
+        /// The display modes the settings screen offers, in menu order.
+        DisplayModes: DisplayMode list
+        /// The resolutions the settings screen offers, in menu order.
+        Resolutions: Size list
+        /// The display settings the game starts in.
+        InitialDisplay: DisplaySettings
+    }
 
 /// The shell's whole state. A game embeds this in its own model and threads `Msg` through
 /// `update`; the game's own model carries gameplay, which the shell never touches.
 type Model =
-    { Screen: Screen
-      Display: DisplaySettings
-      Keymap: Keymap
-      /// Stable action metadata retained so reset does not depend on runtime lookup state.
-      Actions: KeyRebindAction list
-      /// The command currently awaiting its next key press (a rebind in flight), or `None`.
-      Rebinding: CommandId option
-      /// The screen `Back`/Esc returns to when leaving `Settings` (`MainMenu` or `Paused`).
-      SettingsReturn: Screen }
+    {
+        Screen: Screen
+        Display: DisplaySettings
+        Keymap: Keymap
+        /// Stable action metadata retained so reset does not depend on runtime lookup state.
+        Actions: KeyRebindAction list
+        /// The command currently awaiting its next key press (a rebind in flight), or `None`.
+        Rebinding: CommandId option
+        /// The screen `Back`/Esc returns to when leaving `Settings` (`MainMenu` or `Paused`).
+        SettingsReturn: Screen
+    }
 
 /// The messages the shell reduces. A game maps these into its own `Msg` (e.g. `Shell of Msg`).
 type Msg =
@@ -133,12 +135,14 @@ let menuKey: KeyId = ViewerKeyboard.toKeyId ViewerKey.Escape
 
 /// The initial shell state for a game: the main menu, the game's default keymap and display.
 let init (config: Config) : Model =
-    { Screen = MainMenu
-      Display = config.InitialDisplay
-      Keymap = KeyRebind.restoreDefaults config.Actions
-      Actions = config.Actions
-      Rebinding = None
-      SettingsReturn = MainMenu }
+    {
+        Screen = MainMenu
+        Display = config.InitialDisplay
+        Keymap = KeyRebind.restoreDefaults config.Actions
+        Actions = config.Actions
+        Rebinding = None
+        SettingsReturn = MainMenu
+    }
 
 /// The pure Esc router. A capture in flight is cancelled first (Esc never rebinds to Escape);
 /// otherwise Esc pauses live play, resumes a pause, or backs out of settings. At the main menu it
@@ -150,7 +154,12 @@ let private routeEscape (model: Model) : Model * Effect list =
         match model.Screen with
         | Playing -> { model with Screen = Paused }, []
         | Paused -> { model with Screen = Playing }, []
-        | Settings -> { model with Screen = model.SettingsReturn; Rebinding = None }, []
+        | Settings ->
+            { model with
+                Screen = model.SettingsReturn
+                Rebinding = None
+            },
+            []
         | MainMenu -> model, []
 
 /// The shell reducer. Pure and total — every transition is deterministic and host-free, so a
@@ -164,11 +173,22 @@ let update (msg: Msg) (model: Model) : Model * Effect list =
     | OpenSettings ->
         match model.Screen with
         | MainMenu
-        | Paused -> { model with Screen = Settings; SettingsReturn = model.Screen; Rebinding = None }, []
+        | Paused ->
+            { model with
+                Screen = Settings
+                SettingsReturn = model.Screen
+                Rebinding = None
+            },
+            []
         | _ -> model, []
     | LeaveSettings ->
         match model.Screen with
-        | Settings -> { model with Screen = model.SettingsReturn; Rebinding = None }, []
+        | Settings ->
+            { model with
+                Screen = model.SettingsReturn
+                Rebinding = None
+            },
+            []
         | _ -> model, []
     | Quit -> model, [ ExitRequested ]
     | PauseGame ->
@@ -195,12 +215,22 @@ let update (msg: Msg) (model: Model) : Model * Effect list =
         | Some _ when key = menuKey -> { model with Rebinding = None }, []
         | Some command ->
             let keymap = Keymap.replaceCommandBinding command key model.Keymap
-            { model with Keymap = keymap; Rebinding = None }, [ KeymapChanged keymap ]
+
+            { model with
+                Keymap = keymap
+                Rebinding = None
+            },
+            [ KeymapChanged keymap ]
         | None -> model, []
     | CancelRebind -> { model with Rebinding = None }, []
     | ResetBindings ->
         let keymap = KeyRebind.restoreDefaults model.Actions
-        { model with Keymap = keymap; Rebinding = None }, [ KeymapChanged keymap ]
+
+        { model with
+            Keymap = keymap
+            Rebinding = None
+        },
+        [ KeymapChanged keymap ]
     | EscapePressed -> routeEscape model
 
 // ---- display seams --------------------------------------------------------------------------
@@ -217,7 +247,8 @@ let windowBehavior (display: DisplaySettings) : ViewerWindowBehaviorRequest =
 
     { Viewer.defaultWindowBehavior with
         ResizePolicy = resizePolicy
-        StartupState = startupState }
+        StartupState = startupState
+    }
 
 /// The fixed logical canvas size a game renders in for a display setting. Seed
 /// `ViewerOptions.LogicalSize` with the initial value and emit `ApplyLogicalCanvas` for later
@@ -383,9 +414,14 @@ let private readDisplayObject (element: JsonElement) : DisplaySettings option =
 
         match stringOf "format", intOf "version", intOf "width", intOf "height", stringOf "mode" with
         | Some format, Some version, Some width, Some height, Some mode when
-            format = displayFormatId && version = settingsFormatVersion ->
+            format = displayFormatId && version = settingsFormatVersion
+            ->
             modeOfToken mode
-            |> Option.map (fun mode -> { Resolution = { Width = width; Height = height }; Mode = mode })
+            |> Option.map (fun mode ->
+                {
+                    Resolution = { Width = width; Height = height }
+                    Mode = mode
+                })
         | _ -> None
 
 /// Re-serialize one parsed JSON element to its own byte blob — how the settings envelope hands its
@@ -412,6 +448,7 @@ let encodeDisplay (model: Model) : byte[] =
 let decodeDisplay (bytes: byte[]) (model: Model) : Model =
     try
         use document = JsonDocument.Parse(ReadOnlyMemory bytes)
+
         match readDisplayObject document.RootElement with
         | Some display -> { model with Display = display }
         | None -> model
@@ -479,28 +516,39 @@ let view (dispatch: Msg -> 'msg) (config: Config) (model: Model) : Widget<'msg> 
             { Button.defaults with
                 Id = Some id
                 Text = label
-                OnClick = Some(dispatch msg) }
+                OnClick = Some(dispatch msg)
+            }
 
-    let title (text: string) = TextBlock.view { TextBlock.defaults with Text = text }
-    let stack (children: Widget<'msg> list) = Stack.view { Stack.defaults with Children = children }
+    let title (text: string) =
+        TextBlock.view { TextBlock.defaults with Text = text }
+
+    let stack (children: Widget<'msg> list) =
+        Stack.view
+            { Stack.defaults with
+                Children = children
+            }
 
     match model.Screen with
     | Playing -> None
     | MainMenu ->
         Some(
             stack
-                [ title config.Title
-                  button "start" "Start" Start
-                  button "config" "Config" OpenSettings
-                  button "exit" "Exit" Quit ]
+                [
+                    title config.Title
+                    button "start" "Start" Start
+                    button "config" "Config" OpenSettings
+                    button "exit" "Exit" Quit
+                ]
         )
     | Paused ->
         Some(
             stack
-                [ title (config.Title + " — Paused")
-                  button "resume" "Resume" ResumeGame
-                  button "config" "Config" OpenSettings
-                  button "exit" "Exit" Quit ]
+                [
+                    title (config.Title + " — Paused")
+                    button "resume" "Resume" ResumeGame
+                    button "config" "Config" OpenSettings
+                    button "exit" "Exit" Quit
+                ]
         )
     | Settings ->
         let modeLabel mode =
@@ -537,8 +585,7 @@ let view (dispatch: Msg -> 'msg) (config: Config) (model: Model) : Widget<'msg> 
             | None -> "Choose a command to rebind"
 
         let children =
-            [ title (config.Title + " — Settings")
-              title "Display mode" ]
+            [ title (config.Title + " — Settings"); title "Display mode" ]
             @ (config.DisplayModes |> List.map modeButton)
             @ [ title "Resolution" ]
             @ (config.Resolutions |> List.map resButton)

@@ -7,21 +7,21 @@ type TextInputMode =
     | MultiLine
 
 /// A selected character range (`Start`..`End`) within a `TextInputModel`.
-type TextSelection =
-    { Start: int
-      End: int }
+type TextSelection = { Start: int; End: int }
 
 /// The MVU state of a text field: committed vs. draft text, `CaretIndex`, `Selection`, in-flight `Composition`, `Validation`, and focus.
 type TextInputModel =
-    { ControlId: ControlId
-      Mode: TextInputMode
-      CommittedText: string
-      DraftText: string
-      CaretIndex: int
-      Selection: TextSelection option
-      Composition: string option
-      Validation: ValidationState
-      Focused: bool }
+    {
+        ControlId: ControlId
+        Mode: TextInputMode
+        CommittedText: string
+        DraftText: string
+        CaretIndex: int
+        Selection: TextSelection option
+        Composition: string option
+        Validation: ValidationState
+        Focused: bool
+    }
 
 /// An input message driving `TextInput.update`, e.g. `Focus`, `InsertText`, `MoveCaret`, `Commit`, `Cancel`, or composition events.
 type TextInputMsg =

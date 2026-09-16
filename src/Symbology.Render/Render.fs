@@ -11,10 +11,12 @@ module Render =
         let bytes = (SceneCodec.export scene).CanonicalBytes
 
         let request =
-            { PackageBytes = bytes
-              OutputDirectory = dir
-              OutputSize = size
-              Resources = [] }
+            {
+                PackageBytes = bytes
+                OutputDirectory = dir
+                OutputSize = size
+                Resources = []
+            }
 
         let ev = ReferenceRendering.run request
 

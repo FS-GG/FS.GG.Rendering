@@ -20,21 +20,27 @@ module Harness =
     /// A fence prepared for the compiler: a unique module (its name encodes the origin so a build error maps
     /// back), the `open` preamble that puts the pin's namespaces in scope (D2), and the fence body.
     type CompilationUnit =
-        { ModuleName: string
-          Origin: Corpus.FenceBlock
-          Opens: string list
-          Body: string list }
+        {
+            ModuleName: string
+            Origin: Corpus.FenceBlock
+            Opens: string list
+            Body: string list
+        }
 
     /// A compiler diagnostic mapped back to the ORIGINAL document — so a failure is clickable (T017).
     type Diagnostic =
-        { Doc: string
-          Line: int
-          Message: string }
+        {
+            Doc: string
+            Line: int
+            Message: string
+        }
 
     type Outcome =
-        { Succeeded: bool
-          RawOutput: string
-          Diagnostics: Diagnostic list }
+        {
+            Succeeded: bool
+            RawOutput: string
+            Diagnostics: Diagnostic list
+        }
 
     /// The chosen whole-corpus model (Rendering#1050). A fence is either a positive member of the
     /// published-pin compilation corpus, or a contextual teaching fragment whose reader/product-owned
@@ -90,10 +96,13 @@ module Harness =
     let private unitSource (u: CompilationUnit) : string =
         let sb = StringBuilder()
         sb.AppendLine($"module {u.ModuleName}") |> ignore
+
         for o in u.Opens do
             sb.AppendLine($"open {o}") |> ignore
+
         for line in u.Body do
             sb.AppendLine(line) |> ignore
+
         sb.ToString()
 
     /// Recover the ORIGINAL doc line from a generated-file line: subtract the `module` line and the `open`
@@ -106,7 +115,8 @@ module Harness =
     let private diagRegex =
         System.Text.RegularExpressions.Regex(
             @"^(?<file>.*?)\((?<line>\d+),\d+\):\s*(?<sev>error|warning)\s+(?<msg>FS\d+:.*)$",
-            System.Text.RegularExpressions.RegexOptions.Compiled)
+            System.Text.RegularExpressions.RegexOptions.Compiled
+        )
 
     /// Build all units in one generated project against the pin. ONE restore + build amortized over every
     /// fence. `packages` are the pinned `(id, version)` pairs to reference — read live from the props by
@@ -154,7 +164,9 @@ module Harness =
             for u in units do
                 File.WriteAllText(Path.Combine(workDir, $"{u.ModuleName}.fs"), unitSource u)
 
-            let psi = ProcessStartInfo("dotnet", "build DocFences.Probe.fsproj -c Release -m:1 --nologo")
+            let psi =
+                ProcessStartInfo("dotnet", "build DocFences.Probe.fsproj -c Release -m:1 --nologo")
+
             psi.WorkingDirectory <- workDir
             psi.RedirectStandardOutput <- true
             psi.RedirectStandardError <- true
@@ -170,36 +182,48 @@ module Harness =
                 let errT = proc.StandardError.ReadToEndAsync()
 
                 if not (proc.WaitForExit timeoutMs) then
-                    (try proc.Kill true with _ -> ())
+                    (try
+                        proc.Kill true
+                     with _ ->
+                         ())
+
                     failwithf "doc-fence harness build timed out after %d ms" timeoutMs
 
                 let output = outT.Result + errT.Result
 
-                let byModule =
-                    units |> List.map (fun u -> u.ModuleName, u) |> Map.ofList
+                let byModule = units |> List.map (fun u -> u.ModuleName, u) |> Map.ofList
 
                 let diagnostics =
                     output.Replace("\r\n", "\n").Split('\n')
                     |> Array.choose (fun line ->
                         let m = diagRegex.Match line
+
                         if m.Success && m.Groups.["sev"].Value = "error" then
                             let file = Path.GetFileNameWithoutExtension(m.Groups.["file"].Value.Trim())
+
                             match Map.tryFind file byModule with
                             | Some u ->
                                 Some
-                                    { Doc = u.Origin.Doc
-                                      Line = originLine u (int m.Groups.["line"].Value)
-                                      Message = m.Groups.["msg"].Value.Trim() }
+                                    {
+                                        Doc = u.Origin.Doc
+                                        Line = originLine u (int m.Groups.["line"].Value)
+                                        Message = m.Groups.["msg"].Value.Trim()
+                                    }
                             | None -> None
                         else
                             None)
                     |> List.ofArray
 
-                { Succeeded = proc.ExitCode = 0
-                  RawOutput = output
-                  Diagnostics = diagnostics }
+                {
+                    Succeeded = proc.ExitCode = 0
+                    RawOutput = output
+                    Diagnostics = diagnostics
+                }
         finally
-            try Directory.Delete(workDir, true) with _ -> ()
+            try
+                Directory.Delete(workDir, true)
+            with _ ->
+                ()
 
     /// A stable, filesystem-safe module name for a fence, encoding its origin so a diagnostic maps back.
     let moduleNameFor (index: int) (fence: Corpus.FenceBlock) : string =
@@ -208,23 +232,25 @@ module Harness =
             |> Seq.map (fun c -> if System.Char.IsLetterOrDigit c then c else '_')
             |> Seq.toArray
             |> System.String
+
         $"Fence_{index}_{slug}_L{fence.StartLine}"
 
     /// Turn the compilable fences of a corpus into units: corpus preamble (T006) + the fence's own
     /// `docfences:open` additions, skipping any fence marked `docfences:skip` (T007). Returns the units and
     /// the skipped fences (so a caller can report what was excluded, and why — never a silent drop).
     let unitsFor (fences: Corpus.FenceBlock list) : CompilationUnit list * (Corpus.FenceBlock * string) list =
-        let skipped =
-            fences |> List.choose (fun f -> f.Skip |> Option.map (fun r -> f, r))
+        let skipped = fences |> List.choose (fun f -> f.Skip |> Option.map (fun r -> f, r))
 
         let units =
             fences
             |> List.filter (fun f -> Option.isNone f.Skip)
             |> List.mapi (fun i f ->
-                { ModuleName = moduleNameFor i f
-                  Origin = f
-                  Opens = Preamble.forKind f.Kind @ f.ExtraOpens
-                  Body = f.Body })
+                {
+                    ModuleName = moduleNameFor i f
+                    Origin = f
+                    Opens = Preamble.forKind f.Kind @ f.ExtraOpens
+                    Body = f.Body
+                })
 
         units, skipped
 
@@ -311,59 +337,61 @@ module Harness =
     /// types merely to make a compiler probe green.
     let private selfContainedProductSkillFences =
         Set.ofList
-            [ "template/product-skills/fs-gg-symbology/SKILL.md", 214
-              "template/product-skills/fs-gg-symbology/SKILL.md", 226
-              "template/product-skills/fs-gg-testing/SKILL.md", 337
-              "template/product-skills/fs-gg-testing/SKILL.md", 362
-              "template/product-skills/fs-gg-testing/SKILL.md", 635
-              "template/product-skills/fs-gg-grids/SKILL.md", 61
-              "template/product-skills/fs-gg-collision/SKILL.md", 104
-              "template/product-skills/fs-gg-layout/SKILL.md", 44
-              "template/product-skills/fs-gg-ui-widgets/SKILL.md", 105
-              "template/product-skills/fs-gg-scene/SKILL.md", 121
-              "template/product-skills/fs-gg-scene/SKILL.md", 174
-              "template/product-skills/fs-gg-scene/SKILL.md", 235
-              "template/product-skills/fs-gg-scene/SKILL.md", 309
-              "template/product-skills/fs-gg-styling/SKILL.md", 83
-              "template/product-skills/fs-gg-svg-assets/SKILL.md", 22
-              "template/product-skills/fs-gg-symbology/reference/labels.md", 90 ]
+            [
+                "template/product-skills/fs-gg-symbology/SKILL.md", 214
+                "template/product-skills/fs-gg-symbology/SKILL.md", 226
+                "template/product-skills/fs-gg-testing/SKILL.md", 337
+                "template/product-skills/fs-gg-testing/SKILL.md", 362
+                "template/product-skills/fs-gg-testing/SKILL.md", 635
+                "template/product-skills/fs-gg-grids/SKILL.md", 61
+                "template/product-skills/fs-gg-collision/SKILL.md", 104
+                "template/product-skills/fs-gg-layout/SKILL.md", 44
+                "template/product-skills/fs-gg-ui-widgets/SKILL.md", 105
+                "template/product-skills/fs-gg-scene/SKILL.md", 121
+                "template/product-skills/fs-gg-scene/SKILL.md", 174
+                "template/product-skills/fs-gg-scene/SKILL.md", 235
+                "template/product-skills/fs-gg-scene/SKILL.md", 309
+                "template/product-skills/fs-gg-styling/SKILL.md", 83
+                "template/product-skills/fs-gg-svg-assets/SKILL.md", 22
+                "template/product-skills/fs-gg-symbology/reference/labels.md", 90
+            ]
 
     /// Why the remaining fences in each document are contextual. Reasons describe the document's actual
     /// teaching shape; they are never used to reinterpret compiler errors.
     let private contextualReasonByDoc =
         Map.ofList
-            [ "template/product-skills/fs-gg-line-drawing/SKILL.md",
-              "uses product-owned LineDrawing helpers and values introduced by earlier examples"
-              "template/product-skills/fs-gg-symbology/SKILL.md",
-              "mixes signature fragments with reader-owned unit/roster values"
-              "template/product-skills/fs-gg-elmish/SKILL.md",
-              "composes the reader's Model, Msg, host, update, view, and earlier bindings"
-              "template/product-skills/fs-gg-testing/SKILL.md",
-              "uses product-owned domain types, fixtures, and helpers introduced by earlier examples"
-              "template/product-skills/fs-gg-game-shell/SKILL.md",
-              "shows product configuration fragments and a product-owned GameShell wrapper"
-              "template/product-skills/fs-gg-grids/SKILL.md",
-              "continues with a cell value introduced by the preceding example"
-              "template/product-skills/fs-gg-collision/SKILL.md",
-              "uses product-owned body wrappers, targets, and Collision composition"
-              "template/product-skills/fs-gg-layout/SKILL.md",
-              "uses product-owned responsive-layout helper functions"
-              "template/product-skills/fs-gg-ui-widgets/SKILL.md",
-              "continues from a reader-owned control value"
-              "template/product-skills/fs-gg-scene/SKILL.md",
-              "uses reader-owned scenes/animation state or intentionally ambient record labels"
-              "template/product-skills/fs-gg-skiaviewer/SKILL.md",
-              "assembles the reader's Model, Msg, host functions, effects, and launch options"
-              "template/product-skills/fs-gg-visibility/SKILL.md",
-              "uses product-owned world inputs and intentionally ambient geometry record labels"
-              "template/product-skills/fs-gg-styling/SKILL.md",
-              "uses product theme/model values and surrounding control-host context"
-              "template/product-skills/fs-gg-symbol-design/SKILL.md",
-              "contains walkthrough fragments, product frame state, and an FSI script"
-              "template/product-skills/fs-gg-keyboard-input/SKILL.md",
-              "contains expression fragments and the reader's Msg/keymap host"
-              "template/product-skills/fs-gg-symbology/reference/labels.md",
-              "projects labels from the reader's unit value" ]
+            [
+                "template/product-skills/fs-gg-line-drawing/SKILL.md",
+                "uses product-owned LineDrawing helpers and values introduced by earlier examples"
+                "template/product-skills/fs-gg-symbology/SKILL.md",
+                "mixes signature fragments with reader-owned unit/roster values"
+                "template/product-skills/fs-gg-elmish/SKILL.md",
+                "composes the reader's Model, Msg, host, update, view, and earlier bindings"
+                "template/product-skills/fs-gg-testing/SKILL.md",
+                "uses product-owned domain types, fixtures, and helpers introduced by earlier examples"
+                "template/product-skills/fs-gg-game-shell/SKILL.md",
+                "shows product configuration fragments and a product-owned GameShell wrapper"
+                "template/product-skills/fs-gg-grids/SKILL.md",
+                "continues with a cell value introduced by the preceding example"
+                "template/product-skills/fs-gg-collision/SKILL.md",
+                "uses product-owned body wrappers, targets, and Collision composition"
+                "template/product-skills/fs-gg-layout/SKILL.md", "uses product-owned responsive-layout helper functions"
+                "template/product-skills/fs-gg-ui-widgets/SKILL.md", "continues from a reader-owned control value"
+                "template/product-skills/fs-gg-scene/SKILL.md",
+                "uses reader-owned scenes/animation state or intentionally ambient record labels"
+                "template/product-skills/fs-gg-skiaviewer/SKILL.md",
+                "assembles the reader's Model, Msg, host functions, effects, and launch options"
+                "template/product-skills/fs-gg-visibility/SKILL.md",
+                "uses product-owned world inputs and intentionally ambient geometry record labels"
+                "template/product-skills/fs-gg-styling/SKILL.md",
+                "uses product theme/model values and surrounding control-host context"
+                "template/product-skills/fs-gg-symbol-design/SKILL.md",
+                "contains walkthrough fragments, product frame state, and an FSI script"
+                "template/product-skills/fs-gg-keyboard-input/SKILL.md",
+                "contains expression fragments and the reader's Msg/keymap host"
+                "template/product-skills/fs-gg-symbology/reference/labels.md",
+                "projects labels from the reader's unit value"
+            ]
 
     let private productSkillInventoryDigest (fences: Corpus.FenceBlock list) =
         let payload =
@@ -372,11 +400,14 @@ module Harness =
             |> List.map (fun fence ->
                 String.Join(
                     "\u001f",
-                    [| fence.Doc
-                       string fence.StartLine
-                       String.Join("\n", fence.Body)
-                       (fence.Skip |> Option.defaultValue "")
-                       String.Join("\n", fence.ExtraOpens) |]))
+                    [|
+                        fence.Doc
+                        string fence.StartLine
+                        String.Join("\n", fence.Body)
+                        (fence.Skip |> Option.defaultValue "")
+                        String.Join("\n", fence.ExtraOpens)
+                    |]
+                ))
             |> fun entries -> String.Join("\u001e", entries)
 
         payload
@@ -397,7 +428,9 @@ module Harness =
                 expectedProductSkillInventory
                 actualInventory
 
-        let liveKeys = fences |> List.map (fun fence -> fence.Doc, fence.StartLine) |> Set.ofList
+        let liveKeys =
+            fences |> List.map (fun fence -> fence.Doc, fence.StartLine) |> Set.ofList
+
         let stalePositiveKeys = Set.difference selfContainedProductSkillFences liveKeys
 
         if not stalePositiveKeys.IsEmpty then

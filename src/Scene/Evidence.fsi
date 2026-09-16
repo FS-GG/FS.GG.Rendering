@@ -13,26 +13,32 @@ type SceneEvidenceFailureClassification =
 
 /// Public contract type exposed by this FS.GG.UI package.
 type SceneEvidenceFailure =
-    { BlockedStage: string
-      Classification: SceneEvidenceFailureClassification
-      DiagnosticCategory: string
-      Message: string }
+    {
+        BlockedStage: string
+        Classification: SceneEvidenceFailureClassification
+        DiagnosticCategory: string
+        Message: string
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type SceneEvidenceRequest =
-    { Scene: Scene
-      OutputSize: Size
-      Format: SceneEvidenceFormat
-      RendererMode: string
-      EvidencePath: string option }
+    {
+        Scene: Scene
+        OutputSize: Size
+        Format: SceneEvidenceFormat
+        RendererMode: string
+        EvidencePath: string option
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type SceneEvidence =
-    { Format: SceneEvidenceFormat
-      OutputSize: Size
-      RendererMode: string
-      EvidencePath: string option
-      Value: string }
+    {
+        Format: SceneEvidenceFormat
+        OutputSize: Size
+        RendererMode: string
+        EvidencePath: string option
+        Value: string
+    }
 
 /// Public contract module exposed by this FS.GG.UI package.
 module SceneEvidence =

@@ -31,8 +31,10 @@ type AudioEffect =
 /// Ordered evidence of what a product requested, produced by the record-only interpreter.
 /// This is the primary, hardware-free evidence for the headless path (US2).
 type AudioEvidence =
-    { /// Requested effects in dispatch order (oldest first).
-      Requested: AudioEffect list }
+    {
+        /// Requested effects in dispatch order (oldest first).
+        Requested: AudioEffect list
+    }
 
 [<RequireQualifiedAccess>]
 module Audio =

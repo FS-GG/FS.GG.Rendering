@@ -5,22 +5,23 @@ open Elmish
 open FS.GG.UI.Scene
 open FS.GG.UI.SkiaViewer
 
-type DiagnosticOptions =
-    { Verbose: bool }
+type DiagnosticOptions = { Verbose: bool }
 
 [<NoEquality; NoComparison>]
 type ViewerConfiguration =
-    { Title: string
-      InitialSize: Size
-      ClearColor: Color option
-      TargetFrameRate: int option
-      Diagnostics: DiagnosticOptions
-      // Optional transform applied to the native WindowOptions just before window
-      // creation, so a caller can carry window-startup intent (fullscreen / maximized
-      // / windowed-fullscreen / borderless) into the live presented window.
-      ConfigureWindow: (Silk.NET.Windowing.WindowOptions -> Silk.NET.Windowing.WindowOptions) option
-      // Live present mechanism (feature 118), threaded from ViewerOptions.PresentMode.
-      PresentMode: ViewerPresentMode }
+    {
+        Title: string
+        InitialSize: Size
+        ClearColor: Color option
+        TargetFrameRate: int option
+        Diagnostics: DiagnosticOptions
+        // Optional transform applied to the native WindowOptions just before window
+        // creation, so a caller can carry window-startup intent (fullscreen / maximized
+        // / windowed-fullscreen / borderless) into the live presented window.
+        ConfigureWindow: (Silk.NET.Windowing.WindowOptions -> Silk.NET.Windowing.WindowOptions) option
+        // Live present mechanism (feature 118), threaded from ViewerOptions.PresentMode.
+        PresentMode: ViewerPresentMode
+    }
 
 [<RequireQualifiedAccess>]
 type DiagnosticSeverity =
@@ -44,10 +45,12 @@ type DiagnosticStage =
     | App
 
 type RenderDiagnostic =
-    { Severity: DiagnosticSeverity
-      Stage: DiagnosticStage
-      Message: string
-      Cause: string option }
+    {
+        Severity: DiagnosticSeverity
+        Stage: DiagnosticStage
+        Message: string
+        Cause: string option
+    }
 
 type ViewerPointerButton =
     | PrimaryButton
@@ -84,8 +87,10 @@ type ScreenshotFormat =
     | Jpeg
 
 type ScreenshotRequest =
-    { Destination: string
-      Format: ScreenshotFormat }
+    {
+        Destination: string
+        Format: ScreenshotFormat
+    }
 
 [<RequireQualifiedAccess>]
 type RuntimeWindowMode =
@@ -95,11 +100,13 @@ type RuntimeWindowMode =
     | WindowedFullscreen
 
 type RuntimeWindowBehavior =
-    { Mode: RuntimeWindowMode
-      Border: Silk.NET.Windowing.WindowBorder
-      Position: (int * int) option
-      Size: (int * int) option
-      Token: string }
+    {
+        Mode: RuntimeWindowMode
+        Border: Silk.NET.Windowing.WindowBorder
+        Position: (int * int) option
+        Size: (int * int) option
+        Token: string
+    }
 
 type ViewerEffect<'msg> =
     | InitializeRenderer
@@ -111,41 +118,65 @@ type ViewerEffect<'msg> =
     | Dispatch of 'msg
 
 type ViewerProgram<'model, 'msg> =
-    { Configuration: ViewerConfiguration
-      Init: unit -> 'model * Cmd<'msg>
-      Update: 'msg -> 'model -> 'model * Cmd<'msg>
-      View: 'model -> Scene
-      EventMapper: ViewerEvent -> 'msg option
-      EffectMapper: 'msg -> ViewerEffect<'msg> option
-      Subscriptions: 'model -> (string list * (Dispatch<'msg> -> IDisposable)) list }
+    {
+        Configuration: ViewerConfiguration
+        Init: unit -> 'model * Cmd<'msg>
+        Update: 'msg -> 'model -> 'model * Cmd<'msg>
+        View: 'model -> Scene
+        EventMapper: ViewerEvent -> 'msg option
+        EffectMapper: 'msg -> ViewerEffect<'msg> option
+        Subscriptions: 'model -> (string list * (Dispatch<'msg> -> IDisposable)) list
+    }
 
 module Diagnostics =
     let create severity stage message cause : RenderDiagnostic =
-        { Severity = severity
-          Stage = stage
-          Message = message
-          Cause = cause }
+        {
+            Severity = severity
+            Stage = stage
+            Message = message
+            Cause = cause
+        }
 
     let unsupportedPlatform (platform: string) =
-        create DiagnosticSeverity.Fatal PlatformCheck $"Unsupported platform '{platform}'. OpenGL desktop support is limited to Windows and Linux." None
+        create
+            DiagnosticSeverity.Fatal
+            PlatformCheck
+            $"Unsupported platform '{platform}'. OpenGL desktop support is limited to Windows and Linux."
+            None
 
     let invalidConfiguration message =
         create DiagnosticSeverity.Error DiagnosticStage.PlatformCheck message None
 
     let glUnavailable detail =
-        create DiagnosticSeverity.Fatal DiagnosticStage.GlContext "OpenGL initialization is unavailable. The viewer has no fallback renderer." (Some detail)
+        create
+            DiagnosticSeverity.Fatal
+            DiagnosticStage.GlContext
+            "OpenGL initialization is unavailable. The viewer has no fallback renderer."
+            (Some detail)
 
     let missingCapability (capability: string) detail =
-        create DiagnosticSeverity.Warning DiagnosticStage.SkiaContext $"Skia capability '{capability}' is unavailable on the active OpenGL renderer." (Some detail)
+        create
+            DiagnosticSeverity.Warning
+            DiagnosticStage.SkiaContext
+            $"Skia capability '{capability}' is unavailable on the active OpenGL renderer."
+            (Some detail)
 
     let invalidPath detail =
         create DiagnosticSeverity.Error DiagnosticStage.FrameRender "Invalid path declaration." (Some detail)
 
     let unavailableFont (family: string) =
-        create DiagnosticSeverity.Warning DiagnosticStage.FrameRender $"Font family '{family}' is unavailable; platform font resolution will choose a substitute." None
+        create
+            DiagnosticSeverity.Warning
+            DiagnosticStage.FrameRender
+            $"Font family '{family}' is unavailable; platform font resolution will choose a substitute."
+            None
 
     let frameRenderFailed detail =
-        create DiagnosticSeverity.Error DiagnosticStage.FrameRender "OpenGL/Skia frame rendering failed. The viewer has no fallback renderer." (Some detail)
+        create
+            DiagnosticSeverity.Error
+            DiagnosticStage.FrameRender
+            "OpenGL/Skia frame rendering failed. The viewer has no fallback renderer."
+            (Some detail)
 
     let productStepFailed (phase: string) detail =
         create
@@ -164,18 +195,28 @@ module Diagnostics =
         create DiagnosticSeverity.Warning DiagnosticStage.Shutdown "Renderer shutdown failed." (Some detail)
 
     let startupFailed stage detail =
-        create DiagnosticSeverity.Fatal stage "OpenGL initialization failed. The viewer has no fallback renderer." (Some detail)
+        create
+            DiagnosticSeverity.Fatal
+            stage
+            "OpenGL initialization failed. The viewer has no fallback renderer."
+            (Some detail)
 
     let unmappedPointerButton (button: string) =
         create
             DiagnosticSeverity.Warning
             DiagnosticStage.Input
             $"Pointer button '{button}' has no representation in ViewerPointerButton; the press/release was dropped."
-            (Some "The host contract carries only the primary, secondary and middle buttons. Bind the action to one of those, or extend ViewerPointerButton.")
+            (Some
+                "The host contract carries only the primary, secondary and middle buttons. Bind the action to one of those, or extend ViewerPointerButton.")
 
     let damageScopedDecision (decision: string) reason =
         let cause = reason |> Option.filter (String.IsNullOrWhiteSpace >> not)
-        create DiagnosticSeverity.Info DiagnosticStage.Framebuffer $"Feature157 damage render decision: {decision}." cause
+
+        create
+            DiagnosticSeverity.Info
+            DiagnosticStage.Framebuffer
+            $"Feature157 damage render decision: {decision}."
+            cause
 
     let private runtimeSeverity severity =
         match severity with
@@ -193,7 +234,9 @@ module Diagnostics =
         | DiagnosticStage.GlSurface
         | DiagnosticStage.Input
         | DiagnosticStage.SkiaContext -> FS.GG.UI.Diagnostics.DiagnosticCategory.Environment
-        | DiagnosticStage.Framebuffer when diagnostic.Message.Contains("damage render decision", StringComparison.OrdinalIgnoreCase) ->
+        | DiagnosticStage.Framebuffer when
+            diagnostic.Message.Contains("damage render decision", StringComparison.OrdinalIgnoreCase)
+            ->
             FS.GG.UI.Diagnostics.DiagnosticCategory.BackendCost
         | DiagnosticStage.ScreenshotCapture
         | DiagnosticStage.Shutdown
@@ -231,16 +274,11 @@ module Diagnostics =
             "Review the rendering limitation and fallback behavior."
         | FS.GG.UI.Diagnostics.DiagnosticCategory.ReadinessBlocker ->
             "Fix the viewer render failure before accepting readiness."
-        | FS.GG.UI.Diagnostics.DiagnosticCategory.DeveloperAction ->
-            "Review the host artifact or shutdown diagnostic."
+        | FS.GG.UI.Diagnostics.DiagnosticCategory.DeveloperAction -> "Review the host artifact or shutdown diagnostic."
 
     let toRuntimeDiagnostic context diagnostic =
         let source =
-            FS.GG.UI.Diagnostics.RuntimeDiagnostics.source
-                (Some "FS.GG.UI.SkiaViewer")
-                "opengl-host"
-                None
-                None
+            FS.GG.UI.Diagnostics.RuntimeDiagnostics.source (Some "FS.GG.UI.SkiaViewer") "opengl-host" None None
 
         let message =
             match diagnostic.Cause with

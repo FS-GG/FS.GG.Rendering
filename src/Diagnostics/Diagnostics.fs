@@ -26,61 +26,73 @@ type ReadinessDiagnosticStatus =
     | EnvironmentLimitedStatus
 
 type DiagnosticSource =
-    { PackageId: string option
-      Subsystem: string
-      LaneId: string option
-      SampleId: string option }
+    {
+        PackageId: string option
+        Subsystem: string
+        LaneId: string option
+        SampleId: string option
+    }
 
 type DiagnosticContext =
-    { RunId: string option
-      TimestampUtc: DateTime option
-      OutputPath: string option
-      Details: (string * string) list }
+    {
+        RunId: string option
+        TimestampUtc: DateTime option
+        OutputPath: string option
+        Details: (string * string) list
+    }
 
 type RuntimeDiagnostic =
-    { Id: string
-      Source: DiagnosticSource
-      Code: string option
-      Severity: DiagnosticSeverity option
-      Category: DiagnosticCategory option
-      Message: string
-      Action: string option
-      Context: DiagnosticContext
-      Fingerprint: string }
+    {
+        Id: string
+        Source: DiagnosticSource
+        Code: string option
+        Severity: DiagnosticSeverity option
+        Category: DiagnosticCategory option
+        Message: string
+        Action: string option
+        Context: DiagnosticContext
+        Fingerprint: string
+    }
 
 type DiagnosticException =
-    { ExceptionId: string
-      Scope: string
-      Reason: string
-      ExpiresOn: DateOnly option
-      AcceptedBy: string option }
+    {
+        ExceptionId: string
+        Scope: string
+        Reason: string
+        ExpiresOn: DateOnly option
+        AcceptedBy: string option
+    }
 
 type AggregatedDiagnostic =
-    { Fingerprint: string
-      Source: DiagnosticSource
-      Code: string option
-      Severity: DiagnosticSeverity option
-      Category: DiagnosticCategory option
-      Message: string
-      Action: string option
-      OccurrenceCount: int
-      FirstOccurrence: DiagnosticContext
-      LastOccurrence: DiagnosticContext
-      ExampleIds: string list }
+    {
+        Fingerprint: string
+        Source: DiagnosticSource
+        Code: string option
+        Severity: DiagnosticSeverity option
+        Category: DiagnosticCategory option
+        Message: string
+        Action: string option
+        OccurrenceCount: int
+        FirstOccurrence: DiagnosticContext
+        LastOccurrence: DiagnosticContext
+        ExampleIds: string list
+    }
 
 type DiagnosticSummary =
-    { RunId: string option
-      Status: ReadinessDiagnosticStatus
-      CountsBySeverity: (DiagnosticSeverity * int) list
-      CountsByCategory: (DiagnosticCategory * int) list
-      BlockerCount: int
-      UnclassifiedCount: int
-      ReviewRequiredCount: int
-      ExceptionCount: int
-      ArtifactPaths: string list
-      Groups: AggregatedDiagnostic list
-      Exceptions: DiagnosticException list
-      ArtifactWriteDiagnostics: RuntimeDiagnostic list }
+    {
+        RunId: string option
+        Status: ReadinessDiagnosticStatus
+        CountsBySeverity: (DiagnosticSeverity * int) list
+        CountsByCategory: (DiagnosticCategory * int) list
+        BlockerCount: int
+        UnclassifiedCount: int
+        ReviewRequiredCount: int
+        ExceptionCount: int
+        ArtifactPaths: string list
+        Groups: AggregatedDiagnostic list
+        Exceptions: DiagnosticException list
+        ArtifactWriteDiagnostics: RuntimeDiagnostic list
+    }
 
 /// Single canonical readiness vocabulary shared by every readiness consumer (Feature 180).
 [<RequireQualifiedAccess>]
@@ -123,7 +135,12 @@ module ReadinessStatus =
         | _ -> true
 
     let tryParse (token: string) =
-        match (if String.IsNullOrWhiteSpace token then "" else token.Trim().ToLowerInvariant()) with
+        match
+            (if String.IsNullOrWhiteSpace token then
+                 ""
+             else
+                 token.Trim().ToLowerInvariant())
+        with
         | "accepted" -> Some ReadinessStatus.Accepted
         | "rejected" -> Some ReadinessStatus.Rejected
         | "blocked" -> Some ReadinessStatus.Blocked
@@ -148,25 +165,32 @@ module RuntimeDiagnostics =
                 Some(text.Trim()))
 
     let private nonEmpty fallback (value: string) =
-        if String.IsNullOrWhiteSpace value then fallback else value.Trim()
+        if String.IsNullOrWhiteSpace value then
+            fallback
+        else
+            value.Trim()
 
     let source packageId subsystem laneId sampleId =
-        { PackageId = trimOption packageId
-          Subsystem = nonEmpty "unknown" subsystem
-          LaneId = trimOption laneId
-          SampleId = trimOption sampleId }
+        {
+            PackageId = trimOption packageId
+            Subsystem = nonEmpty "unknown" subsystem
+            LaneId = trimOption laneId
+            SampleId = trimOption sampleId
+        }
 
     let context runId timestampUtc outputPath details =
-        { RunId = trimOption runId
-          TimestampUtc = timestampUtc
-          OutputPath = trimOption outputPath
-          Details =
-            details
-            |> List.choose (fun (key, value) ->
-                if String.IsNullOrWhiteSpace key then
-                    None
-                else
-                    Some(key.Trim(), value)) }
+        {
+            RunId = trimOption runId
+            TimestampUtc = timestampUtc
+            OutputPath = trimOption outputPath
+            Details =
+                details
+                |> List.choose (fun (key, value) ->
+                    if String.IsNullOrWhiteSpace key then
+                        None
+                    else
+                        Some(key.Trim(), value))
+        }
 
     let severityToken severity =
         match severity with
@@ -204,10 +228,12 @@ module RuntimeDiagnostics =
             | _ -> None
 
     let private sourceKey source =
-        [ source.PackageId |> Option.defaultValue ""
-          source.Subsystem
-          source.LaneId |> Option.defaultValue ""
-          source.SampleId |> Option.defaultValue "" ]
+        [
+            source.PackageId |> Option.defaultValue ""
+            source.Subsystem
+            source.LaneId |> Option.defaultValue ""
+            source.SampleId |> Option.defaultValue ""
+        ]
         |> List.map (fun text -> text.Trim().ToLowerInvariant())
         |> String.concat "/"
 
@@ -217,12 +243,18 @@ module RuntimeDiagnostics =
         |> fun value -> value.Trim().ToLowerInvariant()
 
     let private fingerprintOf source code severity category message action =
-        [ sourceKey source
-          code |> Option.defaultValue "uncoded" |> normalizedText
-          category |> Option.map categoryToken |> Option.defaultValue "unclassified-category"
-          severity |> Option.map severityToken |> Option.defaultValue "unclassified-severity"
-          normalizedText message
-          action |> Option.defaultValue "" |> normalizedText ]
+        [
+            sourceKey source
+            code |> Option.defaultValue "uncoded" |> normalizedText
+            category
+            |> Option.map categoryToken
+            |> Option.defaultValue "unclassified-category"
+            severity
+            |> Option.map severityToken
+            |> Option.defaultValue "unclassified-severity"
+            normalizedText message
+            action |> Option.defaultValue "" |> normalizedText
+        ]
         |> String.concat ":"
 
     let private stableHash (text: string) =
@@ -237,17 +269,21 @@ module RuntimeDiagnostics =
     let create source code severity category message action context =
         let message = nonEmpty "<missing diagnostic message>" message
         let action = trimOption action
-        let fingerprint = fingerprintOf source (trimOption code) severity category message action
 
-        { Id = "diag-" + stableHash fingerprint
-          Source = source
-          Code = trimOption code
-          Severity = severity
-          Category = category
-          Message = message
-          Action = action
-          Context = context
-          Fingerprint = fingerprint }
+        let fingerprint =
+            fingerprintOf source (trimOption code) severity category message action
+
+        {
+            Id = "diag-" + stableHash fingerprint
+            Source = source
+            Code = trimOption code
+            Severity = severity
+            Category = category
+            Message = message
+            Action = action
+            Context = context
+            Fingerprint = fingerprint
+        }
 
     let aggregate (diagnostics: RuntimeDiagnostic list) : AggregatedDiagnostic list =
         diagnostics
@@ -256,17 +292,19 @@ module RuntimeDiagnostics =
             let first = List.head group
             let last = List.last group
 
-            { Fingerprint = fingerprint
-              Source = first.Source
-              Code = first.Code
-              Severity = first.Severity
-              Category = first.Category
-              Message = first.Message
-              Action = first.Action
-              OccurrenceCount = List.length group
-              FirstOccurrence = first.Context
-              LastOccurrence = last.Context
-              ExampleIds = group |> List.map _.Id |> List.distinct |> List.truncate 5 })
+            {
+                Fingerprint = fingerprint
+                Source = first.Source
+                Code = first.Code
+                Severity = first.Severity
+                Category = first.Category
+                Message = first.Message
+                Action = first.Action
+                OccurrenceCount = List.length group
+                FirstOccurrence = first.Context
+                LastOccurrence = last.Context
+                ExampleIds = group |> List.map _.Id |> List.distinct |> List.truncate 5
+            })
         |> List.sortBy (fun group ->
             let severityRank =
                 match group.Severity with
@@ -277,7 +315,10 @@ module RuntimeDiagnostics =
 
             severityRank, group.Fingerprint)
 
-    let private countByOccurrence (projection: AggregatedDiagnostic -> 'key option) (groups: AggregatedDiagnostic list) =
+    let private countByOccurrence
+        (projection: AggregatedDiagnostic -> 'key option)
+        (groups: AggregatedDiagnostic list)
+        =
         groups
         |> List.choose (fun group -> projection group |> Option.map (fun key -> key, group.OccurrenceCount))
         |> List.groupBy fst
@@ -291,33 +332,37 @@ module RuntimeDiagnostics =
         && (ex.ExpiresOn |> Option.forall (fun expires -> expires >= now))
 
     let private sourceScopes (source: DiagnosticSource) =
-        [ yield source.Subsystem
-          match source.PackageId with
-          | Some value -> yield value
-          | None -> ()
-          match source.LaneId with
-          | Some value -> yield value
-          | None -> ()
-          match source.SampleId with
-          | Some value -> yield value
-          | None -> ()
-          yield sourceKey source ]
+        [
+            yield source.Subsystem
+            match source.PackageId with
+            | Some value -> yield value
+            | None -> ()
+            match source.LaneId with
+            | Some value -> yield value
+            | None -> ()
+            match source.SampleId with
+            | Some value -> yield value
+            | None -> ()
+            yield sourceKey source
+        ]
 
     let private exceptionMatchesGroup (ex: DiagnosticException) (group: AggregatedDiagnostic) =
         let scope = ex.Scope.Trim()
 
         let candidates =
-            [ yield group.Fingerprint
-              yield! sourceScopes group.Source
-              match group.Code with
-              | Some code -> yield code
-              | None -> ()
-              match group.Category with
-              | Some category -> yield categoryToken category
-              | None -> ()
-              match group.Severity with
-              | Some severity -> yield severityToken severity
-              | None -> () ]
+            [
+                yield group.Fingerprint
+                yield! sourceScopes group.Source
+                match group.Code with
+                | Some code -> yield code
+                | None -> ()
+                match group.Category with
+                | Some category -> yield categoryToken category
+                | None -> ()
+                match group.Severity with
+                | Some severity -> yield severityToken severity
+                | None -> ()
+            ]
 
         candidates
         |> List.exists (fun candidate -> String.Equals(candidate, scope, StringComparison.OrdinalIgnoreCase))
@@ -350,15 +395,29 @@ module RuntimeDiagnostics =
     // into its verdict, so the persisted `.jsonl` records must carry them too or an exception that
     // *drove* the status (ReviewRequired) is absent from the per-record artifact. Shared by
     // `summarizeAt` and `writeArtifacts` so both derive the identical set from the same inputs.
-    let private synthesizeExceptionProblems (now: DateOnly) (exceptions: DiagnosticException list) (diagnostics: RuntimeDiagnostic list) =
+    let private synthesizeExceptionProblems
+        (now: DateOnly)
+        (exceptions: DiagnosticException list)
+        (diagnostics: RuntimeDiagnostic list)
+        =
         let groups = aggregate diagnostics
 
         exceptions
         |> List.choose (fun ex ->
             if not (exceptionIsValid now ex) then
-                Some(exceptionProblemDiagnostic "InvalidDiagnosticException" $"Diagnostic exception `{ex.ExceptionId}` is invalid or expired." ex.ExceptionId)
+                Some(
+                    exceptionProblemDiagnostic
+                        "InvalidDiagnosticException"
+                        $"Diagnostic exception `{ex.ExceptionId}` is invalid or expired."
+                        ex.ExceptionId
+                )
             elif groups |> List.exists (exceptionMatchesGroup ex) |> not then
-                Some(exceptionProblemDiagnostic "UnmatchedDiagnosticException" $"Diagnostic exception `{ex.ExceptionId}` did not match any runtime diagnostic." ex.ExceptionId)
+                Some(
+                    exceptionProblemDiagnostic
+                        "UnmatchedDiagnosticException"
+                        $"Diagnostic exception `{ex.ExceptionId}` did not match any runtime diagnostic."
+                        ex.ExceptionId
+                )
             else
                 None)
 
@@ -366,15 +425,24 @@ module RuntimeDiagnostics =
     // input, so taking the clock as a parameter makes the whole verdict a total function of its inputs
     // and the expiry boundary deterministically testable. The lone ambient-clock read lives in the
     // `summarize` adapter below (and in `writeArtifacts`, the already-impure I/O boundary).
-    let summarizeAt (now: DateOnly) (runId: string option) (exceptions: DiagnosticException list) (artifactPaths: string list) (diagnostics: RuntimeDiagnostic list) =
+    let summarizeAt
+        (now: DateOnly)
+        (runId: string option)
+        (exceptions: DiagnosticException list)
+        (artifactPaths: string list)
+        (diagnostics: RuntimeDiagnostic list)
+        =
         let initialGroups = aggregate diagnostics
 
         let exceptionProblems = synthesizeExceptionProblems now exceptions diagnostics
         let diagnostics = diagnostics @ exceptionProblems
         let groups = aggregate diagnostics
+
         let validMatchedExceptions =
             exceptions
-            |> List.filter (fun ex -> exceptionIsValid now ex && initialGroups |> List.exists (exceptionMatchesGroup ex))
+            |> List.filter (fun ex ->
+                exceptionIsValid now ex
+                && initialGroups |> List.exists (exceptionMatchesGroup ex))
 
         let excepted group =
             validMatchedExceptions |> List.exists (fun ex -> exceptionMatchesGroup ex group)
@@ -424,23 +492,30 @@ module RuntimeDiagnostics =
             else
                 Accepted
 
-        { RunId = runId
-          Status = status
-          CountsBySeverity = groups |> countByOccurrence _.Severity
-          CountsByCategory = groups |> countByOccurrence _.Category
-          BlockerCount = blockerCount
-          UnclassifiedCount = unclassifiedCount
-          ReviewRequiredCount = reviewRequiredCount
-          ExceptionCount = validMatchedExceptions.Length
-          ArtifactPaths = artifactPaths
-          Groups = groups
-          Exceptions = validMatchedExceptions
-          ArtifactWriteDiagnostics = [] }
+        {
+            RunId = runId
+            Status = status
+            CountsBySeverity = groups |> countByOccurrence _.Severity
+            CountsByCategory = groups |> countByOccurrence _.Category
+            BlockerCount = blockerCount
+            UnclassifiedCount = unclassifiedCount
+            ReviewRequiredCount = reviewRequiredCount
+            ExceptionCount = validMatchedExceptions.Length
+            ArtifactPaths = artifactPaths
+            Groups = groups
+            Exceptions = validMatchedExceptions
+            ArtifactWriteDiagnostics = []
+        }
 
     /// Adapter over the pure `summarizeAt`: reads the wall clock once (`UtcNow` -> `DateOnly`) to
     /// evaluate `DiagnosticException.ExpiresOn`. This is the single ambient-clock read on the verdict
     /// path; callers that need a deterministic expiry boundary call `summarizeAt` with a fixed `now`.
-    let summarize (runId: string option) (exceptions: DiagnosticException list) (artifactPaths: string list) (diagnostics: RuntimeDiagnostic list) =
+    let summarize
+        (runId: string option)
+        (exceptions: DiagnosticException list)
+        (artifactPaths: string list)
+        (diagnostics: RuntimeDiagnostic list)
+        =
         summarizeAt (DateOnly.FromDateTime(DateTime.UtcNow)) runId exceptions artifactPaths diagnostics
 
     let private json value = JsonSerializer.Serialize(value)
@@ -450,7 +525,8 @@ module RuntimeDiagnostics =
 
     let private jsonDate value =
         value
-        |> Option.map (fun (date: DateTime) -> json (date.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture)))
+        |> Option.map (fun (date: DateTime) ->
+            json (date.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture)))
         |> Option.defaultValue "null"
 
     let private jsonDateOnly value =
@@ -476,52 +552,62 @@ module RuntimeDiagnostics =
         "{"
         + String.concat
             ","
-            [ "\"packageId\":" + jsonOption source.PackageId
-              "\"subsystem\":" + json source.Subsystem
-              "\"laneId\":" + jsonOption source.LaneId
-              "\"sampleId\":" + jsonOption source.SampleId ]
+            [
+                "\"packageId\":" + jsonOption source.PackageId
+                "\"subsystem\":" + json source.Subsystem
+                "\"laneId\":" + jsonOption source.LaneId
+                "\"sampleId\":" + jsonOption source.SampleId
+            ]
         + "}"
 
     let private renderContextJson (context: DiagnosticContext) =
         "{"
         + String.concat
             ","
-            [ "\"runId\":" + jsonOption context.RunId
-              "\"timestampUtc\":" + jsonDate context.TimestampUtc
-              "\"outputPath\":" + jsonOption context.OutputPath
-              "\"details\":" + jsonDetails context.Details ]
+            [
+                "\"runId\":" + jsonOption context.RunId
+                "\"timestampUtc\":" + jsonDate context.TimestampUtc
+                "\"outputPath\":" + jsonOption context.OutputPath
+                "\"details\":" + jsonDetails context.Details
+            ]
         + "}"
 
     let private renderDiagnosticJson (diagnostic: RuntimeDiagnostic) =
         "{"
         + String.concat
             ","
-            [ "\"id\":" + json diagnostic.Id
-              "\"source\":" + renderSourceJson diagnostic.Source
-              "\"code\":" + jsonOption diagnostic.Code
-              "\"severity\":" + (diagnostic.Severity |> Option.map severityToken |> jsonOption)
-              "\"category\":" + (diagnostic.Category |> Option.map categoryToken |> jsonOption)
-              "\"message\":" + json diagnostic.Message
-              "\"action\":" + jsonOption diagnostic.Action
-              "\"context\":" + renderContextJson diagnostic.Context
-              "\"fingerprint\":" + json diagnostic.Fingerprint ]
+            [
+                "\"id\":" + json diagnostic.Id
+                "\"source\":" + renderSourceJson diagnostic.Source
+                "\"code\":" + jsonOption diagnostic.Code
+                "\"severity\":"
+                + (diagnostic.Severity |> Option.map severityToken |> jsonOption)
+                "\"category\":"
+                + (diagnostic.Category |> Option.map categoryToken |> jsonOption)
+                "\"message\":" + json diagnostic.Message
+                "\"action\":" + jsonOption diagnostic.Action
+                "\"context\":" + renderContextJson diagnostic.Context
+                "\"fingerprint\":" + json diagnostic.Fingerprint
+            ]
         + "}"
 
     let private renderGroupJson (group: AggregatedDiagnostic) =
         "{"
         + String.concat
             ","
-            [ "\"fingerprint\":" + json group.Fingerprint
-              "\"source\":" + renderSourceJson group.Source
-              "\"code\":" + jsonOption group.Code
-              "\"severity\":" + (group.Severity |> Option.map severityToken |> jsonOption)
-              "\"category\":" + (group.Category |> Option.map categoryToken |> jsonOption)
-              "\"message\":" + json group.Message
-              "\"action\":" + jsonOption group.Action
-              "\"occurrenceCount\":" + string group.OccurrenceCount
-              "\"firstOccurrence\":" + renderContextJson group.FirstOccurrence
-              "\"lastOccurrence\":" + renderContextJson group.LastOccurrence
-              "\"exampleIds\":" + jsonStringArray group.ExampleIds ]
+            [
+                "\"fingerprint\":" + json group.Fingerprint
+                "\"source\":" + renderSourceJson group.Source
+                "\"code\":" + jsonOption group.Code
+                "\"severity\":" + (group.Severity |> Option.map severityToken |> jsonOption)
+                "\"category\":" + (group.Category |> Option.map categoryToken |> jsonOption)
+                "\"message\":" + json group.Message
+                "\"action\":" + jsonOption group.Action
+                "\"occurrenceCount\":" + string group.OccurrenceCount
+                "\"firstOccurrence\":" + renderContextJson group.FirstOccurrence
+                "\"lastOccurrence\":" + renderContextJson group.LastOccurrence
+                "\"exampleIds\":" + jsonStringArray group.ExampleIds
+            ]
         + "}"
 
     let private jsonCounts tokenOf values =
@@ -535,30 +621,42 @@ module RuntimeDiagnostics =
         "{"
         + String.concat
             ","
-            [ "\"exceptionId\":" + json ex.ExceptionId
-              "\"scope\":" + json ex.Scope
-              "\"reason\":" + json ex.Reason
-              "\"expiresOn\":" + jsonDateOnly ex.ExpiresOn
-              "\"acceptedBy\":" + jsonOption ex.AcceptedBy ]
+            [
+                "\"exceptionId\":" + json ex.ExceptionId
+                "\"scope\":" + json ex.Scope
+                "\"reason\":" + json ex.Reason
+                "\"expiresOn\":" + jsonDateOnly ex.ExpiresOn
+                "\"acceptedBy\":" + jsonOption ex.AcceptedBy
+            ]
         + "}"
 
     let renderJson summary =
         "{"
         + String.concat
             ","
-            [ "\"schemaVersion\":\"runtime-diagnostics-v1\""
-              "\"runId\":" + jsonOption summary.RunId
-              "\"status\":" + json (readinessStatusToken summary.Status)
-              "\"countsBySeverity\":" + jsonCounts severityToken summary.CountsBySeverity
-              "\"countsByCategory\":" + jsonCounts categoryToken summary.CountsByCategory
-              "\"blockerCount\":" + string summary.BlockerCount
-              "\"unclassifiedCount\":" + string summary.UnclassifiedCount
-              "\"reviewRequiredCount\":" + string summary.ReviewRequiredCount
-              "\"exceptionCount\":" + string summary.ExceptionCount
-              "\"artifactPaths\":" + jsonStringArray summary.ArtifactPaths
-              "\"groups\":[" + (summary.Groups |> List.map renderGroupJson |> String.concat ",") + "]"
-              "\"exceptions\":[" + (summary.Exceptions |> List.map renderExceptionJson |> String.concat ",") + "]"
-              "\"artifactWriteDiagnostics\":[" + (summary.ArtifactWriteDiagnostics |> List.map renderDiagnosticJson |> String.concat ",") + "]" ]
+            [
+                "\"schemaVersion\":\"runtime-diagnostics-v1\""
+                "\"runId\":" + jsonOption summary.RunId
+                "\"status\":" + json (readinessStatusToken summary.Status)
+                "\"countsBySeverity\":" + jsonCounts severityToken summary.CountsBySeverity
+                "\"countsByCategory\":" + jsonCounts categoryToken summary.CountsByCategory
+                "\"blockerCount\":" + string summary.BlockerCount
+                "\"unclassifiedCount\":" + string summary.UnclassifiedCount
+                "\"reviewRequiredCount\":" + string summary.ReviewRequiredCount
+                "\"exceptionCount\":" + string summary.ExceptionCount
+                "\"artifactPaths\":" + jsonStringArray summary.ArtifactPaths
+                "\"groups\":["
+                + (summary.Groups |> List.map renderGroupJson |> String.concat ",")
+                + "]"
+                "\"exceptions\":["
+                + (summary.Exceptions |> List.map renderExceptionJson |> String.concat ",")
+                + "]"
+                "\"artifactWriteDiagnostics\":["
+                + (summary.ArtifactWriteDiagnostics
+                   |> List.map renderDiagnosticJson
+                   |> String.concat ",")
+                + "]"
+            ]
         + "}"
 
     let renderJsonLines (diagnostics: RuntimeDiagnostic list) =
@@ -598,12 +696,14 @@ module RuntimeDiagnostics =
         if not summary.ArtifactPaths.IsEmpty then
             line ""
             line "## Artifacts"
+
             for path in summary.ArtifactPaths do
                 line $"- `{path}`"
 
         if not summary.Exceptions.IsEmpty then
             line ""
             line "## Accepted Exceptions"
+
             for ex in summary.Exceptions do
                 line $"- `{ex.ExceptionId}` scope `{ex.Scope}`: {ex.Reason}"
 
@@ -614,15 +714,22 @@ module RuntimeDiagnostics =
         line "|---|---|---|---|---:|---|---|"
 
         for group in summary.Groups do
-            let severity = group.Severity |> Option.map severityToken |> Option.defaultValue "unclassified"
-            let category = group.Category |> Option.map categoryToken |> Option.defaultValue "unclassified"
+            let severity =
+                group.Severity |> Option.map severityToken |> Option.defaultValue "unclassified"
+
+            let category =
+                group.Category |> Option.map categoryToken |> Option.defaultValue "unclassified"
+
             let code = group.Code |> Option.defaultValue ""
             let action = group.Action |> Option.defaultValue ""
-            line $"| `{sourceText group.Source}` | `{code}` | `{severity}` | `{category}` | {group.OccurrenceCount} | {group.Message} | {action} |"
+
+            line
+                $"| `{sourceText group.Source}` | `{code}` | `{severity}` | `{category}` | {group.OccurrenceCount} | {group.Message} | {action} |"
 
         if not summary.ArtifactWriteDiagnostics.IsEmpty then
             line ""
             line "## Artifact Write Warnings"
+
             for diagnostic in summary.ArtifactWriteDiagnostics do
                 line $"- {diagnostic.Message}"
 
@@ -642,16 +749,22 @@ module RuntimeDiagnostics =
                 String.concat " " summary.ArtifactPaths
 
         let header =
-            [ $"Diagnostics: {readinessStatusToken summary.Status}"
-              $"Severity: {countsText severityToken summary.CountsBySeverity}"
-              $"Category: {countsText categoryToken summary.CountsByCategory}"
-              $"Blockers: {summary.BlockerCount} (first: {firstSource (fun group -> group.Category = Some ReadinessBlocker) summary})"
-              $"Review required: {summary.ReviewRequiredCount}"
-              $"Artifacts: {artifactText}" ]
+            [
+                $"Diagnostics: {readinessStatusToken summary.Status}"
+                $"Severity: {countsText severityToken summary.CountsBySeverity}"
+                $"Category: {countsText categoryToken summary.CountsByCategory}"
+                $"Blockers: {summary.BlockerCount} (first: {firstSource (fun group -> group.Category = Some ReadinessBlocker) summary})"
+                $"Review required: {summary.ReviewRequiredCount}"
+                $"Artifacts: {artifactText}"
+            ]
 
         let groupLine group =
-            let severity = group.Severity |> Option.map severityToken |> Option.defaultValue "unclassified"
-            let category = group.Category |> Option.map categoryToken |> Option.defaultValue "unclassified"
+            let severity =
+                group.Severity |> Option.map severityToken |> Option.defaultValue "unclassified"
+
+            let category =
+                group.Category |> Option.map categoryToken |> Option.defaultValue "unclassified"
+
             let code = group.Code |> Option.defaultValue "uncoded"
             let action = group.Action |> Option.defaultValue "no action guidance"
             $"- {category}/{severity} {code} x{group.OccurrenceCount}: {group.Message} ({action})"
@@ -697,7 +810,12 @@ module RuntimeDiagnostics =
             (Some "Fix the artifact output path and rerun diagnostics; in-memory classification completed.")
             ctx
 
-    let writeArtifacts (outputDirectory: string) (runId: string option) (exceptions: DiagnosticException list) (diagnostics: RuntimeDiagnostic list) =
+    let writeArtifacts
+        (outputDirectory: string)
+        (runId: string option)
+        (exceptions: DiagnosticException list)
+        (diagnostics: RuntimeDiagnostic list)
+        =
         let jsonPath = Path.Combine(outputDirectory, "diagnostics-summary.json")
         let markdownPath = Path.Combine(outputDirectory, "diagnostics-summary.md")
         let jsonLinesPath = Path.Combine(outputDirectory, "diagnostics-records.jsonl")
@@ -722,7 +840,8 @@ module RuntimeDiagnostics =
         // F-DIAG-4: the per-record `.jsonl` carries the same synthesized invalid/unmatched-exception
         // records the summary folds into its verdict, so an exception that *drove* the status is not
         // silently absent from the records artifact.
-        let recordDiagnostics = diagnostics @ synthesizeExceptionProblems now exceptions diagnostics
+        let recordDiagnostics =
+            diagnostics @ synthesizeExceptionProblems now exceptions diagnostics
 
         // F-DIAG-3: write the records file first, then persist the summary artifacts LAST, re-rendering
         // each against the write failures known so far. A summary write failure is `DeveloperAction`, so
@@ -737,8 +856,12 @@ module RuntimeDiagnostics =
         // on-disk `.json` array / `.md` "Artifact Write Warnings" section agree with what the caller is
         // returned (`summarizeAt` itself leaves that field empty, so it must be set here).
         let persistedSummary () =
-            let summary = summarizeAt now runId exceptions artifactPaths (diagnostics @ writeDiagnostics)
-            { summary with ArtifactWriteDiagnostics = writeDiagnostics }
+            let summary =
+                summarizeAt now runId exceptions artifactPaths (diagnostics @ writeDiagnostics)
+
+            { summary with
+                ArtifactWriteDiagnostics = writeDiagnostics
+            }
 
         tryWrite jsonLinesPath (renderJsonLines recordDiagnostics)
         tryWrite markdownPath (renderMarkdown (persistedSummary ()))

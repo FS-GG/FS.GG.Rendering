@@ -10,14 +10,20 @@ open FS.GG.UI.Scene
 module Viewer =
     /// Public contract function exposed by this FS.GG.UI package.
     val timingPathToken: path: ViewerTimingPath -> string
+
     /// Public contract function exposed by this FS.GG.UI package.
-    val timingPathCanSupportClaim: path: ViewerTimingPath -> proofReadbackIncluded: bool -> validationReadbackIncluded: bool -> bool
+    val timingPathCanSupportClaim:
+        path: ViewerTimingPath -> proofReadbackIncluded: bool -> validationReadbackIncluded: bool -> bool
+
     /// Feature 157: stable token for damage render decisions in readiness artifacts.
     val damageDecisionToken: decision: ViewerDamageDecision -> string
     /// Public contract function exposed by this FS.GG.UI package.
     val init: options: ViewerOptions -> ViewerModel * ViewerEffect list
+
     /// Public contract function exposed by this FS.GG.UI package.
-    val initWithWindowBehavior: options: ViewerOptions -> behavior: ViewerWindowBehaviorRequest -> ViewerModel * ViewerEffect list
+    val initWithWindowBehavior:
+        options: ViewerOptions -> behavior: ViewerWindowBehaviorRequest -> ViewerModel * ViewerEffect list
+
     /// Public contract function exposed by this FS.GG.UI package.
     val update: msg: ViewerMsg -> model: ViewerModel -> ViewerModel * ViewerEffect list
     /// Public contract function exposed by this FS.GG.UI package.
@@ -32,7 +38,8 @@ module Viewer =
     /// deterministically (the loops are GL/timing-bound). Returns `current` when the input produced
     /// product messages (dispatch already re-derived) and `deriveScene ()` otherwise (runtime state may
     /// have changed with no model change — focus/hover/scroll — so re-derive on THIS input).
-    val internal runtimeStateRepaint: producedMessages: bool -> current: 'scene -> deriveScene: (unit -> 'scene) -> 'scene
+    val internal runtimeStateRepaint:
+        producedMessages: bool -> current: 'scene -> deriveScene: (unit -> 'scene) -> 'scene
 
     /// Issue #429: the single `ViewerEffect` interpretation both persistent loops perform. It was two
     /// byte-identical folds, and they drifted — the interactive copy discarded `PlayAudio`, so a
@@ -96,8 +103,7 @@ module Viewer =
     /// Validate and translate a public runtime window request into the native loop-thread command.
     /// Unsupported modes/backends yield no plan and explicit Window diagnostics.
     val internal planRuntimeWindowBehavior:
-        behavior: ViewerWindowBehaviorRequest ->
-            Host.RuntimeWindowBehavior option * ViewerDiagnosticEvent list
+        behavior: ViewerWindowBehaviorRequest -> Host.RuntimeWindowBehavior option * ViewerDiagnosticEvent list
 
     /// Issue #1014: the exact native-window -> framebuffer -> logical-product route used by the
     /// interactive loop, exposed internally so retained Controls activation can be proven headlessly.
@@ -146,6 +152,7 @@ module Viewer =
     val emptyInputQueue: ViewerInputQueue
     /// Queue depth visible to a newly received input.
     val inputQueueDepth: queue: ViewerInputQueue -> int
+
     /// Enqueue an input, assigning sequence id, priority lane, receipt depth, and coalescing state.
     val enqueueInput:
         receivedAt: DateTimeOffset ->
@@ -153,6 +160,7 @@ module Viewer =
         payload: string ->
         queue: ViewerInputQueue ->
             ViewerInputEnvelope * ViewerInputQueue
+
     /// Enqueue using the same explicit continuous-pointer policy as the interactive live host.
     val enqueueInputWithPointerPolicy:
         policy: ViewerContinuousPointerPolicy ->
@@ -161,14 +169,18 @@ module Viewer =
         payload: string ->
         queue: ViewerInputQueue ->
             ViewerInputEnvelope * ViewerInputQueue
+
     /// Drain pending inputs for one frame/update pass.
-    val drainInputQueue: batchId: int64 -> drainReason: string -> queue: ViewerInputQueue -> ViewerFrameDrain * ViewerInputQueue
+    val drainInputQueue:
+        batchId: int64 -> drainReason: string -> queue: ViewerInputQueue -> ViewerFrameDrain * ViewerInputQueue
+
     /// Deterministically apply frame-bounded inputs through the same paced queue transition as the live host.
     val runDeterministicPacing:
         policy: ViewerContinuousPointerPolicy ->
         receivedAt: DateTimeOffset ->
         frames: (ViewerResponsivenessInputKind * string) list list ->
             ViewerFrameDrain list
+
     /// Build the dirty-state decision from product/runtime/size/theme change facts.
     val dirtyState:
         productModelChanged: bool ->
@@ -178,12 +190,14 @@ module Viewer =
         dirtyRegion: ViewerResponsivenessDirtyRegion option ->
         reason: string list ->
             ViewerDirtyState
+
     /// True when the dirty-state requires retained-scene recomposition.
     val dirtyStateRequiresRecompose: dirty: ViewerDirtyState -> bool
     /// Create a stable-ish run id with the `resp-` prefix.
     val createResponsivenessRunId: unit -> string
     /// Encode one latency record as a JSONL line using stable lowercase tokens.
     val latencyRecordToJsonLine: latency: ViewerLatencyRecord -> string
+
     /// Summarize latency records into budget/readiness evidence.
     val summarizeResponsivenessRecords:
         runId: string ->
@@ -194,28 +208,33 @@ module Viewer =
         budget: ViewerResponsivenessBudget ->
         records: ViewerLatencyRecord list ->
             ViewerResponsivenessSummary
+
     /// Encode a responsiveness summary as machine-readable JSON.
     val responsivenessSummaryToJson: summary: ViewerResponsivenessSummary -> string
     /// Encode a responsiveness summary as reviewer-readable Markdown.
     val responsivenessSummaryToMarkdown: summary: ViewerResponsivenessSummary -> string
+
     /// Write records.jsonl, summary.json, summary.md, and environment.md under the output root/run id.
     val writeResponsivenessRun:
-        outputRoot: string ->
-        summary: ViewerResponsivenessSummary ->
-        records: ViewerLatencyRecord list ->
-            string list
+        outputRoot: string -> summary: ViewerResponsivenessSummary -> records: ViewerLatencyRecord list -> string list
+
     /// Public contract function exposed by this FS.GG.UI package.
     val defaultWindowBehavior: ViewerWindowBehaviorRequest
     /// Public contract function exposed by this FS.GG.UI package.
     val validateWindowBehavior: request: ViewerWindowBehaviorRequest -> ViewerWindowOptionResult list
+
     /// Public contract function exposed by this FS.GG.UI package.
-    val validateWindowLaunchBehavior: initialSize: Size -> request: ViewerWindowBehaviorRequest -> ViewerWindowOptionResult list
+    val validateWindowLaunchBehavior:
+        initialSize: Size -> request: ViewerWindowBehaviorRequest -> ViewerWindowOptionResult list
+
     /// Public contract function exposed by this FS.GG.UI package.
     val classifyWindowState: diagnostic: ViewerWindowStateDiagnostic -> ViewerLifecycleState
     /// Public contract function exposed by this FS.GG.UI package.
     val shouldCaptureDiagnostic: options: ViewerDiagnosticsOptions -> diagnostic: ViewerDiagnosticEvent -> bool
+
     /// Public contract function exposed by this FS.GG.UI package.
-    val captureDiagnostic: options: ViewerDiagnosticsOptions -> diagnostic: ViewerDiagnosticEvent -> ViewerDiagnosticEvent option
+    val captureDiagnostic:
+        options: ViewerDiagnosticsOptions -> diagnostic: ViewerDiagnosticEvent -> ViewerDiagnosticEvent option
 
     /// Issue #365: the `App`-stage diagnostic reported when a presented product's `Update`/`View`
     /// raises. `Error`-level, `Scene` category, `Stage = Some App` — deliberately NOT a `Frame`/render
@@ -227,18 +246,21 @@ module Viewer =
     /// `App`-stage diagnostic through `report`. The offending step is dropped (a product-code fault is
     /// deterministic, so it is not retried) and the window kept alive on its last-good state. This is
     /// the guard the live interactive loop performs, exposed so it can be driven directly.
-    val tryProductStep:
-        report: (ViewerDiagnosticEvent -> unit) -> phase: string -> step: (unit -> 'a) -> 'a option
+    val tryProductStep: report: (ViewerDiagnosticEvent -> unit) -> phase: string -> step: (unit -> 'a) -> 'a option
     /// Public contract function exposed by this FS.GG.UI package.
     val failureFromDiagnostic: diagnostic: ViewerDiagnosticEvent -> ViewerRunFailure
+
     /// Public contract function exposed by this FS.GG.UI package.
-    val classifyWindowObservation: outcome: ViewerLaunchOutcome -> inputs: WindowObservationInputs -> ViewerWindowObservationResult
+    val classifyWindowObservation:
+        outcome: ViewerLaunchOutcome -> inputs: WindowObservationInputs -> ViewerWindowObservationResult
+
     /// Public contract function exposed by this FS.GG.UI package.
     val desktopSessionDiagnostic: unit -> ViewerDesktopSessionDiagnostic
     /// Public contract function exposed by this FS.GG.UI package.
     val runtimeCapability: unit -> ViewerRuntimeCapability
     /// Public contract function exposed by this FS.GG.UI package.
     val run: options: ViewerOptions -> scene: SceneNode -> Result<ViewerLaunchOutcome, ViewerRunFailure>
+
     /// Issue #444 — EVIDENCE EFFECTS ARE HONORED HERE. A host that emits `CaptureScreenshot`,
     /// `CaptureImageEvidence`, `WriteVisualEvidence` or `WriteRunEvidence` from `Init`/`Update` gets the
     /// file written. Before #444 all four were discarded by the launch loop — no file, no error, and the
@@ -254,20 +276,37 @@ module Viewer =
     /// A write that fails does not throw and does not take the window down; it raises an
     /// `Error`/`Screenshot`/`ArtifactWrite` diagnostic naming the effect, the path and the reason, so the
     /// failure is observable on `Diagnostics` rather than silent.
-    val runApp: options: ViewerOptions -> host: GeneratedAppHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
+    val runApp:
+        options: ViewerOptions -> host: GeneratedAppHost<'model, 'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
+
     /// As `runApp` (including the Issue #444 evidence-effect handling), with an explicit window behavior.
-    val runAppWithWindowBehavior: options: ViewerOptions -> behavior: ViewerWindowBehaviorRequest -> host: GeneratedAppHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
+    val runAppWithWindowBehavior:
+        options: ViewerOptions ->
+        behavior: ViewerWindowBehaviorRequest ->
+        host: GeneratedAppHost<'model, 'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
+
     /// Issue #245 — as `runApp`, but every `ViewerEffect.PlayAudio` batch the host emits is handed to
     /// `audioSink` in dispatch order instead of being discarded. This is the seam from a product's pure
     /// `update` to real playback: pass `FS.GG.Audio.Host.Audio.play backend` and a scaffolded game's
     /// sound requests reach the device with no edit to the durable `Program.fs`. Additive —
     /// `runApp`/`runAppWithWindowBehavior` stay intact and keep discarding audio (FR-006), and the viewer
     /// still owns no audio device: the backend's lifetime belongs to the caller.
-    val runAppWithAudio: options: ViewerOptions -> audioSink: (AudioEffect list -> unit) -> host: GeneratedAppHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
+    val runAppWithAudio:
+        options: ViewerOptions ->
+        audioSink: (AudioEffect list -> unit) ->
+        host: GeneratedAppHost<'model, 'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
+
     /// Issue #245 — `runAppWithAudio` with an explicit window behavior, completing the pairing that
     /// `runApp`/`runAppWithWindowBehavior` already have. The generated game template uses this when a
     /// `--window-*` flag is supplied and `runAppWithAudio` otherwise.
-    val runAppWithWindowBehaviorAndAudio: options: ViewerOptions -> behavior: ViewerWindowBehaviorRequest -> audioSink: (AudioEffect list -> unit) -> host: GeneratedAppHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
+    val runAppWithWindowBehaviorAndAudio:
+        options: ViewerOptions ->
+        behavior: ViewerWindowBehaviorRequest ->
+        audioSink: (AudioEffect list -> unit) ->
+        host: GeneratedAppHost<'model, 'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
 
     /// Issue #535 — the launch that gives a product's save/load requests somewhere to GO, and an answer
     /// to come BACK on.
@@ -295,7 +334,7 @@ module Viewer =
         options: ViewerOptions ->
         persistenceSink: (PersistenceEffect list -> PersistenceOutcome list) ->
         mapOutcome: (PersistenceOutcome -> 'msg option) ->
-        host: GeneratedAppHost<'model,'msg> ->
+        host: GeneratedAppHost<'model, 'msg> ->
             Result<ViewerLaunchOutcome, ViewerRunFailure>
 
     /// Issue #535 — sound AND saves. Without this pairing, adopting persistence would mean giving up
@@ -305,8 +344,9 @@ module Viewer =
         audioSink: (AudioEffect list -> unit) ->
         persistenceSink: (PersistenceEffect list -> PersistenceOutcome list) ->
         mapOutcome: (PersistenceOutcome -> 'msg option) ->
-        host: GeneratedAppHost<'model,'msg> ->
+        host: GeneratedAppHost<'model, 'msg> ->
             Result<ViewerLaunchOutcome, ViewerRunFailure>
+
     /// Issue #979 — window behavior AND sound AND saves, the last corner of the generated-app launcher
     /// matrix. `runAppWithWindowBehaviorAndAudio` (audio, no saves) and `runAppWithAudioAndPersistence`
     /// (saves, but `defaultWindowBehavior`) each drop one capability the other keeps, so a `--window-*`
@@ -321,56 +361,73 @@ module Viewer =
         audioSink: (AudioEffect list -> unit) ->
         persistenceSink: (PersistenceEffect list -> PersistenceOutcome list) ->
         mapOutcome: (PersistenceOutcome -> 'msg option) ->
-        host: GeneratedAppHost<'model,'msg> ->
+        host: GeneratedAppHost<'model, 'msg> ->
             Result<ViewerLaunchOutcome, ViewerRunFailure>
+
     /// Feature 085 — pointer-aware, size-aware durable launch. Routes native pointer events
     /// and window resizes to the host and renders the size-aware `View`; additive to
     /// `runApp`/`runAppWithWindowBehavior`, which stay intact (FR-004/FR-006/FR-009).
-    val runInteractiveViewer: options: ViewerOptions -> host: InteractiveViewerHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
+    val runInteractiveViewer:
+        options: ViewerOptions ->
+        host: InteractiveViewerHost<'model, 'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
+
     /// As `runInteractiveViewer`, polling `Gamepad.Poll` exactly once at every presented-frame
     /// boundary and folding its mapped messages before the ordinary tick.
     val runInteractiveViewerWithGamepad:
         options: ViewerOptions ->
-        gamepadHost: InteractiveViewerGamepadHost<'model,'msg> ->
+        gamepadHost: InteractiveViewerGamepadHost<'model, 'msg> ->
             Result<ViewerLaunchOutcome, ViewerRunFailure>
+
     /// As `runInteractiveViewer` with an explicit window behavior.
-    val runInteractiveViewerWithWindowBehavior: options: ViewerOptions -> behavior: ViewerWindowBehaviorRequest -> host: InteractiveViewerHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
+    val runInteractiveViewerWithWindowBehavior:
+        options: ViewerOptions ->
+        behavior: ViewerWindowBehaviorRequest ->
+        host: InteractiveViewerHost<'model, 'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
+
     /// Default retained pointer policy: latest `Moved` sample per presented-frame boundary; discrete
     /// events are lossless. The callback is `ignore`.
     val defaultPointerPacingOptions: ViewerPointerPacingOptions
+
     /// `runInteractiveViewer` with an explicit continuous-pointer policy and live pacing counters.
     val runInteractiveViewerWithPointerPacing:
         options: ViewerOptions ->
         pointerPacing: ViewerPointerPacingOptions ->
-        host: InteractiveViewerHost<'model,'msg> ->
+        host: InteractiveViewerHost<'model, 'msg> ->
             Result<ViewerLaunchOutcome, ViewerRunFailure>
+
     /// Pointer pacing plus explicit window behavior on the same retained launch path.
     val runInteractiveViewerWithWindowBehaviorAndPointerPacing:
         options: ViewerOptions ->
         behavior: ViewerWindowBehaviorRequest ->
         pointerPacing: ViewerPointerPacingOptions ->
-        host: InteractiveViewerHost<'model,'msg> ->
+        host: InteractiveViewerHost<'model, 'msg> ->
             Result<ViewerLaunchOutcome, ViewerRunFailure>
+
     /// Launch `host` in the live persistent viewer, deliver a bounded script through the viewer input queue,
     /// wait for the final scripted response to present, then close.
     val runInteractiveViewerScript:
         options: ViewerOptions ->
         script: ViewerScriptInput list ->
-        host: InteractiveViewerHost<'model,'msg> ->
+        host: InteractiveViewerHost<'model, 'msg> ->
             Result<ViewerLaunchOutcome, ViewerRunFailure>
+
     /// As `runInteractiveViewerScript` with an explicit window behavior.
     val runInteractiveViewerScriptWithWindowBehavior:
         options: ViewerOptions ->
         behavior: ViewerWindowBehaviorRequest ->
         script: ViewerScriptInput list ->
-        host: InteractiveViewerHost<'model,'msg> ->
+        host: InteractiveViewerHost<'model, 'msg> ->
             Result<ViewerLaunchOutcome, ViewerRunFailure>
+
     val runInteractiveViewerScriptWithPointerPacing:
         options: ViewerOptions ->
         pointerPacing: ViewerPointerPacingOptions ->
         script: ViewerScriptInput list ->
-        host: InteractiveViewerHost<'model,'msg> ->
+        host: InteractiveViewerHost<'model, 'msg> ->
             Result<ViewerLaunchOutcome, ViewerRunFailure>
+
     /// Issue #429 — `runInteractiveViewer` with an audio sink, so the pointer/size-aware host family
     /// can request sound. Before this, audio was reachable only through `runAppWithAudio`, whose
     /// `GeneratedAppHost` has no pointer: a product that needed both got silence, because the
@@ -379,31 +436,35 @@ module Viewer =
     val runInteractiveViewerWithAudio:
         options: ViewerOptions ->
         audioSink: (AudioEffect list -> unit) ->
-        host: InteractiveViewerHost<'model,'msg> ->
+        host: InteractiveViewerHost<'model, 'msg> ->
             Result<ViewerLaunchOutcome, ViewerRunFailure>
+
     /// Issue #429 — `runInteractiveViewerWithAudio` with an explicit window behavior, completing the
     /// pairing the sinkless interactive runners already have.
     val runInteractiveViewerWithWindowBehaviorAndAudio:
         options: ViewerOptions ->
         behavior: ViewerWindowBehaviorRequest ->
         audioSink: (AudioEffect list -> unit) ->
-        host: InteractiveViewerHost<'model,'msg> ->
+        host: InteractiveViewerHost<'model, 'msg> ->
             Result<ViewerLaunchOutcome, ViewerRunFailure>
+
     /// Pointer pacing and audio share the same interactive launch fold.
     val runInteractiveViewerWithPointerPacingAndAudio:
         options: ViewerOptions ->
         pointerPacing: ViewerPointerPacingOptions ->
         audioSink: (AudioEffect list -> unit) ->
-        host: InteractiveViewerHost<'model,'msg> ->
+        host: InteractiveViewerHost<'model, 'msg> ->
             Result<ViewerLaunchOutcome, ViewerRunFailure>
+
     /// Full interactive launch: explicit window behavior, pointer pacing metrics, and audio.
     val runInteractiveViewerWithWindowBehaviorAndPointerPacingAndAudio:
         options: ViewerOptions ->
         behavior: ViewerWindowBehaviorRequest ->
         pointerPacing: ViewerPointerPacingOptions ->
         audioSink: (AudioEffect list -> unit) ->
-        host: InteractiveViewerHost<'model,'msg> ->
+        host: InteractiveViewerHost<'model, 'msg> ->
             Result<ViewerLaunchOutcome, ViewerRunFailure>
+
     /// Issue #438 — `runInteractiveViewerScript` with an audio sink. #429 gave the interactive family a
     /// sink but only on its NON-scripted entry points; the scripted runners kept passing `ignore`, so a
     /// scripted product's `PlayAudio` was still dropped with no error and no diagnostic. That mattered
@@ -415,8 +476,9 @@ module Viewer =
         options: ViewerOptions ->
         script: ViewerScriptInput list ->
         audioSink: (AudioEffect list -> unit) ->
-        host: InteractiveViewerHost<'model,'msg> ->
+        host: InteractiveViewerHost<'model, 'msg> ->
             Result<ViewerLaunchOutcome, ViewerRunFailure>
+
     /// Issue #438 — `runInteractiveViewerScriptWithAudio` with an explicit window behavior, completing
     /// the pairing the sinkless scripted runners already have.
     val runInteractiveViewerScriptWithWindowBehaviorAndAudio:
@@ -424,10 +486,16 @@ module Viewer =
         behavior: ViewerWindowBehaviorRequest ->
         script: ViewerScriptInput list ->
         audioSink: (AudioEffect list -> unit) ->
-        host: InteractiveViewerHost<'model,'msg> ->
+        host: InteractiveViewerHost<'model, 'msg> ->
             Result<ViewerLaunchOutcome, ViewerRunFailure>
+
     /// Public contract function exposed by this FS.GG.UI package.
-    val runAppEvidence: request: ViewerRunRequest -> options: ViewerOptions -> host: GeneratedAppHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
+    val runAppEvidence:
+        request: ViewerRunRequest ->
+        options: ViewerOptions ->
+        host: GeneratedAppHost<'model, 'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
+
     /// Public contract function exposed by this FS.GG.UI package.
     /// Drives a real bounded Silk.NET window and reports `FramesRendered` = the number of frame
     /// callbacks the window fired. The window itself is NOT painted with `scene` (on-screen
@@ -435,26 +503,40 @@ module Viewer =
     /// the scene is rasterized to real pixels through the shared CPU painter, so image evidence
     /// genuinely depicts `scene`. Read `FramesRendered` as window/frame-cadence proof, not as
     /// "the scene was presented on screen" (P6 / R4).
-    val runBounded: request: ViewerRunRequest -> options: ViewerOptions -> scene: SceneNode -> Result<ViewerRunEvidence, ViewerRunFailure>
+    val runBounded:
+        request: ViewerRunRequest ->
+        options: ViewerOptions ->
+        scene: SceneNode ->
+            Result<ViewerRunEvidence, ViewerRunFailure>
+
     /// Public contract function exposed by this FS.GG.UI package.
     /// Bounded run stopping at the first frame callback; see `runBounded` for what the evidence
     /// proves (window/frame cadence; scene depicted only in `.png` evidence, not on the live surface).
     val runUntilFirstFrame: options: ViewerOptions -> scene: SceneNode -> Result<ViewerRunEvidence, ViewerRunFailure>
+
     /// Public contract function exposed by this FS.GG.UI package.
     /// Bounded run stopping after `frameCount` frame callbacks; see `runBounded` for what the
     /// evidence proves (window/frame cadence; scene depicted only in `.png` evidence).
-    val runForFrames: frameCount: int -> options: ViewerOptions -> scene: SceneNode -> Result<ViewerRunEvidence, ViewerRunFailure>
+    val runForFrames:
+        frameCount: int -> options: ViewerOptions -> scene: SceneNode -> Result<ViewerRunEvidence, ViewerRunFailure>
+
     /// Public contract function exposed by this FS.GG.UI package.
-    val captureScreenshotEvidence: request: ScreenshotEvidenceRequest -> options: ViewerOptions -> scene: SceneNode -> ScreenshotEvidenceResult
+    val captureScreenshotEvidence:
+        request: ScreenshotEvidenceRequest -> options: ViewerOptions -> scene: SceneNode -> ScreenshotEvidenceResult
+
     /// Public contract function exposed by this FS.GG.UI package.
     val initEvidenceWorkflow: request: ScreenshotEvidenceRequest -> EvidenceWorkflowModel * EvidenceWorkflowEffect list
+
     /// Public contract function exposed by this FS.GG.UI package.
-    val updateEvidenceWorkflow: msg: EvidenceWorkflowMsg -> model: EvidenceWorkflowModel -> EvidenceWorkflowModel * EvidenceWorkflowEffect list
+    val updateEvidenceWorkflow:
+        msg: EvidenceWorkflowMsg -> model: EvidenceWorkflowModel -> EvidenceWorkflowModel * EvidenceWorkflowEffect list
 
 /// Public contract module exposed by this FS.GG.UI package.
 module GeneratedAppHost =
     /// Public contract function exposed by this FS.GG.UI package.
-    val dispatchKey: host: GeneratedAppHost<'model,'msg> -> raw: ViewerKeyEvent -> model: 'model -> 'model * ViewerEffect list
+    val dispatchKey:
+        host: GeneratedAppHost<'model, 'msg> -> raw: ViewerKeyEvent -> model: 'model -> 'model * ViewerEffect list
+
     /// Issue #911: the scene-host analogue of `ControlsElmish.Perf.runScriptToModel` (#461). Fold an
     /// ordered key-event script through the host's own `dispatchKey` (`normalizeEvent -> MapKey ->
     /// Update`) from `Init`'s model to the FINAL model, returning it with every `ViewerEffect` requested
@@ -462,27 +544,34 @@ module GeneratedAppHost =
     /// which routes input through this scene-host rather than the Controls click path, write an
     /// end-to-end "played through the host" test purely and headlessly. It drives the KEY source only;
     /// `Tick` is folded by the caller, or checked via `reachableMessages`.
-    val runKeyScriptToModel: host: GeneratedAppHost<'model,'msg> -> script: ViewerKeyEvent list -> 'model * ViewerEffect list
+    val runKeyScriptToModel:
+        host: GeneratedAppHost<'model, 'msg> -> script: ViewerKeyEvent list -> 'model * ViewerEffect list
+
     /// Issue #911: the scene-host analogue of `ControlRenderResult.BoundIds` — "a key that is bound is a
     /// key that dispatches". Partition a declared input surface into the events that route through
     /// `MapKey` to a product message (`Wired`) and the DEAD ones that route to none (`Dead`). A non-empty
     /// `Dead` over a product's declared keymap is a bound key that dispatches nothing. Reflection-free,
     /// total, pure — consults only `MapKey` (via `normalizeEvent`, as the live runtime does), never `Update`.
-    val auditKeyWiring: host: GeneratedAppHost<'model,'msg> -> probe: ViewerKeyEvent list -> SceneHostKeyWiring<'msg>
+    val auditKeyWiring: host: GeneratedAppHost<'model, 'msg> -> probe: ViewerKeyEvent list -> SceneHostKeyWiring<'msg>
+
     /// Issue #911: every product message the host's runtime SOURCES (`MapKey` over `probe`, and `Tick`
     /// when `tickSample` is `Some dt`) can produce, in probe order — the raw material for the stronger
     /// "handled-but-unwired" check. A `Msg` case handled in `Update` but absent from this list is
     /// dispatched by no source (the Rougue1 defect). This package uses no reflection, so it returns what
     /// IS reachable — as `BoundIds` returns a set the product checks against — and the product asserts its
     /// handled `Msg` universe is covered.
-    val reachableMessages: host: GeneratedAppHost<'model,'msg> -> probe: ViewerKeyEvent list -> tickSample: TimeSpan option -> 'msg list
+    val reachableMessages:
+        host: GeneratedAppHost<'model, 'msg> -> probe: ViewerKeyEvent list -> tickSample: TimeSpan option -> 'msg list
+
     /// Issue #245 — every sound request in an effect batch, flattened in dispatch order; non-audio
     /// effects are dropped. This is exactly what `runAppWithAudio` feeds its sink, exposed as a pure
     /// function so a product can assert what a frame requested without opening a window or a device:
     /// `dispatchKey host raw model |> snd |> audioRequests |> Audio.interpret` yields `AudioEvidence`.
     val audioRequests: effects: ViewerEffect list -> AudioEffect list
+
     /// Public contract function exposed by this FS.GG.UI package.
-    val smoke: host: GeneratedAppHost<'model,'msg> -> request: ViewerRunRequest -> Result<ViewerRunEvidence, ViewerRunFailure>
+    val smoke:
+        host: GeneratedAppHost<'model, 'msg> -> request: ViewerRunRequest -> Result<ViewerRunEvidence, ViewerRunFailure>
 
 /// Feature 136 (R2/FR-001/FR-002): the rendering-edge text seam — install the bundled-font
 /// real-metrics measurer (so control box sizing equals draw width) and read back per-page text

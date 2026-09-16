@@ -49,7 +49,12 @@ module KeymapCodec =
         | _ -> None
 
     // Validate one `bindings` entry, accumulating into `bindings`/`errors` by index.
-    let private readBinding (index: int) (element: JsonElement) (bindings: ResizeArray<KeyboardBinding>) (errors: ResizeArray<KeymapCodecError>) =
+    let private readBinding
+        (index: int)
+        (element: JsonElement)
+        (bindings: ResizeArray<KeyboardBinding>)
+        (errors: ResizeArray<KeymapCodecError>)
+        =
         if element.ValueKind <> JsonValueKind.Object then
             errors.Add(InvalidBinding $"bindings[{index}] is not an object")
         else
@@ -84,7 +89,12 @@ module KeymapCodec =
                 | _, _, (false, _) -> Error [ MissingField "bindings" ]
                 | (true, format), (true, version), (true, bindings) ->
                     let formatValue =
-                        match (if format.ValueKind = JsonValueKind.String then format.GetString() else format.ToString()) with
+                        match
+                            (if format.ValueKind = JsonValueKind.String then
+                                 format.GetString()
+                             else
+                                 format.ToString())
+                        with
                         | null -> ""
                         | text -> text
 

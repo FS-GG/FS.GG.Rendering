@@ -9,32 +9,36 @@ open FS.GG.UI.SkiaViewer
 /// functions are the only writers for pointer batching and one-time diagnostic disclosure.
 module internal FrameLoopLifecycle =
     type State<'model, 'msg> =
-        { mutable PointerState: PointerState
-          mutable Focused: RetainedId option
-          mutable Retained: RetainedRender<'msg> option
-          mutable LastRender: ControlRenderResult<'msg> option
-          mutable LastView: (Size * 'model * Control<'msg>) option
-          mutable LastRuntimeModel: ControlRuntimeModel option
-          mutable ScrollOffsets: Map<ControlId, ScrollState>
-          mutable SurfacedDiagnostics: Set<string>
-          mutable PendingMove: ViewerPointerInput option
-          mutable PointerSampleCount: int
-          mutable LastWorkReduction: WorkReductionRecord option
-          mutable LastPresentTiming: TimeSpan * TimeSpan }
+        {
+            mutable PointerState: PointerState
+            mutable Focused: RetainedId option
+            mutable Retained: RetainedRender<'msg> option
+            mutable LastRender: ControlRenderResult<'msg> option
+            mutable LastView: (Size * 'model * Control<'msg>) option
+            mutable LastRuntimeModel: ControlRuntimeModel option
+            mutable ScrollOffsets: Map<ControlId, ScrollState>
+            mutable SurfacedDiagnostics: Set<string>
+            mutable PendingMove: ViewerPointerInput option
+            mutable PointerSampleCount: int
+            mutable LastWorkReduction: WorkReductionRecord option
+            mutable LastPresentTiming: TimeSpan * TimeSpan
+        }
 
     let create<'model, 'msg> () : State<'model, 'msg> =
-        { PointerState = Pointer.init ()
-          Focused = None
-          Retained = None
-          LastRender = None
-          LastView = None
-          LastRuntimeModel = None
-          ScrollOffsets = Map.empty
-          SurfacedDiagnostics = Set.empty
-          PendingMove = None
-          PointerSampleCount = 0
-          LastWorkReduction = None
-          LastPresentTiming = (TimeSpan.Zero, TimeSpan.Zero) }
+        {
+            PointerState = Pointer.init ()
+            Focused = None
+            Retained = None
+            LastRender = None
+            LastView = None
+            LastRuntimeModel = None
+            ScrollOffsets = Map.empty
+            SurfacedDiagnostics = Set.empty
+            PendingMove = None
+            PointerSampleCount = 0
+            LastWorkReduction = None
+            LastPresentTiming = (TimeSpan.Zero, TimeSpan.Zero)
+        }
 
     let surfaceDiagnosticOnce (diagnostic: ControlDiagnostic) (state: State<'model, 'msg>) =
         let key = sprintf "%A|%A|%s" diagnostic.Code diagnostic.ControlId diagnostic.Message
@@ -53,8 +57,7 @@ module internal FrameLoopLifecycle =
         state.PendingMove <- None
         pending
 
-    let deferMove input (state: State<'model, 'msg>) =
-        state.PendingMove <- Some input
+    let deferMove input (state: State<'model, 'msg>) = state.PendingMove <- Some input
 
     let completeMoveBoundary (state: State<'model, 'msg>) =
         let completed = state.PointerSampleCount - 1

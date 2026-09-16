@@ -36,15 +36,21 @@ module CompositorReadiness =
 
     let validate (report: CompositorReadinessReport) : CompositorReadinessValidationResult =
         let requiredStatuses =
-            [ "proof", report.ProofStatus
-              "parity", report.ParityStatus
-              "compatibility", report.CompatibilityStatus
-              "regression", report.RegressionStatus ]
+            [
+                "proof", report.ProofStatus
+                "parity", report.ParityStatus
+                "compatibility", report.CompatibilityStatus
+                "regression", report.RegressionStatus
+            ]
 
         let missingEvidence =
             report.Evidence
             |> List.choose (fun evidence ->
-                if evidence.EvidenceRequired && (evidence.EvidencePath.IsNone || evidence.EvidenceStatus = CompositorReadinessMissingEvidence) then
+                if
+                    evidence.EvidenceRequired
+                    && (evidence.EvidencePath.IsNone
+                        || evidence.EvidenceStatus = CompositorReadinessMissingEvidence)
+                then
                     Some evidence.EvidenceName
                 else
                     None)
@@ -59,18 +65,20 @@ module CompositorReadiness =
             |> List.filter (fun item -> item.Contains("blocking", StringComparison.OrdinalIgnoreCase))
 
         let diagnostics =
-            [ if String.IsNullOrWhiteSpace report.Feature then
-                  "compositor readiness report must name the feature"
-              for missing in missingEvidence do
-                  $"missing required compositor readiness evidence: {missing}"
-              for status in blockedStatus do
-                  $"blocking compositor readiness status: {status}"
-              if report.TimingStatus <> CompositorReadinessAccepted then
-                  $"timing claim status: {statusText report.TimingStatus}"
-              for limitation in blockingLimitations do
-                  $"blocking compositor readiness limitation: {limitation}"
-              for evidence in report.Evidence do
-                  yield! evidence.EvidenceDiagnostics ]
+            [
+                if String.IsNullOrWhiteSpace report.Feature then
+                    "compositor readiness report must name the feature"
+                for missing in missingEvidence do
+                    $"missing required compositor readiness evidence: {missing}"
+                for status in blockedStatus do
+                    $"blocking compositor readiness status: {status}"
+                if report.TimingStatus <> CompositorReadinessAccepted then
+                    $"timing claim status: {statusText report.TimingStatus}"
+                for limitation in blockingLimitations do
+                    $"blocking compositor readiness limitation: {limitation}"
+                for evidence in report.Evidence do
+                    yield! evidence.EvidenceDiagnostics
+            ]
 
         let status =
             if not missingEvidence.IsEmpty then
@@ -86,11 +94,13 @@ module CompositorReadiness =
             else
                 CompositorReadinessAccepted
 
-        { Accepted = status = CompositorReadinessAccepted
-          Status = status
-          MissingEvidence = missingEvidence
-          BlockingLimitations = blockingLimitations
-          Diagnostics = diagnostics }
+        {
+            Accepted = status = CompositorReadinessAccepted
+            Status = status
+            MissingEvidence = missingEvidence
+            BlockingLimitations = blockingLimitations
+            Diagnostics = diagnostics
+        }
 
 module CompositorTimingAssertions =
     let verdictText verdict =
@@ -112,12 +122,15 @@ module CompositorTimingAssertions =
         let missingScenarios =
             check.RequiredScenarioIds
             |> List.filter (fun scenario ->
-                check.Scenarios |> List.exists (fun candidate -> candidate.ScenarioId = scenario) |> not)
+                check.Scenarios
+                |> List.exists (fun candidate -> candidate.ScenarioId = scenario)
+                |> not)
 
         let requiredScenarioResults =
             check.RequiredScenarioIds
             |> List.choose (fun scenario ->
-                check.Scenarios |> List.tryFind (fun candidate -> candidate.ScenarioId = scenario))
+                check.Scenarios
+                |> List.tryFind (fun candidate -> candidate.ScenarioId = scenario))
 
         let rejectedScenarios =
             requiredScenarioResults
@@ -130,8 +143,10 @@ module CompositorTimingAssertions =
         let incompleteSamples =
             requiredScenarioResults
             |> List.choose (fun scenario ->
-                if scenario.FullRedrawSampleCount < check.MeasuredRepetitions
-                   || scenario.DamageScopedSampleCount < check.MeasuredRepetitions then
+                if
+                    scenario.FullRedrawSampleCount < check.MeasuredRepetitions
+                    || scenario.DamageScopedSampleCount < check.MeasuredRepetitions
+                then
                     Some scenario.ScenarioId
                 else
                     None)
@@ -139,62 +154,93 @@ module CompositorTimingAssertions =
         let missingArtifacts =
             requiredScenarioResults
             |> List.choose (fun scenario ->
-                if List.isEmpty scenario.ArtifactPaths then Some scenario.ScenarioId else None)
+                if List.isEmpty scenario.ArtifactPaths then
+                    Some scenario.ScenarioId
+                else
+                    None)
 
         let diagnostics =
-            [ if String.IsNullOrWhiteSpace check.Feature then
-                  "timing summary must name the feature"
-              if check.ExpectedProfileId <> check.ActualProfileId then
-                  $"profile mismatch: expected={check.ExpectedProfileId} actual={check.ActualProfileId}"
-              if check.PolicyId <> "same-profile-live-threshold-v2" then
-                  $"unexpected timing policy: {check.PolicyId}"
-              if check.WarmupCount < 0 then
-                  "warmup count must not be negative"
-              if check.MeasuredRepetitions < 5 then
-                  "at least five measured repetitions are required"
-              if List.isEmpty check.RequiredScenarioIds then
-                  "timing summary must declare at least one required scenario"
-              for scenario in missingScenarios do
-                  $"missing required timing scenario: {scenario}"
-              for scenario in rejectedScenarios do
-                  $"non-positive timing scenario: {scenario}"
-              for scenario in incompleteSamples do
-                  $"incomplete timing samples: {scenario}"
-              for scenario in missingArtifacts do
-                  $"missing timing artifacts: {scenario}"
-              if check.ShippedPerformanceClaim <> "performance-not-accepted" then
-                  "Feature 156 cannot accept the shipped P7 performance claim by itself"
-              for scenario in requiredScenarioResults do
-                  yield! scenario.RejectionReasons |> List.map (fun reason -> $"{scenario.ScenarioId}: {reason}") ]
+            [
+                if String.IsNullOrWhiteSpace check.Feature then
+                    "timing summary must name the feature"
+                if check.ExpectedProfileId <> check.ActualProfileId then
+                    $"profile mismatch: expected={check.ExpectedProfileId} actual={check.ActualProfileId}"
+                if check.PolicyId <> "same-profile-live-threshold-v2" then
+                    $"unexpected timing policy: {check.PolicyId}"
+                if check.WarmupCount < 0 then
+                    "warmup count must not be negative"
+                if check.MeasuredRepetitions < 5 then
+                    "at least five measured repetitions are required"
+                if List.isEmpty check.RequiredScenarioIds then
+                    "timing summary must declare at least one required scenario"
+                for scenario in missingScenarios do
+                    $"missing required timing scenario: {scenario}"
+                for scenario in rejectedScenarios do
+                    $"non-positive timing scenario: {scenario}"
+                for scenario in incompleteSamples do
+                    $"incomplete timing samples: {scenario}"
+                for scenario in missingArtifacts do
+                    $"missing timing artifacts: {scenario}"
+                if check.ShippedPerformanceClaim <> "performance-not-accepted" then
+                    "Feature 156 cannot accept the shipped P7 performance claim by itself"
+                for scenario in requiredScenarioResults do
+                    yield!
+                        scenario.RejectionReasons
+                        |> List.map (fun reason -> $"{scenario.ScenarioId}: {reason}")
+            ]
 
         let verdict =
             // An empty required-set is the ultimate incomplete package: it can certify nothing, so it
             // must not fall through to Positive (F-TEST-3). Treated exactly like all-scenarios-missing.
-            if List.isEmpty check.RequiredScenarioIds
-               || not missingScenarios.IsEmpty || not incompleteSamples.IsEmpty || not missingArtifacts.IsEmpty then
+            if
+                List.isEmpty check.RequiredScenarioIds
+                || not missingScenarios.IsEmpty
+                || not incompleteSamples.IsEmpty
+                || not missingArtifacts.IsEmpty
+            then
                 CompositorTimingIncomplete
-            elif diagnostics |> List.exists (fun item -> item.Contains("profile mismatch", StringComparison.OrdinalIgnoreCase)) then
+            elif
+                diagnostics
+                |> List.exists (fun item -> item.Contains("profile mismatch", StringComparison.OrdinalIgnoreCase))
+            then
                 CompositorTimingRejected
-            elif requiredScenarioResults |> List.exists (fun scenario -> scenario.Verdict = CompositorTimingEnvironmentLimited) then
+            elif
+                requiredScenarioResults
+                |> List.exists (fun scenario -> scenario.Verdict = CompositorTimingEnvironmentLimited)
+            then
                 CompositorTimingEnvironmentLimited
-            elif requiredScenarioResults |> List.exists (fun scenario -> scenario.Verdict = CompositorTimingLimited) then
+            elif
+                requiredScenarioResults
+                |> List.exists (fun scenario -> scenario.Verdict = CompositorTimingLimited)
+            then
                 CompositorTimingLimited
-            elif requiredScenarioResults |> List.exists (fun scenario -> scenario.Verdict = CompositorTimingRejected) then
+            elif
+                requiredScenarioResults
+                |> List.exists (fun scenario -> scenario.Verdict = CompositorTimingRejected)
+            then
                 CompositorTimingRejected
-            elif requiredScenarioResults |> List.exists (fun scenario -> scenario.Verdict = CompositorTimingNoisy) then
+            elif
+                requiredScenarioResults
+                |> List.exists (fun scenario -> scenario.Verdict = CompositorTimingNoisy)
+            then
                 CompositorTimingNoisy
-            elif requiredScenarioResults |> List.exists (fun scenario -> scenario.Verdict = CompositorTimingNonBeneficial) then
+            elif
+                requiredScenarioResults
+                |> List.exists (fun scenario -> scenario.Verdict = CompositorTimingNonBeneficial)
+            then
                 CompositorTimingNonBeneficial
             elif requiredScenarioResults.Length = check.RequiredScenarioIds.Length then
                 CompositorTimingPositive
             else
                 CompositorTimingIncomplete
 
-        { Accepted = verdict = CompositorTimingPositive && diagnostics.IsEmpty
-          Verdict = verdict
-          MissingScenarios = missingScenarios
-          RejectedScenarios = rejectedScenarios
-          Diagnostics = diagnostics }
+        {
+            Accepted = verdict = CompositorTimingPositive && diagnostics.IsEmpty
+            Verdict = verdict
+            MissingScenarios = missingScenarios
+            RejectedScenarios = rejectedScenarios
+            Diagnostics = diagnostics
+        }
 
 module CompositorDamageReadiness =
     // Migrated onto the shared FS.GG.UI.Diagnostics.ReadinessStatus vocabulary (Feature 180): every case
@@ -221,17 +267,23 @@ module CompositorDamageReadiness =
         let missingScenarios =
             check.RequiredScenarioIds
             |> List.filter (fun scenario ->
-                check.Scenarios |> List.exists (fun candidate -> candidate.ScenarioId = scenario) |> not)
+                check.Scenarios
+                |> List.exists (fun candidate -> candidate.ScenarioId = scenario)
+                |> not)
 
         let requiredScenarioResults =
             check.RequiredScenarioIds
             |> List.choose (fun scenario ->
-                check.Scenarios |> List.tryFind (fun candidate -> candidate.ScenarioId = scenario))
+                check.Scenarios
+                |> List.tryFind (fun candidate -> candidate.ScenarioId = scenario))
 
         let missingArtifacts =
             requiredScenarioResults
             |> List.choose (fun scenario ->
-                if List.isEmpty scenario.ArtifactPaths then Some scenario.ScenarioId else None)
+                if List.isEmpty scenario.ArtifactPaths then
+                    Some scenario.ScenarioId
+                else
+                    None)
 
         let scenarioFailures =
             requiredScenarioResults
@@ -243,62 +295,77 @@ module CompositorDamageReadiness =
 
         let fallbackOnly =
             requiredScenarioResults.Length = check.RequiredScenarioIds.Length
-            && requiredScenarioResults |> List.forall (fun scenario -> scenario.Status = CompositorDamageFallbackOnly)
+            && requiredScenarioResults
+               |> List.forall (fun scenario -> scenario.Status = CompositorDamageFallbackOnly)
 
         let environmentLimited =
-            requiredScenarioResults |> List.exists (fun scenario -> scenario.Status = CompositorDamageEnvironmentLimited)
+            requiredScenarioResults
+            |> List.exists (fun scenario -> scenario.Status = CompositorDamageEnvironmentLimited)
 
         let unsupportedArtifactViolation =
             check.AcceptedPartialRedrawArtifacts <> 0
             && check.UnsupportedHostStatus = CompositorDamageEnvironmentLimited
 
         let diagnostics =
-            [ if String.IsNullOrWhiteSpace check.Feature then
-                  "damage readiness check must name the feature"
-              if List.isEmpty check.RequiredScenarioIds then
-                  "damage readiness check must declare at least one required scenario"
-              for scenario in missingScenarios do
-                  $"missing required damage scenario: {scenario}"
-              for scenario in missingArtifacts do
-                  $"missing damage artifact path: {scenario}"
-              for failure in scenarioFailures do
-                  $"non-accepted damage scenario: {failure}"
-              if check.AcceptedAttemptCount < 3 && not fallbackOnly && not environmentLimited then
-                  "accepted damage readiness requires at least three accepted attempts"
-              if unsupportedArtifactViolation then
-                  "unsupported-host evidence must contain zero accepted partial-redraw artifacts"
-              if not check.CompatibilityAccepted then
-                  "compatibility ledger is not accepted"
-              if not check.PackageAccepted then
-                  "package validation is not accepted"
-              if not check.RegressionAccepted then
-                  "regression validation is not accepted"
-              if check.PerformanceClaim <> "performance-not-accepted" then
-                  "Feature 157 cannot accept the shipped P7 performance claim by itself"
-              for limitation in check.Limitations do
-                  if limitation.Contains("blocking", StringComparison.OrdinalIgnoreCase) then
-                      $"blocking damage readiness limitation: {limitation}" ]
+            [
+                if String.IsNullOrWhiteSpace check.Feature then
+                    "damage readiness check must name the feature"
+                if List.isEmpty check.RequiredScenarioIds then
+                    "damage readiness check must declare at least one required scenario"
+                for scenario in missingScenarios do
+                    $"missing required damage scenario: {scenario}"
+                for scenario in missingArtifacts do
+                    $"missing damage artifact path: {scenario}"
+                for failure in scenarioFailures do
+                    $"non-accepted damage scenario: {failure}"
+                if check.AcceptedAttemptCount < 3 && not fallbackOnly && not environmentLimited then
+                    "accepted damage readiness requires at least three accepted attempts"
+                if unsupportedArtifactViolation then
+                    "unsupported-host evidence must contain zero accepted partial-redraw artifacts"
+                if not check.CompatibilityAccepted then
+                    "compatibility ledger is not accepted"
+                if not check.PackageAccepted then
+                    "package validation is not accepted"
+                if not check.RegressionAccepted then
+                    "regression validation is not accepted"
+                if check.PerformanceClaim <> "performance-not-accepted" then
+                    "Feature 157 cannot accept the shipped P7 performance claim by itself"
+                for limitation in check.Limitations do
+                    if limitation.Contains("blocking", StringComparison.OrdinalIgnoreCase) then
+                        $"blocking damage readiness limitation: {limitation}"
+            ]
 
         let status =
             if environmentLimited || unsupportedArtifactViolation then
                 CompositorDamageEnvironmentLimited
             // Fail closed on an empty required-set (F-TEST-3): it can certify nothing, so it must not
             // reach the vacuous fallback/accepted branches below.
-            elif List.isEmpty check.RequiredScenarioIds || not missingScenarios.IsEmpty || not missingArtifacts.IsEmpty then
+            elif
+                List.isEmpty check.RequiredScenarioIds
+                || not missingScenarios.IsEmpty
+                || not missingArtifacts.IsEmpty
+            then
                 CompositorDamageRejected
-            elif requiredScenarioResults |> List.exists (fun scenario -> scenario.Status = CompositorDamageRejected) then
+            elif
+                requiredScenarioResults
+                |> List.exists (fun scenario -> scenario.Status = CompositorDamageRejected)
+            then
                 CompositorDamageRejected
             elif fallbackOnly then
                 CompositorDamageFallbackOnly
-            elif diagnostics.IsEmpty
-                 && check.AcceptedAttemptCount >= 3
-                 && requiredScenarioResults |> List.forall (fun scenario -> scenario.Status = CompositorDamageAccepted) then
+            elif
+                diagnostics.IsEmpty
+                && check.AcceptedAttemptCount >= 3
+                && requiredScenarioResults
+                   |> List.forall (fun scenario -> scenario.Status = CompositorDamageAccepted)
+            then
                 CompositorDamageAccepted
             else
                 CompositorDamageFallbackOnly
 
-        { Accepted = status = CompositorDamageAccepted && diagnostics.IsEmpty
-          Status = status
-          MissingScenarios = missingScenarios
-          Diagnostics = diagnostics }
-
+        {
+            Accepted = status = CompositorDamageAccepted && diagnostics.IsEmpty
+            Status = status
+            MissingScenarios = missingScenarios
+            Diagnostics = diagnostics
+        }

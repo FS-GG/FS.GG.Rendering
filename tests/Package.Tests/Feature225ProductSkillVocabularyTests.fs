@@ -30,15 +30,17 @@ let private repositoryRoot = RepositoryRoot.value
 // fixed list.
 let private expectedProductSkillIds =
     set
-        [ "fs-gg-elmish"
-          "fs-gg-keyboard-input"
-          "fs-gg-layout"
-          "fs-gg-scene"
-          "fs-gg-skiaviewer"
-          "fs-gg-styling"
-          "fs-gg-symbology"
-          "fs-gg-testing"
-          "fs-gg-ui-widgets" ]
+        [
+            "fs-gg-elmish"
+            "fs-gg-keyboard-input"
+            "fs-gg-layout"
+            "fs-gg-scene"
+            "fs-gg-skiaviewer"
+            "fs-gg-styling"
+            "fs-gg-symbology"
+            "fs-gg-testing"
+            "fs-gg-ui-widgets"
+        ]
 
 // ---- Leak classes (contract: leak-guard-check.md) --------------------------------------------
 type LeakClass =
@@ -55,32 +57,39 @@ let private classToken =
 // Class A — any match is a finding (framework-repo-only evidence process). `\.gitignore` flags the
 // allowlist instruction; `specs/.../readiness` is framework output, never a product-author location.
 let private classAPatterns =
-    [ "refresh-local-feed-and-samples"
-      "package-feed"
-      @"specs/[^\s`)]*?/readiness"
-      @"\.gitignore"
-      "BaseOutputPath" ]
+    [
+        "refresh-local-feed-and-samples"
+        "package-feed"
+        @"specs/[^\s`)]*?/readiness"
+        @"\.gitignore"
+        "BaseOutputPath"
+    ]
     |> List.map (fun p -> Regex(p, RegexOptions.Compiled))
 
 // Class B — conditional: a `specs/.../feedback` mention is a finding only when its enclosing
 // paragraph carries no spec-kit gating phrase (research R2 / FR-002 keeps the gated path).
-let private classBPattern = Regex(@"specs/[^\s`)]*?/feedback", RegexOptions.Compiled)
+let private classBPattern =
+    Regex(@"specs/[^\s`)]*?/feedback", RegexOptions.Compiled)
 
 // Class C — any match is a finding. `spec-\d+` deliberately does NOT match `spec-kit`.
 let private classCPatterns =
-    [ Regex(@"[Ff]eature\s+\d+", RegexOptions.Compiled)
-      Regex(@"spec-\d+", RegexOptions.Compiled) ]
+    [
+        Regex(@"[Ff]eature\s+\d+", RegexOptions.Compiled)
+        Regex(@"spec-\d+", RegexOptions.Compiled)
+    ]
 
 // The gating-phrase set is a small named constant so it can be extended without reshaping the guard.
 let private specKitGatingPhrases = [ "spec kit"; "spec-kit" ]
 
 // ---- Findings (FR-007 / Principle VI: skill + class + token + file:line) -----------------------
 type Finding =
-    { Skill: string
-      Class: LeakClass
-      Token: string
-      File: string
-      Line: int }
+    {
+        Skill: string
+        Class: LeakClass
+        Token: string
+        File: string
+        Line: int
+    }
 
 let private formatFinding (f: Finding) =
     sprintf "  %s  [%s]  '%s'  %s:%d" f.Skill (classToken f.Class) f.Token f.File f.Line
@@ -111,39 +120,47 @@ let private hasGatingPhrase (paragraph: string) =
 let private scanBody (skill: string) (file: string) (content: string) : Finding list =
     let lines = content.Replace("\r\n", "\n").Split('\n')
 
-    [ for i in 0 .. lines.Length - 1 do
-          let line = lines[i]
-          let lineNo = i + 1
+    [
+        for i in 0 .. lines.Length - 1 do
+            let line = lines[i]
+            let lineNo = i + 1
 
-          // Class A — banned outright.
-          for rx in classAPatterns do
-              for m in rx.Matches line do
-                  yield
-                      { Skill = skill
-                        Class = ClassA
-                        Token = m.Value
-                        File = file
-                        Line = lineNo }
+            // Class A — banned outright.
+            for rx in classAPatterns do
+                for m in rx.Matches line do
+                    yield
+                        {
+                            Skill = skill
+                            Class = ClassA
+                            Token = m.Value
+                            File = file
+                            Line = lineNo
+                        }
 
-          // Class C — banned outright.
-          for rx in classCPatterns do
-              for m in rx.Matches line do
-                  yield
-                      { Skill = skill
-                        Class = ClassC
-                        Token = m.Value
-                        File = file
-                        Line = lineNo }
+            // Class C — banned outright.
+            for rx in classCPatterns do
+                for m in rx.Matches line do
+                    yield
+                        {
+                            Skill = skill
+                            Class = ClassC
+                            Token = m.Value
+                            File = file
+                            Line = lineNo
+                        }
 
-          // Class B — a finding only when the enclosing paragraph lacks a spec-kit gating phrase.
-          for m in classBPattern.Matches line do
-              if not (hasGatingPhrase (paragraphAround lines i)) then
-                  yield
-                      { Skill = skill
-                        Class = ClassB
-                        Token = m.Value
-                        File = file
-                        Line = lineNo } ]
+            // Class B — a finding only when the enclosing paragraph lacks a spec-kit gating phrase.
+            for m in classBPattern.Matches line do
+                if not (hasGatingPhrase (paragraphAround lines i)) then
+                    yield
+                        {
+                            Skill = skill
+                            Class = ClassB
+                            Token = m.Value
+                            File = file
+                            Line = lineNo
+                        }
+    ]
 
 // ---- Produced surface (SkillParity discovery) -------------------------------------------------
 // Enumerate the shipped product skills the way the package carries them — the same authoritative
@@ -166,99 +183,109 @@ let private liveFindings () =
 let private syntheticLeakyBody =
     String.concat
         "\n"
-        [ "# Synthetic skill"
-          ""
-          "Use the `package-feed` proof workflow to catch stale pins."
-          ""
-          "Record findings under `specs/<feature>/feedback/` for this product."
-          ""
-          "This capability landed in feature 200 of the framework." ]
+        [
+            "# Synthetic skill"
+            ""
+            "Use the `package-feed` proof workflow to catch stale pins."
+            ""
+            "Record findings under `specs/<feature>/feedback/` for this product."
+            ""
+            "This capability landed in feature 200 of the framework."
+        ]
 
 // A properly gated feedback paragraph (the de-leaked phrasing) must pass — the spec-kit path survives.
 let private gatedFeedbackBody =
     String.concat
         "\n"
-        [ "## Persistent problems"
-          ""
-          "If your product uses Spec Kit, record findings under `specs/<feature>/feedback/`;"
-          "otherwise record them in this skill's Sources / durable-lessons line." ]
+        [
+            "## Persistent problems"
+            ""
+            "If your product uses Spec Kit, record findings under `specs/<feature>/feedback/`;"
+            "otherwise record them in this skill's Sources / durable-lessons line."
+        ]
 
 [<Tests>]
 let tests =
     testList
         "Feature225ProductSkillVocabulary"
-        [ test "discovery surface did not narrow: the template/product-skills scan covers the 9 expected ids (FR-007 edge case)" {
-              let discovered =
-                  discoveredProductSkills ()
-                  |> List.map (fun e -> e.SkillName.Trim())
-                  |> Set.ofList
+        [
+            test
+                "discovery surface did not narrow: the template/product-skills scan covers the 9 expected ids (FR-007 edge case)" {
+                let discovered =
+                    discoveredProductSkills ()
+                    |> List.map (fun e -> e.SkillName.Trim())
+                    |> Set.ofList
 
-              let missing = Set.difference expectedProductSkillIds discovered
+                let missing = Set.difference expectedProductSkillIds discovered
 
-              Expect.isEmpty
-                  missing
-                  (sprintf
-                      "the leak guard's discovery surface dropped expected product skill(s): %s — a fixed-list scan would have masked this"
-                      (String.concat ", " missing))
-          }
+                Expect.isEmpty
+                    missing
+                    (sprintf
+                        "the leak guard's discovery surface dropped expected product skill(s): %s — a fixed-list scan would have masked this"
+                        (String.concat ", " missing))
+            }
 
-          test "no product skill leaks a framework token (real shipped set → zero findings; SC-001/002/003/005)" {
-              let findings = liveFindings ()
+            test "no product skill leaks a framework token (real shipped set → zero findings; SC-001/002/003/005)" {
+                let findings = liveFindings ()
 
-              Expect.equal
-                  findings
-                  []
-                  (sprintf
-                      "product-skill leak guard FAILED (%d leak token(s)):\n%s"
-                      findings.Length
-                      (formatFindings findings))
-          }
+                Expect.equal
+                    findings
+                    []
+                    (sprintf
+                        "product-skill leak guard FAILED (%d leak token(s)):\n%s"
+                        findings.Length
+                        (formatFindings findings))
+            }
 
-          test "synthetic inject: one token of each class → exactly three findings, one per class (SC-005 negative)" {
-              let findings =
-                  scanBody "fs-gg-synthetic" "template/product-skills/fs-gg-synthetic/SKILL.md" syntheticLeakyBody
+            test "synthetic inject: one token of each class → exactly three findings, one per class (SC-005 negative)" {
+                let findings =
+                    scanBody "fs-gg-synthetic" "template/product-skills/fs-gg-synthetic/SKILL.md" syntheticLeakyBody
 
-              Expect.equal findings.Length 3 (sprintf "expected exactly three findings, got:\n%s" (formatFindings findings))
+                Expect.equal
+                    findings.Length
+                    3
+                    (sprintf "expected exactly three findings, got:\n%s" (formatFindings findings))
 
-              let classes = findings |> List.map (fun f -> f.Class) |> Set.ofList
-              Expect.equal classes (set [ ClassA; ClassB; ClassC ]) "one finding of each leak class"
+                let classes = findings |> List.map (fun f -> f.Class) |> Set.ofList
+                Expect.equal classes (set [ ClassA; ClassB; ClassC ]) "one finding of each leak class"
 
-              // Each finding names a real line and the matched token (FR-007 / Principle VI).
-              for f in findings do
-                  Expect.isGreaterThan f.Line 0 "finding names a 1-based line"
-                  Expect.isFalse (String.IsNullOrWhiteSpace f.Token) "finding names the matched token"
-          }
+                // Each finding names a real line and the matched token (FR-007 / Principle VI).
+                for f in findings do
+                    Expect.isGreaterThan f.Line 0 "finding names a 1-based line"
+                    Expect.isFalse (String.IsNullOrWhiteSpace f.Token) "finding names the matched token"
+            }
 
-          test "conditional spec-kit feedback path is preserved: a gated paragraph passes (FR-002)" {
-              let findings =
-                  scanBody "fs-gg-gated" "template/product-skills/fs-gg-gated/SKILL.md" gatedFeedbackBody
+            test "conditional spec-kit feedback path is preserved: a gated paragraph passes (FR-002)" {
+                let findings =
+                    scanBody "fs-gg-gated" "template/product-skills/fs-gg-gated/SKILL.md" gatedFeedbackBody
 
-              Expect.equal
-                  findings
-                  []
-                  (sprintf
-                      "a `specs/<feature>/feedback/` mention gated by a spec-kit phrase must NOT be a finding, got:\n%s"
-                      (formatFindings findings))
-          }
+                Expect.equal
+                    findings
+                    []
+                    (sprintf
+                        "a `specs/<feature>/feedback/` mention gated by a spec-kit phrase must NOT be a finding, got:\n%s"
+                        (formatFindings findings))
+            }
 
-          test "ungated feedback is still caught while the same path gated passes (FR-002 both directions)" {
-              let ungated =
-                  scanBody "fs-gg-x" "f.md" "Record findings under `specs/<feature>/feedback/` always."
+            test "ungated feedback is still caught while the same path gated passes (FR-002 both directions)" {
+                let ungated =
+                    scanBody "fs-gg-x" "f.md" "Record findings under `specs/<feature>/feedback/` always."
 
-              Expect.equal ungated.Length 1 "an ungated feedback path is one Class-B finding"
-              Expect.equal ungated.Head.Class ClassB "the ungated finding is Class B"
+                Expect.equal ungated.Length 1 "an ungated feedback path is one Class-B finding"
+                Expect.equal ungated.Head.Class ClassB "the ungated finding is Class B"
 
-              let gated = scanBody "fs-gg-x" "f.md" gatedFeedbackBody
-              Expect.isEmpty gated "the same path, gated by a spec-kit phrase, is clean"
-          }
+                let gated = scanBody "fs-gg-x" "f.md" gatedFeedbackBody
+                Expect.isEmpty gated "the same path, gated by a spec-kit phrase, is clean"
+            }
 
-          test "finding message names skill + class + token + file:line, matching the contract shape (FR-007)" {
-              let findings =
-                  scanBody "fs-gg-synthetic" "template/product-skills/fs-gg-synthetic/SKILL.md" syntheticLeakyBody
+            test "finding message names skill + class + token + file:line, matching the contract shape (FR-007)" {
+                let findings =
+                    scanBody "fs-gg-synthetic" "template/product-skills/fs-gg-synthetic/SKILL.md" syntheticLeakyBody
 
-              let classA = findings |> List.find (fun f -> f.Class = ClassA)
-              let message = formatFinding classA
-              Expect.stringContains message "fs-gg-synthetic" "message names the skill"
-              Expect.stringContains message "package-feed" "message names the matched token"
-              Expect.stringContains message "SKILL.md:" "message names file:line"
-          } ]
+                let classA = findings |> List.find (fun f -> f.Class = ClassA)
+                let message = formatFinding classA
+                Expect.stringContains message "fs-gg-synthetic" "message names the skill"
+                Expect.stringContains message "package-feed" "message names the matched token"
+                Expect.stringContains message "SKILL.md:" "message names file:line"
+            }
+        ]

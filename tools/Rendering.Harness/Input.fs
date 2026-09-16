@@ -33,19 +33,27 @@ module Input =
     // A small canonical catalog. "tap" exercises clicks + keys: each input event advances the demo
     // counter by one, so 3 events shift its scene => a genuine input->repaint change.
     let scripts: Map<string, InputScript> =
-        [ { Name = "tap"; Steps = [ Click(200, 150); Key "space"; Wait 16; Key "Right" ] }
-          { Name = "click"; Steps = [ Click(200, 150) ] } ]
+        [
+            {
+                Name = "tap"
+                Steps = [ Click(200, 150); Key "space"; Wait 16; Key "Right" ]
+            }
+            {
+                Name = "click"
+                Steps = [ Click(200, 150) ]
+            }
+        ]
         |> List.map (fun s -> s.Name, s)
         |> Map.ofList
 
     let overlayCorpus () =
-        [ for i in 0 .. 99 ->
-            { Name = sprintf "feature144-overlay-%03d" i
-              Steps =
-                [ Click(120 + (i % 8) * 4, 80 + (i % 5) * 6)
-                  Key "Escape"
-                  Wait 16
-                  Key "Tab" ] } ]
+        [
+            for i in 0..99 ->
+                {
+                    Name = sprintf "feature144-overlay-%03d" i
+                    Steps = [ Click(120 + (i % 8) * 4, 80 + (i % 5) * 6); Key "Escape"; Wait 16; Key "Tab" ]
+                }
+        ]
 
     let tryScript (name: string) : InputScript option = Map.tryFind name scripts
 
@@ -61,9 +69,12 @@ module Input =
     // mirroring the live tier's demo app, but without depending on Live's private MVU internals.
     let private demoScene (inputCount: int) : Scene =
         let x = 40.0 + float (inputCount % 6) * 32.0
+
         Scene.group
-            [ Scene.rectangle (0.0, 0.0, 400.0, 300.0) (Colors.rgba 18uy 24uy 32uy 255uy)
-              Scene.rectangle (x, 60.0, 150.0, 120.0) Colors.white ]
+            [
+                Scene.rectangle (0.0, 0.0, 400.0, 300.0) (Colors.rgba 18uy 24uy 32uy 255uy)
+                Scene.rectangle (x, 60.0, 150.0, 120.0) Colors.white
+            ]
 
     // --- pure: deterministic, headless MVU replay (the gate-runnable MVP) ---------------------------
     let private runPure (script: InputScript) (facts: ProbeFacts) (outDir: string) : Evidence.Evidence =
@@ -74,44 +85,56 @@ module Input =
         let before = demoScene 0
         let after = demoScene inputCount
         let responds = before <> after
+
         let status =
-            if inputCount > 0 && responds then RunStatus.Passed else RunStatus.Failed
+            if inputCount > 0 && responds then
+                RunStatus.Passed
+            else
+                RunStatus.Failed
+
         IO.Directory.CreateDirectory outDir |> ignore
-        { Evidence.RunId = "pure-" + script.Name // deterministic => byte-reproducible evidence (FR-008/SC-002)
-          Evidence.Tier = T0
-          Evidence.Subcommand = "input"
-          Evidence.Status = status
-          Evidence.SkipReason = None
-          Evidence.ProofLevel = p.ClaimableProof
-          Evidence.AuthoritativeFor = [ "input-msg-dispatch"; "input-to-repaint" ]
-          // pure proves message dispatch + a rendered change, NOT real desktop or kernel input.
-          Evidence.NotAuthoritativeFor = "real-input" :: "kernel-input-path" :: p.NotAuthoritativeFor
-          Evidence.Facts = facts
-          Evidence.Frames = 2
-          Evidence.P50Ms = None
-          Evidence.P95Ms = None
-          Evidence.P99Ms = None
-          Evidence.Artifacts = [ "run.json"; "summary.md" ] }
+
+        {
+            Evidence.RunId = "pure-" + script.Name // deterministic => byte-reproducible evidence (FR-008/SC-002)
+            Evidence.Tier = T0
+            Evidence.Subcommand = "input"
+            Evidence.Status = status
+            Evidence.SkipReason = None
+            Evidence.ProofLevel = p.ClaimableProof
+            Evidence.AuthoritativeFor = [ "input-msg-dispatch"; "input-to-repaint" ]
+            // pure proves message dispatch + a rendered change, NOT real desktop or kernel input.
+            Evidence.NotAuthoritativeFor = "real-input" :: "kernel-input-path" :: p.NotAuthoritativeFor
+            Evidence.Facts = facts
+            Evidence.Frames = 2
+            Evidence.P50Ms = None
+            Evidence.P95Ms = None
+            Evidence.P99Ms = None
+            Evidence.Artifacts = [ "run.json"; "summary.md" ]
+        }
 
     // --- uinput: planner-driven; honest-skips when /dev/uinput is absent ---------------------------
     let private runUinput (facts: ProbeFacts) (outDir: string) : Evidence.Evidence =
         let p = RunPlan.plan TUinput facts
         IO.Directory.CreateDirectory outDir |> ignore
+
         let mk status skip auth : Evidence.Evidence =
-            { Evidence.RunId = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss-fff")
-              Evidence.Tier = TUinput
-              Evidence.Subcommand = "input"
-              Evidence.Status = status
-              Evidence.SkipReason = skip
-              Evidence.ProofLevel = p.ClaimableProof
-              Evidence.AuthoritativeFor = auth
-              Evidence.NotAuthoritativeFor = p.NotAuthoritativeFor
-              Evidence.Facts = facts
-              Evidence.Frames = 0
-              Evidence.P50Ms = None
-              Evidence.P95Ms = None
-              Evidence.P99Ms = None
-              Evidence.Artifacts = [ "summary.md" ] }
+            {
+                Evidence.RunId = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss-fff")
+                Evidence.Tier = TUinput
+                Evidence.Subcommand = "input"
+                Evidence.Status = status
+                Evidence.SkipReason = skip
+                Evidence.ProofLevel = p.ClaimableProof
+                Evidence.AuthoritativeFor = auth
+                Evidence.NotAuthoritativeFor = p.NotAuthoritativeFor
+                Evidence.Facts = facts
+                Evidence.Frames = 0
+                Evidence.P50Ms = None
+                Evidence.P95Ms = None
+                Evidence.P99Ms = None
+                Evidence.Artifacts = [ "summary.md" ]
+            }
+
         match p.Degradation with
         | Degradation.Skip reason -> mk RunStatus.Skipped (Some reason) []
         | Degradation.FailClassified reason -> mk RunStatus.Failed (Some reason) []

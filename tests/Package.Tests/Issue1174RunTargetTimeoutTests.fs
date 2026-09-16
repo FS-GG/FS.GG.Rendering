@@ -78,10 +78,12 @@ let private fixtureRoot =
          dir)
 
 type private RunVerdict =
-    { ExitCode: int
-      Output: string
-      ElapsedSeconds: float
-      ReadinessLogBytes: int64 option }
+    {
+        ExitCode: int
+        Output: string
+        ElapsedSeconds: float
+        ReadinessLogBytes: int64 option
+    }
 
 /// Spawn `dotnet fsi build.fsx -t Run` rooted at the silent fixture, with a short launch timeout.
 /// `waitMs` is an OUTER bound too: a regression that reintroduces the unbounded wait must fail this
@@ -124,81 +126,87 @@ let private runAgainstSilentFixture (launchTimeoutSeconds: int) (waitMs: int) : 
 
         stopwatch.Stop()
 
-        { ExitCode = (if exited then proc.ExitCode else -1)
-          Output = stdout.Result + stderr.Result
-          ElapsedSeconds = stopwatch.Elapsed.TotalSeconds
-          ReadinessLogBytes = if File.Exists readinessLog then Some(FileInfo(readinessLog).Length) else None }
+        {
+            ExitCode = (if exited then proc.ExitCode else -1)
+            Output = stdout.Result + stderr.Result
+            ElapsedSeconds = stopwatch.Elapsed.TotalSeconds
+            ReadinessLogBytes =
+                if File.Exists readinessLog then
+                    Some(FileInfo(readinessLog).Length)
+                else
+                    None
+        }
 
 [<Tests>]
 let issue1174RunTargetTimeoutTests =
     testList
         "Issue1174 Run target launch-timeout (repair round 1)"
         [
-          test "a genuinely silent child is killed within the bound, reaped, and reported with a diagnostic" {
-              // Housekeeping only (not part of the assertion): this test builds a real scratch fixture
-              // under the OS temp dir. Delete it on the way out, success or failure, rather than
-              // leaving a guid-named directory behind on every run of a shared box.
-              try
-                  let verdict = runAgainstSilentFixture 2 30000
+            test "a genuinely silent child is killed within the bound, reaped, and reported with a diagnostic" {
+                // Housekeeping only (not part of the assertion): this test builds a real scratch fixture
+                // under the OS temp dir. Delete it on the way out, success or failure, rather than
+                // leaving a guid-named directory behind on every run of a shared box.
+                try
+                    let verdict = runAgainstSilentFixture 2 30000
 
-                  Expect.notEqual
-                      verdict.ExitCode
-                      0
-                      $"a silent child past FSGG_RUN_LAUNCH_TIMEOUT_SECONDS must fail the Run target, not succeed silently.\n\n{verdict.Output}"
+                    Expect.notEqual
+                        verdict.ExitCode
+                        0
+                        $"a silent child past FSGG_RUN_LAUNCH_TIMEOUT_SECONDS must fail the Run target, not succeed silently.\n\n{verdict.Output}"
 
-                  Expect.isLessThan
-                      verdict.ElapsedSeconds
-                      20.0
-                      $"the kill must fire near the 2s bound, not near the fixture's 60s sleep — bounding this wait is #1174's entire point.\n\n{verdict.Output}"
+                    Expect.isLessThan
+                        verdict.ElapsedSeconds
+                        20.0
+                        $"the kill must fire near the 2s bound, not near the fixture's 60s sleep — bounding this wait is #1174's entire point.\n\n{verdict.Output}"
 
-                  Expect.stringContains
-                      verdict.Output
-                      "produced no output within"
-                      $"the timeout diagnostic must name what happened.\n\n{verdict.Output}"
+                    Expect.stringContains
+                        verdict.Output
+                        "produced no output within"
+                        $"the timeout diagnostic must name what happened.\n\n{verdict.Output}"
 
-                  Expect.stringContains
-                      verdict.Output
-                      "killed after the timeout"
-                      $"the timeout diagnostic must say the process was killed, not merely that it failed.\n\n{verdict.Output}"
+                    Expect.stringContains
+                        verdict.Output
+                        "killed after the timeout"
+                        $"the timeout diagnostic must say the process was killed, not merely that it failed.\n\n{verdict.Output}"
 
-                  match verdict.ReadinessLogBytes with
-                  | Some 0L -> ()
-                  | Some n ->
-                      failwithf
-                          "readiness/logs/Run.txt has %d byte(s); the fixture child is designed to produce NONE, so any bytes here mean this run was not the silent case this test claims to exercise.\n\n%s"
-                          n
-                          verdict.Output
-                  | None ->
-                      failwithf
-                          "readiness/logs/Run.txt was never created — runInteractiveProcess must create it before the wrapped process launches.\n\n%s"
-                          verdict.Output
+                    match verdict.ReadinessLogBytes with
+                    | Some 0L -> ()
+                    | Some n ->
+                        failwithf
+                            "readiness/logs/Run.txt has %d byte(s); the fixture child is designed to produce NONE, so any bytes here mean this run was not the silent case this test claims to exercise.\n\n%s"
+                            n
+                            verdict.Output
+                    | None ->
+                        failwithf
+                            "readiness/logs/Run.txt was never created — runInteractiveProcess must create it before the wrapped process launches.\n\n%s"
+                            verdict.Output
 
-                  // Reaping: the fixture's grandchild (`SilentApp`, the process `proc.Kill(true)` —
-                  // kill the entire tree — exists to reach) must not survive the timeout kill.
-                  Threading.Thread.Sleep 500
+                    // Reaping: the fixture's grandchild (`SilentApp`, the process `proc.Kill(true)` —
+                    // kill the entire tree — exists to reach) must not survive the timeout kill.
+                    Threading.Thread.Sleep 500
 
-                  let lingering =
-                      Process.GetProcesses()
-                      |> Array.filter (fun p ->
-                          try
-                              p.ProcessName.Contains "SilentApp"
-                          with _ ->
-                              false)
+                    let lingering =
+                        Process.GetProcesses()
+                        |> Array.filter (fun p ->
+                            try
+                                p.ProcessName.Contains "SilentApp"
+                            with _ ->
+                                false)
 
-                  for p in lingering do
-                      try
-                          p.Kill true
-                      with _ ->
-                          ()
+                    for p in lingering do
+                        try
+                            p.Kill true
+                        with _ ->
+                            ()
 
-                  Expect.isEmpty
-                      lingering
-                      $"the silent child (SilentApp) must not survive the timeout kill — a survivor is a reaping/zombie regression, not just a slow test.\n\n{verdict.Output}"
-              finally
-                  if fixtureRoot.IsValueCreated then
-                      try
-                          Directory.Delete(fixtureRoot.Value, true)
-                      with _ ->
-                          ()
-          }
+                    Expect.isEmpty
+                        lingering
+                        $"the silent child (SilentApp) must not survive the timeout kill — a survivor is a reaping/zombie regression, not just a slow test.\n\n{verdict.Output}"
+                finally
+                    if fixtureRoot.IsValueCreated then
+                        try
+                            Directory.Delete(fixtureRoot.Value, true)
+                        with _ ->
+                            ()
+            }
         ]

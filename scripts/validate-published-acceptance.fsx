@@ -59,36 +59,41 @@ let packageId = "FS.GG.UI.Template"
 // Bumping this to a package >= 0.1.62 re-reds the harness on the OLD contract, not a real defect.
 let packageVersion = "0.1.51-preview.1"
 let tagAnchor = "fs-gg-ui/v0.1.51-preview.1"
+
 let feedDir =
-    Path.Combine(
-        Environment.GetFolderPath Environment.SpecialFolder.UserProfile,
-        ".local", "share", "nuget-local")
-let nupkgPath = Path.Combine(feedDir, sprintf "%s.%s.nupkg" packageId packageVersion)
+    Path.Combine(Environment.GetFolderPath Environment.SpecialFolder.UserProfile, ".local", "share", "nuget-local")
+
+let nupkgPath =
+    Path.Combine(feedDir, sprintf "%s.%s.nupkg" packageId packageVersion)
 
 let lifecycleValues = [ "spec-kit"; "sdd"; "none" ]
 let profiles = [ "app"; "headless-scene"; "governed"; "sample-pack" ]
-let productName = "Acme"   // PascalCase — avoids the dir-derived-lowercase build break (prior-feature lesson)
+let productName = "Acme" // PascalCase — avoids the dir-derived-lowercase build break (prior-feature lesson)
 
 // ---- repo layout ------------------------------------------------------------------------------
 
 let repoRoot =
     let rec find dir =
-        if File.Exists(Path.Combine(dir, "FS.GG.Rendering.slnx")) then dir
+        if File.Exists(Path.Combine(dir, "FS.GG.Rendering.slnx")) then
+            dir
         else
             match Directory.GetParent dir |> Option.ofObj with
             | Some p -> find p.FullName
             | None -> failwith "Could not locate repository root (FS.GG.Rendering.slnx)."
+
     find __SOURCE_DIRECTORY__
 
 let repoPath (rel: string) =
     Path.Combine(repoRoot, rel.Replace('/', Path.DirectorySeparatorChar))
 
-let reportRelPath = "specs/210-lifecycle-template-closure/readiness/epic-acceptance.md"
+let reportRelPath =
+    "specs/210-lifecycle-template-closure/readiness/epic-acceptance.md"
 
 // ---- helpers ----------------------------------------------------------------------------------
 
 let private assertTrue cond msg =
-    if not cond then failwithf "ACCEPTANCE FAIL: %s" msg
+    if not cond then
+        failwithf "ACCEPTANCE FAIL: %s" msg
 
 // A failure blob that carries one of these is the ENVIRONMENT failing to reach a feed, not the
 // artifact under test failing. Shared by the build spot-check and the packaged reference recipe:
@@ -98,8 +103,14 @@ let private assertTrue cond msg =
 // failed restore emits them. The rest are heuristic — `"nuget.org"` is merely a source name, and
 // any script that restores from it can echo it while failing for an entirely unrelated reason.
 let private restoreFailureMarkers =
-    [ "NU1101"; "NU1102"; "NU1301"; "Unable to load the service index"
-      "No such host"; "actively refused" ]
+    [
+        "NU1101"
+        "NU1102"
+        "NU1301"
+        "Unable to load the service index"
+        "No such host"
+        "actively refused"
+    ]
 
 let private envLimitedMarkers =
     restoreFailureMarkers @ [ "nuget.org"; "Unable to resolve"; "network" ]
@@ -120,17 +131,28 @@ let private runProc (workDir: string) (exe: string) (args: string list) =
 // A relative path is "gated" iff it lives under one of the gated lifecycle roots (reused from 204).
 let private isGatedPath (rel: string) =
     let p = rel.Replace('\\', '/')
-    p.StartsWith ".specify/" || p.StartsWith ".agents/" || p.StartsWith ".claude/"
-    || p = "CLAUDE.md" || p = "AGENTS.md"
+
+    p.StartsWith ".specify/"
+    || p.StartsWith ".agents/"
+    || p.StartsWith ".claude/"
+    || p = "CLAUDE.md"
+    || p = "AGENTS.md"
 
 let private relFilesSet (root: string) =
     Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories)
     |> Seq.map (fun f -> Path.GetRelativePath(root, f).Replace('\\', '/'))
-    |> Seq.filter (fun rel -> not (rel.Contains "/bin/" || rel.Contains "/obj/" || rel.StartsWith "bin/" || rel.StartsWith "obj/"))
+    |> Seq.filter (fun rel ->
+        not (
+            rel.Contains "/bin/"
+            || rel.Contains "/obj/"
+            || rel.StartsWith "bin/"
+            || rel.StartsWith "obj/"
+        ))
     |> Set.ofSeq
 
 let private treeFingerprint (root: string) =
     use sha = System.Security.Cryptography.SHA256.Create()
+
     relFilesSet root
     |> Set.toList
     |> List.map (fun rel ->
@@ -158,10 +180,12 @@ let private productPresent (dir: string) =
 // (copyOnly governance REFERENCE docs that merely document the skill convention are out of scope,
 // per Feature 204.)
 let private directiveAgentDocs = [ "CLAUDE.md"; "AGENTS.md"; "README.md" ]
+
 let private hasOrchestratorMarker (dir: string) =
     directiveAgentDocs
     |> List.exists (fun d ->
         let p = Path.Combine(dir, d)
+
         File.Exists p
         && (let txt = File.ReadAllText p
             [ ".specify/"; ".agents/"; ".claude/" ] |> List.exists txt.Contains))
@@ -170,20 +194,37 @@ let private hasOrchestratorMarker (dir: string) =
 
 let private verifyVerdictCore () =
     assertTrue (Directory.Exists feedDir) (sprintf "local feed dir missing: %s" feedDir)
-    assertTrue (File.Exists nupkgPath)
+
+    assertTrue
+        (File.Exists nupkgPath)
         (sprintf "pinned package absent from feed: %s (pack it before running acceptance)" nupkgPath)
+
     assertTrue (lifecycleValues = [ "spec-kit"; "sdd"; "none" ]) "lifecycle value set drifted"
     assertTrue (profiles = [ "app"; "headless-scene"; "governed"; "sample-pack" ]) "profile set drifted"
-    printfn "verdict-core OK: %s %s present in feed; lifecycle=%s; profiles=%s"
-        packageId packageVersion (String.concat "," lifecycleValues) (String.concat "," profiles)
+
+    printfn
+        "verdict-core OK: %s %s present in feed; lifecycle=%s; profiles=%s"
+        packageId
+        packageVersion
+        (String.concat "," lifecycleValues)
+        (String.concat "," profiles)
 
 // ---- live install / matrix (env-gated) --------------------------------------------------------
 
 let private installPinned () =
     let code, out, err =
-        runProc repoRoot "dotnet"
-            [ "new"; "install"; sprintf "%s::%s" packageId packageVersion
-              "--add-source"; feedDir; "--force" ]
+        runProc
+            repoRoot
+            "dotnet"
+            [
+                "new"
+                "install"
+                sprintf "%s::%s" packageId packageVersion
+                "--add-source"
+                feedDir
+                "--force"
+            ]
+
     assertTrue (code = 0) (sprintf "install of %s::%s failed (exit %d):\n%s\n%s" packageId packageVersion code out err)
 
 let private uninstallPinned () =
@@ -193,49 +234,105 @@ let private uninstallPinned () =
 /// source install (R1). `dotnet new uninstall` (no arg) lists installed packages + their versions.
 let private confirmPackageResolution () =
     let _, out, _ = runProc repoRoot "dotnet" [ "new"; "uninstall" ]
-    assertTrue (out.Contains packageId && out.Contains packageVersion)
-        (sprintf "installed templates do not show %s %s — fs-gg-ui may resolve to a working-tree source (R1)" packageId packageVersion)
+
+    assertTrue
+        (out.Contains packageId && out.Contains packageVersion)
+        (sprintf
+            "installed templates do not show %s %s — fs-gg-ui may resolve to a working-tree source (R1)"
+            packageId
+            packageVersion)
+
     let code, listOut, _ = runProc repoRoot "dotnet" [ "new"; "list"; "fs-gg-ui" ]
-    assertTrue (code = 0 && (listOut.Contains "fs-gg-ui" || listOut.Contains "FS GG UI"))
+
+    assertTrue
+        (code = 0 && (listOut.Contains "fs-gg-ui" || listOut.Contains "FS GG UI"))
         "dotnet new list did not resolve the fs-gg-ui short name after install"
 
 let private scaffold (tmpRoot: string) (profile: string) (lifecycle: string) (outSubdir: string) =
     let outDir = Path.Combine(tmpRoot, outSubdir)
-    if Directory.Exists outDir then Directory.Delete(outDir, true)
-    let args = [ "new"; "fs-gg-ui"; "--name"; productName; "--profile"; profile; "--lifecycle"; lifecycle; "-o"; outDir ]
+
+    if Directory.Exists outDir then
+        Directory.Delete(outDir, true)
+
+    let args =
+        [
+            "new"
+            "fs-gg-ui"
+            "--name"
+            productName
+            "--profile"
+            profile
+            "--lifecycle"
+            lifecycle
+            "-o"
+            outDir
+        ]
+
     let code, out, err = runProc repoRoot "dotnet" args
+
     let complete =
         File.Exists(Path.Combine(outDir, "Directory.Build.props"))
-        && Directory.EnumerateFiles(outDir, "*.fsproj", SearchOption.AllDirectories) |> Seq.isEmpty |> not
+        && Directory.EnumerateFiles(outDir, "*.fsproj", SearchOption.AllDirectories)
+           |> Seq.isEmpty
+           |> not
+
     if not complete then
         failwithf "dotnet new failed for %s/%s (exit %d):\n%s\n%s" lifecycle profile code out err
+
     outDir
 
 /// Scaffold the no-flag default (no --lifecycle) — must equal explicit spec-kit byte-for-byte.
 let private scaffoldDefault (tmpRoot: string) (profile: string) (outSubdir: string) =
     let outDir = Path.Combine(tmpRoot, outSubdir)
-    if Directory.Exists outDir then Directory.Delete(outDir, true)
-    let args = [ "new"; "fs-gg-ui"; "--name"; productName; "--profile"; profile; "-o"; outDir ]
+
+    if Directory.Exists outDir then
+        Directory.Delete(outDir, true)
+
+    let args =
+        [ "new"; "fs-gg-ui"; "--name"; productName; "--profile"; profile; "-o"; outDir ]
+
     let code, out, err = runProc repoRoot "dotnet" args
+
     if not (File.Exists(Path.Combine(outDir, "Directory.Build.props"))) then
         failwithf "dotnet new (default) failed for %s (exit %d):\n%s\n%s" profile code out err
+
     outDir
 
 let private scaffoldExpectFail (tmpRoot: string) (outSubdir: string) (lifecycle: string) =
     let outDir = Path.Combine(tmpRoot, outSubdir)
-    if Directory.Exists outDir then Directory.Delete(outDir, true)
-    let code, _, _ = runProc repoRoot "dotnet"
-                        [ "new"; "fs-gg-ui"; "--name"; productName; "--profile"; "app"; "--lifecycle"; lifecycle; "-o"; outDir ]
+
+    if Directory.Exists outDir then
+        Directory.Delete(outDir, true)
+
+    let code, _, _ =
+        runProc
+            repoRoot
+            "dotnet"
+            [
+                "new"
+                "fs-gg-ui"
+                "--name"
+                productName
+                "--profile"
+                "app"
+                "--lifecycle"
+                lifecycle
+                "-o"
+                outDir
+            ]
+
     let treeExists = File.Exists(Path.Combine(outDir, "Directory.Build.props"))
     code, treeExists
 
 // ---- per-profile assertions (live, step 3) ----------------------------------------------------
 
 type private ProfileVerdict =
-    { Profile: string
-      SpecKit: string     // gated-present + diff-vs-baseline=none
-      Sdd: string         // gated-absent + product-present + diff-vs-default=gated-only
-      None_: string }     // gated-absent + no-orchestrator-marker + none==sdd
+    {
+        Profile: string
+        SpecKit: string // gated-present + diff-vs-baseline=none
+        Sdd: string // gated-absent + product-present + diff-vs-default=gated-only
+        None_: string
+    } // gated-absent + no-orchestrator-marker + none==sdd
 
 let private validateProfile (tmpRoot: string) (profile: string) =
     let def = scaffoldDefault tmpRoot profile (sprintf "%s-default" profile)
@@ -245,7 +342,8 @@ let private validateProfile (tmpRoot: string) (profile: string) =
     assertTrue (productPresent speckit) (sprintf "%s/spec-kit: product missing" profile)
     // byte-identical default: no-flag default == explicit spec-kit (presence + content). This is the
     // reproducible stand-in for "identical to the pre-lifecycle baseline" (204 proved baseline==today).
-    assertTrue (treeFingerprint def = treeFingerprint speckit)
+    assertTrue
+        (treeFingerprint def = treeFingerprint speckit)
         (sprintf "%s: no-flag default differs from explicit spec-kit (byte-identical default broken)" profile)
 
     let sdd = scaffold tmpRoot profile "sdd" (sprintf "%s-sdd" profile)
@@ -255,25 +353,36 @@ let private validateProfile (tmpRoot: string) (profile: string) =
     let defSet = relFilesSet def
     let sddSet = relFilesSet sdd
     let added = Set.difference sddSet defSet
-    assertTrue (Set.isEmpty added)
+
+    assertTrue
+        (Set.isEmpty added)
         (sprintf "%s/sdd: added non-default files: %s" profile (String.concat ", " (Set.toList added)))
-    let nonGatedRemoved = Set.difference defSet sddSet |> Set.filter (isGatedPath >> not)
-    assertTrue (Set.isEmpty nonGatedRemoved)
+
+    let nonGatedRemoved =
+        Set.difference defSet sddSet |> Set.filter (isGatedPath >> not)
+
+    assertTrue
+        (Set.isEmpty nonGatedRemoved)
         (sprintf "%s/sdd: removed NON-gated files: %s" profile (String.concat ", " (Set.toList nonGatedRemoved)))
 
     let none_ = scaffold tmpRoot profile "none" (sprintf "%s-none" profile)
     assertTrue (gatedAbsent none_) (sprintf "%s/none: gated set not fully absent" profile)
     assertTrue (productPresent none_) (sprintf "%s/none: product missing" profile)
-    assertTrue (not (hasOrchestratorMarker none_))
-        (sprintf "%s/none: a directive agent-context doc references a suppressed path (orchestrator marker present)" profile)
-    // none == sdd at the template level.
-    assertTrue (treeFingerprint none_ = treeFingerprint sdd)
-        (sprintf "%s: none tree differs from sdd tree" profile)
 
-    { Profile = profile
-      SpecKit = "gated-present=ok product-present=ok diff-vs-baseline=none"
-      Sdd = "gated-absent=ok product-present=ok diff-vs-default=gated-only"
-      None_ = "gated-absent=ok no-orchestrator-marker=ok none==sdd" }
+    assertTrue
+        (not (hasOrchestratorMarker none_))
+        (sprintf
+            "%s/none: a directive agent-context doc references a suppressed path (orchestrator marker present)"
+            profile)
+    // none == sdd at the template level.
+    assertTrue (treeFingerprint none_ = treeFingerprint sdd) (sprintf "%s: none tree differs from sdd tree" profile)
+
+    {
+        Profile = profile
+        SpecKit = "gated-present=ok product-present=ok diff-vs-baseline=none"
+        Sdd = "gated-absent=ok product-present=ok diff-vs-default=gated-only"
+        None_ = "gated-absent=ok no-orchestrator-marker=ok none==sdd"
+    }
 
 let private validateUnknownRejected (tmpRoot: string) =
     let code, treeExists = scaffoldExpectFail tmpRoot "bogus" "bogus"
@@ -290,11 +399,19 @@ let private buildSpotCheck (sddAppDir: string) (noneAppDir: string) =
     let buildOne (dir: string) =
         // The generated product ships no solution file; the product project is src/<name>/<name>.fsproj.
         let proj = Path.Combine(dir, "src", productName, sprintf "%s.fsproj" productName)
-        let code, out, err = runProc dir "dotnet" [ "build"; proj; "-c"; "Debug"; "--nologo" ]
+
+        let code, out, err =
+            runProc dir "dotnet" [ "build"; proj; "-c"; "Debug"; "--nologo" ]
+
         let blob = out + "\n" + err
-        if code = 0 then true
-        elif envLimitedMarkers |> List.exists blob.Contains then false
-        else failwithf "build spot-check FAILED (real failure, not environment) in %s (exit %d):\n%s" dir code blob
+
+        if code = 0 then
+            true
+        elif envLimitedMarkers |> List.exists blob.Contains then
+            false
+        else
+            failwithf "build spot-check FAILED (real failure, not environment) in %s (exit %d):\n%s" dir code blob
+
     match buildOne sddAppDir, buildOne noneAppDir with
     | true, true -> "pass", "sdd/app exit 0; none/app exit 0"
     | _ ->
@@ -323,8 +440,12 @@ let private buildSpotCheck (sddAppDir: string) (noneAppDir: string) =
 /// close (SC-007).
 let private symbologyReferenceCheck (specKitAppDir: string) =
     let relPath = ".agents/skills/fs-gg-symbology/reference.fsx"
-    let script = Path.Combine(specKitAppDir, relPath.Replace('/', Path.DirectorySeparatorChar))
-    assertTrue (File.Exists script)
+
+    let script =
+        Path.Combine(specKitAppDir, relPath.Replace('/', Path.DirectorySeparatorChar))
+
+    assertTrue
+        (File.Exists script)
         (sprintf "packaged fs-gg-symbology reference recipe missing from the spec-kit scaffold at %s" relPath)
 
     // Which recipe actually landed? The `#r` header is the whole difference between the two twins:
@@ -345,8 +466,11 @@ let private symbologyReferenceCheck (specKitAppDir: string) =
     let refLines =
         File.ReadAllLines script
         |> Array.filter (fun l -> l.TrimStart().StartsWith "#r ")
+
     let refsDebugDll = refLines |> Array.exists (fun l -> l.Contains "bin/Debug")
-    let refsNugetPackages = refLines |> Array.exists (fun l -> l.Contains "nuget: FS.GG.UI.")
+
+    let refsNugetPackages =
+        refLines |> Array.exists (fun l -> l.Contains "nuget: FS.GG.UI.")
 
     if refsDebugDll || not refsNugetPackages then
         failwithf
@@ -359,7 +483,8 @@ let private symbologyReferenceCheck (specKitAppDir: string) =
              directory. This file is frozen at 0.1.51 (#321), where that shadowing was still present;\n\
              #303 (Feature 231) fixed it, so packages >= 0.1.62 do not hit this drift.\n\
              --- materialized #r directives ---\n%s"
-            relPath (String.concat "\n" refLines)
+            relPath
+            (String.concat "\n" refLines)
 
     // Run from the scaffold: the product's NuGet.config is what resolves the `#r "nuget:"` lines,
     // and the recipe writes its PNGs under Path.GetTempPath(), never the working directory.
@@ -396,7 +521,8 @@ let private symbologyReferenceCheck (specKitAppDir: string) =
             sprintf
                 "packaged symbology reference recipe leads its pinned published library (FsGgUiVersion) at %s — \
                  a merged-but-unshipped library behaviour change; green follows the publish. Recipe output:\n%s"
-                relPath out
+                relPath
+                out
         elif restoreFailureMarkers |> List.exists blob.Contains then
             "environment-limited",
             "packaged FS.GG.UI.* could not be restored from the feed; the packaged recipe was not asserted to run"
@@ -405,42 +531,63 @@ let private symbologyReferenceCheck (specKitAppDir: string) =
                 "packaged symbology reference recipe does not COMPILE at %s (exit %d).\n\
                  The feed answered (no NuGet restore diagnostic), so this is the artifact, not the\n\
                  environment: the packaged recipe has drifted from the published library's surface.\n%s"
-                relPath code blob
+                relPath
+                code
+                blob
         elif envLimitedMarkers |> List.exists blob.Contains then
             "environment-limited",
             "packaged FS.GG.UI.* could not be restored from the feed; the packaged recipe was not asserted to run"
         else
-            failwithf "packaged symbology reference recipe FAILED (real failure, not environment) at %s (exit %d):\n%s"
-                relPath code blob
+            failwithf
+                "packaged symbology reference recipe FAILED (real failure, not environment) at %s (exit %d):\n%s"
+                relPath
+                code
+                blob
     else
         // The script fails loud on its own (`failwith` on both rounds). Pinning the output here makes
         // the expected sequence part of the gate rather than a comment that can drift from the code
         // beneath it — and proves the packaged twin demonstrates the SAME loop as the in-tree one.
         let must (pattern: string) (why: string) =
-            assertTrue (Regex.IsMatch(out, pattern, RegexOptions.Multiline))
+            assertTrue
+                (Regex.IsMatch(out, pattern, RegexOptions.Multiline))
                 (sprintf "packaged symbology reference recipe: %s\n--- stdout ---\n%s" why out)
 
-        must @"^round 1: HasWarnings$"
+        must
+            @"^round 1: HasWarnings$"
             "round 1 must score HasWarnings — the recipe teaches the loop by showing a warning"
-        must @"Speed overloaded: 5 distinct levels used, capacity 4"
+
+        must
+            @"Speed overloaded: 5 distinct levels used, capacity 4"
             "round 1 must name Speed as the overloaded channel, over capacity 4"
-        must @"^\s+units: \[4\]$"
+
+        must
+            @"^\s+units: \[4\]$"
             "round 1 must name ONLY the units past capacity (expected [4]); naming the whole board is the #295 regression"
-        must @"^round 2 \(after tweak\): Clean$"
+
+        must
+            @"^round 2 \(after tweak\): Clean$"
             "round 2 must score Clean — the ChannelMap tweak has to clear every finding"
+
         for grammar in [ "Token"; "Badge"; "Ring" ] do
-            must (sprintf @"^%s\s+board PNG: " grammar)
+            must
+                (sprintf @"^%s\s+board PNG: " grammar)
                 (sprintf "one unchanged mapUnit must render a %s board via galleryIn" grammar)
 
-        "pass",
-        "packaged reference.fsx exit 0: seeded overload -> named unit 4 -> tweak -> Clean -> 3 grammars"
+        "pass", "packaged reference.fsx exit 0: seeded overload -> named unit 4 -> tweak -> Clean -> 3 grammars"
 
 // ---- record writer (T009) ---------------------------------------------------------------------
 
-let private renderRecord (provenance: string) (verdicts: ProfileVerdict list)
-                         (unknown: string) (buildability: string) (buildDetail: string)
-                         (symbology: string) (symbologyDetail: string)
-                         (sddIssueUrl: string) (constitutionItem: string) =
+let private renderRecord
+    (provenance: string)
+    (verdicts: ProfileVerdict list)
+    (unknown: string)
+    (buildability: string)
+    (buildDetail: string)
+    (symbology: string)
+    (symbologyDetail: string)
+    (sddIssueUrl: string)
+    (constitutionItem: string)
+    =
     let sb = StringBuilder()
     let line (s: string) = sb.Append(s).Append('\n') |> ignore
     line "# Epic Acceptance — Lifecycle-Agnostic FS.GG.UI Template"
@@ -450,7 +597,10 @@ let private renderRecord (provenance: string) (verdicts: ProfileVerdict list)
     line ""
     line (sprintf "validated_package: %s %s" packageId packageVersion)
     line (sprintf "tag_anchor:        %s" tagAnchor)
-    line "                   (NOTE: no dedicated template tag at 0.1.51; follow-up: tag fs-gg-ui-template/v0.1.51-preview.1)"
+
+    line
+        "                   (NOTE: no dedicated template tag at 0.1.51; follow-up: tag fs-gg-ui-template/v0.1.51-preview.1)"
+
     line (sprintf "provenance:        %s      # conclusion VALID only when live" provenance)
     line (sprintf "profiles:          [%s]" (String.concat ", " profiles))
     line ""
@@ -467,9 +617,16 @@ let private renderRecord (provenance: string) (verdicts: ProfileVerdict list)
     line "| none      | pass | pass | pass | pass | ABSENT (no orchestrator marker) | present/buildable |"
     line ""
     line "Per-profile detail (all four profiles asserted live):"
-    for v in verdicts do line (sprintf "- spec-kit/%s: %s" v.Profile v.SpecKit)
-    for v in verdicts do line (sprintf "- sdd/%s: %s" v.Profile v.Sdd)
-    for v in verdicts do line (sprintf "- none/%s: %s" v.Profile v.None_)
+
+    for v in verdicts do
+        line (sprintf "- spec-kit/%s: %s" v.Profile v.SpecKit)
+
+    for v in verdicts do
+        line (sprintf "- sdd/%s: %s" v.Profile v.Sdd)
+
+    for v in verdicts do
+        line (sprintf "- none/%s: %s" v.Profile v.None_)
+
     line (sprintf "- unknown-lifecycle-value: %s" unknown)
     line ""
     line "## Byte-identical default"
@@ -506,16 +663,19 @@ let private renderRecord (provenance: string) (verdicts: ProfileVerdict list)
     line ""
     line "## Conclusion"
     let closeEligible = provenance = "live" && buildability <> "FAILED"
+
     if closeEligible then
         line "Rendering-side: **CLOSE** — the published 0.1.51-preview.1 package emits the full Spec Kit"
         line "lifecycle surface only under spec-kit, suppresses it (product intact) under sdd/none, the"
         line "no-flag default is byte-identical to spec-kit across all four profiles, and the app-profile"
         line "sdd/none outputs build (or buildability is disclosed environment-limited)."
+
         if symbology <> "pass" then
             line ""
             line (sprintf "CAVEAT (Constitution V): packaged-reference-recipe = %s. The skill's one runnable" symbology)
             line "artifact was NOT asserted to run against the published feed on this pass, so the CLOSE above"
             line "does not cover it. Re-run where the feed is reachable to lift this caveat."
+
         line ""
         line "Cross-repo remainder state (US3): both SDD-owned items the spec/204 assumed open are, at"
         line "implementation time, already tracked once and **Done** on the Coordination board — so no open"
@@ -524,6 +684,7 @@ let private renderRecord (provenance: string) (verdicts: ProfileVerdict list)
     else
         line "Rendering-side: **DON'T-CLOSE (provisional)** — this record is provenance: verdict-core"
         line "(synthesized fresh-checkout fallback). Re-run the live gate for a CLOSE-eligible record."
+
     line "Epic-fully-done: ACHIEVABLE — no open cross-repo remainder item remains (both Done on the"
     line "Coordination board). The invariant \"false while any remainder is open\" holds vacuously."
     sb.ToString()
@@ -537,10 +698,12 @@ let private writeRecord (content: string) =
 let private synthVerdicts () =
     profiles
     |> List.map (fun p ->
-        { Profile = p
-          SpecKit = "gated-present=ok product-present=ok diff-vs-baseline=none"
-          Sdd = "gated-absent=ok product-present=ok diff-vs-default=gated-only"
-          None_ = "gated-absent=ok no-orchestrator-marker=ok none==sdd" })
+        {
+            Profile = p
+            SpecKit = "gated-present=ok product-present=ok diff-vs-baseline=none"
+            Sdd = "gated-absent=ok product-present=ok diff-vs-default=gated-only"
+            None_ = "gated-absent=ok no-orchestrator-marker=ok none==sdd"
+        })
 
 // US3 cross-repo remainder (T016/T017/T018). At implementation time BOTH items the spec/204 assumed
 // open are already tracked AND resolved on the FS-GG Coordination board — no open blocker remains:
@@ -550,6 +713,7 @@ let private synthVerdicts () =
 //      (FR-010) makes this the canonical tracker; a freshly-filed SDD issue would duplicate it.
 let private sddIssuePlaceholder =
     "FS-GG/FS.GG.SDD#1 (https://github.com/FS-GG/FS.GG.SDD/issues/1) — scaffold-path git-init/chmod obligations — RESOLVED (closed 2026-06-27; Coordination board item Done)"
+
 let private constitutionPlaceholder =
     "Coordination board decision \"P0 · cross-repo — Constitution ownership for lifecycle=sdd (Rendering vs SDD)\" (DI_lADOEYAWY84Bb08WzgKrVHM) — RESOLVED (status Done; downstream P2 implementation Done). Reused per FR-010 dedupe — not re-filed."
 
@@ -559,14 +723,23 @@ let private main () =
     verifyVerdictCore ()
 
     let emitReport = fsi.CommandLineArgs |> Array.exists (fun a -> a = "--emit-report")
-    let liveGate = Environment.GetEnvironmentVariable "FS_GG_RUN_PUBLISHED_ACCEPTANCE" = "1"
+
+    let liveGate =
+        Environment.GetEnvironmentVariable "FS_GG_RUN_PUBLISHED_ACCEPTANCE" = "1"
 
     if emitReport && not liveGate then
         let record =
-            renderRecord "verdict-core" (synthVerdicts ()) "rejected"
-                "environment-limited" "verdict-core: live build spot-check not run"
-                "environment-limited" "verdict-core: packaged reference recipe not run"
-                sddIssuePlaceholder constitutionPlaceholder
+            renderRecord
+                "verdict-core"
+                (synthVerdicts ())
+                "rejected"
+                "environment-limited"
+                "verdict-core: live build spot-check not run"
+                "environment-limited"
+                "verdict-core: packaged reference recipe not run"
+                sddIssuePlaceholder
+                constitutionPlaceholder
+
         writeRecord record
         0
     elif not liveGate then
@@ -576,30 +749,46 @@ let private main () =
         0
     else
         let tmpRoot = Path.Combine(Path.GetTempPath(), "fs-gg-published-acceptance")
-        if Directory.Exists tmpRoot then Directory.Delete(tmpRoot, true)
+
+        if Directory.Exists tmpRoot then
+            Directory.Delete(tmpRoot, true)
+
         Directory.CreateDirectory tmpRoot |> ignore
         installPinned ()
+
         try
             confirmPackageResolution ()
             let verdicts = profiles |> List.map (validateProfile tmpRoot)
             let unknown = validateUnknownRejected tmpRoot
+
             let buildability, buildDetail =
-                buildSpotCheck
-                    (Path.Combine(tmpRoot, "app-sdd"))
-                    (Path.Combine(tmpRoot, "app-none"))
+                buildSpotCheck (Path.Combine(tmpRoot, "app-sdd")) (Path.Combine(tmpRoot, "app-none"))
             // The gated `.agents/` tree exists only under lifecycle=spec-kit; validateProfile left
             // every scaffold on disk, so the app/spec-kit output is still there to run.
             let symbology, symbologyDetail =
                 symbologyReferenceCheck (Path.Combine(tmpRoot, "app-speckit"))
+
             let record =
-                renderRecord "live" verdicts unknown buildability buildDetail
-                    symbology symbologyDetail
-                    sddIssuePlaceholder constitutionPlaceholder
+                renderRecord
+                    "live"
+                    verdicts
+                    unknown
+                    buildability
+                    buildDetail
+                    symbology
+                    symbologyDetail
+                    sddIssuePlaceholder
+                    constitutionPlaceholder
+
             writeRecord record
             printfn "%s" record
             0
         finally
             uninstallPinned ()
-            try Directory.Delete(tmpRoot, true) with _ -> ()
+
+            try
+                Directory.Delete(tmpRoot, true)
+            with _ ->
+                ()
 
 exit (main ())

@@ -13,7 +13,10 @@ module Navigation2 =
 
     module Pagination =
         let create attrs = Control.create "pagination" attrs
-        let total pages = Attr.create "value" Content (FloatValue(float pages))
+
+        let total pages =
+            Attr.create "value" Content (FloatValue(float pages))
+
         let onChange map = onPayload "onChange" map
 
     module Segmented =

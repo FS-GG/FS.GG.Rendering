@@ -29,17 +29,29 @@ let private mapCommand (cmd: CommandId) : Msg option = Some(Command cmd)
 
 // The keymap-backed host `MapKey`: it binds Enter (which the button ALSO activates on) and 'q' (which no
 // focused control consumes). Same seam a product wires via issue 333.
-let private keymap = Keymap.empty |> Keymap.add "Enter" "Confirm" |> Keymap.add "q" "Quit"
+let private keymap =
+    Keymap.empty |> Keymap.add "Enter" "Confirm" |> Keymap.add "q" "Quit"
+
 let private hostMapKey = ViewerKeyboard.mapKeyOfKeymap keymap mapCommand
 
 let private view: Control<Msg> =
     Stack.create
-        [ Stack.children [ Button.create [ Button.text "Go"; Button.onClick Activated ] |> Control.withKey "btn" ] ]
+        [
+            Stack.children
+                [
+                    Button.create [ Button.text "Go"; Button.onClick Activated ]
+                    |> Control.withKey "btn"
+                ]
+        ]
 
-let private rinit (c: Control<'msg>) : RetainedRender<'msg> = (RetainedRender.init theme size c).Retained
+let private rinit (c: Control<'msg>) : RetainedRender<'msg> =
+    (RetainedRender.init theme size c).Retained
 
 let rec private findByKey (key: ControlId) (n: RetainedNode<'msg>) : RetainedNode<'msg> option =
-    if n.Control.Key = Some key then Some n else n.Children |> List.tryPick (findByKey key)
+    if n.Control.Key = Some key then
+        Some n
+    else
+        n.Children |> List.tryPick (findByKey key)
 
 let private idOfKey (key: ControlId) (r: RetainedRender<'msg>) : RetainedId option =
     findByKey key r.Root |> Option.map (fun n -> n.Identity)
@@ -56,34 +68,36 @@ let private focusRoute (r: RetainedRender<Msg>) (focused: RetainedId option) key
 let tests =
     testList
         "Issue 333 keymap precedence (focus tier wins over keymap-backed MapKey)"
-        [ test "a focused control consumes a key the keymap also binds — focus wins, keymap never reached" {
-              let r = rinit view
-              let btn = idOfKey "btn" r
+        [
+            test "a focused control consumes a key the keymap also binds — focus wins, keymap never reached" {
+                let r = rinit view
+                let btn = idOfKey "btn" r
 
-              // The keymap-backed MapKey DOES bind Enter (so the precedence is meaningful, not vacuous).
-              Expect.equal
-                  (hostMapKey ViewerKey.Enter true)
-                  (Some(Command "Confirm"))
-                  "the keymap-backed MapKey binds Enter"
+                // The keymap-backed MapKey DOES bind Enter (so the precedence is meaningful, not vacuous).
+                Expect.equal
+                    (hostMapKey ViewerKey.Enter true)
+                    (Some(Command "Confirm"))
+                    "the keymap-backed MapKey binds Enter"
 
-              // ...but the focused button activates on Enter at the focus tier, which `mapKey` consults
-              // FIRST; a non-empty result short-circuits, so `host.MapKey` (the keymap) is never reached.
-              Expect.equal
-                  (focusRoute r btn ViewerKey.Enter)
-                  [ Activated ]
-                  "focus traversal consumes Enter → activation, so the keymap-backed MapKey is never reached"
-          }
+                // ...but the focused button activates on Enter at the focus tier, which `mapKey` consults
+                // FIRST; a non-empty result short-circuits, so `host.MapKey` (the keymap) is never reached.
+                Expect.equal
+                    (focusRoute r btn ViewerKey.Enter)
+                    [ Activated ]
+                    "focus traversal consumes Enter → activation, so the keymap-backed MapKey is never reached"
+            }
 
-          test "a key no focused control consumes falls through to the keymap-backed MapKey" {
-              let r = rinit view
-              let btn = idOfKey "btn" r
+            test "a key no focused control consumes falls through to the keymap-backed MapKey" {
+                let r = rinit view
+                let btn = idOfKey "btn" r
 
-              // 'q' is neither an activation nor a navigation key, so the focus tier produces nothing...
-              Expect.isEmpty (focusRoute r btn (ViewerKey.Letter 'q')) "the focus tier does not consume 'q'"
+                // 'q' is neither an activation nor a navigation key, so the focus tier produces nothing...
+                Expect.isEmpty (focusRoute r btn (ViewerKey.Letter 'q')) "the focus tier does not consume 'q'"
 
-              // ...and `mapKey` then falls through to `host.MapKey` (the keymap), which resolves it.
-              Expect.equal
-                  (hostMapKey (ViewerKey.Letter 'q') true)
-                  (Some(Command "Quit"))
-                  "the keymap-backed MapKey is the fallthrough tier for a key no focused control consumes"
-          } ]
+                // ...and `mapKey` then falls through to `host.MapKey` (the keymap), which resolves it.
+                Expect.equal
+                    (hostMapKey (ViewerKey.Letter 'q') true)
+                    (Some(Command "Quit"))
+                    "the keymap-backed MapKey is the fallthrough tier for a key no focused control consumes"
+            }
+        ]

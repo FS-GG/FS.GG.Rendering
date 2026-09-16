@@ -30,9 +30,11 @@ type Source =
 /// (`Base`). The amount is already built and already rolled: stat mods, crits, and RNG belong to the
 /// caller's stat block and its own `Rng` stream, not here.
 type Damage<'K> =
-    { Kind: 'K
-      Source: Source
-      Base: float }
+    {
+        Kind: 'K
+        Source: Source
+        Base: float
+    }
 
 /// Public contract type exposed by the FS.GG.Game.Core package.
 /// What a `Stage` did to the running amount. `Halt` stops the pipeline immediately and skips every
@@ -58,8 +60,10 @@ type StageResult =
 /// `Name` is what a `DamageTrace` reports, so name a stage after the rule it encodes ("armor",
 /// "cover", "vulnerable"), not after its arithmetic.
 type Stage<'T, 'K> =
-    { Name: string
-      Run: 'T -> Damage<'K> -> float -> StageResult }
+    {
+        Name: string
+        Run: 'T -> Damage<'K> -> float -> StageResult
+    }
 
 /// Public contract type exposed by the FS.GG.Game.Core package.
 /// The full audit of one hit against one target: the amount the pipeline started from, every stage's
@@ -83,10 +87,12 @@ type Stage<'T, 'K> =
 ///
 /// Non-finite seeds degrade to `0.0`, as every other amount here does.
 type DamageTrace =
-    { Seed: float
-      Final: float
-      Halted: string voption
-      Steps: (string * float) list }
+    {
+        Seed: float
+        Final: float
+        Halted: string voption
+        Steps: (string * float) list
+    }
 
 /// Public contract module exposed by the FS.GG.Game.Core package.
 /// The **mitigation** layer: what an already-built, already-transported hit becomes once the target's
@@ -209,9 +215,7 @@ module Effects =
     /// One live instance of a status effect on one target. `TicksRemaining` counts **fixed steps**,
     /// never seconds; the conversion from authored seconds happens once, where the content is
     /// authored, and is never re-derived per frame.
-    type Active<'E> =
-        { Effect: 'E
-          TicksRemaining: int }
+    type Active<'E> = { Effect: 'E; TicksRemaining: int }
 
     /// Public contract type exposed by the FS.GG.Game.Core package.
     /// What a second application of an effect that is already active does. Four cases cover the corpus;

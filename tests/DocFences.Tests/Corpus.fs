@@ -22,20 +22,22 @@ module Corpus =
 
     /// One F# fence, located so a failure stays clickable.
     type FenceBlock =
-        { Kind: CorpusKind
-          /// Repo-relative path.
-          Doc: string
-          /// 1-based line of the opening fence in the original document.
-          StartLine: int
-          /// The fence's F# body lines, in order (delimiters excluded).
-          Body: string list
-          /// `Some reason` when an in-fence `docfences:skip` directive (T007) excludes this fence from the
-          /// compile set — an illustrative fragment, a signature block, deliberate pseudo-code. Local and
-          /// reason-carrying, this REPLACES the divorced `pinned-api-doc-ledger.txt` (FR-005/FR-010).
-          Skip: string option
-          /// Extra `open`s a `docfences:open <ns>` directive adds for THIS fence, on top of the corpus
-          /// preamble (D2) — the auditable answer to "which opens are in scope here".
-          ExtraOpens: string list }
+        {
+            Kind: CorpusKind
+            /// Repo-relative path.
+            Doc: string
+            /// 1-based line of the opening fence in the original document.
+            StartLine: int
+            /// The fence's F# body lines, in order (delimiters excluded).
+            Body: string list
+            /// `Some reason` when an in-fence `docfences:skip` directive (T007) excludes this fence from the
+            /// compile set — an illustrative fragment, a signature block, deliberate pseudo-code. Local and
+            /// reason-carrying, this REPLACES the divorced `pinned-api-doc-ledger.txt` (FR-005/FR-010).
+            Skip: string option
+            /// Extra `open`s a `docfences:open <ns>` directive adds for THIS fence, on top of the corpus
+            /// preamble (D2) — the auditable answer to "which opens are in scope here".
+            ExtraOpens: string list
+        }
 
     let private repoRoot = RepositoryRoot.value
 
@@ -53,14 +55,17 @@ module Corpus =
     let private directiveRegex =
         System.Text.RegularExpressions.Regex(
             @"<!--\s*docfences:(?<kind>skip|open)\b[:\s]*(?<arg>.*?)\s*-->",
-            System.Text.RegularExpressions.RegexOptions.Compiled)
+            System.Text.RegularExpressions.RegexOptions.Compiled
+        )
 
     let private parseDirective (text: string) : Directive option =
         let m = directiveRegex.Match text
+
         if not m.Success then
             None
         else
             let arg = m.Groups.["arg"].Value.Trim()
+
             match m.Groups.["kind"].Value with
             | "skip" -> Some(Skip(if arg = "" then "(no reason given)" else arg))
             | _ -> Some(Open arg)
@@ -73,8 +78,7 @@ module Corpus =
         let fsharp = MarkdownFences.fsharpLines scan
 
         // Text of every line, indexed by its 1-based number, so a block can look at the lines above it.
-        let byNumber =
-            scan.Lines |> List.map (fun l -> l.Number, l.Text) |> Map.ofList
+        let byNumber = scan.Lines |> List.map (fun l -> l.Number, l.Text) |> Map.ofList
 
         // Directives on the contiguous comment/blank lines just above the opening delimiter (which sits at
         // StartLine - 1). Walk upward, collecting directives, until a line is neither blank nor a directive.
@@ -94,12 +98,25 @@ module Corpus =
             let directives = directivesAbove startLine
 
             let skip =
-                directives |> List.tryPick (function Skip r -> Some r | _ -> None)
+                directives
+                |> List.tryPick (function
+                    | Skip r -> Some r
+                    | _ -> None)
 
             let opens =
-                directives |> List.choose (function Open ns -> Some ns | _ -> None)
+                directives
+                |> List.choose (function
+                    | Open ns -> Some ns
+                    | _ -> None)
 
-            { Kind = kindV; Doc = docV; StartLine = startLine; Body = body; Skip = skip; ExtraOpens = opens }
+            {
+                Kind = kindV
+                Doc = docV
+                StartLine = startLine
+                Body = body
+                Skip = skip
+                ExtraOpens = opens
+            }
 
         let rec fold acc current =
             match current with
@@ -108,7 +125,12 @@ module Corpus =
                 match acc with
                 | block :: older when line.Number = block.StartLine + List.length block.Body ->
                     // Contiguous with the block being built — extend it.
-                    fold ({ block with Body = block.Body @ [ line.Text ] } :: older) rest
+                    fold
+                        ({ block with
+                            Body = block.Body @ [ line.Text ]
+                         }
+                         :: older)
+                        rest
                 | _ ->
                     // Starts a new block. StartLine is the fence body's first line (the opening `` ``` ``
                     // delimiter sits at StartLine - 1).
@@ -142,6 +164,7 @@ module Corpus =
         fsSource.Replace("\r\n", "\n").Split('\n')
         |> Array.map (fun line ->
             let trimmed = line.TrimStart()
+
             if trimmed.StartsWith("///") then
                 // Drop the `///` and one optional following space; keep the rest verbatim.
                 let after = trimmed.Substring(3)
@@ -158,7 +181,8 @@ module Corpus =
         |> List.map (fun r -> Path.Combine(repoRoot, r.Replace('/', Path.DirectorySeparatorChar)))
         |> List.filter Directory.Exists
         |> List.collect (fun root ->
-            Directory.EnumerateFiles(root, "*.fs", SearchOption.AllDirectories) |> List.ofSeq)
+            Directory.EnumerateFiles(root, "*.fs", SearchOption.AllDirectories)
+            |> List.ofSeq)
         |> List.collect (fun path ->
             let doc = docCommentText (File.ReadAllText path)
             blocks (rel path) ScaffoldSource (MarkdownFences.scan doc))
@@ -166,14 +190,12 @@ module Corpus =
     /// Every fence-bearing corpus, paired with the fences found in it — so a caller can assert that a corpus
     /// which is SUPPOSED to carry fences has not silently gone empty (spec 255 FR-001, no-silent-drop).
     let all () : (CorpusKind * FenceBlock list) list =
-        [ ProductSkill, productSkillFences ()
-          ScaffoldSource, scaffoldSourceFences () ]
+        [ ProductSkill, productSkillFences (); ScaffoldSource, scaffoldSourceFences () ]
 
     /// A scan defect a caller must treat as a defect, not a curiosity: a document that ends inside a fence.
     /// Reported per-doc so the message names the file.
     let unclosedFenceDocs () : string list =
-        let roots =
-            [ Path.Combine(repoRoot, "template", "product-skills"), "*.md", id ]
+        let roots = [ Path.Combine(repoRoot, "template", "product-skills"), "*.md", id ]
 
         roots
         |> List.collect (fun (root, pattern, (transform: string -> string)) ->
@@ -183,7 +205,11 @@ module Corpus =
                 Directory.EnumerateFiles(root, pattern, SearchOption.AllDirectories)
                 |> Seq.choose (fun path ->
                     let text = transform ((File.ReadAllText path).Replace("\r\n", "\n"))
-                    if (MarkdownFences.scan text).UnclosedFence then Some(rel path) else None)
+
+                    if (MarkdownFences.scan text).UnclosedFence then
+                        Some(rel path)
+                    else
+                        None)
                 |> List.ofSeq)
 
 /// THE PER-CORPUS PREAMBLE (spec 255, T006 / D2).
@@ -200,15 +226,17 @@ module Preamble =
     /// The namespaces the pinned surface exposes that skill/scaffold fences bind against. Ordered so a
     /// later `open` shadows an earlier one predictably (F# resolves an unqualified name to the last `open`).
     let private productSkill =
-        [ "FS.GG.UI.Scene"
-          "FS.GG.UI.Layout"
-          "FS.GG.UI.KeyboardInput"
-          "FS.GG.UI.DesignSystem"
-          "FS.GG.UI.Symbology"
-          "FS.GG.UI.Testing"
-          "FS.GG.Game.Core"
-          "FS.GG.UI.Controls"
-          "FS.GG.UI.Elmish" ]
+        [
+            "FS.GG.UI.Scene"
+            "FS.GG.UI.Layout"
+            "FS.GG.UI.KeyboardInput"
+            "FS.GG.UI.DesignSystem"
+            "FS.GG.UI.Symbology"
+            "FS.GG.UI.Testing"
+            "FS.GG.Game.Core"
+            "FS.GG.UI.Controls"
+            "FS.GG.UI.Elmish"
+        ]
 
     /// The default `open`s for a corpus, before a fence's own `docfences:open` additions.
     let forKind (kind: CorpusKind) : string list =

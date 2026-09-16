@@ -5,13 +5,15 @@ open FS.GG.UI.Controls
 /// Immutable, compiler-checked authoring surface for a data grid. Reuses the
 /// existing `DataGridModel`/`Msg`/`Effect` — no parallel state type (FR-006).
 type DataGridProps<'msg> =
-    { Id: ControlId
-      Columns: DataGridColumn list
-      Rows: DataGridRow list
-      RowHeight: float
-      ViewportHeight: float
-      SelectedRows: Set<string>
-      OnSelectionChanged: (string list -> 'msg) option }
+    {
+        Id: ControlId
+        Columns: DataGridColumn list
+        Rows: DataGridRow list
+        RowHeight: float
+        ViewportHeight: float
+        SelectedRows: Set<string>
+        OnSelectionChanged: (string list -> 'msg) option
+    }
 
 /// Typed Props front door for the `DataGrid` control.
 module DataGrid =

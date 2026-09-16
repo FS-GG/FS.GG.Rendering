@@ -7,27 +7,31 @@ module Evidence =
 
     /// One run's machine-readable evidence (the `run.json` shape).
     type Evidence =
-        { RunId: string
-          Tier: Tier
-          Subcommand: string
-          Status: RunStatus
-          SkipReason: string option
-          ProofLevel: ProofLevel
-          AuthoritativeFor: string list
-          NotAuthoritativeFor: string list
-          Facts: ProbeFacts
-          Frames: int
-          P50Ms: float option
-          P95Ms: float option
-          P99Ms: float option
-          Artifacts: string list }
+        {
+            RunId: string
+            Tier: Tier
+            Subcommand: string
+            Status: RunStatus
+            SkipReason: string option
+            ProofLevel: ProofLevel
+            AuthoritativeFor: string list
+            NotAuthoritativeFor: string list
+            Facts: ProbeFacts
+            Frames: int
+            P50Ms: float option
+            P95Ms: float option
+            P99Ms: float option
+            Artifacts: string list
+        }
 
     /// Overlay parity evidence gathered by Feature 144 harness tests.
     type OverlayEvidence =
-        { ReplayLog: string list
-          ProductMessages: string list
-          HitOrder: string list
-          Diagnostics: string list }
+        {
+            ReplayLog: string list
+            ProductMessages: string list
+            HitOrder: string list
+            Diagnostics: string list
+        }
 
     /// Host capability state for Feature 145 overlay visual proof.
     type HostCapabilityStatus =
@@ -86,93 +90,109 @@ module Evidence =
 
     /// Representative overlay flow selected for Feature 145 visual proof.
     type OverlayVisualProofScenario =
-        { ScenarioId: string
-          InputSequence: string list
-          OpenStateStep: string
-          ClosedStateStep: string
-          ExpectedTopmostHitTarget: string
-          ExpectedFocusState: string
-          ExpectedDispatchSummary: string }
+        {
+            ScenarioId: string
+            InputSequence: string list
+            OpenStateStep: string
+            ClosedStateStep: string
+            ExpectedTopmostHitTarget: string
+            ExpectedFocusState: string
+            ExpectedDispatchSummary: string
+        }
 
     /// Outcome of probing whether the current host may claim real visual proof.
     type HostCapabilityResult =
-        { EffectiveBackend: string
-          Display: string option
-          GlRenderer: string option
-          CaptureAvailability: HostCaptureAvailability
-          Status: HostCapabilityStatus
-          Owner: string
-          Cause: string
-          NextProofPath: string
-          HostFacts: string list }
+        {
+            EffectiveBackend: string
+            Display: string option
+            GlRenderer: string option
+            CaptureAvailability: HostCaptureAvailability
+            Status: HostCapabilityStatus
+            Owner: string
+            Cause: string
+            NextProofPath: string
+            HostFacts: string list
+        }
 
     /// Human-inspectable file captured for one scenario state.
     type VisualArtifact =
-        { ArtifactId: string
-          Path: string
-          State: VisualArtifactState
-          Width: int
-          Height: int
-          PixelContentValidation: VisualPixelContentValidation
-          CaptureSource: VisualCaptureSource
-          RunId: string
-          ScenarioId: string
-          CreatedAt: System.DateTimeOffset
-          OverlayAboveContent: bool option
-          TopmostHitTarget: string option
-          NoStaleOverlayPixel: bool option }
+        {
+            ArtifactId: string
+            Path: string
+            State: VisualArtifactState
+            Width: int
+            Height: int
+            PixelContentValidation: VisualPixelContentValidation
+            CaptureSource: VisualCaptureSource
+            RunId: string
+            ScenarioId: string
+            CreatedAt: System.DateTimeOffset
+            OverlayAboveContent: bool option
+            TopmostHitTarget: string option
+            NoStaleOverlayPixel: bool option
+        }
 
     /// Metadata connecting pixels to deterministic overlay behavior.
     type OverlayVisualCorrelation =
-        { ScenarioId: string
-          InputStep: string
-          ExpectedOverlayState: ExpectedOverlayState
-          TopmostHitTarget: string option
-          FocusState: string
-          ProductDispatchSummary: string
-          ReplayLogReference: string
-          BehavioralEvidenceReference: string
-          ArtifactPath: string
-          OverlayAboveContent: bool option
-          NoStaleOverlayPixel: bool option }
+        {
+            ScenarioId: string
+            InputStep: string
+            ExpectedOverlayState: ExpectedOverlayState
+            TopmostHitTarget: string option
+            FocusState: string
+            ProductDispatchSummary: string
+            ReplayLogReference: string
+            BehavioralEvidenceReference: string
+            ArtifactPath: string
+            OverlayAboveContent: bool option
+            NoStaleOverlayPixel: bool option
+        }
 
     /// Disclosure record when real visual proof cannot be produced in the current environment.
     type UnsupportedHostLimitation =
-        { Owner: string
-          Cause: string
-          HostFacts: string list
-          NextProofPath: string
-          TrustRationale: string
-          NotAuthoritativeFor: string list }
+        {
+            Owner: string
+            Cause: string
+            HostFacts: string list
+            NextProofPath: string
+            TrustRationale: string
+            NotAuthoritativeFor: string list
+        }
 
     /// Final readiness statement for the Feature 144 visual-proof caveat.
     type ReadinessCaveatDecision =
-        { Caveat: string
-          Decision: ReadinessDecision
-          ArtifactPaths: string list
-          LimitationDetails: UnsupportedHostLimitation option
-          FailureCategory: VisualProofFailureCategory
-          NextWorkstreamGuidance: string
-          ReviewedAt: System.DateTimeOffset }
+        {
+            Caveat: string
+            Decision: ReadinessDecision
+            ArtifactPaths: string list
+            LimitationDetails: UnsupportedHostLimitation option
+            FailureCategory: VisualProofFailureCategory
+            NextWorkstreamGuidance: string
+            ReviewedAt: System.DateTimeOffset
+        }
 
     /// One validation execution for the selected scenario.
     type VisualProofRun =
-        { RunId: string
-          ScenarioId: string
-          HostCapability: HostCapabilityResult
-          Status: VisualProofStatus
-          OpenArtifact: VisualArtifact option
-          ClosedArtifact: VisualArtifact option
-          Correlations: OverlayVisualCorrelation list
-          FailureCategory: VisualProofFailureCategory
-          Limitation: UnsupportedHostLimitation option
-          ReadinessDecision: ReadinessCaveatDecision option }
+        {
+            RunId: string
+            ScenarioId: string
+            HostCapability: HostCapabilityResult
+            Status: VisualProofStatus
+            OpenArtifact: VisualArtifact option
+            ClosedArtifact: VisualArtifact option
+            Correlations: OverlayVisualCorrelation list
+            FailureCategory: VisualProofFailureCategory
+            Limitation: UnsupportedHostLimitation option
+            ReadinessDecision: ReadinessCaveatDecision option
+        }
 
     /// Validation result for artifact or correlation acceptance.
     type VisualProofValidationResult =
-        { Accepted: bool
-          FailureCategory: VisualProofFailureCategory
-          Diagnostics: string list }
+        {
+            Accepted: bool
+            FailureCategory: VisualProofFailureCategory
+            Diagnostics: string list
+        }
 
     /// Stable string forms used in the artifacts.
     val tierToken: tier: Tier -> string
@@ -223,14 +243,10 @@ module Evidence =
             VisualProofValidationResult
 
     /// Render an unsupported-host limitation.
-    val unsupportedHostLimitation:
-        host: HostCapabilityResult ->
-            UnsupportedHostLimitation
+    val unsupportedHostLimitation: host: HostCapabilityResult -> UnsupportedHostLimitation
 
     /// Evaluate whether the Feature 144 caveat is closed, gated, or failed.
-    val evaluateReadinessCaveat:
-        run: VisualProofRun ->
-            ReadinessCaveatDecision
+    val evaluateReadinessCaveat: run: VisualProofRun -> ReadinessCaveatDecision
 
     /// Render Feature 145 readiness records.
     val renderUnsupportedHostLimitation: limitation: UnsupportedHostLimitation -> string

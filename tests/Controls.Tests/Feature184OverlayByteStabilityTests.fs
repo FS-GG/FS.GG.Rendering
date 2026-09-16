@@ -12,8 +12,12 @@ open FS.GG.UI.Controls
 
 // The exact entry the overlay path produces (== what `legacyLower LegacyOverlay` returned pre-184).
 let private overlayEntry: Composition.ModifierEntry list =
-    [ { Composition.Source = Composition.LegacyOverlaySource
-        Composition.Effect = Composition.LayerHint "overlay" } ]
+    [
+        {
+            Composition.Source = Composition.LegacyOverlaySource
+            Composition.Effect = Composition.LayerHint "overlay"
+        }
+    ]
 
 // Baseline pinned from the pre-edit capture (T005, readiness/baseline/overlay-chain.txt).
 let private baselineOverlayFingerprint = 17605299260426849090UL
@@ -23,12 +27,15 @@ let private baselineOverlayFingerprintInput = "LegacyOverlaySource:layer:overlay
 let tests =
     testList
         "Feature184 overlay byte-stability (US2)"
-        [ test "overlay modifier chain is byte-identical to the pre-184 legacy-lowered entry" {
-              let normalized = Composition.normalize overlayEntry
-              let fp = Composition.fingerprint overlayEntry
-              Expect.equal fp baselineOverlayFingerprint "overlay fingerprint byte-stable vs T005 baseline"
-              Expect.equal
-                  normalized.FingerprintInput
-                  baselineOverlayFingerprintInput
-                  "overlay normalized fingerprint input byte-stable vs T005 baseline"
-          } ]
+        [
+            test "overlay modifier chain is byte-identical to the pre-184 legacy-lowered entry" {
+                let normalized = Composition.normalize overlayEntry
+                let fp = Composition.fingerprint overlayEntry
+                Expect.equal fp baselineOverlayFingerprint "overlay fingerprint byte-stable vs T005 baseline"
+
+                Expect.equal
+                    normalized.FingerprintInput
+                    baselineOverlayFingerprintInput
+                    "overlay normalized fingerprint input byte-stable vs T005 baseline"
+            }
+        ]

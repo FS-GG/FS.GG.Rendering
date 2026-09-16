@@ -6,24 +6,25 @@ open FS.GG.UI.Scene
 open FS.GG.UI.SkiaViewer
 
 /// Viewer host contract type (moved from the FS.GG.UI monolith, retyped onto FS.GG.UI.Scene).
-type DiagnosticOptions =
-    { Verbose: bool }
+type DiagnosticOptions = { Verbose: bool }
 
 [<NoEquality; NoComparison>]
 /// Viewer host contract type (moved from the FS.GG.UI monolith, retyped onto FS.GG.UI.Scene).
 type ViewerConfiguration =
-    { Title: string
-      InitialSize: Size
-      ClearColor: Color option
-      TargetFrameRate: int option
-      Diagnostics: DiagnosticOptions
-      /// Optional transform applied to the native WindowOptions just before window
-      /// creation, carrying window-startup intent into the live presented window.
-      ConfigureWindow: (Silk.NET.Windowing.WindowOptions -> Silk.NET.Windowing.WindowOptions) option
-      /// Live present mechanism (feature 118), threaded from `ViewerOptions.PresentMode`.
-      /// `renderFrame` branches on this; the default `OffscreenReadback` keeps the proven
-      /// readback present path byte-identical.
-      PresentMode: ViewerPresentMode }
+    {
+        Title: string
+        InitialSize: Size
+        ClearColor: Color option
+        TargetFrameRate: int option
+        Diagnostics: DiagnosticOptions
+        /// Optional transform applied to the native WindowOptions just before window
+        /// creation, carrying window-startup intent into the live presented window.
+        ConfigureWindow: (Silk.NET.Windowing.WindowOptions -> Silk.NET.Windowing.WindowOptions) option
+        /// Live present mechanism (feature 118), threaded from `ViewerOptions.PresentMode`.
+        /// `renderFrame` branches on this; the default `OffscreenReadback` keeps the proven
+        /// readback present path byte-identical.
+        PresentMode: ViewerPresentMode
+    }
 
 /// Viewer host contract type (moved from the FS.GG.UI monolith, retyped onto FS.GG.UI.Scene).
 [<RequireQualifiedAccess>]
@@ -55,10 +56,12 @@ type DiagnosticStage =
 
 /// Viewer host contract type (moved from the FS.GG.UI monolith, retyped onto FS.GG.UI.Scene).
 type RenderDiagnostic =
-    { Severity: DiagnosticSeverity
-      Stage: DiagnosticStage
-      Message: string
-      Cause: string option }
+    {
+        Severity: DiagnosticSeverity
+        Stage: DiagnosticStage
+        Message: string
+        Cause: string option
+    }
 
 /// Mouse button identity carried by host pointer press/release events (075, FR-013).
 type ViewerPointerButton =
@@ -102,8 +105,10 @@ type ScreenshotFormat =
 
 /// Viewer host contract type (moved from the FS.GG.UI monolith, retyped onto FS.GG.UI.Scene).
 type ScreenshotRequest =
-    { Destination: string
-      Format: ScreenshotFormat }
+    {
+        Destination: string
+        Format: ScreenshotFormat
+    }
 
 [<RequireQualifiedAccess>]
 /// Native presentation mode for a runtime window mutation.
@@ -115,11 +120,13 @@ type RuntimeWindowMode =
 
 /// Validated native-window mutation carried onto the loop thread.
 type RuntimeWindowBehavior =
-    { Mode: RuntimeWindowMode
-      Border: Silk.NET.Windowing.WindowBorder
-      Position: (int * int) option
-      Size: (int * int) option
-      Token: string }
+    {
+        Mode: RuntimeWindowMode
+        Border: Silk.NET.Windowing.WindowBorder
+        Position: (int * int) option
+        Size: (int * int) option
+        Token: string
+    }
 
 /// Viewer host contract type (moved from the FS.GG.UI monolith, retyped onto FS.GG.UI.Scene).
 type ViewerEffect<'msg> =
@@ -134,18 +141,26 @@ type ViewerEffect<'msg> =
 
 /// Viewer host contract type (moved from the FS.GG.UI monolith, retyped onto FS.GG.UI.Scene).
 type ViewerProgram<'model, 'msg> =
-    { Configuration: ViewerConfiguration
-      Init: unit -> 'model * Cmd<'msg>
-      Update: 'msg -> 'model -> 'model * Cmd<'msg>
-      View: 'model -> Scene
-      EventMapper: ViewerEvent -> 'msg option
-      EffectMapper: 'msg -> ViewerEffect<'msg> option
-      Subscriptions: 'model -> (string list * (Dispatch<'msg> -> IDisposable)) list }
+    {
+        Configuration: ViewerConfiguration
+        Init: unit -> 'model * Cmd<'msg>
+        Update: 'msg -> 'model -> 'model * Cmd<'msg>
+        View: 'model -> Scene
+        EventMapper: ViewerEvent -> 'msg option
+        EffectMapper: 'msg -> ViewerEffect<'msg> option
+        Subscriptions: 'model -> (string list * (Dispatch<'msg> -> IDisposable)) list
+    }
 
 /// Structured host diagnostics (moved with the host; behaviour preserved).
 module Diagnostics =
     /// Public contract function exposed by this FS.GG.UI package.
-    val create: severity: DiagnosticSeverity -> stage: DiagnosticStage -> message: string -> cause: string option -> RenderDiagnostic
+    val create:
+        severity: DiagnosticSeverity ->
+        stage: DiagnosticStage ->
+        message: string ->
+        cause: string option ->
+            RenderDiagnostic
+
     /// Public contract function exposed by this FS.GG.UI package.
     val unsupportedPlatform: platform: string -> RenderDiagnostic
     /// Public contract function exposed by this FS.GG.UI package.
@@ -183,6 +198,7 @@ module Diagnostics =
 
     /// Feature 157: frame diagnostic for no-clear damage-scoped decisions and fallback reasons.
     val damageScopedDecision: decision: string -> reason: string option -> RenderDiagnostic
+
     /// Converts a host render diagnostic into the shared runtime diagnostics taxonomy.
     val toRuntimeDiagnostic:
         context: FS.GG.UI.Diagnostics.DiagnosticContext ->

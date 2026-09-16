@@ -3,7 +3,14 @@
 open FS.GG.UI.Scene
 
 let scene =
-    Scene.filledRectangle { X = 0.0; Y = 0.0; Width = 120.0; Height = 80.0 } (Colors.rgb 24uy 28uy 36uy)
+    Scene.filledRectangle
+        {
+            X = 0.0
+            Y = 0.0
+            Width = 120.0
+            Height = 80.0
+        }
+        (Colors.rgb 24uy 28uy 36uy)
 
 let package = SceneCodec.export scene
 let report = SceneCodec.inspect package.CanonicalBytes

@@ -40,8 +40,4 @@ module Style =
     /// `StyleVariant`, any `Custom` string (unknown ⇒ identity delta, never an exception or
     /// silent drop), and all nine `VisualState` cases (FR-002, FR-004).
     val resolve:
-        theme: Theme ->
-        baseStyle: ResolvedStyle ->
-        classes: StyleClass list ->
-        state: VisualState ->
-            ResolvedStyle
+        theme: Theme -> baseStyle: ResolvedStyle -> classes: StyleClass list -> state: VisualState -> ResolvedStyle

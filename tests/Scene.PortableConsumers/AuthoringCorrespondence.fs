@@ -2,61 +2,262 @@ module AuthoringCorrespondence
 
 open FS.GG.UI.Scene
 
-let private fixture = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><defs><linearGradient id="paint"><stop offset="0" stop-color="#ff0000"/><stop offset="1" stop-color="#0000ff"/></linearGradient><clipPath id="clip"><rect x="0" y="0" width="30" height="30"/></clipPath><mask id="mask" x="0" y="0" width="32" height="32"><rect id="mask-body" x="0" y="0" width="32" height="32" fill="white"/></mask><symbol id="symbol" viewBox="0 0 4 4"><path id="symbol-path" d="M 0 0 L 4 0 L 4 4 Z" fill="white"/></symbol></defs><rect id="box" x="1" y="2" width="8" height="9" fill="url(#paint)" clip-path="url(#clip)" mask="url(#mask)"/><path id="route" d="M 2 3 C 4 5 6 7 8 9 Z" fill="#123456"/><use id="copy" href="#symbol"/></svg>"""
+let private fixture =
+    """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><defs><linearGradient id="paint"><stop offset="0" stop-color="#ff0000"/><stop offset="1" stop-color="#0000ff"/></linearGradient><clipPath id="clip"><rect x="0" y="0" width="30" height="30"/></clipPath><mask id="mask" x="0" y="0" width="32" height="32"><rect id="mask-body" x="0" y="0" width="32" height="32" fill="white"/></mask><symbol id="symbol" viewBox="0 0 4 4"><path id="symbol-path" d="M 0 0 L 4 0 L 4 4 Z" fill="white"/></symbol></defs><rect id="box" x="1" y="2" width="8" height="9" fill="url(#paint)" clip-path="url(#clip)" mask="url(#mask)"/><path id="route" d="M 2 3 C 4 5 6 7 8 9 Z" fill="#123456"/><use id="copy" href="#symbol"/></svg>"""
 
-let private code (result: Result<SvgDocument, SvgDocumentIssue list>) = match result with Ok _ -> "accepted" | Error issues -> issues.Head.Code
+let private code (result: Result<SvgDocument, SvgDocumentIssue list>) =
+    match result with
+    | Ok _ -> "accepted"
+    | Error issues -> issues.Head.Code
 
 let run runtime =
-    let request = { AssetNamespace = "portable"; DocumentId = "portable-authoring"; Limits = SvgDocument.defaultLimits }
-    let document = SvgImport.importXml request fixture |> Result.defaultWith (fun issues -> failwith $"portable import failed: {issues}")
-    let serialized = SvgDocument.serialize document |> Result.defaultWith (fun issues -> failwith $"portable serialization failed: {issues}")
-    let digest = SvgAsset.contentHash document |> Result.defaultWith (fun issues -> failwith $"portable hash failed: {issues}")
+    let request =
+        {
+            AssetNamespace = "portable"
+            DocumentId = "portable-authoring"
+            Limits = SvgDocument.defaultLimits
+        }
+
+    let document =
+        SvgImport.importXml request fixture
+        |> Result.defaultWith (fun issues -> failwith $"portable import failed: {issues}")
+
+    let serialized =
+        SvgDocument.serialize document
+        |> Result.defaultWith (fun issues -> failwith $"portable serialization failed: {issues}")
+
+    let digest =
+        SvgAsset.contentHash document
+        |> Result.defaultWith (fun issues -> failwith $"portable hash failed: {issues}")
+
     let asset =
-        { Schema = SvgAsset.schema; AssetId = "shape"; Revision = 1; ContentHash = digest
-          Rights = { License = "CC0-1.0"; Attribution = None; Source = None }; Dependencies = []; Document = document }
-    let catalog = { Schema = SvgAsset.catalogSchema; Assets = [ asset ] }
-    let catalogWire = SvgAsset.serializeCatalog catalog |> Result.defaultWith (fun issues -> failwith $"portable catalog serialization failed: {issues}")
-    let restoredCatalog = SvgAsset.deserializeCatalog catalogWire |> Result.defaultWith (fun issues -> failwith $"portable catalog deserialization failed: {issues}")
-    let state = SvgAuthoring.tryCreate 0 document restoredCatalog [] |> Result.defaultWith (fun error -> failwith $"portable state failed: {error}")
+        {
+            Schema = SvgAsset.schema
+            AssetId = "shape"
+            Revision = 1
+            ContentHash = digest
+            Rights =
+                {
+                    License = "CC0-1.0"
+                    Attribution = None
+                    Source = None
+                }
+            Dependencies = []
+            Document = document
+        }
+
+    let catalog =
+        {
+            Schema = SvgAsset.catalogSchema
+            Assets = [ asset ]
+        }
+
+    let catalogWire =
+        SvgAsset.serializeCatalog catalog
+        |> Result.defaultWith (fun issues -> failwith $"portable catalog serialization failed: {issues}")
+
+    let restoredCatalog =
+        SvgAsset.deserializeCatalog catalogWire
+        |> Result.defaultWith (fun issues -> failwith $"portable catalog deserialization failed: {issues}")
+
+    let state =
+        SvgAuthoring.tryCreate 0 document restoredCatalog []
+        |> Result.defaultWith (fun error -> failwith $"portable state failed: {error}")
+
     let ids = document.Children |> List.map _.Id
-    let transaction = { Schema = SvgAuthoring.transactionSchema; Id = "gesture"; Operations = [ SvgAuthoringOperation.TransformElements(ids, SvgAffine.translate 2.0 3.0) ] }
-    let committed = SvgAuthoring.commit 0 transaction state |> Result.defaultWith (fun error -> failwith $"portable commit failed: {error}")
-    let undone = SvgAuthoring.undo 1 committed |> Result.defaultWith (fun error -> failwith $"portable undo failed: {error}")
-    let redone = SvgAuthoring.redo 2 undone |> Result.defaultWith (fun error -> failwith $"portable redo failed: {error}")
+
+    let transaction =
+        {
+            Schema = SvgAuthoring.transactionSchema
+            Id = "gesture"
+            Operations = [ SvgAuthoringOperation.TransformElements(ids, SvgAffine.translate 2.0 3.0) ]
+        }
+
+    let committed =
+        SvgAuthoring.commit 0 transaction state
+        |> Result.defaultWith (fun error -> failwith $"portable commit failed: {error}")
+
+    let undone =
+        SvgAuthoring.undo 1 committed
+        |> Result.defaultWith (fun error -> failwith $"portable undo failed: {error}")
+
+    let redone =
+        SvgAuthoring.redo 2 undone
+        |> Result.defaultWith (fun error -> failwith $"portable redo failed: {error}")
+
     let security =
-        [ fixture.Replace("<path id=\"route\"", "<script/><path id=\"route\"")
-          fixture.Replace("href=\"#symbol\"", "href=\"https://example.test/x.svg#symbol\"")
-          fixture.Replace("<svg ", "<svg onclick=\"run()\" ") ]
+        [
+            fixture.Replace("<path id=\"route\"", "<script/><path id=\"route\"")
+            fixture.Replace("href=\"#symbol\"", "href=\"https://example.test/x.svg#symbol\"")
+            fixture.Replace("<svg ", "<svg onclick=\"run()\" ")
+        ]
         |> List.map (SvgImport.importXml request >> code)
-    let stale = match SvgAuthoring.commit 0 transaction committed with Error(SvgAuthoringError.StaleRevision _) -> "stale" | _ -> "mutant-survived"
-    let invalid = match SvgAuthoring.commit 1 { Schema = SvgAuthoring.transactionSchema; Id = "invalid"; Operations = [ SvgAuthoringOperation.TransformElements([ "missing" ], SvgAffine.identity) ] } committed with Error(SvgAuthoringError.InvalidTransaction _) -> "atomic" | _ -> "mutant-survived"
+
+    let stale =
+        match SvgAuthoring.commit 0 transaction committed with
+        | Error(SvgAuthoringError.StaleRevision _) -> "stale"
+        | _ -> "mutant-survived"
+
+    let invalid =
+        match
+            SvgAuthoring.commit
+                1
+                {
+                    Schema = SvgAuthoring.transactionSchema
+                    Id = "invalid"
+                    Operations = [ SvgAuthoringOperation.TransformElements([ "missing" ], SvgAffine.identity) ]
+                }
+                committed
+        with
+        | Error(SvgAuthoringError.InvalidTransaction _) -> "atomic"
+        | _ -> "mutant-survived"
+
     let unknownCatalog =
-        match SvgAsset.deserializeCatalog(catalogWire.Replace(SvgAsset.catalogSchema, "fsgg.svg-asset-catalog/9")) with
+        match SvgAsset.deserializeCatalog (catalogWire.Replace(SvgAsset.catalogSchema, "fsgg.svg-asset-catalog/9")) with
         | Error issues -> issues.Head.Code
         | Ok _ -> "mutant-survived"
+
     let unknownTransaction =
-        match SvgAuthoring.commit 1 { transaction with Schema = "fsgg.svg-authoring-transaction/9" } committed with
+        match
+            SvgAuthoring.commit
+                1
+                { transaction with
+                    Schema = "fsgg.svg-authoring-transaction/9"
+                }
+                committed
+        with
         | Error(SvgAuthoringError.InvalidTransaction issues) -> issues.Head.Code
         | _ -> "mutant-survived"
+
     let art =
-        SvgArt.create "portable-art" (SvgArtPrimitive.Polygon [{X=0.0;Y=0.0};{X=8.0;Y=0.0};{X=4.0;Y=6.0}]) SvgDocument.defaultPresentation document
-        |> Result.bind (SvgArt.translate ["portable-art"] 2.0 3.0)
+        SvgArt.create
+            "portable-art"
+            (SvgArtPrimitive.Polygon [ { X = 0.0; Y = 0.0 }; { X = 8.0; Y = 0.0 }; { X = 4.0; Y = 6.0 } ])
+            SvgDocument.defaultPresentation
+            document
+        |> Result.bind (SvgArt.translate [ "portable-art" ] 2.0 3.0)
         |> Result.defaultWith (fun error -> failwith $"portable art failed: {error}")
-    let contour = {Commands=[PathCommand.MoveTo {X=0.0;Y=0.0};PathCommand.QuadTo({X=4.0;Y=8.0},{X=8.0;Y=0.0});PathCommand.LineTo {X=0.0;Y=0.0};PathCommand.Close];FillType=PathFillType.Winding}
-    let geometry = SvgGeometry.prepare "portable-union" committed.Revision PathOperation.Union [contour] [contour] 0.25 |> Result.defaultWith (fun error -> failwith $"portable geometry failed: {error}")
+
+    let contour =
+        {
+            Commands =
+                [
+                    PathCommand.MoveTo { X = 0.0; Y = 0.0 }
+                    PathCommand.QuadTo({ X = 4.0; Y = 8.0 }, { X = 8.0; Y = 0.0 })
+                    PathCommand.LineTo { X = 0.0; Y = 0.0 }
+                    PathCommand.Close
+                ]
+            FillType = PathFillType.Winding
+        }
+
+    let geometry =
+        SvgGeometry.prepare "portable-union" committed.Revision PathOperation.Union [ contour ] [ contour ] 0.25
+        |> Result.defaultWith (fun error -> failwith $"portable geometry failed: {error}")
+
     let immutable =
-        let changed = {asset with Rights={asset.Rights with License="MIT"}}
-        match SvgAuthoring.commit 0 {Schema=SvgAuthoring.transactionSchema;Id="immutable";Operations=[SvgAuthoringOperation.UpsertAsset changed]} state with
+        let changed =
+            { asset with
+                Rights = { asset.Rights with License = "MIT" }
+            }
+
+        match
+            SvgAuthoring.commit
+                0
+                {
+                    Schema = SvgAuthoring.transactionSchema
+                    Id = "immutable"
+                    Operations = [ SvgAuthoringOperation.UpsertAsset changed ]
+                }
+                state
+        with
         | Error(SvgAuthoringError.InvalidTransaction issues) -> issues.Head.Code
         | _ -> "mutant-survived"
-    let artWire = SvgDocument.serialize art |> Result.defaultWith (fun issues -> failwith $"portable art serialization failed: {issues}")
-    let sceneMetadata={SceneId="portable-scene";Layers=[];Grid=Some{Origin={X=3.0;Y=5.0};Step={X=8.0;Y=8.0}};ResourceReferences=[];Entities=[{EntityId="box-entity";KindId="sample.object";VisualElementId=Some ids.Head;PrefabInstanceId=None;Properties=[{Key="label";Value=SvgScenePropertyValue.Text "Box"}]}]}
-    let scene={Schema=SvgScene.schema;Metadata=sceneMetadata;Document=document;Catalog=restoredCatalog;Instances=[];Fonts=[]}
-    let sceneWire=SvgScene.serialize scene|>Result.defaultWith(fun issues->failwith $"portable scene serialization failed: {issues}")
-    let sceneRoundtrip=SvgScene.deserialize sceneWire|>Result.defaultWith(fun issues->failwith $"portable scene deserialization failed: {issues}")
-    let snapped=SvgScenePlacement.grid sceneMetadata.Grid.Value {X=14.0;Y=14.0}|>Result.defaultWith(fun issues->failwith $"portable grid failed: {issues}")
-    if snapped <> {X=11.0;Y=13.0} then failwith "portable grid result diverged"
-    let canonical = String.concat "|" [ serialized; catalogWire; digest; string committed.Revision; string committed.Undo.Length; string undone.Redo.Length; string redone.Revision; artWire; geometry.EncodedRequest; sceneWire; sceneRoundtrip.Metadata.SceneId; "grid-ok"; immutable; String.concat "," security; stale; invalid; unknownCatalog; unknownTransaction ]
+
+    let artWire =
+        SvgDocument.serialize art
+        |> Result.defaultWith (fun issues -> failwith $"portable art serialization failed: {issues}")
+
+    let sceneMetadata =
+        {
+            SceneId = "portable-scene"
+            Layers = []
+            Grid =
+                Some
+                    {
+                        Origin = { X = 3.0; Y = 5.0 }
+                        Step = { X = 8.0; Y = 8.0 }
+                    }
+            ResourceReferences = []
+            Entities =
+                [
+                    {
+                        EntityId = "box-entity"
+                        KindId = "sample.object"
+                        VisualElementId = Some ids.Head
+                        PrefabInstanceId = None
+                        Properties =
+                            [
+                                {
+                                    Key = "label"
+                                    Value = SvgScenePropertyValue.Text "Box"
+                                }
+                            ]
+                    }
+                ]
+        }
+
+    let scene =
+        {
+            Schema = SvgScene.schema
+            Metadata = sceneMetadata
+            Document = document
+            Catalog = restoredCatalog
+            Instances = []
+            Fonts = []
+        }
+
+    let sceneWire =
+        SvgScene.serialize scene
+        |> Result.defaultWith (fun issues -> failwith $"portable scene serialization failed: {issues}")
+
+    let sceneRoundtrip =
+        SvgScene.deserialize sceneWire
+        |> Result.defaultWith (fun issues -> failwith $"portable scene deserialization failed: {issues}")
+
+    let snapped =
+        SvgScenePlacement.grid sceneMetadata.Grid.Value { X = 14.0; Y = 14.0 }
+        |> Result.defaultWith (fun issues -> failwith $"portable grid failed: {issues}")
+
+    if snapped <> { X = 11.0; Y = 13.0 } then
+        failwith "portable grid result diverged"
+
+    let canonical =
+        String.concat
+            "|"
+            [
+                serialized
+                catalogWire
+                digest
+                string committed.Revision
+                string committed.Undo.Length
+                string undone.Redo.Length
+                string redone.Revision
+                artWire
+                geometry.EncodedRequest
+                sceneWire
+                sceneRoundtrip.Metadata.SceneId
+                "grid-ok"
+                immutable
+                String.concat "," security
+                stale
+                invalid
+                unknownCatalog
+                unknownTransaction
+            ]
+
     let negativeSummary = String.concat "," security
-    printfn $"authoring-correspondence: runtime={runtime} definitions={document.Definitions.Length} children={document.Children.Length} art={art.Children.Length} geometryVertices={geometry.InputVertexCount} sceneEntities={sceneRoundtrip.Metadata.Entities.Length} negatives={negativeSummary},{stale},{invalid},{immutable},{unknownCatalog},{unknownTransaction}"
+
+    printfn
+        $"authoring-correspondence: runtime={runtime} definitions={document.Definitions.Length} children={document.Children.Length} art={art.Children.Length} geometryVertices={geometry.InputVertexCount} sceneEntities={sceneRoundtrip.Metadata.Entities.Length} negatives={negativeSummary},{stale},{invalid},{immutable},{unknownCatalog},{unknownTransaction}"
+
     canonical

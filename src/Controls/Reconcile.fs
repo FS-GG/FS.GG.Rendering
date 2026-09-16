@@ -20,10 +20,12 @@ module internal Reconcile =
         | Update of UpdatePatch<'msg>
 
     and UpdatePatch<'msg> =
-        { AttrChanges: AttrChange<'msg> list
-          ContentChange: FieldChange<string option>
-          AccessibilityChange: FieldChange<AccessibilityMetadata option>
-          Children: ChildOp<'msg> list }
+        {
+            AttrChanges: AttrChange<'msg> list
+            ContentChange: FieldChange<string option>
+            AccessibilityChange: FieldChange<AccessibilityMetadata option>
+            Children: ChildOp<'msg> list
+        }
 
     and ChildOp<'msg> =
         | ChildKeep of index: int * patch: NodePatch<'msg>
@@ -32,8 +34,10 @@ module internal Reconcile =
         | ChildRemove of key: ControlId option * index: int
 
     type ReconcileResult<'msg> =
-        { Patch: NodePatch<'msg>
-          Diagnostics: ControlDiagnostic list }
+        {
+            Patch: NodePatch<'msg>
+            Diagnostics: ControlDiagnostic list
+        }
 
     // `AttrValue<'msg>` carries a function case (`EventValue`) and an opaque
     // `obj` case (`UntypedValue`), so it does not satisfy F#'s `equality`
@@ -73,28 +77,35 @@ module internal Reconcile =
     /// list is sorted by `Name` for deterministic output (FR-009).
     let diffAttrs (prevAttrs: Attr<'msg> list) (nextAttrs: Attr<'msg> list) : AttrChange<'msg> list =
         let prevMap = Dictionary<string, Attr<'msg>>()
+
         for a in prevAttrs do
             prevMap.[a.Name] <- a
 
         let nextMap = Dictionary<string, Attr<'msg>>()
+
         for a in nextAttrs do
             nextMap.[a.Name] <- a
 
         let names =
-            (prevAttrs |> List.map (fun a -> a.Name)) @ (nextAttrs |> List.map (fun a -> a.Name))
+            (prevAttrs |> List.map (fun a -> a.Name))
+            @ (nextAttrs |> List.map (fun a -> a.Name))
             |> List.distinct
             |> List.sort
 
-        [ for name in names do
-            match prevMap.TryGetValue name, nextMap.TryGetValue name with
-            | (true, pa), (true, na) -> if not (attrValueEqual pa.Value na.Value) then yield AttrSet na
-            | (false, _), (true, na) -> yield AttrSet na
-            | (true, _), (false, _) -> yield AttrRemoved name
-            | (false, _), (false, _) -> () ]
+        [
+            for name in names do
+                match prevMap.TryGetValue name, nextMap.TryGetValue name with
+                | (true, pa), (true, na) ->
+                    if not (attrValueEqual pa.Value na.Value) then
+                        yield AttrSet na
+                | (false, _), (true, na) -> yield AttrSet na
+                | (true, _), (false, _) -> yield AttrRemoved name
+                | (false, _), (false, _) -> ()
+        ]
 
     let isKeepOp (op: ChildOp<'msg>) : bool =
         match op with
-        | ChildKeep (_, NodePatch.Keep) -> true
+        | ChildKeep(_, NodePatch.Keep) -> true
         | _ -> false
 
     let diff (prev: Control<'msg>) (next: Control<'msg>) : ReconcileResult<'msg> =
@@ -105,13 +116,18 @@ module internal Reconcile =
 
         let recordCollision (parentKind: ControlKind) (key: ControlId) =
             diags.Add
-                { ControlId = Some key
-                  ControlKind = parentKind
-                  Code = KeyCollision
-                  Severity = ControlDiagnosticSeverity.Warning
-                  Message =
-                    sprintf "Duplicate key '%s' within the children of a '%s' node; first occurrence wins." key parentKind
-                  EvidencePath = None }
+                {
+                    ControlId = Some key
+                    ControlKind = parentKind
+                    Code = KeyCollision
+                    Severity = ControlDiagnosticSeverity.Warning
+                    Message =
+                        sprintf
+                            "Duplicate key '%s' within the children of a '%s' node; first occurrence wins."
+                            key
+                            parentKind
+                    EvidencePath = None
+                }
 
         let rec nodePatch (p: Control<'msg>) (n: Control<'msg>) : NodePatch<'msg> =
             if p.Kind <> n.Kind || p.Key <> n.Key then
@@ -123,7 +139,12 @@ module internal Reconcile =
                 NodePatch.Replace n
             else
                 let attrChanges = diffAttrs p.Attributes n.Attributes
-                let contentChange = if p.Content = n.Content then Unchanged else ChangedTo n.Content
+
+                let contentChange =
+                    if p.Content = n.Content then
+                        Unchanged
+                    else
+                        ChangedTo n.Content
 
                 let accessibilityChange =
                     if p.Accessibility = n.Accessibility then
@@ -143,12 +164,18 @@ module internal Reconcile =
                     NodePatch.Keep
                 else
                     NodePatch.Update
-                        { AttrChanges = attrChanges
-                          ContentChange = contentChange
-                          AccessibilityChange = accessibilityChange
-                          Children = childOps }
+                        {
+                            AttrChanges = attrChanges
+                            ContentChange = contentChange
+                            AccessibilityChange = accessibilityChange
+                            Children = childOps
+                        }
 
-        and diffChildren (parentKind: ControlKind) (prevC: Control<'msg> list) (nextC: Control<'msg> list) : ChildOp<'msg> list =
+        and diffChildren
+            (parentKind: ControlKind)
+            (prevC: Control<'msg> list)
+            (nextC: Control<'msg> list)
+            : ChildOp<'msg> list =
             let prevArr = List.toArray prevC
             let nextArr = List.toArray nextC
 
@@ -166,9 +193,11 @@ module internal Reconcile =
 
             // residual unkeyed prev positions, in order, for positional fallback.
             let prevUnkeyed =
-                [ for i in 0 .. prevArr.Length - 1 do
-                    if prevArr.[i].Key.IsNone then
-                        yield i ]
+                [
+                    for i in 0 .. prevArr.Length - 1 do
+                        if prevArr.[i].Key.IsNone then
+                            yield i
+                ]
 
             let claimed = HashSet<int>()
             let nextSeenKeys = HashSet<ControlId>()
@@ -177,29 +206,31 @@ module internal Reconcile =
             // (2)-(3) for each next child resolve its matched prev index: key first,
             // then positional among unkeyed residuals.
             let perNext =
-                [ for t in 0 .. nextArr.Length - 1 ->
-                    match nextArr.[t].Key with
-                    | Some k ->
-                        if nextSeenKeys.Contains k then
-                            recordCollision parentKind k
-                            (t, None)
-                        else
-                            nextSeenKeys.Add k |> ignore
+                [
+                    for t in 0 .. nextArr.Length - 1 ->
+                        match nextArr.[t].Key with
+                        | Some k ->
+                            if nextSeenKeys.Contains k then
+                                recordCollision parentKind k
+                                (t, None)
+                            else
+                                nextSeenKeys.Add k |> ignore
 
-                            match prevKeyToIndex.TryGetValue k with
-                            | true, pi when not (claimed.Contains pi) ->
+                                match prevKeyToIndex.TryGetValue k with
+                                | true, pi when not (claimed.Contains pi) ->
+                                    claimed.Add pi |> ignore
+                                    (t, Some pi)
+                                | _ -> (t, None)
+                        | None ->
+                            if unkeyedCursor < prevUnkeyed.Length then
+                                let pi = prevUnkeyed.[unkeyedCursor]
+                                unkeyedCursor <- unkeyedCursor + 1
                                 claimed.Add pi |> ignore
                                 (t, Some pi)
-                            | _ -> (t, None)
-                    | None ->
-                        if unkeyedCursor < prevUnkeyed.Length then
-                            let pi = prevUnkeyed.[unkeyedCursor]
-                            unkeyedCursor <- unkeyedCursor + 1
-                            claimed.Add pi |> ignore
-                            (t, Some pi)
-                        else
-                            unkeyedCursor <- unkeyedCursor + 1
-                            (t, None) ]
+                            else
+                                unkeyedCursor <- unkeyedCursor + 1
+                                (t, None)
+                ]
 
             // (5) producing ops in next order; a forward scan keeps the first
             // in-order match and flags out-of-order matches as moves (a simple,
@@ -222,14 +253,18 @@ module internal Reconcile =
 
             // (4) prev-only nodes (never matched) become removes, in prev order.
             let removals =
-                [ for i in 0 .. prevArr.Length - 1 do
-                    if not (claimed.Contains i) then
-                        yield ChildRemove(prevArr.[i].Key, i) ]
+                [
+                    for i in 0 .. prevArr.Length - 1 do
+                        if not (claimed.Contains i) then
+                            yield ChildRemove(prevArr.[i].Key, i)
+                ]
 
             producing @ removals
 
-        { Patch = nodePatch prev next
-          Diagnostics = List.ofSeq diags }
+        {
+            Patch = nodePatch prev next
+            Diagnostics = List.ofSeq diags
+        }
 
     let private applyAttrChanges (prevAttrs: Attr<'msg> list) (changes: AttrChange<'msg> list) : Attr<'msg> list =
         // Removed names, then set/added names (replace existing by Name, append the rest).
@@ -247,6 +282,7 @@ module internal Reconcile =
                 | AttrRemoved _ -> None)
 
         let setByName = Dictionary<string, Attr<'msg>>()
+
         for a in sets do
             setByName.[a.Name] <- a
 
@@ -275,9 +311,9 @@ module internal Reconcile =
                 u.Children
                 |> List.choose (fun op ->
                     match op with
-                    | ChildKeep (i, p) -> Some(apply prevChildren.[i] p)
-                    | ChildMove (f, _, p) -> Some(apply prevChildren.[f] p)
-                    | ChildInsert (_, node) -> Some node
+                    | ChildKeep(i, p) -> Some(apply prevChildren.[i] p)
+                    | ChildMove(f, _, p) -> Some(apply prevChildren.[f] p)
+                    | ChildInsert(_, node) -> Some node
                     | ChildRemove _ -> None)
 
             let content =
@@ -294,4 +330,5 @@ module internal Reconcile =
                 Attributes = applyAttrChanges prev.Attributes u.AttrChanges
                 Children = children
                 Content = content
-                Accessibility = accessibility }
+                Accessibility = accessibility
+            }

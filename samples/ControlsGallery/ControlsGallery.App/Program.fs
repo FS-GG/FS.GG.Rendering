@@ -15,15 +15,16 @@ let private usage () =
     printfn "  ControlsGallery coverage-check"
 
 /// Tiny flag reader: value following `--name`, if present.
-let private flag (name: string) (args: string list): string option =
+let private flag (name: string) (args: string list) : string option =
     let rec loop =
         function
         | k :: v :: _ when k = name -> Some v
         | _ :: rest -> loop rest
         | [] -> None
+
     loop args
 
-let private parseMode (args: string list): ThemeMode =
+let private parseMode (args: string list) : ThemeMode =
     match flag "--theme" args with
     | Some "dark" -> Dark
     | _ -> Light

@@ -6,79 +6,143 @@ open FS.GG.UI.Controls
 open FS.GG.UI.Scene
 
 let chartSeries =
-    [ { Name = "revenue"
-        Points =
-            [ { X = 1.0; Y = 12.0; Label = Some "Q1" }
-              { X = 2.0; Y = 18.0; Label = Some "Q2" } ] } ]
+    [
+        {
+            Name = "revenue"
+            Points =
+                [
+                    { X = 1.0; Y = 12.0; Label = Some "Q1" }
+                    { X = 2.0; Y = 18.0; Label = Some "Q2" }
+                ]
+        }
+    ]
 
-let chart : Control<unit> =
-    LineChart.create [ LineChart.series chartSeries ]
+let chart: Control<unit> = LineChart.create [ LineChart.series chartSeries ]
 
-let graph : Control<unit> =
+let graph: Control<unit> =
     GraphView.create [ GraphView.nodes [ "scene"; "viewer"; "browser" ] ]
 
 let columns =
-    [ { Key = "name"; Header = "Name"; Width = 160.0; ColumnType = TextColumn }
-      { Key = "score"; Header = "Score"; Width = 96.0; ColumnType = NumericColumn } ]
+    [
+        {
+            Key = "name"
+            Header = "Name"
+            Width = 160.0
+            ColumnType = TextColumn
+        }
+        {
+            Key = "score"
+            Header = "Score"
+            Width = 96.0
+            ColumnType = NumericColumn
+        }
+    ]
 
 let rows =
-    [ { Key = "row-1"
-        Cells =
-            [ { RowKey = "row-1"; ColumnKey = "name"; Value = "Portable scene" }
-              { RowKey = "row-1"; ColumnKey = "score"; Value = "1" } ] } ]
+    [
+        {
+            Key = "row-1"
+            Cells =
+                [
+                    {
+                        RowKey = "row-1"
+                        ColumnKey = "name"
+                        Value = "Portable scene"
+                    }
+                    {
+                        RowKey = "row-1"
+                        ColumnKey = "score"
+                        Value = "1"
+                    }
+                ]
+        }
+    ]
 
-let grid : Control<unit> =
+let grid: Control<unit> =
     DataGrid.create columns [ DataGrid.columns columns; DataGrid.rows rows ]
 
-let standardButton : Control<string> =
+let standardButton: Control<string> =
     Control.standard
         StandardControlKind.Button
-        [ Attr.standardAttribute StandardAttributeName.Text (StandardText "Save")
-          Attr.standardEvent StandardEventKind.Click "saved" ]
+        [
+            Attr.standardAttribute StandardAttributeName.Text (StandardText "Save")
+            Attr.standardEvent StandardEventKind.Click "saved"
+        ]
 
-let customWidget : Control<string> =
+let customWidget: Control<string> =
     Control.customControl
         "vendor-widget"
-        [ Attr.customAttribute "vendor-mode" ("compact" :> obj)
-          Attr.customEvent "vendor-activated" "activated" ]
+        [
+            Attr.customAttribute "vendor-mode" ("compact" :> obj)
+            Attr.customEvent "vendor-activated" "activated"
+        ]
 
 let standardDiagnostics = Catalog.validateStandardControl standardButton
 let customDiagnostics = Catalog.validateStandardControl customWidget
 
 let anchor =
-    { AnchorId = "date-trigger"
-      AnchorBounds = Some { X = 12.0; Y = 24.0; Width = 140.0; Height = 32.0 }
-      SurfaceBounds = Some { X = 12.0; Y = 60.0; Width = 280.0; Height = 240.0 }
-      Placement = "bottom-start"
-      NoFit = None
-      FrameFingerprint = Some 143UL }
+    {
+        AnchorId = "date-trigger"
+        AnchorBounds =
+            Some
+                {
+                    X = 12.0
+                    Y = 24.0
+                    Width = 140.0
+                    Height = 32.0
+                }
+        SurfaceBounds =
+            Some
+                {
+                    X = 12.0
+                    Y = 60.0
+                    Width = 280.0
+                    Height = 240.0
+                }
+        Placement = "bottom-start"
+        NoFit = None
+        FrameFingerprint = Some 143UL
+    }
 
 let trigger =
-    { ControlId = "date-trigger"
-      Enabled = true
-      ActivationSource = KeyboardActivation
-      RecoveryTarget = Some "date-trigger" }
+    {
+        ControlId = "date-trigger"
+        Enabled = true
+        ActivationSource = KeyboardActivation
+        RecoveryTarget = Some "date-trigger"
+    }
 
 let focus =
-    { SurfaceId = "date-calendar"
-      Stops = [ "day-2026-06-17"; "day-2026-06-18" ]
-      InitialFocus = Some "day-2026-06-17"
-      RecoveryTarget = Some "date-trigger"
-      TrapMode = LocalScope }
+    {
+        SurfaceId = "date-calendar"
+        Stops = [ "day-2026-06-17"; "day-2026-06-18" ]
+        InitialFocus = Some "day-2026-06-17"
+        RecoveryTarget = Some "date-trigger"
+        TrapMode = LocalScope
+    }
 
 let surface =
-    { Id = { SurfaceId = "date-calendar"; ParentSurfaceId = None; TriggerId = "date-trigger" }
-      Kind = TransientSurfaceKind.DatePickerCalendar
-      Trigger = trigger
-      LayerPriority = 10
-      Anchor = anchor
-      DismissalPolicy = OverlayState.defaultDismissalPolicy ()
-      FocusScope = focus
-      Modal = false }
+    {
+        Id =
+            {
+                SurfaceId = "date-calendar"
+                ParentSurfaceId = None
+                TriggerId = "date-trigger"
+            }
+        Kind = TransientSurfaceKind.DatePickerCalendar
+        Trigger = trigger
+        LayerPriority = 10
+        Anchor = anchor
+        DismissalPolicy = OverlayState.defaultDismissalPolicy ()
+        FocusScope = focus
+        Modal = false
+    }
 
 let state0 = OverlayState.init ()
 let state1, effects1 = OverlayState.update (OpenRequested surface) state0
-let state2, effects2 = OverlayState.update (SelectionCompleted("date-calendar", "date-calendar:2026-06-17", Some "2026-06-17")) state1
+
+let state2, effects2 =
+    OverlayState.update (SelectionCompleted("date-calendar", "date-calendar:2026-06-17", Some "2026-06-17")) state1
 
 printfn "open surfaces: %A" (state1.OpenSurfaces |> List.map _.Id.SurfaceId)
 printfn "open effects: %A" effects1

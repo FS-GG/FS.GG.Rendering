@@ -67,7 +67,8 @@ module MarkdownFences =
         |> Option.map (fun lang -> lang.ToLowerInvariant())
 
     /// Can a block with this tag cite an F# API?
-    let isFSharpLanguage (lang: string) = fsharpLanguages.Contains(lang.ToLowerInvariant())
+    let isFSharpLanguage (lang: string) =
+        fsharpLanguages.Contains(lang.ToLowerInvariant())
 
     /// What a line IS, once the fences are paired.
     type LineKind =
@@ -81,9 +82,11 @@ module MarkdownFences =
     /// A line of the document, numbered as the ORIGINAL text numbers it — so a failure stays clickable, and so a
     /// caller may index a line-count-preserving transform of the same text (see `skillFenceSymbols`' F# erasure).
     type Line =
-        { Number: int
-          Text: string
-          Kind: LineKind }
+        {
+            Number: int
+            Text: string
+            Kind: LineKind
+        }
 
     /// The scanned document, plus the two ways the scan can have gone wrong. Both are DEFECTS the caller must
     /// treat as such, not curiosities:
@@ -94,9 +97,11 @@ module MarkdownFences =
     ///   * `UntaggedFences` — a block that does not say what it is. Crediting it reopens the #654 homonym;
     ///     dropping it silently un-documents whatever it cites. Neither is a call a gate may make for the author.
     type Scan =
-        { Lines: Line list
-          UnclosedFence: bool
-          UntaggedFences: int }
+        {
+            Lines: Line list
+            UnclosedFence: bool
+            UntaggedFences: int
+        }
 
     /// A fence closes only on its OWN character, repeated at least as many times as it was opened — wherever
     /// either sits. That is what lets the indent be unbounded: pairing, not position, decides the block.
@@ -108,7 +113,8 @@ module MarkdownFences =
     /// different item with a different blast radius. Nothing in the corpus nests a fence (all 67 F# blocks and
     /// the one yaml block are flat), so it is latent — which is exactly the state the holes in #664 were in
     /// right up until they were not. Named here so the next reader knows it is a decision, not an oversight.
-    let private closes (opening: string) (delimiter: string) = delimiter.StartsWith(opening, StringComparison.Ordinal)
+    let private closes (opening: string) (delimiter: string) =
+        delimiter.StartsWith(opening, StringComparison.Ordinal)
 
     /// Pair the fences and classify every line. This is the ONLY place in the repo that decides what a fence is.
     let scan (markdown: string) : Scan =
@@ -130,16 +136,26 @@ module MarkdownFences =
                 | Some(_, lang, isFSharp) -> Fenced(lang, isFSharp)
                 | None when fence.Success ->
                     let lang = language fence.Groups.["info"].Value
-                    if Option.isNone lang then untaggedFences <- untaggedFences + 1
+
+                    if Option.isNone lang then
+                        untaggedFences <- untaggedFences + 1
+
                     openFence <- Some(fence.Groups.["fence"].Value, lang, lang |> Option.exists isFSharpLanguage)
                     Delimiter
                 | None -> Prose
 
-            lines.Add { Number = number; Text = text; Kind = kind })
+            lines.Add
+                {
+                    Number = number
+                    Text = text
+                    Kind = kind
+                })
 
-        { Lines = List.ofSeq lines
-          UnclosedFence = Option.isSome openFence
-          UntaggedFences = untaggedFences }
+        {
+            Lines = List.ofSeq lines
+            UnclosedFence = Option.isSome openFence
+            UntaggedFences = untaggedFences
+        }
 
     /// The lines inside an F# block — the code a reader COPIES.
     let fsharpLines (scanned: Scan) =

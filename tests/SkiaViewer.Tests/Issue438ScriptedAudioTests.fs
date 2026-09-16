@@ -29,7 +29,13 @@ open FS.GG.UI.SkiaViewer
 // not something this file can close, and it is why the Live runners share ONE body (`runScriptCore`)
 // rather than a sinkless copy and an audio copy that could drift.
 
-let private white = { Red = 255uy; Green = 255uy; Blue = 255uy; Alpha = 255uy }
+let private white =
+    {
+        Red = 255uy
+        Green = 255uy
+        Blue = 255uy
+        Alpha = 255uy
+    }
 
 let private blip = SoundId "blip"
 let private theme = TrackId "theme"
@@ -41,16 +47,23 @@ type private Msg = Advance
 /// A host driven by a SCRIPT rather than a live pointer — the shape the evidence tooling runs — that
 /// requests sound as pure `AudioEffect` values on a `ViewerEffect.PlayAudio`.
 let private scriptedAudioHost: InteractiveViewerHost<Model, Msg> =
-    { Init = fun () -> { Ticks = 0 }, [ PlayAudio [ Audio.playMusic theme true ] ]
-      Update =
-        fun Advance model ->
-            let next = { Ticks = model.Ticks + 1 }
-            next, [ PlayAudio [ Audio.playSfx blip 0.75 ]; RenderScene(Text((0.0, 0.0), "tick", white)) ]
-      View = fun _ model -> Text((0.0, 0.0), $"ticks {model.Ticks}", white)
-      MapKey = fun _ _ -> [ Advance ]
-      MapPointer = fun _ _ _ -> []
-      Tick = fun _ -> None
-      Diagnostics = Viewer.defaultDiagnostics }
+    {
+        Init = fun () -> { Ticks = 0 }, [ PlayAudio [ Audio.playMusic theme true ] ]
+        Update =
+            fun Advance model ->
+                let next = { Ticks = model.Ticks + 1 }
+
+                next,
+                [
+                    PlayAudio [ Audio.playSfx blip 0.75 ]
+                    RenderScene(Text((0.0, 0.0), "tick", white))
+                ]
+        View = fun _ model -> Text((0.0, 0.0), $"ticks {model.Ticks}", white)
+        MapKey = fun _ _ -> [ Advance ]
+        MapPointer = fun _ _ _ -> []
+        Tick = fun _ -> None
+        Diagnostics = Viewer.defaultDiagnostics
+    }
 
 /// Drive the shared fold the way a scripted loop does, collecting what reached the sink.
 let private playedBy (effects: ViewerEffect list) =
@@ -69,90 +82,95 @@ let private playedBy (effects: ViewerEffect list) =
     List.ofSeq played
 
 let private options: ViewerOptions =
-    { Title = "Product"
-      InitialSize = { Width = 640; Height = 480 }
-      PresentMode = ViewerPresentMode.OffscreenReadback
-      FrameRateCap = None
-      LogicalSize = None }
+    {
+        Title = "Product"
+        InitialSize = { Width = 640; Height = 480 }
+        PresentMode = ViewerPresentMode.OffscreenReadback
+        FrameRateCap = None
+        LogicalSize = None
+    }
 
 [<Tests>]
 let tests =
     testList
         "issue-438 scripted audio seam"
         [
-          // THE regression. A scripted run's effects now route through the same fold the live loops
-          // use, so the notes a scripted product asks for reach the sink instead of the floor.
-          test "a scripted run's PlayAudio batches reach the sink, in dispatch order" {
-            let _, initEffects = scriptedAudioHost.Init()
-            let _, updateEffects = scriptedAudioHost.Update Advance { Ticks = 0 }
+            // THE regression. A scripted run's effects now route through the same fold the live loops
+            // use, so the notes a scripted product asks for reach the sink instead of the floor.
+            test "a scripted run's PlayAudio batches reach the sink, in dispatch order" {
+                let _, initEffects = scriptedAudioHost.Init()
+                let _, updateEffects = scriptedAudioHost.Update Advance { Ticks = 0 }
 
-            Expect.equal
-                (playedBy (initEffects @ updateEffects))
-                [ Audio.playMusic theme true; Audio.playSfx blip 0.75 ]
-                "the opening music and the scripted tick's sfx both reach the sink — not discarded"
-          }
+                Expect.equal
+                    (playedBy (initEffects @ updateEffects))
+                    [ Audio.playMusic theme true; Audio.playSfx blip 0.75 ]
+                    "the opening music and the scripted tick's sfx both reach the sink — not discarded"
+            }
 
-          test "a scripted frame that requests no sound never touches the sink" {
-            Expect.isEmpty
-                (playedBy [ RenderScene(Text((0.0, 0.0), "silent", white)) ])
-                "a silent scripted frame plays nothing"
-          }
+            test "a scripted frame that requests no sound never touches the sink" {
+                Expect.isEmpty
+                    (playedBy [ RenderScene(Text((0.0, 0.0), "silent", white)) ])
+                    "a silent scripted frame plays nothing"
+            }
 
-          // Parity with #429's entry-point test: an unsupported host must not report success, and must
-          // certainly not claim to have played anything. A scripted run that cannot open a window is a
-          // failure, not a silent success with no audio.
-          test "runInteractiveViewerScriptWithAudio never reaches the sink on a host that cannot open a window" {
-            let played = ResizeArray<AudioEffect>()
+            // Parity with #429's entry-point test: an unsupported host must not report success, and must
+            // certainly not claim to have played anything. A scripted run that cannot open a window is a
+            // failure, not a silent success with no audio.
+            test "runInteractiveViewerScriptWithAudio never reaches the sink on a host that cannot open a window" {
+                let played = ResizeArray<AudioEffect>()
 
-            if Viewer.runtimeCapability().PersistentWindow then
-                skiptestf "host can open a persistent window; the unsupported-host path is not exercised here"
-            else
-                match
-                    Viewer.runInteractiveViewerScriptWithAudio
-                        options
-                        []
-                        (fun batch -> played.AddRange batch)
-                        scriptedAudioHost
-                with
-                | Result.Ok _ -> failtest "an unsupported host cannot report a successful scripted launch"
-                | Result.Error failure ->
-                    Expect.equal
-                        failure.Classification
-                        UnsupportedEnvironment
-                        "the scripted audio runner classifies an unsupported host exactly as its sinkless twin does"
+                if Viewer.runtimeCapability().PersistentWindow then
+                    skiptestf "host can open a persistent window; the unsupported-host path is not exercised here"
+                else
+                    match
+                        Viewer.runInteractiveViewerScriptWithAudio
+                            options
+                            []
+                            (fun batch -> played.AddRange batch)
+                            scriptedAudioHost
+                    with
+                    | Result.Ok _ -> failtest "an unsupported host cannot report a successful scripted launch"
+                    | Result.Error failure ->
+                        Expect.equal
+                            failure.Classification
+                            UnsupportedEnvironment
+                            "the scripted audio runner classifies an unsupported host exactly as its sinkless twin does"
 
-                Expect.isEmpty played "no sound is played when no window ever opened"
-          }
+                    Expect.isEmpty played "no sound is played when no window ever opened"
+            }
 
-          test "runInteractiveViewerScriptWithWindowBehaviorAndAudio holds the same contract" {
-            let played = ResizeArray<AudioEffect>()
+            test "runInteractiveViewerScriptWithWindowBehaviorAndAudio holds the same contract" {
+                let played = ResizeArray<AudioEffect>()
 
-            if Viewer.runtimeCapability().PersistentWindow then
-                skiptestf "host can open a persistent window; the unsupported-host path is not exercised here"
-            else
-                match
-                    Viewer.runInteractiveViewerScriptWithWindowBehaviorAndAudio
-                        options
-                        Viewer.defaultWindowBehavior
-                        []
-                        (fun batch -> played.AddRange batch)
-                        scriptedAudioHost
-                with
-                | Result.Ok _ -> failtest "an unsupported host cannot report a successful scripted launch"
-                | Result.Error failure ->
-                    Expect.equal failure.Classification UnsupportedEnvironment "same classification as the sinkless twin"
+                if Viewer.runtimeCapability().PersistentWindow then
+                    skiptestf "host can open a persistent window; the unsupported-host path is not exercised here"
+                else
+                    match
+                        Viewer.runInteractiveViewerScriptWithWindowBehaviorAndAudio
+                            options
+                            Viewer.defaultWindowBehavior
+                            []
+                            (fun batch -> played.AddRange batch)
+                            scriptedAudioHost
+                    with
+                    | Result.Ok _ -> failtest "an unsupported host cannot report a successful scripted launch"
+                    | Result.Error failure ->
+                        Expect.equal
+                            failure.Classification
+                            UnsupportedEnvironment
+                            "same classification as the sinkless twin"
 
-                Expect.isEmpty played "no sound is played when no window ever opened"
-          }
+                    Expect.isEmpty played "no sound is played when no window ever opened"
+            }
 
-          // The additive guarantee: #438 must not change what the sinkless scripted runners do.
-          test "the sinkless scripted runner still refuses an unsupported host, exactly as before" {
-            if Viewer.runtimeCapability().PersistentWindow then
-                skiptestf "host can open a persistent window; the unsupported-host path is not exercised here"
-            else
-                match Viewer.runInteractiveViewerScript options [] scriptedAudioHost with
-                | Result.Ok _ -> failtest "an unsupported host cannot report a successful scripted launch"
-                | Result.Error failure ->
-                    Expect.equal failure.Classification UnsupportedEnvironment "unchanged by #438"
-          }
+            // The additive guarantee: #438 must not change what the sinkless scripted runners do.
+            test "the sinkless scripted runner still refuses an unsupported host, exactly as before" {
+                if Viewer.runtimeCapability().PersistentWindow then
+                    skiptestf "host can open a persistent window; the unsupported-host path is not exercised here"
+                else
+                    match Viewer.runInteractiveViewerScript options [] scriptedAudioHost with
+                    | Result.Ok _ -> failtest "an unsupported host cannot report a successful scripted launch"
+                    | Result.Error failure ->
+                        Expect.equal failure.Classification UnsupportedEnvironment "unchanged by #438"
+            }
         ]

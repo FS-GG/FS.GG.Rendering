@@ -14,18 +14,22 @@ module Coverage =
         | Unreasoned
 
     type Finding<'element> =
-        { Element: 'element
-          Gap: Gap
-          Message: string }
+        {
+            Element: 'element
+            Gap: Gap
+            Message: string
+        }
 
     type Verdict =
         | Covered
         | HasGaps
 
     type Report<'element> =
-        { Findings: Finding<'element> list
-          OptedOut: ('element * string) list
-          Verdict: Verdict }
+        {
+            Findings: Finding<'element> list
+            OptedOut: ('element * string) list
+            Verdict: Verdict
+        }
 
     let private missingMessage (element: 'element) =
         sprintf
@@ -49,22 +53,28 @@ module Coverage =
             | Some(Hidden reason) when not (String.IsNullOrWhiteSpace reason) -> opted <- (element, reason) :: opted
             | Some(Hidden _) ->
                 findings <-
-                    { Element = element
-                      Gap = Unreasoned
-                      Message = unreasonedMessage element }
+                    {
+                        Element = element
+                        Gap = Unreasoned
+                        Message = unreasonedMessage element
+                    }
                     :: findings
             | None ->
                 findings <-
-                    { Element = element
-                      Gap = Missing
-                      Message = missingMessage element }
+                    {
+                        Element = element
+                        Gap = Missing
+                        Message = missingMessage element
+                    }
                     :: findings
 
         let findings = List.rev findings
 
-        { Findings = findings
-          OptedOut = List.rev opted
-          Verdict = if List.isEmpty findings then Covered else HasGaps }
+        {
+            Findings = findings
+            OptedOut = List.rev opted
+            Verdict = if List.isEmpty findings then Covered else HasGaps
+        }
 
     let checkMap (elements: 'element list) (table: Map<'element, Representation>) : Report<'element> =
         check elements (fun e -> Map.tryFind e table)

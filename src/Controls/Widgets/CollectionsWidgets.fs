@@ -3,29 +3,39 @@ namespace FS.GG.UI.Controls.Typed
 open FS.GG.UI.Controls
 
 type ListViewProps<'msg> =
-    { Id: ControlId
-      Items: string list
-      OnSelected: (string -> 'msg) option }
+    {
+        Id: ControlId
+        Items: string list
+        OnSelected: (string -> 'msg) option
+    }
 
 type ListBoxProps<'msg> =
-    { Id: ControlId
-      Items: string list
-      OnSelected: (string -> 'msg) option }
+    {
+        Id: ControlId
+        Items: string list
+        OnSelected: (string -> 'msg) option
+    }
 
 type MultiSelectListProps<'msg> =
-    { Id: ControlId
-      Items: string list
-      OnChanged: (string list -> 'msg) option }
+    {
+        Id: ControlId
+        Items: string list
+        OnChanged: (string list -> 'msg) option
+    }
 
 type ComboBoxProps<'msg> =
-    { Id: ControlId
-      Items: string list
-      OnChanged: (string -> 'msg) option }
+    {
+        Id: ControlId
+        Items: string list
+        OnChanged: (string -> 'msg) option
+    }
 
 type TreeViewProps<'msg> =
-    { Id: ControlId
-      Items: string list
-      OnSelected: (string -> 'msg) option }
+    {
+        Id: ControlId
+        Items: string list
+        OnSelected: (string -> 'msg) option
+    }
 
 // File-private lowering helpers. The five selection collections delegate state to
 // the SAME existing `Collections` model (FR-004/SC-003) and lower to
@@ -40,12 +50,18 @@ module CollectionLowering =
 
     // The current model selection + visible range, lowered as standard attributes.
     let stateAttrs (model: CollectionModel) : Attr<'msg> list =
-        [ Attr.create "selectedKeys" State (StringListValue(model.SelectedKeys |> Set.toList))
-          Attr.create "visibleRange" Data (UntypedValue model.VisibleRange) ]
+        [
+            Attr.create "selectedKeys" State (StringListValue(model.SelectedKeys |> Set.toList))
+            Attr.create "visibleRange" Data (UntypedValue model.VisibleRange)
+        ]
 
 module ListView =
     let defaults (controlId: ControlId) : ListViewProps<'msg> =
-        { Id = controlId; Items = []; OnSelected = None }
+        {
+            Id = controlId
+            Items = []
+            OnSelected = None
+        }
 
     let init (props: ListViewProps<'msg>) : CollectionModel * CollectionEffect list =
         CollectionLowering.initFor props.Id props.Items
@@ -55,11 +71,13 @@ module ListView =
 
     let view (props: ListViewProps<'msg>) (model: CollectionModel) : Widget<'msg> =
         let attrs =
-            [ yield Attr.items props.Items
-              yield! CollectionLowering.stateAttrs model
-              match props.OnSelected with
-              | Some map -> yield WidgetLowering.onString "onSelected" map
-              | None -> () ]
+            [
+                yield Attr.items props.Items
+                yield! CollectionLowering.stateAttrs model
+                match props.OnSelected with
+                | Some map -> yield WidgetLowering.onString "onSelected" map
+                | None -> ()
+            ]
 
         Control.standard (StandardControlKind.Custom "list-view") attrs
         |> Control.withKey props.Id
@@ -67,7 +85,11 @@ module ListView =
 
 module ListBox =
     let defaults (controlId: ControlId) : ListBoxProps<'msg> =
-        { Id = controlId; Items = []; OnSelected = None }
+        {
+            Id = controlId
+            Items = []
+            OnSelected = None
+        }
 
     let init (props: ListBoxProps<'msg>) : CollectionModel * CollectionEffect list =
         CollectionLowering.initFor props.Id props.Items
@@ -77,11 +99,13 @@ module ListBox =
 
     let view (props: ListBoxProps<'msg>) (model: CollectionModel) : Widget<'msg> =
         let attrs =
-            [ yield Attr.items props.Items
-              yield! CollectionLowering.stateAttrs model
-              match props.OnSelected with
-              | Some map -> yield WidgetLowering.onString "onSelected" map
-              | None -> () ]
+            [
+                yield Attr.items props.Items
+                yield! CollectionLowering.stateAttrs model
+                match props.OnSelected with
+                | Some map -> yield WidgetLowering.onString "onSelected" map
+                | None -> ()
+            ]
 
         Control.standard (StandardControlKind.Custom "list-box") attrs
         |> Control.withKey props.Id
@@ -89,7 +113,11 @@ module ListBox =
 
 module MultiSelectList =
     let defaults (controlId: ControlId) : MultiSelectListProps<'msg> =
-        { Id = controlId; Items = []; OnChanged = None }
+        {
+            Id = controlId
+            Items = []
+            OnChanged = None
+        }
 
     let init (props: MultiSelectListProps<'msg>) : CollectionModel * CollectionEffect list =
         CollectionLowering.initFor props.Id props.Items
@@ -99,11 +127,13 @@ module MultiSelectList =
 
     let view (props: MultiSelectListProps<'msg>) (model: CollectionModel) : Widget<'msg> =
         let attrs =
-            [ yield Attr.items props.Items
-              yield! CollectionLowering.stateAttrs model
-              match props.OnChanged with
-              | Some map -> yield WidgetLowering.onStringList "onChanged" map
-              | None -> () ]
+            [
+                yield Attr.items props.Items
+                yield! CollectionLowering.stateAttrs model
+                match props.OnChanged with
+                | Some map -> yield WidgetLowering.onStringList "onChanged" map
+                | None -> ()
+            ]
 
         Control.standard (StandardControlKind.Custom "multi-select-list") attrs
         |> Control.withKey props.Id
@@ -111,7 +141,11 @@ module MultiSelectList =
 
 module ComboBox =
     let defaults (controlId: ControlId) : ComboBoxProps<'msg> =
-        { Id = controlId; Items = []; OnChanged = None }
+        {
+            Id = controlId
+            Items = []
+            OnChanged = None
+        }
 
     let init (props: ComboBoxProps<'msg>) : CollectionModel * CollectionEffect list =
         CollectionLowering.initFor props.Id props.Items
@@ -124,24 +158,26 @@ module ComboBox =
         let triggerId = props.Id + "-trigger"
 
         let attrs =
-            [ yield Attr.items props.Items
-              yield! CollectionLowering.stateAttrs model
-              yield
-                  // Issue #56: the combo-box control (keyed `props.Id` below) IS the surface's real
-                  // focus stop; the dropdown's item movement is arrow-driven inside it. No phantom.
-                  WidgetLowering.transientMetadata
-                      TransientSurfaceKind.ComboDropdown
-                      surfaceId
-                      triggerId
-                      [ props.Id ]
-                      false
-                      true
-                      40
-                      false
-                      (Some "onChanged")
-              match props.OnChanged with
-              | Some map -> yield WidgetLowering.onString "onChanged" map
-              | None -> () ]
+            [
+                yield Attr.items props.Items
+                yield! CollectionLowering.stateAttrs model
+                yield
+                    // Issue #56: the combo-box control (keyed `props.Id` below) IS the surface's real
+                    // focus stop; the dropdown's item movement is arrow-driven inside it. No phantom.
+                    WidgetLowering.transientMetadata
+                        TransientSurfaceKind.ComboDropdown
+                        surfaceId
+                        triggerId
+                        [ props.Id ]
+                        false
+                        true
+                        40
+                        false
+                        (Some "onChanged")
+                match props.OnChanged with
+                | Some map -> yield WidgetLowering.onString "onChanged" map
+                | None -> ()
+            ]
 
         Control.standard (StandardControlKind.Custom "combo-box") attrs
         |> Control.withKey props.Id
@@ -149,7 +185,11 @@ module ComboBox =
 
 module TreeView =
     let defaults (controlId: ControlId) : TreeViewProps<'msg> =
-        { Id = controlId; Items = []; OnSelected = None }
+        {
+            Id = controlId
+            Items = []
+            OnSelected = None
+        }
 
     let init (props: TreeViewProps<'msg>) : CollectionModel * CollectionEffect list =
         CollectionLowering.initFor props.Id props.Items
@@ -159,11 +199,13 @@ module TreeView =
 
     let view (props: TreeViewProps<'msg>) (model: CollectionModel) : Widget<'msg> =
         let attrs =
-            [ yield Attr.items props.Items
-              yield! CollectionLowering.stateAttrs model
-              match props.OnSelected with
-              | Some map -> yield WidgetLowering.onString "onSelected" map
-              | None -> () ]
+            [
+                yield Attr.items props.Items
+                yield! CollectionLowering.stateAttrs model
+                match props.OnSelected with
+                | Some map -> yield WidgetLowering.onString "onSelected" map
+                | None -> ()
+            ]
 
         Control.standard (StandardControlKind.Custom "tree-view") attrs
         |> Control.withKey props.Id

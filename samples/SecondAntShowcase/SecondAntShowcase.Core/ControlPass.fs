@@ -17,11 +17,13 @@ type BehaviorVerdict =
     | EnvironmentLimited
 
 type BehaviorOutcome =
-    { BehaviorId: string
-      Description: string
-      Expected: string
-      Observed: string
-      Verdict: BehaviorVerdict }
+    {
+        BehaviorId: string
+        Description: string
+        Expected: string
+        Observed: string
+        Verdict: BehaviorVerdict
+    }
 
 type InteractionStateKind =
     | Hover
@@ -32,10 +34,12 @@ type InteractionStateKind =
     | ErrorState
 
 type InteractionStateOutcome =
-    { State: InteractionStateKind
-      DiffersFromRest: bool
-      EvidenceRef: string
-      Verdict: BehaviorVerdict }
+    {
+        State: InteractionStateKind
+        DiffersFromRest: bool
+        EvidenceRef: string
+        Verdict: BehaviorVerdict
+    }
 
 type DamageStatus =
     | Empty
@@ -45,11 +49,13 @@ type DamageStatus =
     | Unsupported
 
 type DamageOutcome =
-    { TransitionId: string
-      DamageStatus: DamageStatus
-      DirtyPercentage: float
-      AffectedRegionIds: string list
-      Verdict: BehaviorVerdict }
+    {
+        TransitionId: string
+        DamageStatus: DamageStatus
+        DirtyPercentage: float
+        AffectedRegionIds: string list
+        Verdict: BehaviorVerdict
+    }
 
 type Appearance =
     | AntLight
@@ -78,14 +84,16 @@ type FidelityVerdict =
     | FidelityEnvironmentLimited
 
 type VisualEvidenceItem =
-    { TargetId: string
-      Appearance: Appearance
-      Size: SizeRole
-      State: VisualState
-      CapturePath: string
-      CaptureStatus: CaptureStatus
-      FidelityVerdict: FidelityVerdict
-      Reasons: string list }
+    {
+        TargetId: string
+        Appearance: Appearance
+        Size: SizeRole
+        State: VisualState
+        CapturePath: string
+        CaptureStatus: CaptureStatus
+        FidelityVerdict: FidelityVerdict
+        Reasons: string list
+    }
 
 type FunctionalVerdict =
     | FunctionalPass
@@ -101,19 +109,21 @@ type VisualVerdict =
     | VisualEnvironmentLimited
 
 type ControlVerdictRecord =
-    { ControlId: string
-      Family: string
-      PageContext: string list
-      Classification: Classification
-      ClassificationReason: string
-      BehaviorsExercised: BehaviorOutcome list
-      InteractionStates: InteractionStateOutcome list
-      VisualEvidence: VisualEvidenceItem list
-      DamageEvidence: DamageOutcome list
-      FunctionalVerdict: FunctionalVerdict
-      VisualVerdict: VisualVerdict
-      Findings: string list
-      Diagnostics: string list }
+    {
+        ControlId: string
+        Family: string
+        PageContext: string list
+        Classification: Classification
+        ClassificationReason: string
+        BehaviorsExercised: BehaviorOutcome list
+        InteractionStates: InteractionStateOutcome list
+        VisualEvidence: VisualEvidenceItem list
+        DamageEvidence: DamageOutcome list
+        FunctionalVerdict: FunctionalVerdict
+        VisualVerdict: VisualVerdict
+        Findings: string list
+        Diagnostics: string list
+    }
 
 type FindingClassification =
     | SampleLocal
@@ -135,17 +145,19 @@ type FindingLifecycle =
     | Deferred
 
 type Finding =
-    { FindingId: string
-      Description: string
-      AffectedControls: string list
-      Classification: FindingClassification
-      Tier: FindingTier
-      Severity: FindingSeverity
-      Lifecycle: FindingLifecycle
-      BeforeEvidence: string
-      AfterEvidence: string option
-      DeferralRationale: string option
-      FollowUpRef: string option }
+    {
+        FindingId: string
+        Description: string
+        AffectedControls: string list
+        Classification: FindingClassification
+        Tier: FindingTier
+        Severity: FindingSeverity
+        Lifecycle: FindingLifecycle
+        BeforeEvidence: string
+        AfterEvidence: string option
+        DeferralRationale: string option
+        FollowUpRef: string option
+    }
 
 // --- pure plan --------------------------------------------------------------
 
@@ -192,22 +204,24 @@ let behaviorsFor (controlId: string) : InteractionContract list = forControl con
 let recordSkeleton (controlId: string) : ControlVerdictRecord =
     let classification, reason = classify controlId
 
-    { ControlId = controlId
-      Family = familyOf controlId
-      PageContext = pageContextOf controlId
-      Classification = classification
-      ClassificationReason = reason
-      BehaviorsExercised = []
-      InteractionStates = []
-      VisualEvidence = []
-      DamageEvidence = []
-      FunctionalVerdict =
-        match classification with
-        | DisplayOnly -> NotApplicable
-        | Interactive -> FunctionalNeedsReview
-      VisualVerdict = VisualEnvironmentLimited
-      Findings = []
-      Diagnostics = [] }
+    {
+        ControlId = controlId
+        Family = familyOf controlId
+        PageContext = pageContextOf controlId
+        Classification = classification
+        ClassificationReason = reason
+        BehaviorsExercised = []
+        InteractionStates = []
+        VisualEvidence = []
+        DamageEvidence = []
+        FunctionalVerdict =
+            match classification with
+            | DisplayOnly -> NotApplicable
+            | Interactive -> FunctionalNeedsReview
+        VisualVerdict = VisualEnvironmentLimited
+        Findings = []
+        Diagnostics = []
+    }
 
 let planRecords () : ControlVerdictRecord list =
     catalogControlIds () |> List.map recordSkeleton
@@ -219,12 +233,14 @@ let private describeChange (before: SecondAntShowcaseModel) (after: SecondAntSho
         "no model change"
     else
         let parts =
-            [ if before.CurrentPage <> after.CurrentPage then
-                  sprintf "page %s->%s" before.CurrentPage after.CurrentPage
-              if before.Mode <> after.Mode then
-                  "mode toggled"
-              if before.PageState <> after.PageState then
-                  "page state changed" ]
+            [
+                if before.CurrentPage <> after.CurrentPage then
+                    sprintf "page %s->%s" before.CurrentPage after.CurrentPage
+                if before.Mode <> after.Mode then
+                    "mode toggled"
+                if before.PageState <> after.PageState then
+                    "page state changed"
+            ]
 
         match parts with
         | [] -> "model changed"
@@ -238,11 +254,13 @@ let exerciseBehavior
     | None ->
         // A documented behavior with no scripted message cannot be exercised deterministically.
         let outcome =
-            { BehaviorId = contract.ContractId
-              Description = contract.Action
-              Expected = contract.ExpectedStateChange
-              Observed = "no scripted message — behavior not exercisable in the pure pass"
-              Verdict = NeedsReview }
+            {
+                BehaviorId = contract.ContractId
+                Description = contract.Action
+                Expected = contract.ExpectedStateChange
+                Observed = "no scripted message — behavior not exercisable in the pure pass"
+                Verdict = NeedsReview
+            }
 
         outcome, model
     | Some msg ->
@@ -250,11 +268,13 @@ let exerciseBehavior
         let changed = model' <> model
 
         let outcome =
-            { BehaviorId = contract.ContractId
-              Description = contract.Action
-              Expected = contract.ExpectedStateChange
-              Observed = describeChange model model'
-              Verdict = (if changed then Pass else Fail) }
+            {
+                BehaviorId = contract.ContractId
+                Description = contract.Action
+                Expected = contract.ExpectedStateChange
+                Observed = describeChange model model'
+                Verdict = (if changed then Pass else Fail)
+            }
 
         outcome, model'
 
@@ -277,11 +297,16 @@ let aggregateFunctional (classification: Classification) (behaviors: BehaviorOut
     | Interactive ->
         let verdicts = behaviors |> List.map (fun b -> b.Verdict)
 
-        if List.isEmpty verdicts then FunctionalNeedsReview
-        elif List.contains Fail verdicts then FunctionalFail
-        elif List.contains NeedsReview verdicts then FunctionalNeedsReview
-        elif List.contains EnvironmentLimited verdicts then FunctionalEnvironmentLimited
-        else FunctionalPass
+        if List.isEmpty verdicts then
+            FunctionalNeedsReview
+        elif List.contains Fail verdicts then
+            FunctionalFail
+        elif List.contains NeedsReview verdicts then
+            FunctionalNeedsReview
+        elif List.contains EnvironmentLimited verdicts then
+            FunctionalEnvironmentLimited
+        else
+            FunctionalPass
 
 let aggregateVisual (cells: VisualEvidenceItem list) : VisualVerdict =
     if List.isEmpty cells then
@@ -289,10 +314,14 @@ let aggregateVisual (cells: VisualEvidenceItem list) : VisualVerdict =
     else
         let fidelities = cells |> List.map (fun c -> c.FidelityVerdict)
 
-        if List.contains FidelityBlocked fidelities then VisualBlocked
-        elif List.contains FidelityEnvironmentLimited fidelities then VisualEnvironmentLimited
-        elif List.contains FidelityNeedsReview fidelities then VisualNeedsReview
-        else VisualApproved
+        if List.contains FidelityBlocked fidelities then
+            VisualBlocked
+        elif List.contains FidelityEnvironmentLimited fidelities then
+            VisualEnvironmentLimited
+        elif List.contains FidelityNeedsReview fidelities then
+            VisualNeedsReview
+        else
+            VisualApproved
 
 let completenessGaps (records: ControlVerdictRecord list) : string list * string list =
     let catalog = catalogControlIds ()
@@ -307,7 +336,10 @@ let completenessGaps (records: ControlVerdictRecord list) : string list * string
         |> List.countBy id
         |> List.choose (fun (k, n) -> if n > 1 then Some k else None)
 
-    let foreign = recordIds |> List.filter (fun id -> not (catalogSet.Contains id)) |> List.distinct
+    let foreign =
+        recordIds
+        |> List.filter (fun id -> not (catalogSet.Contains id))
+        |> List.distinct
 
     missing, (duplicate @ foreign |> List.distinct)
 

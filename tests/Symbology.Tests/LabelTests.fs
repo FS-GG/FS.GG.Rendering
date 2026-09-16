@@ -25,7 +25,8 @@ let private baseT =
         Cy = 60.0
         R = 24.0
         Faction = Ally
-        Health = 0.6 }
+        Health = 0.6
+    }
 
 // The provisional per-grammar region widths the grammars fit to (data-model.md / Symbology.fs siting).
 // Kept here as the test's independent expectation of "within the region"; a fitted label must measure <=
@@ -62,44 +63,78 @@ let private labelGlyphRun (scene: Scene) : GlyphRunData option =
 let fitTests =
     testList
         "US2 label fit within region"
-        [ for gname, render in grammars do
-              test (sprintf "[%s] an overlong label is fitted within the region width (no overflow)" gname) {
-                  let overlong = "THIS-CALLSIGN-IS-FAR-TOO-LONG-TO-FIT-1234567890"
-                  let scene = render { baseT with Label = Some (LabelText.Plain overlong) }
+        [
+            for gname, render in grammars do
+                test (sprintf "[%s] an overlong label is fitted within the region width (no overflow)" gname) {
+                    let overlong = "THIS-CALLSIGN-IS-FAR-TOO-LONG-TO-FIT-1234567890"
 
-                  match labelGlyphRun scene with
-                  | None -> failtest "an overlong label must still draw a (fitted) glyph run"
-                  | Some data ->
-                      let drawn = (Scene.measureGlyphRun data).Width
-                      let region = regionWidth gname baseT.R
-                      Expect.isLessThanOrEqual drawn (region + 1e-6) (sprintf "fitted label width %f must be <= region %f (FR-005)" drawn region)
-              }
+                    let scene =
+                        render
+                            { baseT with
+                                Label = Some(LabelText.Plain overlong)
+                            }
 
-              test (sprintf "[%s] a label that already fits is drawn whole (not truncated)" gname) {
-                  let scene = render { baseT with Label = Some (LabelText.Plain "A7") }
+                    match labelGlyphRun scene with
+                    | None -> failtest "an overlong label must still draw a (fitted) glyph run"
+                    | Some data ->
+                        let drawn = (Scene.measureGlyphRun data).Width
+                        let region = regionWidth gname baseT.R
 
-                  match labelGlyphRun scene with
-                  | None -> failtest "a fitting label must draw a glyph run"
-                  | Some data -> Expect.equal data.Text "A7" "a fitting short label keeps its text unchanged (no ellipsis)"
-              } ]
+                        Expect.isLessThanOrEqual
+                            drawn
+                            (region + 1e-6)
+                            (sprintf "fitted label width %f must be <= region %f (FR-005)" drawn region)
+                }
+
+                test (sprintf "[%s] a label that already fits is drawn whole (not truncated)" gname) {
+                    let scene =
+                        render
+                            { baseT with
+                                Label = Some(LabelText.Plain "A7")
+                            }
+
+                    match labelGlyphRun scene with
+                    | None -> failtest "a fitting label must draw a glyph run"
+                    | Some data ->
+                        Expect.equal data.Text "A7" "a fitting short label keeps its text unchanged (no ellipsis)"
+                }
+        ]
 
 [<Tests>]
 let emptyWhitespaceTests =
     testList
         "US2 empty/whitespace label => no label"
-        [ for gname, render in grammars do
-              for label in [ Some (LabelText.Plain ""); Some (LabelText.Plain "   "); Some (LabelText.Plain "\t \n") ] do
-                  test (sprintf "[%s] label %A emits no glyph node and does not throw" gname label) {
-                      let scene = render { baseT with Label = label }
-                      let kinds = scene |> Scene.describe
-                      Expect.isFalse (List.contains GlyphRunElement kinds) "empty/whitespace label draws nothing (FR-006)"
-                  }
+        [
+            for gname, render in grammars do
+                for label in
+                    [
+                        Some(LabelText.Plain "")
+                        Some(LabelText.Plain "   ")
+                        Some(LabelText.Plain "\t \n")
+                    ] do
+                    test (sprintf "[%s] label %A emits no glyph node and does not throw" gname label) {
+                        let scene = render { baseT with Label = label }
+                        let kinds = scene |> Scene.describe
 
-              test (sprintf "[%s] whitespace label is byte-identical to no label" gname) {
-                  let ws = (SceneCodec.export (render { baseT with Label = Some (LabelText.Plain "   ") })).CanonicalBytes
-                  let none = (SceneCodec.export (render { baseT with Label = None })).CanonicalBytes
-                  Expect.equal ws none "whitespace == no label (FR-006)"
-              } ]
+                        Expect.isFalse
+                            (List.contains GlyphRunElement kinds)
+                            "empty/whitespace label draws nothing (FR-006)"
+                    }
+
+                test (sprintf "[%s] whitespace label is byte-identical to no label" gname) {
+                    let ws =
+                        (SceneCodec.export (
+                            render
+                                { baseT with
+                                    Label = Some(LabelText.Plain "   ")
+                                }
+                        ))
+                            .CanonicalBytes
+
+                    let none = (SceneCodec.export (render { baseT with Label = None })).CanonicalBytes
+                    Expect.equal ws none "whitespace == no label (FR-006)"
+                }
+        ]
 
 // (c) FR-009/C-09 — pure-fallback path. This project installs no real measurer, so these assertions run on
 // the measurer-optional pure path by construction: a labelled token still emits a node and never throws.
@@ -107,15 +142,28 @@ let emptyWhitespaceTests =
 let pureFallbackTests =
     testList
         "US2 measurer-optional pure library (FR-009)"
-        [ for gname, render in grammars do
-              test (sprintf "[%s] labelled token on the no-measurer path emits a node and does not throw" gname) {
-                  let scene = render { baseT with Label = Some (LabelText.Plain "PURE-1") }
-                  // No throw is implied by reaching here; assert the node is present and carries the text.
-                  match labelGlyphRun scene with
-                  | None -> failtest "the pure library must still emit the label node with no measurer installed"
-                  | Some data ->
-                      // Text may be fitted (shrunk/ellipsis-truncated) to a narrow region; the FR-009 point is
-                      // that a node is emitted (non-empty) and carries deterministic pure-fallback evidence.
-                      Expect.isGreaterThan data.Text.Length 0 "the pure-fallback label node carries (fitted) text (FR-009)"
-                      Expect.equal data.FallbackMode PureFallbackMode "with no measurer, the node is the deterministic pure fallback (FR-009)"
-              } ]
+        [
+            for gname, render in grammars do
+                test (sprintf "[%s] labelled token on the no-measurer path emits a node and does not throw" gname) {
+                    let scene =
+                        render
+                            { baseT with
+                                Label = Some(LabelText.Plain "PURE-1")
+                            }
+                    // No throw is implied by reaching here; assert the node is present and carries the text.
+                    match labelGlyphRun scene with
+                    | None -> failtest "the pure library must still emit the label node with no measurer installed"
+                    | Some data ->
+                        // Text may be fitted (shrunk/ellipsis-truncated) to a narrow region; the FR-009 point is
+                        // that a node is emitted (non-empty) and carries deterministic pure-fallback evidence.
+                        Expect.isGreaterThan
+                            data.Text.Length
+                            0
+                            "the pure-fallback label node carries (fitted) text (FR-009)"
+
+                        Expect.equal
+                            data.FallbackMode
+                            PureFallbackMode
+                            "with no measurer, the node is the deterministic pure fallback (FR-009)"
+                }
+        ]

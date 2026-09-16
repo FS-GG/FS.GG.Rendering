@@ -23,17 +23,41 @@ module Style =
     // `StyleVariant` set is an exhaustive match (totality, FR-002/FR-004).
     let applyVariant (theme: Theme) (variant: StyleVariant) (s: ResolvedStyle) : ResolvedStyle =
         match variant with
-        | StyleVariant.Primary -> { s with Fill = theme.Accent; Stroke = theme.Accent; Foreground = theme.Background }
-        | StyleVariant.Danger -> { s with Fill = theme.Danger; Stroke = theme.Danger; Foreground = theme.Background }
+        | StyleVariant.Primary ->
+            { s with
+                Fill = theme.Accent
+                Stroke = theme.Accent
+                Foreground = theme.Background
+            }
+        | StyleVariant.Danger ->
+            { s with
+                Fill = theme.Danger
+                Stroke = theme.Danger
+                Foreground = theme.Background
+            }
         | StyleVariant.Success ->
             let c = successColor theme
-            { s with Fill = c; Stroke = c; Foreground = theme.Background }
+
+            { s with
+                Fill = c
+                Stroke = c
+                Foreground = theme.Background
+            }
         | StyleVariant.Warning ->
             let c = warningColor theme
-            { s with Fill = c; Stroke = c; Foreground = theme.Background }
+
+            { s with
+                Fill = c
+                Stroke = c
+                Foreground = theme.Background
+            }
         | StyleVariant.Ghost ->
             // Low-emphasis / transparent fill; intent shows in the stroke + text colour.
-            { s with Fill = Colors.transparent; Stroke = theme.Foreground; Foreground = theme.Foreground }
+            { s with
+                Fill = Colors.transparent
+                Stroke = theme.Foreground
+                Foreground = theme.Foreground
+            }
         | StyleVariant.Neutral -> s // explicit "no intent" — identity delta over the base.
 
     // `Custom name` resolves through the SAME fold (FR-001): a known name maps to a delta; an
@@ -55,7 +79,11 @@ module Style =
         | "ghost" -> applyVariant theme StyleVariant.Ghost s
         | "neutral" -> applyVariant theme StyleVariant.Neutral s
         | "muted"
-        | "subtle" -> { s with Fill = theme.Muted; Foreground = theme.Background }
+        | "subtle" ->
+            { s with
+                Fill = theme.Muted
+                Foreground = theme.Background
+            }
         | _ -> s // unknown ⇒ identity delta
 
     // #384: the typography layer. `applyVariant`/`applyCustom` above are colour-only, so a class
@@ -69,7 +97,8 @@ module Style =
             FontWeight =
                 match d.Weight with
                 | Some _ -> d.Weight
-                | None -> s.FontWeight }
+                | None -> s.FontWeight
+        }
 
     let applyClass (theme: Theme) (cls: StyleClass) (s: ResolvedStyle) : ResolvedStyle =
         match cls with
@@ -114,7 +143,8 @@ module Style =
             { c with
                 Red = scaleTowards endpoint amount c.Red
                 Green = scaleTowards endpoint amount c.Green
-                Blue = scaleTowards endpoint amount c.Blue }
+                Blue = scaleTowards endpoint amount c.Blue
+            }
 
     /// Which way is "away from the label". Ant shades a light theme's hover LIGHTER
     /// (`colorPrimaryHover`), but a fixed direction is only ever right for one polarity of theme: on a
@@ -162,8 +192,14 @@ module Style =
         match state with
         | Normal -> s
         | Loading -> s
-        | Hover -> { s with Fill = emphasize hoverAmount s }
-        | Pressed -> { s with Fill = emphasize pressedAmount s }
+        | Hover ->
+            { s with
+                Fill = emphasize hoverAmount s
+            }
+        | Pressed ->
+            { s with
+                Fill = emphasize pressedAmount s
+            }
         // The focus ring is an accessibility affordance, not an intent: it names the accent outright so
         // a focused control is identifiable by the same ring wherever it appears.
         | Focused -> { s with Stroke = theme.Accent }
@@ -172,21 +208,35 @@ module Style =
         | FocusedHover ->
             { s with
                 Fill = emphasize hoverAmount s
-                Stroke = theme.Accent }
+                Stroke = theme.Accent
+            }
         // `Selected` used to repaint the label `theme.Background` as well. That was a no-op for every
         // FILLED style (whose foreground is already the background colour) and actively harmful for the
         // unfilled ones: a selected `ghost` button painted a background-coloured label straight onto the
         // background — invisible, ratio 1.00. The fill each layer chose already carries a readable
         // foreground; emphasis has no business relighting it.
-        | Selected -> { s with Fill = emphasize selectedAmount s }
+        | Selected ->
+            { s with
+                Fill = emphasize selectedAmount s
+            }
         // `Disabled` is the one state that deliberately DOES discard the intent: an inactive control
         // must not advertise a destructive (or any) action it will not perform. WCAG 1.4.3/1.4.11 both
         // exempt inactive components, which is why the contrast gate rates these pairings Decorative.
-        | Disabled -> { s with Fill = theme.Muted; Stroke = theme.Muted; Foreground = theme.Muted }
+        | Disabled ->
+            { s with
+                Fill = theme.Muted
+                Stroke = theme.Muted
+                Foreground = theme.Muted
+            }
         // Qualified: `Validation` also names `AttrCategory.Validation`; this scrutinee is a `VisualState`.
         | VisualState.Validation v -> applyValidation theme v s
 
-    let resolve (theme: Theme) (baseStyle: ResolvedStyle) (classes: StyleClass list) (state: VisualState) : ResolvedStyle =
+    let resolve
+        (theme: Theme)
+        (baseStyle: ResolvedStyle)
+        (classes: StyleClass list)
+        (state: VisualState)
+        : ResolvedStyle =
         classes
         |> List.fold (fun acc cls -> applyClass theme cls acc) baseStyle
         |> applyState theme state

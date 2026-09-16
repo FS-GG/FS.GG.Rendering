@@ -13,6 +13,7 @@ module LayoutDefaults = FS.GG.UI.Layout.Defaults
 /// bounds byte-identical.
 module internal LayoutEval =
     open ControlPrimitives
+
     let orientationOf (c: Control<'msg>) =
         tryLast AttrOrientation c.Attributes
         |> Option.bind (fun attr ->
@@ -55,26 +56,27 @@ module internal LayoutEval =
     /// independence is pinned by the same test file.)
     let layoutAffectingAttrNames: Set<string> =
         Set.ofList
-            [ AttrKeys.LayoutWidth
-              AttrKeys.LayoutHeight
-              AttrKeys.LayoutOrientation
-              AttrKeys.LayoutPadding
-              AttrKeys.LayoutMargin
-              AttrKeys.LayoutGap
-              AttrKeys.LayoutSpacing
-              AttrKeys.LayoutAlignItems
-              AttrKeys.LayoutAlignSelf
-              AttrKeys.LayoutJustifyContent
-              AttrKeys.LayoutFlexGrow
-              AttrKeys.LayoutFlexShrink
-              AttrKeys.LayoutFlexBasis
-              AttrKeys.LayoutMinWidth
-              AttrKeys.LayoutMinHeight
-              AttrKeys.LayoutMaxWidth
-              AttrKeys.LayoutMaxHeight ]
+            [
+                AttrKeys.LayoutWidth
+                AttrKeys.LayoutHeight
+                AttrKeys.LayoutOrientation
+                AttrKeys.LayoutPadding
+                AttrKeys.LayoutMargin
+                AttrKeys.LayoutGap
+                AttrKeys.LayoutSpacing
+                AttrKeys.LayoutAlignItems
+                AttrKeys.LayoutAlignSelf
+                AttrKeys.LayoutJustifyContent
+                AttrKeys.LayoutFlexGrow
+                AttrKeys.LayoutFlexShrink
+                AttrKeys.LayoutFlexBasis
+                AttrKeys.LayoutMinWidth
+                AttrKeys.LayoutMinHeight
+                AttrKeys.LayoutMaxWidth
+                AttrKeys.LayoutMaxHeight
+            ]
 
-    let rec toLayout (path: string) (c: Control<'msg>) : FS.GG.UI.Layout.LayoutNode =
-        toLayoutVisible false path c
+    let rec toLayout (path: string) (c: Control<'msg>) : FS.GG.UI.Layout.LayoutNode = toLayoutVisible false path c
 
     // Feature 358: `Attr.visible false` collapses the control AND its whole subtree out of layout. The
     // node is lowered with `Visibility = Collapsed`, which `Layout.evaluate` maps to Yoga `Display.None`
@@ -93,51 +95,99 @@ module internal LayoutEval =
 
         let size: FS.GG.UI.Layout.LayoutSize =
             if isLeaf then
-                { Width = Some(nodeWidth c)
-                  Height = Some(nodeHeight c) }
+                {
+                    Width = Some(nodeWidth c)
+                    Height = Some(nodeHeight c)
+                }
             else
-                { Width = (if hasAttr AttrWidth c.Attributes then Some(nodeWidth c) else None)
-                  Height = (if hasAttr AttrHeight c.Attributes then Some(nodeHeight c) else None) }
+                {
+                    Width =
+                        (if hasAttr AttrWidth c.Attributes then
+                             Some(nodeWidth c)
+                         else
+                             None)
+                    Height =
+                        (if hasAttr AttrHeight c.Attributes then
+                             Some(nodeHeight c)
+                         else
+                             None)
+                }
 
         let attrs = c.Attributes
-        let padding = tryFloat AttrKeys.LayoutPadding attrs |> Option.map uniformSpacing |> Option.defaultValue (uniformSpacing 8.0)
-        let margin = tryFloat AttrKeys.LayoutMargin attrs |> Option.map uniformSpacing |> Option.defaultValue LayoutDefaults.padding
-        let gap = tryFloatAny [ AttrKeys.LayoutGap; AttrKeys.LayoutSpacing ] attrs |> Option.map uniformGap |> Option.defaultValue (uniformGap 8.0)
+
+        let padding =
+            tryFloat AttrKeys.LayoutPadding attrs
+            |> Option.map uniformSpacing
+            |> Option.defaultValue (uniformSpacing 8.0)
+
+        let margin =
+            tryFloat AttrKeys.LayoutMargin attrs
+            |> Option.map uniformSpacing
+            |> Option.defaultValue LayoutDefaults.padding
+
+        let gap =
+            tryFloatAny [ AttrKeys.LayoutGap; AttrKeys.LayoutSpacing ] attrs
+            |> Option.map uniformGap
+            |> Option.defaultValue (uniformGap 8.0)
+
         let minSize: FS.GG.UI.Layout.LayoutSize =
-            { Width = tryFloat AttrKeys.LayoutMinWidth attrs
-              Height = tryFloat AttrKeys.LayoutMinHeight attrs }
+            {
+                Width = tryFloat AttrKeys.LayoutMinWidth attrs
+                Height = tryFloat AttrKeys.LayoutMinHeight attrs
+            }
+
         let maxSize: FS.GG.UI.Layout.LayoutSize =
-            { Width = tryFloat AttrKeys.LayoutMaxWidth attrs
-              Height = tryFloat AttrKeys.LayoutMaxHeight attrs }
+            {
+                Width = tryFloat AttrKeys.LayoutMaxWidth attrs
+                Height = tryFloat AttrKeys.LayoutMaxHeight attrs
+            }
 
         { LayoutDefaults.layoutNode id with
-            Visibility = (if hidden then FS.GG.UI.Layout.Collapsed else FS.GG.UI.Layout.Visible)
+            Visibility =
+                (if hidden then
+                     FS.GG.UI.Layout.Collapsed
+                 else
+                     FS.GG.UI.Layout.Visible)
             Intent =
                 { LayoutDefaults.layoutIntent with
                     Direction = directionOf c
                     Wrap = wrapOf c.Kind
-                    AlignItems = tryAlign AttrKeys.LayoutAlignItems attrs |> Option.defaultValue LayoutDefaults.layoutIntent.AlignItems
+                    AlignItems =
+                        tryAlign AttrKeys.LayoutAlignItems attrs
+                        |> Option.defaultValue LayoutDefaults.layoutIntent.AlignItems
                     AlignSelf = tryAlign AttrKeys.LayoutAlignSelf attrs
-                    JustifyContent = tryAlign AttrKeys.LayoutJustifyContent attrs |> Option.defaultValue LayoutDefaults.layoutIntent.JustifyContent
+                    JustifyContent =
+                        tryAlign AttrKeys.LayoutJustifyContent attrs
+                        |> Option.defaultValue LayoutDefaults.layoutIntent.JustifyContent
                     Padding = padding
                     Margin = margin
                     Gap = gap
                     Size = size
                     MinSize = minSize
                     MaxSize = maxSize
-                    FlexGrow = tryFloat AttrKeys.LayoutFlexGrow attrs |> Option.defaultValue LayoutDefaults.layoutIntent.FlexGrow
-                    FlexShrink = tryFloat AttrKeys.LayoutFlexShrink attrs |> Option.defaultValue LayoutDefaults.layoutIntent.FlexShrink
-                    FlexBasis = tryFloat AttrKeys.LayoutFlexBasis attrs }
-            Children = c.Children |> List.mapi (fun index child -> toLayoutVisible hidden (path + "." + string index) child) }
+                    FlexGrow =
+                        tryFloat AttrKeys.LayoutFlexGrow attrs
+                        |> Option.defaultValue LayoutDefaults.layoutIntent.FlexGrow
+                    FlexShrink =
+                        tryFloat AttrKeys.LayoutFlexShrink attrs
+                        |> Option.defaultValue LayoutDefaults.layoutIntent.FlexShrink
+                    FlexBasis = tryFloat AttrKeys.LayoutFlexBasis attrs
+                }
+            Children =
+                c.Children
+                |> List.mapi (fun index child -> toLayoutVisible hidden (path + "." + string index) child)
+        }
 
     /// Build the nested Yoga layout tree for `control` at `size`, evaluate it, and return the
     /// root `LayoutNode` plus the evaluated absolute bounds keyed by the SAME collision-free
     /// structural id (`Key |> defaultValue path`) the paint/bounds passes look up.
     let availableOf (size: FS.GG.UI.Scene.Size) : FS.GG.UI.Layout.AvailableSpace =
-        { Width = float size.Width
-          WidthMode = FS.GG.UI.Layout.Exactly
-          Height = float size.Height
-          HeightMode = FS.GG.UI.Layout.Exactly }
+        {
+            Width = float size.Width
+            WidthMode = FS.GG.UI.Layout.Exactly
+            Height = float size.Height
+            HeightMode = FS.GG.UI.Layout.Exactly
+        }
 
     let boundsByIdOf (result: FS.GG.UI.Layout.LayoutResult) =
         result.Bounds
@@ -148,7 +198,10 @@ module internal LayoutEval =
         // pre-358 control. (`Layout.hitTestComputed` independently ignores non-`Visible` bounds, so the
         // raw `LayoutResult` threaded as the incremental/retained cache stays hit-test-correct too.)
         |> List.choose (fun (b: FS.GG.UI.Layout.ComputedBounds) ->
-            if b.Visibility = FS.GG.UI.Layout.Collapsed then None else Some(b.NodeId, b.Bounds))
+            if b.Visibility = FS.GG.UI.Layout.Collapsed then
+                None
+            else
+                Some(b.NodeId, b.Bounds))
         |> Map.ofList
 
     // Feature 175 (FR-001/FR-009): the live scroll offset stamped onto a `scroll-viewer` node by the
@@ -159,7 +212,11 @@ module internal LayoutEval =
 
     let rec subtreeLayoutIds (path: string) (c: Control<'msg>) : string list =
         let id = c.Key |> Option.defaultValue path
-        id :: (c.Children |> List.mapi (fun i ch -> subtreeLayoutIds (path + "." + string i) ch) |> List.concat)
+
+        id
+        :: (c.Children
+            |> List.mapi (fun i ch -> subtreeLayoutIds (path + "." + string i) ch)
+            |> List.concat)
 
     // Accumulate, per layout id, the total vertical scroll offset contributed by every ancestor
     // `scroll-viewer` carrying a positive `scrollOffset` attr (nested viewers add up). EMPTY when no
@@ -189,6 +246,7 @@ module internal LayoutEval =
     /// `composeContainerScene` still clips children to the `scroll-viewer` box.
     let applyScrollOffsets (root: Control<'msg>) (result: FS.GG.UI.Layout.LayoutResult) =
         let offsets = collectScrollOffsets "0" root
+
         if Map.isEmpty offsets then
             result
         else
@@ -197,8 +255,12 @@ module internal LayoutEval =
                     result.Bounds
                     |> List.map (fun (b: FS.GG.UI.Layout.ComputedBounds) ->
                         match Map.tryFind b.NodeId offsets with
-                        | Some delta -> { b with Bounds = { b.Bounds with Y = b.Bounds.Y - delta } }
-                        | None -> b) }
+                        | Some delta ->
+                            { b with
+                                Bounds = { b.Bounds with Y = b.Bounds.Y - delta }
+                            }
+                        | None -> b)
+            }
 
     let evaluateLayout (size: FS.GG.UI.Scene.Size) (control: Control<'msg>) =
         let root = toLayout "0" control
@@ -211,7 +273,8 @@ module internal LayoutEval =
         root, boundsByIdOf (applyScrollOffsets control result), result
 
     let sceneWithViewportBackground (theme: Theme) (size: FS.GG.UI.Scene.Size) (scenes: Scene list) : Scene =
-        (Scene.rectangle (0.0, 0.0, float size.Width, float size.Height) theme.Background :: scenes)
+        (Scene.rectangle (0.0, 0.0, float size.Width, float size.Height) theme.Background
+         :: scenes)
         |> Scene.group
 
     /// Feature 097 (R2): the incremental render-path seam (contract C4). Drives layout through
@@ -226,7 +289,8 @@ module internal LayoutEval =
         (dirty: Set<FS.GG.UI.Layout.LayoutNodeId>)
         =
         let root = toLayout "0" control
-        let result = FS.GG.UI.Layout.Layout.evaluateIncremental previous (Set.toList dirty) (availableOf size) root
+
+        let result =
+            FS.GG.UI.Layout.Layout.evaluateIncremental previous (Set.toList dirty) (availableOf size) root
         // Feature 175: boundsById shifted (paint); RAW result threaded/stored (see `evaluateLayout`).
         root, boundsByIdOf (applyScrollOffsets control result), result
-

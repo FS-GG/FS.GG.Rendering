@@ -26,7 +26,9 @@ open System.IO
 open System.Text.RegularExpressions
 
 let repoRoot = Path.GetFullPath(Path.Combine(__SOURCE_DIRECTORY__, ".."))
-let repoPath (rel: string) = Path.Combine(repoRoot, rel.Replace('/', Path.DirectorySeparatorChar))
+
+let repoPath (rel: string) =
+    Path.Combine(repoRoot, rel.Replace('/', Path.DirectorySeparatorChar))
 
 let argv = fsi.CommandLineArgs |> Array.toList |> List.tail
 let checkOnly = argv |> List.contains "--check"
@@ -37,8 +39,11 @@ let checkOnly = argv |> List.contains "--check"
 let fsGgUiVersion =
     let props = File.ReadAllText(repoPath "template/base/Directory.Packages.props")
     let m = Regex.Match(props, "<FsGgUiVersion>([^<]+)</FsGgUiVersion>")
-    if m.Success then m.Groups.[1].Value.Trim()
-    else failwith "<FsGgUiVersion> not found in template/base/Directory.Packages.props"
+
+    if m.Success then
+        m.Groups.[1].Value.Trim()
+    else
+        failwith "<FsGgUiVersion> not found in template/base/Directory.Packages.props"
 
 // The library count — every packable src project in the slnx EXCEPT the `FS.GG.UI` BOM metapackage,
 // derived exactly as Feature 242's F-DOCS-2 derives it (not a frozen literal).
@@ -46,18 +51,25 @@ let private bomPackageId = "FS.GG.UI"
 
 let libraryCount =
     let slnx = File.ReadAllText(repoPath "FS.GG.Rendering.slnx")
+
     let packableIds =
         Regex.Matches(slnx, "Path=\"([^\"]+\\.fsproj)\"")
         |> Seq.map (fun m -> m.Groups.[1].Value.Replace('\\', '/'))
         |> Seq.filter (fun p -> p.StartsWith("src/") && p.EndsWith(".fsproj"))
         |> Seq.choose (fun rel ->
             let text = File.ReadAllText(repoPath rel)
-            if not (text.Contains "<IsPackable>true</IsPackable>") then None
+
+            if not (text.Contains "<IsPackable>true</IsPackable>") then
+                None
             else
                 let m = Regex.Match(text, "<PackageId>([^<]+)</PackageId>")
-                if m.Success then Some(m.Groups.[1].Value.Trim())
-                else failwithf "packable project %s declares no <PackageId>" rel)
+
+                if m.Success then
+                    Some(m.Groups.[1].Value.Trim())
+                else
+                    failwithf "packable project %s declares no <PackageId>" rel)
         |> Set.ofSeq
+
     packableIds |> Set.remove bomPackageId |> Set.count
 
 // ---- the regions -------------------------------------------------------------------------------
@@ -65,40 +77,63 @@ let libraryCount =
 // text Feature 242's currency regexes read — keep the "framework version `X`" and
 // "N libraries plus the `FS.GG.UI` BOM" phrasings so the re-aimed gate matches.
 
-let targets : (string * (string * string) list) list =
-    [ "README.md",
-      [ ("consume-coordinates",
-         sprintf "Published as `FS.GG.UI.*` packages on `net10.0` — %d libraries plus the `FS.GG.UI` BOM metapackage (current framework version `%s`)."
-            libraryCount fsGgUiVersion) ]
-      "docs/usage.md",
-      [ ("package-coordinates",
-         sprintf "The libraries are published as `FS.GG.UI.*` packages targeting `net10.0` — current framework version `%s`."
-            fsGgUiVersion)
-        ("library-count",
-         sprintf "All %d libraries plus the `FS.GG.UI` BOM metapackage (see [module map](product/module-map.md) for the owning source module of each):"
-            libraryCount) ] ]
+let targets: (string * (string * string) list) list =
+    [
+        "README.md",
+        [
+            ("consume-coordinates",
+             sprintf
+                 "Published as `FS.GG.UI.*` packages on `net10.0` — %d libraries plus the `FS.GG.UI` BOM metapackage (current framework version `%s`)."
+                 libraryCount
+                 fsGgUiVersion)
+        ]
+        "docs/usage.md",
+        [
+            ("package-coordinates",
+             sprintf
+                 "The libraries are published as `FS.GG.UI.*` packages targeting `net10.0` — current framework version `%s`."
+                 fsGgUiVersion)
+            ("library-count",
+             sprintf
+                 "All %d libraries plus the `FS.GG.UI` BOM metapackage (see [module map](product/module-map.md) for the owning source module of each):"
+                 libraryCount)
+        ]
+    ]
 
 /// Replace the interior of the named region, keeping the BEGIN/END marker lines exactly.
 /// Fails loud if the region's markers are absent (a moved/renamed region must not silently no-op).
 let applyRegion (text: string) (name: string) (body: string) =
     let pattern =
-        sprintf "(<!-- BEGIN GENERATED: fsgg-doc:%s[^\\n]*-->)[\\s\\S]*?(<!-- END GENERATED: fsgg-doc:%s -->)"
-            (Regex.Escape name) (Regex.Escape name)
+        sprintf
+            "(<!-- BEGIN GENERATED: fsgg-doc:%s[^\\n]*-->)[\\s\\S]*?(<!-- END GENERATED: fsgg-doc:%s -->)"
+            (Regex.Escape name)
+            (Regex.Escape name)
+
     let rx = Regex(pattern)
+
     if not (rx.IsMatch text) then
         failwithf "region 'fsgg-doc:%s' markers not found in the target doc — cannot generate into it" name
+
     rx.Replace(text, MatchEvaluator(fun m -> m.Groups.[1].Value + "\n" + body + "\n" + m.Groups.[2].Value))
 
 // ---- run ---------------------------------------------------------------------------------------
 
 let mutable drift = 0
+
 for (rel, regions) in targets do
     let path = repoPath rel
     let original = File.ReadAllText path
-    let updated = regions |> List.fold (fun acc (name, body) -> applyRegion acc name body) original
+
+    let updated =
+        regions
+        |> List.fold (fun acc (name, body) -> applyRegion acc name body) original
+
     if updated <> original then
         if checkOnly then
-            eprintfn "::error::doc-fragment drift in %s — it is a BUILD OUTPUT; run: dotnet fsi scripts/generate-doc-fragments.fsx and commit" rel
+            eprintfn
+                "::error::doc-fragment drift in %s — it is a BUILD OUTPUT; run: dotnet fsi scripts/generate-doc-fragments.fsx and commit"
+                rel
+
             drift <- drift + 1
         else
             File.WriteAllText(path, updated)
@@ -107,5 +142,10 @@ for (rel, regions) in targets do
         printfn "%s — generated doc fragments up to date" rel
 
 if checkOnly && drift > 0 then
-    eprintfn "::error::%d doc(s) carry stale generated fragments (version=%s, libraries=%d)" drift fsGgUiVersion libraryCount
+    eprintfn
+        "::error::%d doc(s) carry stale generated fragments (version=%s, libraries=%d)"
+        drift
+        fsGgUiVersion
+        libraryCount
+
     exit 1

@@ -30,11 +30,19 @@ module internal SceneRenderer =
         SKPoint(float32 point.X, float32 point.Y)
 
     let skRect (bounds: Rect) =
-        SKRect(float32 bounds.X, float32 bounds.Y, float32 (bounds.X + bounds.Width), float32 (bounds.Y + bounds.Height))
+        SKRect(
+            float32 bounds.X,
+            float32 bounds.Y,
+            float32 (bounds.X + bounds.Width),
+            float32 (bounds.Y + bounds.Height)
+        )
 
     let withOpacity opacity (color: Color) =
         let bounded = Math.Clamp(opacity, 0.0, 1.0)
-        { color with Alpha = byte (Math.Round(float color.Alpha * bounded)) }
+
+        { color with
+            Alpha = byte (Math.Round(float color.Alpha * bounded))
+        }
 
     let paintColor (paint: Paint) =
         paint.Fill
@@ -115,8 +123,7 @@ module internal SceneRenderer =
             release shader
 
         match scenePaint.Shader with
-        | Some(SolidColor color) ->
-            setShader (SKShader.CreateColor(color |> withOpacity scenePaint.Opacity |> skColor))
+        | Some(SolidColor color) -> setShader (SKShader.CreateColor(color |> withOpacity scenePaint.Opacity |> skColor))
         | Some(LinearGradient(startPoint, endPoint, colors)) when not colors.IsEmpty ->
             setShader (
                 SKShader.CreateLinearGradient(
@@ -147,7 +154,9 @@ module internal SceneRenderer =
         match scenePaint.ColorFilter with
         | NoColorFilter -> ()
         | BlendColor(color, mode) ->
-            let colorFilter = SKColorFilter.CreateBlendMode(color |> withOpacity scenePaint.Opacity |> skColor, blendMode mode)
+            let colorFilter =
+                SKColorFilter.CreateBlendMode(color |> withOpacity scenePaint.Opacity |> skColor, blendMode mode)
+
             paint.ColorFilter <- colorFilter
             release colorFilter
 
@@ -163,7 +172,13 @@ module internal SceneRenderer =
         | NoImageFilter -> ()
         | DropShadow(dx, dy, blur, color) when blur >= 0.0 ->
             let imageFilter =
-                SKImageFilter.CreateDropShadow(float32 dx, float32 dy, float32 blur, float32 blur, color |> withOpacity scenePaint.Opacity |> skColor)
+                SKImageFilter.CreateDropShadow(
+                    float32 dx,
+                    float32 dy,
+                    float32 blur,
+                    float32 blur,
+                    color |> withOpacity scenePaint.Opacity |> skColor
+                )
 
             paint.ImageFilter <- imageFilter
             release imageFilter
@@ -172,11 +187,15 @@ module internal SceneRenderer =
         match scenePaint.PathEffect with
         | NoPathEffect -> ()
         | Dash(intervals, phase) when not intervals.IsEmpty ->
-            let pathEffect = SKPathEffect.CreateDash(intervals |> List.map float32 |> List.toArray, float32 phase)
+            let pathEffect =
+                SKPathEffect.CreateDash(intervals |> List.map float32 |> List.toArray, float32 phase)
+
             paint.PathEffect <- pathEffect
             release pathEffect
         | Discrete(segmentLength, deviation) when segmentLength > 0.0 ->
-            let pathEffect = SKPathEffect.CreateDiscrete(float32 segmentLength, float32 deviation)
+            let pathEffect =
+                SKPathEffect.CreateDiscrete(float32 segmentLength, float32 deviation)
+
             paint.PathEffect <- pathEffect
             release pathEffect
         | Corner radius when radius >= 0.0 ->
@@ -187,6 +206,7 @@ module internal SceneRenderer =
 
     let toSkPath path =
         let skPath = new SKPath()
+
         skPath.FillType <-
             match path.FillType with
             | Winding -> SKPathFillType.Winding
@@ -197,7 +217,8 @@ module internal SceneRenderer =
             | MoveTo p -> skPath.MoveTo(float32 p.X, float32 p.Y)
             | LineTo p -> skPath.LineTo(float32 p.X, float32 p.Y)
             | QuadTo(c, p) -> skPath.QuadTo(float32 c.X, float32 c.Y, float32 p.X, float32 p.Y)
-            | CubicTo(c1, c2, p) -> skPath.CubicTo(float32 c1.X, float32 c1.Y, float32 c2.X, float32 c2.Y, float32 p.X, float32 p.Y)
+            | CubicTo(c1, c2, p) ->
+                skPath.CubicTo(float32 c1.X, float32 c1.Y, float32 c2.X, float32 c2.Y, float32 p.X, float32 p.Y)
             | ArcTo(bounds, startAngle, sweepAngle) ->
                 skPath.ArcTo(skRect bounds, float32 startAngle, float32 sweepAngle, false)
             | Close -> skPath.Close()
@@ -207,7 +228,14 @@ module internal SceneRenderer =
     // Feature 136 (FR-001): a tofu (missing-glyph) box — an unambiguous hollow rectangle, never a
     // plausible-looking letter or digit. Drawn only for characters with no bundled coverage and no
     // deliberate substitute. Its advance matches `Fonts.charAdvance` (≈0.6·size) so measure == draw.
-    let private drawTofuBox (canvas: SKCanvas) (left: float32) (baseline: float32) (size: float) (color: SKColor) antialias =
+    let private drawTofuBox
+        (canvas: SKCanvas)
+        (left: float32)
+        (baseline: float32)
+        (size: float)
+        (color: SKColor)
+        antialias
+        =
         use paint = new SKPaint()
         paint.Color <- color
         paint.IsAntialias <- antialias
@@ -235,9 +263,11 @@ module internal SceneRenderer =
 
         if data.Provider.Availability = ProviderInstalled && not data.Glyphs.IsEmpty then
             let glyphs = data.Glyphs |> List.map (fun g -> uint16 g.GlyphId) |> List.toArray
+
             let positions =
                 data.Glyphs
-                |> List.map (fun g -> SKPoint(float32 (x + g.Position.X + g.Offset.X), float32 (y + g.Position.Y + g.Offset.Y)))
+                |> List.map (fun g ->
+                    SKPoint(float32 (x + g.Position.X + g.Offset.X), float32 (y + g.Position.Y + g.Offset.Y)))
                 |> List.toArray
 
             use builder = new SKTextBlobBuilder()
@@ -307,7 +337,9 @@ module internal SceneRenderer =
 
         let private gate = obj ()
         // key: (path, last-write ticks, length) — a missing file is keyed (path, -1L, -1L)
-        let private entries = Collections.Generic.Dictionary<struct (string * int64 * int64), Entry>()
+        let private entries =
+            Collections.Generic.Dictionary<struct (string * int64 * int64), Entry>()
+
         let mutable private clock = 0L
 
         let private evictOverCap () =
@@ -324,7 +356,10 @@ module internal SceneRenderer =
 
                 if seen then
                     let victim = entries.[lruKey]
-                    if not (isNull victim.Image) then victim.Image.Dispose()
+
+                    if not (isNull victim.Image) then
+                        victim.Image.Dispose()
+
                     entries.Remove lruKey |> ignore
 
         /// The decoded image for `source`, or `null` when the file is missing or undecodable. The cache
@@ -361,7 +396,8 @@ module internal SceneRenderer =
         let dispose () =
             lock gate (fun () ->
                 for kv in entries do
-                    if not (isNull kv.Value.Image) then kv.Value.Image.Dispose()
+                    if not (isNull kv.Value.Image) then
+                        kv.Value.Image.Dispose()
 
                 entries.Clear())
 
@@ -386,10 +422,12 @@ module internal SceneRenderer =
             paint.Style <- SKPaintStyle.Fill
 
             let bounds =
-                { X = center.X - radius
-                  Y = center.Y - radius
-                  Width = radius * 2.0
-                  Height = radius * 2.0 }
+                {
+                    X = center.X - radius
+                    Y = center.Y - radius
+                    Width = radius * 2.0
+                    Height = radius * 2.0
+                }
 
             canvas.DrawOval(skRect bounds, paint)
         | FilledEllipse(bounds, fill) ->
@@ -403,7 +441,23 @@ module internal SceneRenderer =
             canvas.DrawOval(skRect bounds, paint)
         | Line(startPoint, endPoint, scenePaint) ->
             use paint = new SKPaint()
-            configurePaint { scenePaint with Stroke = Some(scenePaint.Stroke |> Option.defaultValue { Width = 1.0; Cap = Butt; Join = Miter; Miter = 4.0 }) } paint
+
+            configurePaint
+                { scenePaint with
+                    Stroke =
+                        Some(
+                            scenePaint.Stroke
+                            |> Option.defaultValue
+                                {
+                                    Width = 1.0
+                                    Cap = Butt
+                                    Join = Miter
+                                    Miter = 4.0
+                                }
+                        )
+                }
+                paint
+
             canvas.DrawLine(float32 startPoint.X, float32 startPoint.Y, float32 endPoint.X, float32 endPoint.Y, paint)
         | Path(path, scenePaint) ->
             use paint = new SKPaint()
@@ -413,6 +467,7 @@ module internal SceneRenderer =
         | Points(points, scenePaint) ->
             use paint = new SKPaint()
             configurePaint scenePaint paint
+
             for point in points do
                 canvas.DrawPoint(float32 point.X, float32 point.Y, paint)
         | Vertices(mode, vertices, scenePaint) ->
@@ -427,7 +482,10 @@ module internal SceneRenderer =
 
                 let colors =
                     vertices
-                    |> List.map (fun vertex -> vertex.Color |> Option.defaultValue (scenePaint.Fill |> Option.defaultValue Colors.white) |> skColor)
+                    |> List.map (fun vertex ->
+                        vertex.Color
+                        |> Option.defaultValue (scenePaint.Fill |> Option.defaultValue Colors.white)
+                        |> skColor)
                     |> List.toArray
 
                 use skVertices = SKVertices.CreateCopy(vertexMode mode, positions, colors)
@@ -436,20 +494,37 @@ module internal SceneRenderer =
                 for vertex in vertices do
                     use vertexPaint = new SKPaint()
                     configurePaint scenePaint vertexPaint
-                    vertexPaint.Color <- vertex.Color |> Option.defaultValue (scenePaint.Fill |> Option.defaultValue Colors.white) |> skColor
+
+                    vertexPaint.Color <-
+                        vertex.Color
+                        |> Option.defaultValue (scenePaint.Fill |> Option.defaultValue Colors.white)
+                        |> skColor
+
                     canvas.DrawCircle(float32 vertex.Position.X, float32 vertex.Position.Y, 2.0f, vertexPaint)
         | Arc(bounds, startAngle, sweepAngle, scenePaint) ->
             use paint = new SKPaint()
             configurePaint scenePaint paint
             canvas.DrawArc(skRect bounds, float32 startAngle, float32 sweepAngle, false, paint)
         | Text((x, y), text, color) ->
-            drawText canvas x y text { Family = None; Size = 24.0; Weight = None } (skColor color) true
+            drawText
+                canvas
+                x
+                y
+                text
+                {
+                    Family = None
+                    Size = 24.0
+                    Weight = None
+                }
+                (skColor color)
+                true
         | TextRun run ->
             drawText canvas run.Position.X run.Position.Y run.Text run.Font (paintColor run.Paint) run.Paint.Antialias
         | GlyphRun run ->
             drawGlyphRunData canvas run.Position.X run.Position.Y run.Data (paintColor run.Paint) run.Paint.Antialias
         | Image((x, y, width, height), source) ->
-            let destination = SKRect(float32 x, float32 y, float32 (x + width), float32 (y + height))
+            let destination =
+                SKRect(float32 x, float32 y, float32 (x + width), float32 (y + height))
             // Cache-owned; not disposed here. `null` ⇒ missing or undecodable ⇒ the placeholder outline.
             let image = ImageCache.resolve source
 
@@ -465,8 +540,7 @@ module internal SceneRenderer =
             canvas.Save() |> ignore
 
             match clip with
-            | RectClip bounds ->
-                canvas.ClipRect(skRect bounds) |> ignore
+            | RectClip bounds -> canvas.ClipRect(skRect bounds) |> ignore
             | PathClip path ->
                 use skPath = toSkPath path
                 canvas.ClipPath(skPath) |> ignore
@@ -482,6 +556,7 @@ module internal SceneRenderer =
         | ColorSpaceNode(_, scene) -> scene.Nodes |> List.iter (paintNode canvas)
         | PerspectiveNode(transform, scene) ->
             canvas.Save() |> ignore
+
             let matrix =
                 SKMatrix(
                     float32 transform.M11,
@@ -523,14 +598,29 @@ module internal SceneRenderer =
             scene.Nodes |> List.iter (paintNode canvas)
             canvas.Restore()
         | SizedText((x, y), text, size, color) ->
-            drawText canvas x y text { Family = None; Size = size; Weight = None } (skColor color) true
+            drawText
+                canvas
+                x
+                y
+                text
+                {
+                    Family = None
+                    Size = size
+                    Weight = None
+                }
+                (skColor color)
+                true
         // Feature 120 (US3, FR-007): a backend replay-cache boundary. With an active cache, replay the
         // recorded picture on a hit or record-then-draw on a miss; otherwise (no/disabled cache) recurse
         // straight into the wrapped scene — TRANSPARENT, byte-identical to the direct walk (FR-011).
         | CachedSubtree boundary ->
             match activeReplayCache with
             | Some cache ->
-                PictureReplayCache.paintBoundary cache canvas (fun c (s: Scene) -> s.Nodes |> List.iter (paintNode c)) boundary
+                PictureReplayCache.paintBoundary
+                    cache
+                    canvas
+                    (fun c (s: Scene) -> s.Nodes |> List.iter (paintNode c))
+                    boundary
             | None -> boundary.Scene.Nodes |> List.iter (paintNode canvas)
 
     /// Paint one frame's `Scene`. The single frame boundary shared by every present path: the

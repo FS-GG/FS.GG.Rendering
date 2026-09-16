@@ -54,20 +54,24 @@ module SkillParity =
         | ArtifactUnnamed
 
     type GuardedTheme =
-        { ThemeId: string
-          Intent: string
-          Artifacts: ArtifactRef list
-          ApplicablePatterns: string list }
+        {
+            ThemeId: string
+            Intent: string
+            Artifacts: ArtifactRef list
+            ApplicablePatterns: string list
+        }
 
     type ArtifactReference =
-        { ThemeId: string
-          Intent: string
-          SkillName: string
-          SurfaceId: string
-          Path: string
-          Reference: ArtifactRef option
-          Expected: ArtifactRef list
-          Status: ArtifactStatus }
+        {
+            ThemeId: string
+            Intent: string
+            SkillName: string
+            SurfaceId: string
+            Path: string
+            Reference: ArtifactRef option
+            Expected: ArtifactRef list
+            Status: ArtifactStatus
+        }
 
     type FindingSeverity =
         | Info
@@ -119,57 +123,67 @@ module SkillParity =
         | CommandWrappers
 
     type SkillSurface =
-        { SurfaceId: string
-          DisplayName: string
-          /// Every path this surface reads, repository-relative (or absolute under a fixture root). A
-          /// root is either a directory, scanned recursively for `SKILL.md`, or a single `SKILL.md`
-          /// file. This is the ONLY place `filesForSurface` gets a path from, and it is what the
-          /// report's `Root` column and the summary JSON's `roots` publish — see `SurfaceSelector`.
-          Roots: string list
-          /// How the bodies under `Roots` are narrowed. Declared, never inferred from `SurfaceId`.
-          Selector: SurfaceSelector
-          Kind: SurfaceKind
-          Agent: AgentSurface
-          IsRequired: bool
-          Notes: string list }
+        {
+            SurfaceId: string
+            DisplayName: string
+            /// Every path this surface reads, repository-relative (or absolute under a fixture root). A
+            /// root is either a directory, scanned recursively for `SKILL.md`, or a single `SKILL.md`
+            /// file. This is the ONLY place `filesForSurface` gets a path from, and it is what the
+            /// report's `Root` column and the summary JSON's `roots` publish — see `SurfaceSelector`.
+            Roots: string list
+            /// How the bodies under `Roots` are narrowed. Declared, never inferred from `SurfaceId`.
+            Selector: SurfaceSelector
+            Kind: SurfaceKind
+            Agent: AgentSurface
+            IsRequired: bool
+            Notes: string list
+        }
 
     type WrapperTarget =
-        { RawTarget: string
-          ResolvedPath: string
-          Exists: bool
-          CanonicalSkillName: string option
-          CanonicalDescription: string option
-          TargetHash: string option }
+        {
+            RawTarget: string
+            ResolvedPath: string
+            Exists: bool
+            CanonicalSkillName: string option
+            CanonicalDescription: string option
+            TargetHash: string option
+        }
 
     type SkillEntry =
-        { SkillName: string
-          Description: string
-          Path: string
-          AbsolutePath: string
-          SurfaceId: string
-          EntryKind: EntryKind
-          Metadata: Map<string, string>
-          BodyHash: string
-          Content: string
-          WrapperTarget: WrapperTarget option }
+        {
+            SkillName: string
+            Description: string
+            Path: string
+            AbsolutePath: string
+            SurfaceId: string
+            EntryKind: EntryKind
+            Metadata: Map<string, string>
+            BodyHash: string
+            Content: string
+            WrapperTarget: WrapperTarget option
+        }
 
     /// One `Module.member` a skill documents, resolved against the surface baseline and the test corpus.
     type ApiSymbol =
-        { Symbol: string
-          SkillName: string
-          SurfaceId: string
-          Path: string
-          Status: SymbolStatus }
+        {
+            Symbol: string
+            SkillName: string
+            SurfaceId: string
+            Path: string
+            Status: SymbolStatus
+        }
 
     type IntentionalException =
-        { ExceptionId: string
-          SkillName: string
-          SurfaceId: string
-          Category: string
-          Reason: string
-          Owner: string
-          ReviewDate: string
-          Scope: string }
+        {
+            ExceptionId: string
+            SkillName: string
+            SurfaceId: string
+            Category: string
+            Reason: string
+            Owner: string
+            ReviewDate: string
+            Scope: string
+        }
 
     /// Why a file that `filesForSurface` ENUMERATED never became a `SkillEntry`. The two cases are kept
     /// apart on purpose (#1093): an unreadable file is a fact about the repository, an unexpected defect is
@@ -191,84 +205,100 @@ module SkillParity =
     /// path(s) that led here when they differ. Reporting the enumerated path instead would send a reader to
     /// fix a file that reads perfectly.
     type SurfaceReadFailure =
-        { SurfaceId: string
-          Path: string
-          Kind: SurfaceReadFailureKind
-          ExceptionType: string
-          Reason: string
-          ReachedFrom: string list }
+        {
+            SurfaceId: string
+            Path: string
+            Kind: SurfaceReadFailureKind
+            ExceptionType: string
+            Reason: string
+            ReachedFrom: string list
+        }
 
     type ParityFinding =
-        { FindingId: string
-          SkillName: string
-          SurfaceId: string
-          Category: FindingCategory
-          Severity: FindingSeverity
-          CanonicalPath: string option
-          WrapperPath: string option
-          Symbol: string option
-          Message: string
-          Remediation: string
-          ExceptionId: string option }
+        {
+            FindingId: string
+            SkillName: string
+            SurfaceId: string
+            Category: FindingCategory
+            Severity: FindingSeverity
+            CanonicalPath: string option
+            WrapperPath: string option
+            Symbol: string option
+            Message: string
+            Remediation: string
+            ExceptionId: string option
+        }
 
     type SeverityCounts =
-        { Critical: int
-          High: int
-          Warning: int
-          Info: int }
+        {
+            Critical: int
+            High: int
+            Warning: int
+            Info: int
+        }
 
     type SkillSymbolSummary =
-        { SkillName: string
-          Documented: int
-          Exercised: int
-          Unexercised: int
-          Unresolved: int }
+        {
+            SkillName: string
+            Documented: int
+            Exercised: int
+            Unexercised: int
+            Unresolved: int
+        }
 
     type ThemeArtifactSummary =
-        { ThemeId: string
-          Scoped: int
-          Resolved: int
-          Dangling: int
-          Unnamed: int }
+        {
+            ThemeId: string
+            Scoped: int
+            Resolved: int
+            Dangling: int
+            Unnamed: int
+        }
 
     type ParityReport =
-        { CheckedAtUtc: DateTime
-          RepositoryRoot: string
-          OverallStatus: OverallStatus
-          SupportedSurfaces: SkillSurface list
-          CanonicalSourceCount: int
-          WrapperCount: int
-          FindingCountsBySeverity: SeverityCounts
-          ApiSymbolCoverage: SkillSymbolSummary list
-          GuardedThemeCoverage: ThemeArtifactSummary list
-          Findings: ParityFinding list
-          IntentionalExceptions: IntentionalException list
-          GeneratedReportPath: string
-          StructuredSummaryPath: string
-          Caveats: string list
-          Command: string }
+        {
+            CheckedAtUtc: DateTime
+            RepositoryRoot: string
+            OverallStatus: OverallStatus
+            SupportedSurfaces: SkillSurface list
+            CanonicalSourceCount: int
+            WrapperCount: int
+            FindingCountsBySeverity: SeverityCounts
+            ApiSymbolCoverage: SkillSymbolSummary list
+            GuardedThemeCoverage: ThemeArtifactSummary list
+            Findings: ParityFinding list
+            IntentionalExceptions: IntentionalException list
+            GeneratedReportPath: string
+            StructuredSummaryPath: string
+            Caveats: string list
+            Command: string
+        }
 
     type ParityCheckRequest =
-        { RepositoryRoot: string
-          OutDir: string
-          ReportPath: string
-          SummaryJsonPath: string
-          FixtureMode: string option
-          SurfaceOverrides: (string * string) list
-          AllowedExceptionIds: Set<string>
-          FailOnSeverity: FindingSeverity
-          ListSymbolsOnly: bool
-          JsonOutput: bool }
+        {
+            RepositoryRoot: string
+            OutDir: string
+            ReportPath: string
+            SummaryJsonPath: string
+            FixtureMode: string option
+            SurfaceOverrides: (string * string) list
+            AllowedExceptionIds: Set<string>
+            FailOnSeverity: FindingSeverity
+            ListSymbolsOnly: bool
+            JsonOutput: bool
+        }
 
     type Model =
-        { Request: ParityCheckRequest
-          Surfaces: SkillSurface list
-          Entries: SkillEntry list
-          Findings: ParityFinding list
-          Symbols: ApiSymbol list
-          Artifacts: ArtifactReference list
-          Report: ParityReport option
-          Diagnostics: string list }
+        {
+            Request: ParityCheckRequest
+            Surfaces: SkillSurface list
+            Entries: SkillEntry list
+            Findings: ParityFinding list
+            Symbols: ApiSymbol list
+            Artifacts: ArtifactReference list
+            Report: ParityReport option
+            Diagnostics: string list
+        }
 
     type Msg =
         | InventoryRequested
@@ -372,16 +402,12 @@ module SkillParity =
         | High -> 2
         | Critical -> 3
 
-    let private normalizeSeparators (path: string) =
-        path.Replace('\\', '/')
+    let private normalizeSeparators (path: string) = path.Replace('\\', '/')
 
     let private absolutePath (root: string) (path: string) =
-        if String.IsNullOrWhiteSpace path then
-            root
-        elif Path.IsPathRooted path then
-            Path.GetFullPath path
-        else
-            Path.GetFullPath(Path.Combine(root, path))
+        if String.IsNullOrWhiteSpace path then root
+        elif Path.IsPathRooted path then Path.GetFullPath path
+        else Path.GetFullPath(Path.Combine(root, path))
 
     let private relativePath (root: string) (path: string) =
         try
@@ -404,6 +430,7 @@ module SkillParity =
     let private sha256 (text: string) =
         use sha = SHA256.Create()
         let bytes = Encoding.UTF8.GetBytes text
+
         sha.ComputeHash bytes
         |> Array.map (fun b -> b.ToString("x2", CultureInfo.InvariantCulture))
         |> String.concat ""
@@ -419,7 +446,7 @@ module SkillParity =
                 |> Array.tryFind (fun (index, line) -> index > 0 && line.Trim() = "---")
 
             match closing with
-            | Some (closingIndex, _) ->
+            | Some(closingIndex, _) ->
                 let metadata =
                     lines[1 .. closingIndex - 1]
                     |> Array.choose (fun line ->
@@ -454,7 +481,8 @@ module SkillParity =
 
     /// Qualified `Module.member` occurrences. Members are lower-camel by F# convention, so an
     /// uppercase second segment (a nested type, a union case, a property) is deliberately not a match.
-    let private symbolPattern = Regex(@"\b([A-Z][A-Za-z0-9_]*)\.([a-z][A-Za-z0-9_]*)\b", RegexOptions.Compiled)
+    let private symbolPattern =
+        Regex(@"\b([A-Z][A-Za-z0-9_]*)\.([a-z][A-Za-z0-9_]*)\b", RegexOptions.Compiled)
 
     let private qualifiedSymbols (text: string) =
         symbolPattern.Matches text
@@ -479,15 +507,18 @@ module SkillParity =
 
     let private testSourceDir root = Path.Combine(root, "tests")
 
-    let private blockCommentPattern = Regex(@"\(\*.*?\*\)", RegexOptions.Compiled ||| RegexOptions.Singleline)
+    let private blockCommentPattern =
+        Regex(@"\(\*.*?\*\)", RegexOptions.Compiled ||| RegexOptions.Singleline)
 
-    let private tripleQuotedPattern = Regex("\"\"\".*?\"\"\"", RegexOptions.Compiled ||| RegexOptions.Singleline)
+    let private tripleQuotedPattern =
+        Regex("\"\"\".*?\"\"\"", RegexOptions.Compiled ||| RegexOptions.Singleline)
 
     /// A verbatim literal (`@"…"`) has its own escape rules and must not be read with the regular
     /// string's: `\` is an ordinary character there, so `@"C:\out\"` ends at its second quote and a
     /// pattern that treated `\"` as an escape would run past it into the code. `""` is the only
     /// escape, and the literal may span lines.
-    let private verbatimStringPattern = Regex("@\"(?:[^\"]|\"\")*\"", RegexOptions.Compiled)
+    let private verbatimStringPattern =
+        Regex("@\"(?:[^\"]|\"\")*\"", RegexOptions.Compiled)
 
     /// A regular literal, where `\` escapes the character after it — *including a newline*, which is
     /// F#'s line continuation, and which is how this repository writes a long assertion message:
@@ -503,7 +534,8 @@ module SkillParity =
     let private stringLiteralPattern =
         Regex("\"(?:\\\\[\\s\\S]|[^\"\\\\\\n])*\"", RegexOptions.Compiled)
 
-    let private lineCommentPattern = Regex("//.*$", RegexOptions.Compiled ||| RegexOptions.Multiline)
+    let private lineCommentPattern =
+        Regex("//.*$", RegexOptions.Compiled ||| RegexOptions.Multiline)
 
     /// Strip everything in an F# source that is not code, so that *mentioning* an API in a comment or
     /// a string literal cannot pass for *exercising* it. Order matters: block comments and strings go
@@ -591,9 +623,7 @@ module SkillParity =
         (entries: SkillEntry list)
         =
         entries
-        |> List.filter (fun entry ->
-            entry.EntryKind = CanonicalEntry
-            || entry.EntryKind = CommandEntry)
+        |> List.filter (fun entry -> entry.EntryKind = CanonicalEntry || entry.EntryKind = CommandEntry)
         |> List.collect (fun entry ->
             // `codeOnly` first: a fence's comments name filenames (`Program.fs`) and cautionary APIs
             // that read as `Module.member` but document nothing.
@@ -615,11 +645,13 @@ module SkillParity =
                         else Unexercised
 
                     Some
-                        { Symbol = symbol
-                          SkillName = entry.SkillName
-                          SurfaceId = entry.SurfaceId
-                          Path = entry.Path
-                          Status = status }))
+                        {
+                            Symbol = symbol
+                            SkillName = entry.SkillName
+                            SurfaceId = entry.SurfaceId
+                            Path = entry.Path
+                            Status = status
+                        }))
 
     /// The themes that outlived the substring-matched guidance layer removed in #189. A theme is kept
     /// only where its prose pointed at a repository artifact that can be resolved; the four themes whose
@@ -630,29 +662,44 @@ module SkillParity =
     ///
     /// Scopes are the ones the deleted rules carried, so this narrows coverage without silently widening it.
     let defaultGuardedThemes () =
-        [ { ThemeId = "package-pin-drift"
-            Intent = "Package-consuming samples prove their FS.GG.UI.* pins against the local feed."
-            Artifacts = [ HarnessCommand "package-feed"; RepoPath "scripts/refresh-local-feed-and-samples.fsx" ]
-            ApplicablePatterns =
-                [ "speckit-implement"
-                  "speckit-merge"
-                  "src/testing"
-                  "template/fragments/samples"
-                  "src/controls"
-                  "src/skiaviewer"
-                  "fs-gg-project" ] }
-          { ThemeId = "post-merge-package-bump"
-            Intent = "Merge work packs to the local feed and re-validates sample package pins."
-            Artifacts = [ HarnessCommand "package-feed" ]
-            ApplicablePatterns = [ "speckit-merge" ] }
-          { ThemeId = "readiness-allowlisting"
-            Intent = "Committed readiness evidence is allowlisted against the repository ignore rules."
-            // `git check-ignore` was the third reference of the deleted rule. It is not repository-owned,
-            // so it is not resolvable here and is not required — the ignore file is.
-            Artifacts = [ RepoPath ".gitignore" ]
-            ApplicablePatterns = [ "speckit-implement"; "speckit-merge"; "src/testing"; "fs-gg-project" ] } ]
+        [
+            {
+                ThemeId = "package-pin-drift"
+                Intent = "Package-consuming samples prove their FS.GG.UI.* pins against the local feed."
+                Artifacts =
+                    [
+                        HarnessCommand "package-feed"
+                        RepoPath "scripts/refresh-local-feed-and-samples.fsx"
+                    ]
+                ApplicablePatterns =
+                    [
+                        "speckit-implement"
+                        "speckit-merge"
+                        "src/testing"
+                        "template/fragments/samples"
+                        "src/controls"
+                        "src/skiaviewer"
+                        "fs-gg-project"
+                    ]
+            }
+            {
+                ThemeId = "post-merge-package-bump"
+                Intent = "Merge work packs to the local feed and re-validates sample package pins."
+                Artifacts = [ HarnessCommand "package-feed" ]
+                ApplicablePatterns = [ "speckit-merge" ]
+            }
+            {
+                ThemeId = "readiness-allowlisting"
+                Intent = "Committed readiness evidence is allowlisted against the repository ignore rules."
+                // `git check-ignore` was the third reference of the deleted rule. It is not repository-owned,
+                // so it is not resolvable here and is not required — the ignore file is.
+                Artifacts = [ RepoPath ".gitignore" ]
+                ApplicablePatterns = [ "speckit-implement"; "speckit-merge"; "src/testing"; "fs-gg-project" ]
+            }
+        ]
 
-    let private harnessCliPath root = Path.Combine(root, "tools", "Rendering.Harness", "Cli.fs")
+    let private harnessCliPath root =
+        Path.Combine(root, "tools", "Rendering.Harness", "Cli.fs")
 
     /// A dispatch arm: `| "package-feed" :: rest -> ...`. Internal arms (`__viewer`) and options
     /// (`--help`) do not match, so a skill cannot point at one.
@@ -700,7 +747,8 @@ module SkillParity =
             File.Exists full || Directory.Exists full
 
     let private themeApplies (theme: GuardedTheme) (entry: SkillEntry) =
-        let haystack = $"{entry.SkillName} {entry.Description} {entry.Path}".ToLowerInvariant()
+        let haystack =
+            $"{entry.SkillName} {entry.Description} {entry.Path}".ToLowerInvariant()
 
         theme.ApplicablePatterns
         |> List.exists (fun pattern -> haystack.Contains(pattern.ToLowerInvariant()))
@@ -719,9 +767,7 @@ module SkillParity =
         (entries: SkillEntry list)
         =
         entries
-        |> List.filter (fun entry ->
-            entry.EntryKind = CanonicalEntry
-            || entry.EntryKind = CommandEntry)
+        |> List.filter (fun entry -> entry.EntryKind = CanonicalEntry || entry.EntryKind = CommandEntry)
         |> List.collect (fun entry ->
             let spans = codeSpans entry.Content
 
@@ -742,144 +788,180 @@ module SkillParity =
                         | Some resolved -> Some resolved, ArtifactResolved
                         | None -> Some(List.head candidates), ArtifactDangling
 
-                { ThemeId = theme.ThemeId
-                  Intent = theme.Intent
-                  SkillName = entry.SkillName
-                  SurfaceId = entry.SurfaceId
-                  Path = entry.Path
-                  Reference = reference
-                  Expected = theme.Artifacts
-                  Status = status }))
+                {
+                    ThemeId = theme.ThemeId
+                    Intent = theme.Intent
+                    SkillName = entry.SkillName
+                    SurfaceId = entry.SurfaceId
+                    Path = entry.Path
+                    Reference = reference
+                    Expected = theme.Artifacts
+                    Status = status
+                }))
 
     let defaultRequest repositoryRoot =
         let root = Path.GetFullPath repositoryRoot
         let outDir = Path.Combine(root, "artifacts", "skill-parity")
 
-        { RepositoryRoot = root
-          OutDir = outDir
-          ReportPath = Path.Combine(root, "docs", "reports", "skills-parity.md")
-          SummaryJsonPath = Path.Combine(outDir, "skill-parity-summary.json")
-          FixtureMode = None
-          SurfaceOverrides = []
-          AllowedExceptionIds = Set.empty
-          FailOnSeverity = High
-          ListSymbolsOnly = false
-          JsonOutput = false }
+        {
+            RepositoryRoot = root
+            OutDir = outDir
+            ReportPath = Path.Combine(root, "docs", "reports", "skills-parity.md")
+            SummaryJsonPath = Path.Combine(outDir, "skill-parity-summary.json")
+            FixtureMode = None
+            SurfaceOverrides = []
+            AllowedExceptionIds = Set.empty
+            FailOnSeverity = High
+            ListSymbolsOnly = false
+            JsonOutput = false
+        }
 
     let discoverDefaultSurfaces repositoryRoot =
         let root = Path.GetFullPath repositoryRoot
 
-        [ { SurfaceId = "codex-local"
-            DisplayName = "Codex/local agent wrappers"
-            Roots = [ relativePath root (Path.Combine(root, ".agents", "skills")) ]
-            Selector = AgentWrappers
-            Kind = Wrapper
-            Agent = Codex
-            IsRequired = true
-            Notes = [] }
-          { SurfaceId = "claude"
-            DisplayName = "Claude wrappers"
-            Roots = [ relativePath root (Path.Combine(root, ".claude", "skills")) ]
-            Selector = AgentWrappers
-            Kind = Wrapper
-            Agent = Claude
-            IsRequired = true
-            Notes = [] }
-          { SurfaceId = "package-canonical"
-            DisplayName = "Package-owned canonical skills"
-            Roots = [ "src" ]
-            Selector = AreaSkillBodies
-            Kind = Canonical
-            Agent = Package
-            IsRequired = true
-            Notes = [] }
-          { SurfaceId = "template-canonical"
-            DisplayName = "Generated-product and template canonical skills"
-            Roots = [ "template" ]
-            Selector = NonMirroredBodies
-            Kind = Canonical
-            Agent = GeneratedProduct
-            IsRequired = true
-            Notes = [] }
-          { SurfaceId = "ant-canonical"
-            DisplayName = "Ant Design canonical skill"
-            // #1080/#1082: this body used to live AT `.claude/skills/fs-gg-ant-design/SKILL.md`, which is
-            // a shape no byte-identical three-root union can contain — one root held the canonical while
-            // the others routed INTO it, and a root cannot route to itself. The decision on #1082 kept
-            // ADR-0011's byte-identity, so the canonical moved out of the roots to the
-            // `<area>/skill/SKILL.md` convention `src/*/skill/` and `template/*/skill/` already use, and
-            // `fs-gg-ant-design` became an ORDINARY wrapper — identical in all three roots and now covered
-            // by wrapper parity like every other one (it is no longer excluded in `filesForSurface`).
-            // The surface itself stays required: what it asserts is unchanged, only where it looks.
-            Roots = [ "docs/product/ant-design/skill/SKILL.md" ]
-            Selector = EverySkillBody
-            Kind = Canonical
-            Agent = Repository
-            IsRequired = true
-            Notes = [ "Routed to by the fs-gg-ant-design wrapper in every agent-skill root." ] }
-          { SurfaceId = "spec-kit-command"
-            DisplayName = "Spec Kit command skills"
-            // ISSUE #1092 — this used to read `.agents/skills/speckit-* and .claude/skills/speckit-*`:
-            // English prose sitting in the field the report publishes as `Root`, describing what a
-            // hard-coded branch of `filesForSurface` did. The two roots are now DECLARED, and the
-            // `speckit-*` narrowing is the `CommandWrappers` selector, so the published declaration is
-            // the thing the resolver reads. Prose belongs in `Notes`, which is where the rest of it is.
-            Roots =
-              [ relativePath root (Path.Combine(root, ".agents", "skills"))
-                relativePath root (Path.Combine(root, ".claude", "skills")) ]
-            Selector = CommandWrappers
-            Kind = Command
-            Agent = SpecKit
-            IsRequired = true
-            Notes =
-              [ "Command surfaces are reported but do not require canonical wrappers."
-                "Selects only the `speckit-*` skills beneath its roots." ] } ]
+        [
+            {
+                SurfaceId = "codex-local"
+                DisplayName = "Codex/local agent wrappers"
+                Roots = [ relativePath root (Path.Combine(root, ".agents", "skills")) ]
+                Selector = AgentWrappers
+                Kind = Wrapper
+                Agent = Codex
+                IsRequired = true
+                Notes = []
+            }
+            {
+                SurfaceId = "claude"
+                DisplayName = "Claude wrappers"
+                Roots = [ relativePath root (Path.Combine(root, ".claude", "skills")) ]
+                Selector = AgentWrappers
+                Kind = Wrapper
+                Agent = Claude
+                IsRequired = true
+                Notes = []
+            }
+            {
+                SurfaceId = "package-canonical"
+                DisplayName = "Package-owned canonical skills"
+                Roots = [ "src" ]
+                Selector = AreaSkillBodies
+                Kind = Canonical
+                Agent = Package
+                IsRequired = true
+                Notes = []
+            }
+            {
+                SurfaceId = "template-canonical"
+                DisplayName = "Generated-product and template canonical skills"
+                Roots = [ "template" ]
+                Selector = NonMirroredBodies
+                Kind = Canonical
+                Agent = GeneratedProduct
+                IsRequired = true
+                Notes = []
+            }
+            {
+                SurfaceId = "ant-canonical"
+                DisplayName = "Ant Design canonical skill"
+                // #1080/#1082: this body used to live AT `.claude/skills/fs-gg-ant-design/SKILL.md`, which is
+                // a shape no byte-identical three-root union can contain — one root held the canonical while
+                // the others routed INTO it, and a root cannot route to itself. The decision on #1082 kept
+                // ADR-0011's byte-identity, so the canonical moved out of the roots to the
+                // `<area>/skill/SKILL.md` convention `src/*/skill/` and `template/*/skill/` already use, and
+                // `fs-gg-ant-design` became an ORDINARY wrapper — identical in all three roots and now covered
+                // by wrapper parity like every other one (it is no longer excluded in `filesForSurface`).
+                // The surface itself stays required: what it asserts is unchanged, only where it looks.
+                Roots = [ "docs/product/ant-design/skill/SKILL.md" ]
+                Selector = EverySkillBody
+                Kind = Canonical
+                Agent = Repository
+                IsRequired = true
+                Notes = [ "Routed to by the fs-gg-ant-design wrapper in every agent-skill root." ]
+            }
+            {
+                SurfaceId = "spec-kit-command"
+                DisplayName = "Spec Kit command skills"
+                // ISSUE #1092 — this used to read `.agents/skills/speckit-* and .claude/skills/speckit-*`:
+                // English prose sitting in the field the report publishes as `Root`, describing what a
+                // hard-coded branch of `filesForSurface` did. The two roots are now DECLARED, and the
+                // `speckit-*` narrowing is the `CommandWrappers` selector, so the published declaration is
+                // the thing the resolver reads. Prose belongs in `Notes`, which is where the rest of it is.
+                Roots =
+                    [
+                        relativePath root (Path.Combine(root, ".agents", "skills"))
+                        relativePath root (Path.Combine(root, ".claude", "skills"))
+                    ]
+                Selector = CommandWrappers
+                Kind = Command
+                Agent = SpecKit
+                IsRequired = true
+                Notes =
+                    [
+                        "Command surfaces are reported but do not require canonical wrappers."
+                        "Selects only the `speckit-*` skills beneath its roots."
+                    ]
+            }
+        ]
 
     let private fixtureSurfaces root =
-        [ { SurfaceId = "fixture-canonical"
-            DisplayName = "Synthetic fixture canonical skills"
-            Roots = [ "canonical" ]
-            Selector = EverySkillBody
-            Kind = Canonical
-            Agent = Repository
-            IsRequired = true
-            Notes = [ "SYNTHETIC fixture surface." ] }
-          { SurfaceId = "fixture-codex"
-            DisplayName = "Synthetic Codex wrappers"
-            Roots = [ "codex" ]
-            Selector = EverySkillBody
-            Kind = Wrapper
-            Agent = Codex
-            IsRequired = true
-            Notes = [ "SYNTHETIC fixture surface." ] }
-          { SurfaceId = "fixture-claude"
-            DisplayName = "Synthetic Claude wrappers"
-            Roots = [ "claude" ]
-            Selector = EverySkillBody
-            Kind = Wrapper
-            Agent = Claude
-            IsRequired = true
-            Notes = [ "SYNTHETIC fixture surface." ] }
-          // #1086: the CONTROL for `emptyRequiredSurfaceFindings`. No fixture case ever writes into
-          // `optional/`, so this surface is empty in EVERY fixture run — and because it is not required,
-          // every fixture run must stay silent about it. That is the half of `IsRequired` a test can only
-          // prove by holding the emptiness constant and flipping the flag: `fixture-canonical` above is
-          // empty and required in the same run and MUST be reported. Delete this surface and the "empty is
-          // legitimate when the surface is optional" clause has no subject, which is how the fail-open it
-          // guards would come back.
-          { SurfaceId = "fixture-optional"
-            DisplayName = "Synthetic optional surface (never populated)"
-            // #1092: `optional/` is the declared root, and `EverySkillBody` is the honest selector for
-            // it — the surface's emptiness must come from the root being empty, not from a narrowing
-            // that filters everything out, or #1086's control would prove nothing.
-            Roots = [ "optional" ]
-            Selector = EverySkillBody
-            Kind = Wrapper
-            Agent = Codex
-            IsRequired = false
-            Notes = [ "SYNTHETIC fixture surface; deliberately empty and NOT required." ] } ]
+        [
+            {
+                SurfaceId = "fixture-canonical"
+                DisplayName = "Synthetic fixture canonical skills"
+                Roots = [ "canonical" ]
+                Selector = EverySkillBody
+                Kind = Canonical
+                Agent = Repository
+                IsRequired = true
+                Notes = [ "SYNTHETIC fixture surface." ]
+            }
+            {
+                SurfaceId = "fixture-codex"
+                DisplayName = "Synthetic Codex wrappers"
+                Roots = [ "codex" ]
+                Selector = EverySkillBody
+                Kind = Wrapper
+                Agent = Codex
+                IsRequired = true
+                Notes = [ "SYNTHETIC fixture surface." ]
+            }
+            {
+                SurfaceId = "fixture-claude"
+                DisplayName = "Synthetic Claude wrappers"
+                Roots = [ "claude" ]
+                Selector = EverySkillBody
+                Kind = Wrapper
+                Agent = Claude
+                IsRequired = true
+                Notes = [ "SYNTHETIC fixture surface." ]
+            }
+            // #1086: the CONTROL for `emptyRequiredSurfaceFindings`. No fixture case ever writes into
+            // `optional/`, so this surface is empty in EVERY fixture run — and because it is not required,
+            // every fixture run must stay silent about it. That is the half of `IsRequired` a test can only
+            // prove by holding the emptiness constant and flipping the flag: `fixture-canonical` above is
+            // empty and required in the same run and MUST be reported. Delete this surface and the "empty is
+            // legitimate when the surface is optional" clause has no subject, which is how the fail-open it
+            // guards would come back.
+            {
+                SurfaceId = "fixture-optional"
+                DisplayName = "Synthetic optional surface (never populated)"
+                // #1092: `optional/` is the declared root, and `EverySkillBody` is the honest selector for
+                // it — the surface's emptiness must come from the root being empty, not from a narrowing
+                // that filters everything out, or #1086's control would prove nothing.
+                Roots = [ "optional" ]
+                Selector = EverySkillBody
+                Kind = Wrapper
+                Agent = Codex
+                IsRequired = false
+                Notes = [ "SYNTHETIC fixture surface; deliberately empty and NOT required." ]
+            }
+        ]
         |> List.map (fun surface ->
-            { surface with Roots = surface.Roots |> List.map (fun path -> relativePath root (Path.Combine(root, path))) })
+            { surface with
+                Roots =
+                    surface.Roots
+                    |> List.map (fun path -> relativePath root (Path.Combine(root, path)))
+            })
 
     /// ISSUE #1098 — the surfaces a run inspects when NO `--surface` is supplied.
     ///
@@ -903,7 +985,9 @@ module SkillParity =
     /// diffs it).
     let private surfaceCensus request (surfaces: SkillSurface list) =
         let declared = baseSurfaces request request.RepositoryRoot
-        let inspected = surfaces |> List.map (fun surface -> surface.SurfaceId) |> Set.ofList
+
+        let inspected =
+            surfaces |> List.map (fun surface -> surface.SurfaceId) |> Set.ofList
 
         let notChecked =
             declared
@@ -949,11 +1033,13 @@ module SkillParity =
     /// coordination-coherence gate's job); add a kit skill here when coordination-sync introduces it.
     let private coordinationKitSkills =
         Set.ofList
-            [ "cross-repo-coordination"
-              "intra-repo-parallel-work"
-              "check-board"
-              "initialize-sdd-workspace"
-              "pnext-item" ]
+            [
+                "cross-repo-coordination"
+                "intra-repo-parallel-work"
+                "check-board"
+                "initialize-sdd-workspace"
+                "pnext-item"
+            ]
 
     /// ADR-0011's three agent-skill roots, as the path segments that identify a MIRROR copy of a skill
     /// inside a scaffolding tree under `template/`. A body found at one of these is a byte-identical
@@ -981,7 +1067,9 @@ module SkillParity =
             raise (SurfaceReadFailed(path, ex))
 
     let private targetFromContent (readText: string -> string) (absoluteSkillPath: string) (content: string) =
-        let routeIndex = content.IndexOf("Before acting", StringComparison.OrdinalIgnoreCase)
+        let routeIndex =
+            content.IndexOf("Before acting", StringComparison.OrdinalIgnoreCase)
+
         let matches = Regex.Matches(content, "`([^`]*SKILL\\.md)`", RegexOptions.IgnoreCase)
 
         matches
@@ -989,6 +1077,7 @@ module SkillParity =
         |> Seq.tryFind (fun m -> routeIndex < 0 || m.Index > routeIndex)
         |> Option.map (fun m ->
             let raw = m.Groups[1].Value.Trim()
+
             let baseDir =
                 match Path.GetDirectoryName absoluteSkillPath with
                 | null
@@ -1016,12 +1105,14 @@ module SkillParity =
                 else
                     Map.empty, ""
 
-            { RawTarget = raw
-              ResolvedPath = normalizeSeparators resolved
-              Exists = exists
-              CanonicalSkillName = targetMetadata |> Map.tryFind "name"
-              CanonicalDescription = targetMetadata |> Map.tryFind "description"
-              TargetHash = if exists then Some(sha256 targetBody) else None })
+            {
+                RawTarget = raw
+                ResolvedPath = normalizeSeparators resolved
+                Exists = exists
+                CanonicalSkillName = targetMetadata |> Map.tryFind "name"
+                CanonicalDescription = targetMetadata |> Map.tryFind "description"
+                TargetHash = if exists then Some(sha256 targetBody) else None
+            })
 
     let private readEntry
         (readText: string -> string)
@@ -1054,25 +1145,23 @@ module SkillParity =
         // `filesForSurface` honours it for WHERE a surface looks; this is the same rule for WHAT the
         // bodies it finds are, one layer over — which is why #1092 did not catch it.
         let kind =
-            if commandSkillName name then
-                CommandEntry
-            elif surface.Kind = Canonical then
-                CanonicalEntry
-            elif target.IsSome then
-                WrapperEntry
-            else
-                WrapperOnlyEntry
+            if commandSkillName name then CommandEntry
+            elif surface.Kind = Canonical then CanonicalEntry
+            elif target.IsSome then WrapperEntry
+            else WrapperOnlyEntry
 
-        { SkillName = name
-          Description = description
-          Path = relativePath repositoryRoot absoluteSkillPath
-          AbsolutePath = normalizeSeparators absoluteSkillPath
-          SurfaceId = surface.SurfaceId
-          EntryKind = kind
-          Metadata = metadata
-          BodyHash = sha256 body
-          Content = content
-          WrapperTarget = target }
+        {
+            SkillName = name
+            Description = description
+            Path = relativePath repositoryRoot absoluteSkillPath
+            AbsolutePath = normalizeSeparators absoluteSkillPath
+            SurfaceId = surface.SurfaceId
+            EntryKind = kind
+            Metadata = metadata
+            BodyHash = sha256 body
+            Content = content
+            WrapperTarget = target
+        }
 
     let private parentDirectoryName (path: string) =
         match Directory.GetParent path with
@@ -1148,9 +1237,11 @@ module SkillParity =
         let bodiesUnder (root: string) =
             let absolute = absolutePath repositoryRoot root
 
-            if File.Exists absolute then [ absolute ]
+            if File.Exists absolute then
+                [ absolute ]
             elif Directory.Exists absolute then
-                Directory.GetFiles(absolute, "SKILL.md", SearchOption.AllDirectories) |> Array.toList
+                Directory.GetFiles(absolute, "SKILL.md", SearchOption.AllDirectories)
+                |> Array.toList
             else
                 []
 
@@ -1229,17 +1320,20 @@ module SkillParity =
                         // one the surface enumerated — a wrapper reads its canonical target too.
                         let failedPath, inner =
                             match ex with
-                            | SurfaceReadFailed (failedPath, inner) -> failedPath, inner
+                            | SurfaceReadFailed(failedPath, inner) -> failedPath, inner
                             | other -> path, other
 
                         Choice2Of2(
                             relativePath root path,
-                            { SurfaceId = surface.SurfaceId
-                              Path = relativePath root failedPath
-                              Kind = classifyReadException inner
-                              ExceptionType = inner.GetType().Name
-                              Reason = scrubRoot root inner.Message
-                              ReachedFrom = [] })))
+                            {
+                                SurfaceId = surface.SurfaceId
+                                Path = relativePath root failedPath
+                                Kind = classifyReadException inner
+                                ExceptionType = inner.GetType().Name
+                                Reason = scrubRoot root inner.Message
+                                ReachedFrom = []
+                            }
+                        )))
 
         let entries =
             results
@@ -1268,7 +1362,9 @@ module SkillParity =
                     |> List.distinct
                     |> List.sort
 
-                { failure with ReachedFrom = reachedFrom })
+                { failure with
+                    ReachedFrom = reachedFrom
+                })
             |> List.sortBy (fun failure -> failure.SurfaceId, failure.Path)
 
         entries, failures
@@ -1335,17 +1431,19 @@ module SkillParity =
                     $"Reading this skill file raised an unexpected {failure.ExceptionType}, which is a defect in the skill-parity harness rather than a fact about the file: {failure.Reason}.{via}",
                     "Fix the harness defect this exception exposes; do not suppress the read."
 
-            { FindingId = findingId UnreadableSurface failure.SurfaceId failure.Path
-              SkillName = failure.Path
-              SurfaceId = failure.SurfaceId
-              Category = UnreadableSurface
-              Severity = severity
-              CanonicalPath = Some failure.Path
-              WrapperPath = None
-              Symbol = None
-              Message = message
-              Remediation = remediation
-              ExceptionId = None })
+            {
+                FindingId = findingId UnreadableSurface failure.SurfaceId failure.Path
+                SkillName = failure.Path
+                SurfaceId = failure.SurfaceId
+                Category = UnreadableSurface
+                Severity = severity
+                CanonicalPath = Some failure.Path
+                WrapperPath = None
+                Symbol = None
+                Message = message
+                Remediation = remediation
+                ExceptionId = None
+            })
 
     let private productAliasTarget (skillName: string) =
         let normalized = normalizeText skillName
@@ -1365,60 +1463,71 @@ module SkillParity =
             match entry.EntryKind, entry.WrapperTarget with
             | WrapperEntry, Some target when not target.Exists ->
                 Some
-                    { FindingId = findingId BrokenTarget entry.SurfaceId entry.SkillName
-                      SkillName = entry.SkillName
-                      SurfaceId = entry.SurfaceId
-                      Category = BrokenTarget
-                      Severity = High
-                      CanonicalPath = Some target.RawTarget
-                      WrapperPath = Some entry.Path
-                      Symbol = None
-                      Message = "Wrapper target does not resolve."
-                      Remediation = "Update the wrapper target path or restore the canonical skill source."
-                      ExceptionId = None }
+                    {
+                        FindingId = findingId BrokenTarget entry.SurfaceId entry.SkillName
+                        SkillName = entry.SkillName
+                        SurfaceId = entry.SurfaceId
+                        Category = BrokenTarget
+                        Severity = High
+                        CanonicalPath = Some target.RawTarget
+                        WrapperPath = Some entry.Path
+                        Symbol = None
+                        Message = "Wrapper target does not resolve."
+                        Remediation = "Update the wrapper target path or restore the canonical skill source."
+                        ExceptionId = None
+                    }
             | WrapperEntry, Some target ->
                 match target.CanonicalSkillName, target.CanonicalDescription with
-                | Some targetName, _ when normalizeText targetName <> normalizeText entry.SkillName
-                                          && not (isIntentionalProductAlias entry.SkillName targetName) ->
+                | Some targetName, _ when
+                    normalizeText targetName <> normalizeText entry.SkillName
+                    && not (isIntentionalProductAlias entry.SkillName targetName)
+                    ->
                     Some
-                        { FindingId = findingId MetadataDrift entry.SurfaceId entry.SkillName
-                          SkillName = entry.SkillName
-                          SurfaceId = entry.SurfaceId
-                          Category = MetadataDrift
-                          Severity = Warning
-                          CanonicalPath = Some(relativePath (Path.GetFullPath ".") target.ResolvedPath)
-                          WrapperPath = Some entry.Path
-                          Symbol = None
-                          Message = "Wrapper skill name differs from the routed canonical skill."
-                          Remediation = "Align wrapper metadata or document an intentional command exception."
-                          ExceptionId = None }
+                        {
+                            FindingId = findingId MetadataDrift entry.SurfaceId entry.SkillName
+                            SkillName = entry.SkillName
+                            SurfaceId = entry.SurfaceId
+                            Category = MetadataDrift
+                            Severity = Warning
+                            CanonicalPath = Some(relativePath (Path.GetFullPath ".") target.ResolvedPath)
+                            WrapperPath = Some entry.Path
+                            Symbol = None
+                            Message = "Wrapper skill name differs from the routed canonical skill."
+                            Remediation = "Align wrapper metadata or document an intentional command exception."
+                            ExceptionId = None
+                        }
                 | _, Some targetDescription when normalizeText targetDescription <> normalizeText entry.Description ->
                     Some
-                        { FindingId = findingId StaleDescription entry.SurfaceId entry.SkillName
-                          SkillName = entry.SkillName
-                          SurfaceId = entry.SurfaceId
-                          Category = StaleDescription
-                          Severity = Warning
-                          CanonicalPath = Some target.RawTarget
-                          WrapperPath = Some entry.Path
-                          Symbol = None
-                          Message = "Wrapper description differs from the canonical skill description."
-                          Remediation = "Refresh the wrapper description or add an explicit exception."
-                          ExceptionId = None }
+                        {
+                            FindingId = findingId StaleDescription entry.SurfaceId entry.SkillName
+                            SkillName = entry.SkillName
+                            SurfaceId = entry.SurfaceId
+                            Category = StaleDescription
+                            Severity = Warning
+                            CanonicalPath = Some target.RawTarget
+                            WrapperPath = Some entry.Path
+                            Symbol = None
+                            Message = "Wrapper description differs from the canonical skill description."
+                            Remediation = "Refresh the wrapper description or add an explicit exception."
+                            ExceptionId = None
+                        }
                 | _ -> None
             | WrapperOnlyEntry, None ->
                 Some
-                    { FindingId = findingId WrapperOnly entry.SurfaceId entry.SkillName
-                      SkillName = entry.SkillName
-                      SurfaceId = entry.SurfaceId
-                      Category = WrapperOnly
-                      Severity = Warning
-                      CanonicalPath = None
-                      WrapperPath = Some entry.Path
-                      Symbol = None
-                      Message = "Wrapper entry has no canonical target."
-                      Remediation = "Add a canonical source route or classify the entry as an intentional command skill."
-                      ExceptionId = None }
+                    {
+                        FindingId = findingId WrapperOnly entry.SurfaceId entry.SkillName
+                        SkillName = entry.SkillName
+                        SurfaceId = entry.SurfaceId
+                        Category = WrapperOnly
+                        Severity = Warning
+                        CanonicalPath = None
+                        WrapperPath = Some entry.Path
+                        Symbol = None
+                        Message = "Wrapper entry has no canonical target."
+                        Remediation =
+                            "Add a canonical source route or classify the entry as an intentional command skill."
+                        ExceptionId = None
+                    }
             | _ -> None)
 
     /// ISSUE #1137 — which CANONICAL surfaces demand that their bodies ALSO appear as an activation
@@ -1464,7 +1573,8 @@ module SkillParity =
     /// Optional wrapper surfaces deliberately do not create an exposure obligation: `fixture-optional`
     /// stays empty to prove that an optional surface may be empty without manufacturing findings.
     let private requiredWrapperSurfaces (surfaces: SkillSurface list) =
-        surfaces |> List.filter (fun surface -> surface.Kind = Wrapper && surface.IsRequired)
+        surfaces
+        |> List.filter (fun surface -> surface.Kind = Wrapper && surface.IsRequired)
 
     let private missingWrapperFindings (surfaces: SkillSurface list) (entries: SkillEntry list) =
         let surfacesById =
@@ -1487,8 +1597,10 @@ module SkillParity =
             |> List.choose (fun (surfaceId, names) ->
                 let canonicalName = normalizeText entry.SkillName
                 let productAliasName = canonicalName.Replace("fs-gg-", "fs-gg-product-")
+
                 let isProductSkill =
                     entry.Path.Contains("template/product-skills", StringComparison.OrdinalIgnoreCase)
+
                 let exposedAsAlias = isProductSkill && names.Contains productAliasName
                 // A product skill's wrapper requirement is satisfied ONLY by its fs-gg-product-* alias;
                 // a bare same-named framework wrapper must not mask a missing product wrapper (Feature 223).
@@ -1513,17 +1625,20 @@ module SkillParity =
                     None
                 else
                     Some
-                        { FindingId = findingId MissingWrapper surfaceId entry.SkillName
-                          SkillName = entry.SkillName
-                          SurfaceId = surfaceId
-                          Category = MissingWrapper
-                          Severity = Warning
-                          CanonicalPath = Some entry.Path
-                          WrapperPath = None
-                          Symbol = None
-                          Message = "Canonical skill is not exposed on this supported wrapper surface."
-                          Remediation = "Add a short wrapper that routes to the canonical SKILL.md, or record an explicit exception."
-                          ExceptionId = None }))
+                        {
+                            FindingId = findingId MissingWrapper surfaceId entry.SkillName
+                            SkillName = entry.SkillName
+                            SurfaceId = surfaceId
+                            Category = MissingWrapper
+                            Severity = Warning
+                            CanonicalPath = Some entry.Path
+                            WrapperPath = None
+                            Symbol = None
+                            Message = "Canonical skill is not exposed on this supported wrapper surface."
+                            Remediation =
+                                "Add a short wrapper that routes to the canonical SKILL.md, or record an explicit exception."
+                            ExceptionId = None
+                        }))
 
     let private canonicalDriftFindings request (entries: SkillEntry list) =
         if request.FixtureMode.IsNone then
@@ -1534,24 +1649,27 @@ module SkillParity =
             |> List.groupBy (fun entry -> normalizeText entry.SkillName)
             |> List.collect (fun (_, group) ->
                 let descriptions =
-                    group
-                    |> List.map (fun entry -> normalizeText entry.Description)
-                    |> Set.ofList
+                    group |> List.map (fun entry -> normalizeText entry.Description) |> Set.ofList
 
                 if group.Length > 1 && descriptions.Count > 1 then
                     group
                     |> List.map (fun entry ->
-                        { FindingId = findingId CanonicalDrift entry.SurfaceId entry.SkillName + ":" + entry.Path.Replace("/", "-")
-                          SkillName = entry.SkillName
-                          SurfaceId = entry.SurfaceId
-                          Category = CanonicalDrift
-                          Severity = High
-                          CanonicalPath = Some entry.Path
-                          WrapperPath = None
-                          Symbol = None
-                          Message = "Duplicate canonical sources with the same skill name diverge."
-                          Remediation = "Choose one canonical source or document a specific variant exception."
-                          ExceptionId = None })
+                        {
+                            FindingId =
+                                findingId CanonicalDrift entry.SurfaceId entry.SkillName
+                                + ":"
+                                + entry.Path.Replace("/", "-")
+                            SkillName = entry.SkillName
+                            SurfaceId = entry.SurfaceId
+                            Category = CanonicalDrift
+                            Severity = High
+                            CanonicalPath = Some entry.Path
+                            WrapperPath = None
+                            Symbol = None
+                            Message = "Duplicate canonical sources with the same skill name diverge."
+                            Remediation = "Choose one canonical source or document a specific variant exception."
+                            ExceptionId = None
+                        })
                 else
                     [])
 
@@ -1560,17 +1678,19 @@ module SkillParity =
         |> List.choose (fun item ->
             let finding category severity message remediation =
                 Some
-                    { FindingId = $"{categoryToken category}:{item.SurfaceId}:{item.SkillName}:{item.Symbol}"
-                      SkillName = item.SkillName
-                      SurfaceId = item.SurfaceId
-                      Category = category
-                      Severity = severity
-                      CanonicalPath = Some item.Path
-                      WrapperPath = None
-                      Symbol = Some item.Symbol
-                      Message = message
-                      Remediation = remediation
-                      ExceptionId = None }
+                    {
+                        FindingId = $"{categoryToken category}:{item.SurfaceId}:{item.SkillName}:{item.Symbol}"
+                        SkillName = item.SkillName
+                        SurfaceId = item.SurfaceId
+                        Category = category
+                        Severity = severity
+                        CanonicalPath = Some item.Path
+                        WrapperPath = None
+                        Symbol = Some item.Symbol
+                        Message = message
+                        Remediation = remediation
+                        ExceptionId = None
+                    }
 
             match item.Status with
             | Unresolved ->
@@ -1592,17 +1712,19 @@ module SkillParity =
         |> List.choose (fun item ->
             let finding category severity message remediation =
                 Some
-                    { FindingId = $"{categoryToken category}:{item.SurfaceId}:{item.SkillName}:{item.ThemeId}"
-                      SkillName = item.SkillName
-                      SurfaceId = item.SurfaceId
-                      Category = category
-                      Severity = severity
-                      CanonicalPath = Some item.Path
-                      WrapperPath = None
-                      Symbol = item.Reference |> Option.map artifactRefToken
-                      Message = message
-                      Remediation = remediation
-                      ExceptionId = None }
+                    {
+                        FindingId = $"{categoryToken category}:{item.SurfaceId}:{item.SkillName}:{item.ThemeId}"
+                        SkillName = item.SkillName
+                        SurfaceId = item.SurfaceId
+                        Category = category
+                        Severity = severity
+                        CanonicalPath = Some item.Path
+                        WrapperPath = None
+                        Symbol = item.Reference |> Option.map artifactRefToken
+                        Message = message
+                        Remediation = remediation
+                        ExceptionId = None
+                    }
 
             let expected =
                 item.Expected
@@ -1700,119 +1822,134 @@ module SkillParity =
             []
         else
 
-        let manifestPath =
-            Path.Combine(request.RepositoryRoot, "template", "skill-manifest", "skill-manifest.json")
+            let manifestPath =
+                Path.Combine(request.RepositoryRoot, "template", "skill-manifest", "skill-manifest.json")
 
-        if not (File.Exists manifestPath) then
-            [ { FindingId = findingId MissingWrapper "manifest" "skill-manifest"
-                SkillName = "skill-manifest"
-                SurfaceId = "manifest"
-                Category = MissingWrapper
-                Severity = High
-                CanonicalPath = Some "template/skill-manifest/skill-manifest.json"
-                WrapperPath = None
-                Symbol = None
-                Message = "The skill manifest is missing, so product-skill wrapper coverage cannot be asserted."
-                Remediation = "Restore template/skill-manifest/skill-manifest.json (dotnet fsi scripts/generate-skill-manifest.fsx)."
-                ExceptionId = None } ]
-        else
+            if not (File.Exists manifestPath) then
+                [
+                    {
+                        FindingId = findingId MissingWrapper "manifest" "skill-manifest"
+                        SkillName = "skill-manifest"
+                        SurfaceId = "manifest"
+                        Category = MissingWrapper
+                        Severity = High
+                        CanonicalPath = Some "template/skill-manifest/skill-manifest.json"
+                        WrapperPath = None
+                        Symbol = None
+                        Message = "The skill manifest is missing, so product-skill wrapper coverage cannot be asserted."
+                        Remediation =
+                            "Restore template/skill-manifest/skill-manifest.json (dotnet fsi scripts/generate-skill-manifest.fsx)."
+                        ExceptionId = None
+                    }
+                ]
+            else
 
-        let productIds =
-            try
-                use doc = JsonDocument.Parse(File.ReadAllText manifestPath)
-                let skills =
-                    match doc.RootElement.ValueKind with
-                    | JsonValueKind.Array -> doc.RootElement.EnumerateArray() |> Seq.toList
-                    | _ ->
-                        match doc.RootElement.TryGetProperty "skills" with
-                        | true, arr when arr.ValueKind = JsonValueKind.Array -> arr.EnumerateArray() |> Seq.toList
-                        | _ -> []
+                let productIds =
+                    try
+                        use doc = JsonDocument.Parse(File.ReadAllText manifestPath)
 
-                skills
-                |> List.choose (fun s ->
-                    let prop name =
-                        match s.TryGetProperty(name: string) with
-                        | true, v when v.ValueKind = JsonValueKind.String -> Option.ofObj (v.GetString())
-                        | _ -> None
+                        let skills =
+                            match doc.RootElement.ValueKind with
+                            | JsonValueKind.Array -> doc.RootElement.EnumerateArray() |> Seq.toList
+                            | _ ->
+                                match doc.RootElement.TryGetProperty "skills" with
+                                | true, arr when arr.ValueKind = JsonValueKind.Array ->
+                                    arr.EnumerateArray() |> Seq.toList
+                                | _ -> []
 
-                    match prop "id", prop "scope" with
-                    | Some id, Some "product" -> Some(id, prop "supplied-by" |> Option.defaultValue "")
-                    | _ -> None)
-            with _ ->
-                []
+                        skills
+                        |> List.choose (fun s ->
+                            let prop name =
+                                match s.TryGetProperty(name: string) with
+                                | true, v when v.ValueKind = JsonValueKind.String -> Option.ofObj (v.GetString())
+                                | _ -> None
 
-        // Both required wrapper surfaces are required: a skill activated for one agent and not another is
-        // half-shipped. They are derived from the effective surfaces, so every finding names a surface in
-        // this run's Supported Surfaces table and shares its identity with the scan-driven producer.
-        let wrapperTargets = requiredWrapperSurfaces surfaces
+                            match prop "id", prop "scope" with
+                            | Some id, Some "product" -> Some(id, prop "supplied-by" |> Option.defaultValue "")
+                            | _ -> None)
+                    with _ ->
+                        []
 
-        productIds
-        |> List.collect (fun (id, suppliedBy) ->
-            // The ONE name that satisfies this skill, derived from where its body is supplied (see above).
-            // Not "either name": for a capability skill the canonical id belongs to the FRAMEWORK wrapper,
-            // and accepting it here is what let a deleted product wrapper pass unnoticed.
-            let onConvention =
-                suppliedBy.Replace('\\', '/').StartsWith("template/product-skills/", StringComparison.Ordinal)
+                // Both required wrapper surfaces are required: a skill activated for one agent and not another is
+                // half-shipped. They are derived from the effective surfaces, so every finding names a surface in
+                // this run's Supported Surfaces table and shares its identity with the scan-driven producer.
+                let wrapperTargets = requiredWrapperSurfaces surfaces
 
-            let required =
-                if onConvention then
-                    id.Replace("fs-gg-", "fs-gg-product-")
-                else
-                    id
+                productIds
+                |> List.collect (fun (id, suppliedBy) ->
+                    // The ONE name that satisfies this skill, derived from where its body is supplied (see above).
+                    // Not "either name": for a capability skill the canonical id belongs to the FRAMEWORK wrapper,
+                    // and accepting it here is what let a deleted product wrapper pass unnoticed.
+                    let onConvention =
+                        suppliedBy.Replace('\\', '/').StartsWith("template/product-skills/", StringComparison.Ordinal)
 
-            let otherName = if onConvention then id else id.Replace("fs-gg-", "fs-gg-product-")
-
-            wrapperTargets
-            |> List.choose (fun surface ->
-                let roots = surface.Roots |> List.map normalizeSeparators
-                let rootDescription = String.concat " or " roots
-
-                let present name =
-                    roots
-                    |> List.exists (fun root -> File.Exists(Path.Combine(request.RepositoryRoot, root, name, "SKILL.md")))
-
-                /// A wrapper that routes into `src/<X>/skill/` is the FRAMEWORK skill's, whatever it is named.
-                /// It cannot stand in for a product wrapper — that substitution IS the #465 bug.
-                let routesToFramework name =
-                    entries
-                    |> List.tryFind (fun entry ->
-                        roots
-                        |> List.exists (fun root -> normalizeSeparators entry.Path = $"{root}/{name}/SKILL.md"))
-                    |> Option.bind (fun entry -> entry.WrapperTarget)
-                    |> Option.exists (fun target ->
-                        let raw = normalizeSeparators target.RawTarget
-                        raw.Contains "/src/" && raw.EndsWith "/skill/SKILL.md")
-
-                let satisfied = present required && not (routesToFramework required)
-
-                if satisfied then
-                    None
-                else
-                    // Say WHICH failure this is. "No wrapper", "wrapper is under the other name" and "the
-                    // wrapper of that name belongs to the framework skill" are three different edits, and
-                    // conflating them is how somebody fixes the wrong one.
-                    let detail =
-                        if present required && routesToFramework required then
-                            $" A wrapper DOES exist at `{rootDescription}/{required}/`, but it routes into `src/…/skill/` — it is the FRAMEWORK skill's wrapper, not this product skill's, and it cannot stand in for one. That substitution is exactly the masking Feature 223 forbids and the #465 bug (a product skill materializing into every workspace with no wrapper of its own, while coverage reported green)."
-                        elif present otherName then
-                            $" A wrapper exists at `{rootDescription}/{otherName}/`, but that is not the name this skill's wrapper takes: its body is supplied from `{suppliedBy}`, so it is wrapped under `{required}` (#489)."
+                    let required =
+                        if onConvention then
+                            id.Replace("fs-gg-", "fs-gg-product-")
                         else
-                            ""
+                            id
 
-                    Some
-                        { FindingId = findingId MissingWrapper surface.SurfaceId id
-                          SkillName = id
-                          SurfaceId = surface.SurfaceId
-                          Category = MissingWrapper
-                          Severity = High
-                          CanonicalPath = Some "template/skill-manifest/skill-manifest.json"
-                          WrapperPath = None
-                          Symbol = None
-                          Message =
-                            $"Manifest declares `{id}` as a product skill (it materializes into generated workspaces), but no activation wrapper exists at `{rootDescription}/{required}/`.{detail}"
-                          Remediation =
-                            $"Add `{rootDescription}/{required}/SKILL.md` routing to the canonical body, or drop the skill's `scope: product` in the manifest. The name is not a choice: a body supplied from `template/product-skills/` is wrapped under the `fs-gg-product-*` alias, and one supplied from anywhere else under its canonical id (#489)."
-                          ExceptionId = None }))
+                    let otherName =
+                        if onConvention then
+                            id
+                        else
+                            id.Replace("fs-gg-", "fs-gg-product-")
+
+                    wrapperTargets
+                    |> List.choose (fun surface ->
+                        let roots = surface.Roots |> List.map normalizeSeparators
+                        let rootDescription = String.concat " or " roots
+
+                        let present name =
+                            roots
+                            |> List.exists (fun root ->
+                                File.Exists(Path.Combine(request.RepositoryRoot, root, name, "SKILL.md")))
+
+                        /// A wrapper that routes into `src/<X>/skill/` is the FRAMEWORK skill's, whatever it is named.
+                        /// It cannot stand in for a product wrapper — that substitution IS the #465 bug.
+                        let routesToFramework name =
+                            entries
+                            |> List.tryFind (fun entry ->
+                                roots
+                                |> List.exists (fun root ->
+                                    normalizeSeparators entry.Path = $"{root}/{name}/SKILL.md"))
+                            |> Option.bind (fun entry -> entry.WrapperTarget)
+                            |> Option.exists (fun target ->
+                                let raw = normalizeSeparators target.RawTarget
+                                raw.Contains "/src/" && raw.EndsWith "/skill/SKILL.md")
+
+                        let satisfied = present required && not (routesToFramework required)
+
+                        if satisfied then
+                            None
+                        else
+                            // Say WHICH failure this is. "No wrapper", "wrapper is under the other name" and "the
+                            // wrapper of that name belongs to the framework skill" are three different edits, and
+                            // conflating them is how somebody fixes the wrong one.
+                            let detail =
+                                if present required && routesToFramework required then
+                                    $" A wrapper DOES exist at `{rootDescription}/{required}/`, but it routes into `src/…/skill/` — it is the FRAMEWORK skill's wrapper, not this product skill's, and it cannot stand in for one. That substitution is exactly the masking Feature 223 forbids and the #465 bug (a product skill materializing into every workspace with no wrapper of its own, while coverage reported green)."
+                                elif present otherName then
+                                    $" A wrapper exists at `{rootDescription}/{otherName}/`, but that is not the name this skill's wrapper takes: its body is supplied from `{suppliedBy}`, so it is wrapped under `{required}` (#489)."
+                                else
+                                    ""
+
+                            Some
+                                {
+                                    FindingId = findingId MissingWrapper surface.SurfaceId id
+                                    SkillName = id
+                                    SurfaceId = surface.SurfaceId
+                                    Category = MissingWrapper
+                                    Severity = High
+                                    CanonicalPath = Some "template/skill-manifest/skill-manifest.json"
+                                    WrapperPath = None
+                                    Symbol = None
+                                    Message =
+                                        $"Manifest declares `{id}` as a product skill (it materializes into generated workspaces), but no activation wrapper exists at `{rootDescription}/{required}/`.{detail}"
+                                    Remediation =
+                                        $"Add `{rootDescription}/{required}/SKILL.md` routing to the canonical body, or drop the skill's `scope: product` in the manifest. The name is not a choice: a body supplied from `template/product-skills/` is wrapped under the `fs-gg-product-*` alias, and one supplied from anywhere else under its canonical id (#489)."
+                                    ExceptionId = None
+                                }))
 
     /// The ONLY authors whose `metadata.source` is upstream provenance rather than a citation of this repo.
     ///
@@ -1878,17 +2015,19 @@ module SkillParity =
 
             let finding message remediation =
                 Some
-                    { FindingId = identity
-                      SkillName = entry.SkillName
-                      SurfaceId = entry.SurfaceId
-                      Category = UnresolvedMetadataSource
-                      Severity = High
-                      CanonicalPath = Some entry.Path
-                      WrapperPath = None
-                      Symbol = None
-                      Message = message
-                      Remediation = remediation
-                      ExceptionId = None }
+                    {
+                        FindingId = identity
+                        SkillName = entry.SkillName
+                        SurfaceId = entry.SurfaceId
+                        Category = UnresolvedMetadataSource
+                        Severity = High
+                        CanonicalPath = Some entry.Path
+                        WrapperPath = None
+                        Symbol = None
+                        Message = message
+                        Remediation = remediation
+                        ExceptionId = None
+                    }
 
             match declared "source" with
             | None -> None
@@ -1974,7 +2113,9 @@ module SkillParity =
             // cannot be fixed in this repo — would start reddening a gate nobody can clear.
             let vendored =
                 Set.contains (normalizeText entry.SkillName) (coordinationKitSkills |> Set.map normalizeText)
-                || (declared "author" |> Option.map normalizeText |> Option.exists vendoredAuthors.Contains)
+                || (declared "author"
+                    |> Option.map normalizeText
+                    |> Option.exists vendoredAuthors.Contains)
 
             let _, body = parseFrontMatter entry.Content
 
@@ -1986,20 +2127,22 @@ module SkillParity =
 
             let finding message remediation =
                 Some
-                    { FindingId =
-                        findingId UnsourcedRequirementCitation entry.SurfaceId entry.SkillName
-                        + ":"
-                        + entry.Path.Replace("/", "-")
-                      SkillName = entry.SkillName
-                      SurfaceId = entry.SurfaceId
-                      Category = UnsourcedRequirementCitation
-                      Severity = High
-                      CanonicalPath = Some entry.Path
-                      WrapperPath = None
-                      Symbol = None
-                      Message = message
-                      Remediation = remediation
-                      ExceptionId = None }
+                    {
+                        FindingId =
+                            findingId UnsourcedRequirementCitation entry.SurfaceId entry.SkillName
+                            + ":"
+                            + entry.Path.Replace("/", "-")
+                        SkillName = entry.SkillName
+                        SurfaceId = entry.SurfaceId
+                        Category = UnsourcedRequirementCitation
+                        Severity = High
+                        CanonicalPath = Some entry.Path
+                        WrapperPath = None
+                        Symbol = None
+                        Message = message
+                        Remediation = remediation
+                        ExceptionId = None
+                    }
 
             let citedList = cited |> Set.toList |> String.concat ", "
 
@@ -2102,24 +2245,26 @@ module SkillParity =
         surfaces
         |> List.filter (fun surface -> surface.IsRequired && (filesForSurface repositoryRoot surface).IsEmpty)
         |> List.map (fun surface ->
-            { FindingId = findingId UnreadableSurface surface.SurfaceId surface.SurfaceId
-              SkillName = surface.SurfaceId
-              SurfaceId = surface.SurfaceId
-              Category = UnreadableSurface
-              Severity = High
-              // #1092: `RootPath` became `Roots`, so the finding names EVERY root the surface declares,
-              // in the same `", "`-joined form the report's `Root` column publishes. Naming only the
-              // first would send a reader of a multi-root surface (`spec-kit-command`) to half of what
-              // was searched — and after #1092 these are the paths that were ACTUALLY searched, so the
-              // finding and the resolver can no longer disagree about where the surface looked.
-              CanonicalPath = Some(String.concat ", " surface.Roots)
-              WrapperPath = None
-              Symbol = None
-              Message = $"Required surface '{surface.SurfaceId}' resolves to zero skill files."
-              Remediation =
-                "Restore the canonical skill body at the declared root, correct the surface's path, or "
-                + "declare the surface IsRequired = false if an empty surface is legitimate."
-              ExceptionId = None })
+            {
+                FindingId = findingId UnreadableSurface surface.SurfaceId surface.SurfaceId
+                SkillName = surface.SurfaceId
+                SurfaceId = surface.SurfaceId
+                Category = UnreadableSurface
+                Severity = High
+                // #1092: `RootPath` became `Roots`, so the finding names EVERY root the surface declares,
+                // in the same `", "`-joined form the report's `Root` column publishes. Naming only the
+                // first would send a reader of a multi-root surface (`spec-kit-command`) to half of what
+                // was searched — and after #1092 these are the paths that were ACTUALLY searched, so the
+                // finding and the resolver can no longer disagree about where the surface looked.
+                CanonicalPath = Some(String.concat ", " surface.Roots)
+                WrapperPath = None
+                Symbol = None
+                Message = $"Required surface '{surface.SurfaceId}' resolves to zero skill files."
+                Remediation =
+                    "Restore the canonical skill body at the declared root, correct the surface's path, or "
+                    + "declare the surface IsRequired = false if an empty surface is legitimate."
+                ExceptionId = None
+            })
 
     let private classifyFindings request surfaces entries readFailures symbols artifacts =
         // `manifestCoverageFindings` runs BEFORE `missingWrapperFindings` on purpose. The two share a
@@ -2173,23 +2318,29 @@ module SkillParity =
         |> List.sortBy (fun finding -> -(severityRank finding.Severity), finding.FindingId)
 
     let private severityCounts findings =
-        { Critical = findings |> List.filter (fun f -> f.Severity = Critical) |> List.length
-          High = findings |> List.filter (fun f -> f.Severity = High) |> List.length
-          Warning = findings |> List.filter (fun f -> f.Severity = Warning) |> List.length
-          Info = findings |> List.filter (fun f -> f.Severity = Info) |> List.length }
+        {
+            Critical = findings |> List.filter (fun f -> f.Severity = Critical) |> List.length
+            High = findings |> List.filter (fun f -> f.Severity = High) |> List.length
+            Warning = findings |> List.filter (fun f -> f.Severity = Warning) |> List.length
+            Info = findings |> List.filter (fun f -> f.Severity = Info) |> List.length
+        }
 
     let private symbolSummary (symbols: ApiSymbol list) =
         symbols
         |> List.groupBy (fun symbol -> symbol.SkillName)
         |> List.map (fun (skillName, items) ->
             let counts = items |> List.countBy (fun item -> item.Status) |> Map.ofList
-            let countOf status = counts |> Map.tryFind status |> Option.defaultValue 0
 
-            { SkillName = skillName
-              Documented = items.Length
-              Exercised = countOf Exercised
-              Unexercised = countOf Unexercised
-              Unresolved = countOf Unresolved })
+            let countOf status =
+                counts |> Map.tryFind status |> Option.defaultValue 0
+
+            {
+                SkillName = skillName
+                Documented = items.Length
+                Exercised = countOf Exercised
+                Unexercised = countOf Unexercised
+                Unresolved = countOf Unresolved
+            })
         |> List.sortBy (fun summary -> summary.SkillName)
 
     /// Every theme appears, including one with no skill in scope — a theme that silently stopped applying
@@ -2198,13 +2349,17 @@ module SkillParity =
         themes
         |> List.map (fun theme ->
             let items = references |> List.filter (fun item -> item.ThemeId = theme.ThemeId)
-            let countOf status = items |> List.filter (fun item -> item.Status = status) |> List.length
 
-            { ThemeId = theme.ThemeId
-              Scoped = items.Length
-              Resolved = countOf ArtifactResolved
-              Dangling = countOf ArtifactDangling
-              Unnamed = countOf ArtifactUnnamed })
+            let countOf status =
+                items |> List.filter (fun item -> item.Status = status) |> List.length
+
+            {
+                ThemeId = theme.ThemeId
+                Scoped = items.Length
+                Resolved = countOf ArtifactResolved
+                Dangling = countOf ArtifactDangling
+                Unnamed = countOf ArtifactUnnamed
+            })
         |> List.sortBy (fun summary -> summary.ThemeId)
 
     let private reportStatus findings =
@@ -2249,33 +2404,40 @@ module SkillParity =
         =
         let counts = severityCounts findings
 
-        { CheckedAtUtc = DateTime.UtcNow
-          RepositoryRoot = request.RepositoryRoot
-          OverallStatus = reportStatus findings
-          SupportedSurfaces = surfaces
-          CanonicalSourceCount =
-            entries
-            |> List.filter (fun entry -> entry.EntryKind = CanonicalEntry)
-            |> List.distinctBy (fun entry -> entry.Path)
-            |> List.length
-          WrapperCount = entries |> List.filter (fun entry -> entry.EntryKind = WrapperEntry) |> List.length
-          FindingCountsBySeverity = counts
-          ApiSymbolCoverage = symbolSummary symbols
-          GuardedThemeCoverage = themeSummary (defaultGuardedThemes ()) artifacts
-          Findings = findings
-          IntentionalExceptions = []
-          GeneratedReportPath = request.ReportPath
-          StructuredSummaryPath = request.SummaryJsonPath
-          Caveats =
-            [ "Global Codex skill installation paths are excluded from required repository parity."
-              if request.FixtureMode.IsSome then
-                  "Fixture mode uses synthetic skill files and is not real repository parity evidence."
-              // #1098: a `--surface` run checked fewer gates than the repository declares, and until now
-              // the only trace of that was the `Supported Surfaces` table having one row instead of six.
-              yield! (narrowingCaveat request surfaces |> Option.toList)
-              yield! symbolCaveats
-              yield! artifactCaveats ]
-          Command = commandText request }
+        {
+            CheckedAtUtc = DateTime.UtcNow
+            RepositoryRoot = request.RepositoryRoot
+            OverallStatus = reportStatus findings
+            SupportedSurfaces = surfaces
+            CanonicalSourceCount =
+                entries
+                |> List.filter (fun entry -> entry.EntryKind = CanonicalEntry)
+                |> List.distinctBy (fun entry -> entry.Path)
+                |> List.length
+            WrapperCount =
+                entries
+                |> List.filter (fun entry -> entry.EntryKind = WrapperEntry)
+                |> List.length
+            FindingCountsBySeverity = counts
+            ApiSymbolCoverage = symbolSummary symbols
+            GuardedThemeCoverage = themeSummary (defaultGuardedThemes ()) artifacts
+            Findings = findings
+            IntentionalExceptions = []
+            GeneratedReportPath = request.ReportPath
+            StructuredSummaryPath = request.SummaryJsonPath
+            Caveats =
+                [
+                    "Global Codex skill installation paths are excluded from required repository parity."
+                    if request.FixtureMode.IsSome then
+                        "Fixture mode uses synthetic skill files and is not real repository parity evidence."
+                    // #1098: a `--surface` run checked fewer gates than the repository declares, and until now
+                    // the only trace of that was the `Supported Surfaces` table having one row instead of six.
+                    yield! (narrowingCaveat request surfaces |> Option.toList)
+                    yield! symbolCaveats
+                    yield! artifactCaveats
+                ]
+            Command = commandText request
+        }
 
     let private createSkillFile path name description body =
         ensureParent path
@@ -2322,12 +2484,15 @@ Before acting, read the canonical instructions in:
         let includeCase name =
             fixtureName = "all" || fixtureName = name
 
-        let full parts = Path.Combine(Array.ofList (root :: parts))
+        let full parts =
+            Path.Combine(Array.ofList (root :: parts))
 
         // The symbol layer needs both of its inputs to run at all, so every fixture gets a synthetic
         // surface baseline and a synthetic test corpus. `Widget.render` is public and exercised,
         // `Widget.hidden` is public and untested, and `Widget.missing` does not exist.
-        let baselinePath = full [ "readiness"; "surface-baselines"; "members"; "FS.GG.Fixture.txt" ]
+        let baselinePath =
+            full [ "readiness"; "surface-baselines"; "members"; "FS.GG.Fixture.txt" ]
+
         ensureParent baselinePath
 
         File.WriteAllText(
@@ -2346,26 +2511,70 @@ Before acting, read the canonical instructions in:
         let alignedBody = documents "Widget.render"
 
         if includeCase "passing" then
-            createSkillFile (full [ "canonical"; "passing"; "SKILL.md" ]) "fs-gg-fixture-passing" "Aligned fixture skill." alignedBody
-            createWrapper (full [ "codex"; "passing"; "SKILL.md" ]) "fs-gg-fixture-passing" "Aligned fixture skill." "../../canonical/passing/SKILL.md"
-            createWrapper (full [ "claude"; "passing"; "SKILL.md" ]) "fs-gg-fixture-passing" "Aligned fixture skill." "../../canonical/passing/SKILL.md"
+            createSkillFile
+                (full [ "canonical"; "passing"; "SKILL.md" ])
+                "fs-gg-fixture-passing"
+                "Aligned fixture skill."
+                alignedBody
+
+            createWrapper
+                (full [ "codex"; "passing"; "SKILL.md" ])
+                "fs-gg-fixture-passing"
+                "Aligned fixture skill."
+                "../../canonical/passing/SKILL.md"
+
+            createWrapper
+                (full [ "claude"; "passing"; "SKILL.md" ])
+                "fs-gg-fixture-passing"
+                "Aligned fixture skill."
+                "../../canonical/passing/SKILL.md"
 
         if includeCase "missing-wrapper" then
-            createSkillFile (full [ "canonical"; "missing-wrapper"; "SKILL.md" ]) "fs-gg-fixture-missing" "Missing wrapper fixture." alignedBody
+            createSkillFile
+                (full [ "canonical"; "missing-wrapper"; "SKILL.md" ])
+                "fs-gg-fixture-missing"
+                "Missing wrapper fixture."
+                alignedBody
 
         if includeCase "wrapper-only" then
-            createSkillFile (full [ "codex"; "wrapper-only"; "SKILL.md" ]) "fs-gg-fixture-wrapper-only" "Wrapper only fixture." "No canonical route."
+            createSkillFile
+                (full [ "codex"; "wrapper-only"; "SKILL.md" ])
+                "fs-gg-fixture-wrapper-only"
+                "Wrapper only fixture."
+                "No canonical route."
 
         if includeCase "stale-description" then
-            createSkillFile (full [ "canonical"; "stale-description"; "SKILL.md" ]) "fs-gg-fixture-stale" "Current canonical description." alignedBody
-            createWrapper (full [ "codex"; "stale-description"; "SKILL.md" ]) "fs-gg-fixture-stale" "Old wrapper description." "../../canonical/stale-description/SKILL.md"
+            createSkillFile
+                (full [ "canonical"; "stale-description"; "SKILL.md" ])
+                "fs-gg-fixture-stale"
+                "Current canonical description."
+                alignedBody
+
+            createWrapper
+                (full [ "codex"; "stale-description"; "SKILL.md" ])
+                "fs-gg-fixture-stale"
+                "Old wrapper description."
+                "../../canonical/stale-description/SKILL.md"
 
         if includeCase "broken-target" then
-            createWrapper (full [ "codex"; "broken-target"; "SKILL.md" ]) "fs-gg-fixture-broken" "Broken target fixture." "../../canonical/does-not-exist/SKILL.md"
+            createWrapper
+                (full [ "codex"; "broken-target"; "SKILL.md" ])
+                "fs-gg-fixture-broken"
+                "Broken target fixture."
+                "../../canonical/does-not-exist/SKILL.md"
 
         if includeCase "canonical-drift" then
-            createSkillFile (full [ "canonical"; "drift-a"; "SKILL.md" ]) "fs-gg-fixture-drift" "Canonical description A." alignedBody
-            createSkillFile (full [ "canonical"; "drift-b"; "SKILL.md" ]) "fs-gg-fixture-drift" "Canonical description B." alignedBody
+            createSkillFile
+                (full [ "canonical"; "drift-a"; "SKILL.md" ])
+                "fs-gg-fixture-drift"
+                "Canonical description A."
+                alignedBody
+
+            createSkillFile
+                (full [ "canonical"; "drift-b"; "SKILL.md" ])
+                "fs-gg-fixture-drift"
+                "Canonical description B."
+                alignedBody
 
         if includeCase "unresolved-api-symbol" then
             createSkillFile
@@ -2418,14 +2627,16 @@ Before acting, read the canonical instructions in:
             // reported on the real file.
             request.SurfaceOverrides
             |> List.map (fun (surfaceId, path) ->
-                { SurfaceId = surfaceId
-                  DisplayName = surfaceId
-                  Roots = [ path ]
-                  Selector = EverySkillBody
-                  Kind = Mixed
-                  Agent = Repository
-                  IsRequired = true
-                  Notes = [ "Operator-supplied surface override." ] })
+                {
+                    SurfaceId = surfaceId
+                    DisplayName = surfaceId
+                    Roots = [ path ]
+                    Selector = EverySkillBody
+                    Kind = Mixed
+                    Agent = Repository
+                    IsRequired = true
+                    Notes = [ "Operator-supplied surface override." ]
+                })
 
     /// Materializes the fixture tree when one is requested, so every caller sees the same world.
     let private effectiveRequestFor request =
@@ -2433,8 +2644,14 @@ Before acting, read the canonical instructions in:
         | Some fixtureName ->
             let fixtureRoot = Path.Combine(request.OutDir, "_skill-parity-fixture")
             createFixture fixtureRoot fixtureName
-            { request with RepositoryRoot = fixtureRoot }
-        | None -> { request with RepositoryRoot = Path.GetFullPath request.RepositoryRoot }
+
+            { request with
+                RepositoryRoot = fixtureRoot
+            }
+        | None ->
+            { request with
+                RepositoryRoot = Path.GetFullPath request.RepositoryRoot
+            }
 
     /// Both inputs are required to say anything honest about a documented symbol: the baseline decides
     /// whether it exists, the test corpus whether anything exercises it. Missing either, the layer
@@ -2465,13 +2682,19 @@ Before acting, read the canonical instructions in:
                 match unjudgedSkills entries symbols with
                 | [] -> []
                 | skills ->
-                    [ $"""{skills.Length} skill(s) show F# examples that name no public API symbol, so none was judged: {String.concat ", " skills}.""" ]
+                    [
+                        $"""{skills.Length} skill(s) show F# examples that name no public API symbol, so none was judged: {String.concat ", " skills}."""
+                    ]
 
             Ok(symbols, caveats)
         | surfaceMembers, exercised ->
             let missing =
-                [ if surfaceMembers.IsNone then surfaceBaselineDir root
-                  if exercised.IsNone then testSourceDir root ]
+                [
+                    if surfaceMembers.IsNone then
+                        surfaceBaselineDir root
+                    if exercised.IsNone then
+                        testSourceDir root
+                ]
                 |> List.map (relativePath root)
                 |> String.concat " and "
 
@@ -2499,7 +2722,7 @@ Before acting, read the canonical instructions in:
 
         let symbols, symbolCaveats =
             match resolveSymbols effectiveRequest entries with
-            | Ok (symbols, caveats) -> symbols, caveats
+            | Ok(symbols, caveats) -> symbols, caveats
             | Error reason -> [], [ reason ]
 
         let artifacts, artifactCaveats =
@@ -2507,7 +2730,9 @@ Before acting, read the canonical instructions in:
             | Ok artifacts -> artifacts, []
             | Error reason -> [], [ reason ]
 
-        let findings = classifyFindings effectiveRequest surfaces entries readFailures symbols artifacts
+        let findings =
+            classifyFindings effectiveRequest surfaces entries readFailures symbols artifacts
+
         buildReport effectiveRequest surfaces entries symbols symbolCaveats artifacts artifactCaveats findings
 
     let runCheck request = runCheckWith File.ReadAllText request
@@ -2540,7 +2765,9 @@ Before acting, read the canonical instructions in:
         // Freshness is now a property the gate enforces on every PR, not a claim the artifact makes about
         // itself. The real timestamp still goes to the JSON summary, which is a per-run CI artifact and the
         // right place for it.
-        sb.AppendLine($"Overall status: `{overallStatusToken report.OverallStatus}`") |> ignore
+        sb.AppendLine($"Overall status: `{overallStatusToken report.OverallStatus}`")
+        |> ignore
+
         sb.AppendLine($"Canonical sources: `{report.CanonicalSourceCount}`") |> ignore
         sb.AppendLine($"Wrappers: `{report.WrapperCount}`") |> ignore
         sb.AppendLine() |> ignore
@@ -2555,30 +2782,39 @@ Before acting, read the canonical instructions in:
         sb.AppendLine(markdownTableRow [ "Surface"; "Kind"; "Agent"; "Root"; "Required"; "Selects" ])
         |> ignore
 
-        sb.AppendLine(markdownTableRow [ "---"; "---"; "---"; "---"; "---"; "---" ]) |> ignore
+        sb.AppendLine(markdownTableRow [ "---"; "---"; "---"; "---"; "---"; "---" ])
+        |> ignore
 
         for surface in report.SupportedSurfaces do
             sb.AppendLine(
                 markdownTableRow
-                    [ surface.SurfaceId
-                      surfaceKindToken surface.Kind
-                      agentToken surface.Agent
-                      String.concat ", " surface.Roots
-                      string surface.IsRequired
-                      surfaceSelectorToken surface.Selector ]
+                    [
+                        surface.SurfaceId
+                        surfaceKindToken surface.Kind
+                        agentToken surface.Agent
+                        String.concat ", " surface.Roots
+                        string surface.IsRequired
+                        surfaceSelectorToken surface.Selector
+                    ]
             )
             |> ignore
 
         sb.AppendLine() |> ignore
         sb.AppendLine("## Severity Counts") |> ignore
-        sb.AppendLine(markdownTableRow [ "Critical"; "High"; "Warning"; "Info" ]) |> ignore
+
+        sb.AppendLine(markdownTableRow [ "Critical"; "High"; "Warning"; "Info" ])
+        |> ignore
+
         sb.AppendLine(markdownTableRow [ "---"; "---"; "---"; "---" ]) |> ignore
+
         sb.AppendLine(
             markdownTableRow
-                [ string report.FindingCountsBySeverity.Critical
-                  string report.FindingCountsBySeverity.High
-                  string report.FindingCountsBySeverity.Warning
-                  string report.FindingCountsBySeverity.Info ]
+                [
+                    string report.FindingCountsBySeverity.Critical
+                    string report.FindingCountsBySeverity.High
+                    string report.FindingCountsBySeverity.Warning
+                    string report.FindingCountsBySeverity.Info
+                ]
         )
         |> ignore
 
@@ -2586,19 +2822,25 @@ Before acting, read the canonical instructions in:
         sb.AppendLine("## API Symbol Coverage") |> ignore
 
         match report.ApiSymbolCoverage with
-        | [] -> sb.AppendLine("No skill documents an API symbol from the public surface baseline.") |> ignore
+        | [] ->
+            sb.AppendLine("No skill documents an API symbol from the public surface baseline.")
+            |> ignore
         | coverage ->
-            sb.AppendLine(markdownTableRow [ "Skill"; "Documented"; "Exercised"; "Unexercised"; "Unresolved" ]) |> ignore
+            sb.AppendLine(markdownTableRow [ "Skill"; "Documented"; "Exercised"; "Unexercised"; "Unresolved" ])
+            |> ignore
+
             sb.AppendLine(markdownTableRow [ "---"; "---"; "---"; "---"; "---" ]) |> ignore
 
             for summary in coverage do
                 sb.AppendLine(
                     markdownTableRow
-                        [ summary.SkillName
-                          string summary.Documented
-                          string summary.Exercised
-                          string summary.Unexercised
-                          string summary.Unresolved ]
+                        [
+                            summary.SkillName
+                            string summary.Documented
+                            string summary.Exercised
+                            string summary.Unexercised
+                            string summary.Unresolved
+                        ]
                 )
                 |> ignore
 
@@ -2608,17 +2850,21 @@ Before acting, read the canonical instructions in:
         match report.GuardedThemeCoverage with
         | [] -> sb.AppendLine("Guarded themes were not resolved — see caveats.") |> ignore
         | coverage ->
-            sb.AppendLine(markdownTableRow [ "Theme"; "Scoped"; "Resolved"; "Dangling"; "Unnamed" ]) |> ignore
+            sb.AppendLine(markdownTableRow [ "Theme"; "Scoped"; "Resolved"; "Dangling"; "Unnamed" ])
+            |> ignore
+
             sb.AppendLine(markdownTableRow [ "---"; "---"; "---"; "---"; "---" ]) |> ignore
 
             for summary in coverage do
                 sb.AppendLine(
                     markdownTableRow
-                        [ summary.ThemeId
-                          string summary.Scoped
-                          string summary.Resolved
-                          string summary.Dangling
-                          string summary.Unnamed ]
+                        [
+                            summary.ThemeId
+                            string summary.Scoped
+                            string summary.Resolved
+                            string summary.Dangling
+                            string summary.Unnamed
+                        ]
                 )
                 |> ignore
 
@@ -2628,8 +2874,13 @@ Before acting, read the canonical instructions in:
         match report.Findings with
         | [] -> sb.AppendLine("No unresolved parity findings.") |> ignore
         | findings ->
-            sb.AppendLine(markdownTableRow [ "Skill"; "Surface"; "Category"; "Severity"; "Path"; "Message"; "Next action" ]) |> ignore
-            sb.AppendLine(markdownTableRow [ "---"; "---"; "---"; "---"; "---"; "---"; "---" ]) |> ignore
+            sb.AppendLine(
+                markdownTableRow [ "Skill"; "Surface"; "Category"; "Severity"; "Path"; "Message"; "Next action" ]
+            )
+            |> ignore
+
+            sb.AppendLine(markdownTableRow [ "---"; "---"; "---"; "---"; "---"; "---"; "---" ])
+            |> ignore
 
             for finding in findings do
                 let path =
@@ -2639,13 +2890,15 @@ Before acting, read the canonical instructions in:
 
                 sb.AppendLine(
                     markdownTableRow
-                        [ finding.SkillName
-                          finding.SurfaceId
-                          categoryToken finding.Category
-                          severityToken finding.Severity
-                          path
-                          finding.Message
-                          finding.Remediation ]
+                        [
+                            finding.SkillName
+                            finding.SurfaceId
+                            categoryToken finding.Category
+                            severityToken finding.Severity
+                            path
+                            finding.Message
+                            finding.Remediation
+                        ]
                 )
                 |> ignore
 
@@ -2655,17 +2908,21 @@ Before acting, read the canonical instructions in:
         match report.IntentionalExceptions with
         | [] -> sb.AppendLine("No intentional exceptions were applied.") |> ignore
         | exceptions ->
-            sb.AppendLine(markdownTableRow [ "Id"; "Skill"; "Surface"; "Reason"; "Review" ]) |> ignore
+            sb.AppendLine(markdownTableRow [ "Id"; "Skill"; "Surface"; "Reason"; "Review" ])
+            |> ignore
+
             sb.AppendLine(markdownTableRow [ "---"; "---"; "---"; "---"; "---" ]) |> ignore
 
             for exceptionItem in exceptions do
                 sb.AppendLine(
                     markdownTableRow
-                        [ exceptionItem.ExceptionId
-                          exceptionItem.SkillName
-                          exceptionItem.SurfaceId
-                          exceptionItem.Reason
-                          exceptionItem.ReviewDate ]
+                        [
+                            exceptionItem.ExceptionId
+                            exceptionItem.SkillName
+                            exceptionItem.SurfaceId
+                            exceptionItem.Reason
+                            exceptionItem.ReviewDate
+                        ]
                 )
                 |> ignore
 
@@ -2695,66 +2952,78 @@ Before acting, read the canonical instructions in:
         let surfaces =
             report.SupportedSurfaces
             |> List.map (fun surface ->
-                {| surfaceId = surface.SurfaceId
-                   kind = surfaceKindToken surface.Kind
-                   // #1092: `rootPath` was a single string that, for four of the six default surfaces,
-                   // named a path the resolver never read — and for `spec-kit-command` was not a path at
-                   // all. `roots` is the list the resolver actually globs, and `selector` is how it
-                   // narrows them.
-                   roots = surface.Roots
-                   selector = surfaceSelectorToken surface.Selector
-                   skillCount = 0
-                   required = surface.IsRequired |})
+                {|
+                    surfaceId = surface.SurfaceId
+                    kind = surfaceKindToken surface.Kind
+                    // #1092: `rootPath` was a single string that, for four of the six default surfaces,
+                    // named a path the resolver never read — and for `spec-kit-command` was not a path at
+                    // all. `roots` is the list the resolver actually globs, and `selector` is how it
+                    // narrows them.
+                    roots = surface.Roots
+                    selector = surfaceSelectorToken surface.Selector
+                    skillCount = 0
+                    required = surface.IsRequired
+                |})
 
         let coverage =
             report.ApiSymbolCoverage
             |> List.map (fun item ->
-                {| skillName = item.SkillName
-                   documented = item.Documented
-                   exercised = item.Exercised
-                   unexercised = item.Unexercised
-                   unresolved = item.Unresolved |})
+                {|
+                    skillName = item.SkillName
+                    documented = item.Documented
+                    exercised = item.Exercised
+                    unexercised = item.Unexercised
+                    unresolved = item.Unresolved
+                |})
 
         let themeCoverage =
             report.GuardedThemeCoverage
             |> List.map (fun item ->
-                {| themeId = item.ThemeId
-                   scoped = item.Scoped
-                   resolved = item.Resolved
-                   dangling = item.Dangling
-                   unnamed = item.Unnamed |})
+                {|
+                    themeId = item.ThemeId
+                    scoped = item.Scoped
+                    resolved = item.Resolved
+                    dangling = item.Dangling
+                    unnamed = item.Unnamed
+                |})
 
         let findings =
             report.Findings
             |> List.map (fun finding ->
-                {| findingId = finding.FindingId
-                   skillName = finding.SkillName
-                   surfaceId = finding.SurfaceId
-                   category = categoryToken finding.Category
-                   severity = severityToken finding.Severity
-                   canonicalPath = nullable finding.CanonicalPath
-                   wrapperPath = nullable finding.WrapperPath
-                   symbol = nullable finding.Symbol
-                   message = finding.Message
-                   remediation = finding.Remediation
-                   exceptionId = nullable finding.ExceptionId |})
+                {|
+                    findingId = finding.FindingId
+                    skillName = finding.SkillName
+                    surfaceId = finding.SurfaceId
+                    category = categoryToken finding.Category
+                    severity = severityToken finding.Severity
+                    canonicalPath = nullable finding.CanonicalPath
+                    wrapperPath = nullable finding.WrapperPath
+                    symbol = nullable finding.Symbol
+                    message = finding.Message
+                    remediation = finding.Remediation
+                    exceptionId = nullable finding.ExceptionId
+                |})
 
         JsonSerializer.Serialize(
-            {| checkedAtUtc = report.CheckedAtUtc.ToString("O", CultureInfo.InvariantCulture)
-               overallStatus = overallStatusToken report.OverallStatus
-               repositoryRoot = report.RepositoryRoot
-               surfaces = surfaces
-               canonicalSourceCount = report.CanonicalSourceCount
-               wrapperCount = report.WrapperCount
-               findingCountsBySeverity =
-                {| critical = report.FindingCountsBySeverity.Critical
-                   high = report.FindingCountsBySeverity.High
-                   warning = report.FindingCountsBySeverity.Warning
-                   info = report.FindingCountsBySeverity.Info |}
-               apiSymbolCoverage = coverage
-               guardedThemeCoverage = themeCoverage
-               findings = findings
-               caveats = report.Caveats |},
+            {|
+                checkedAtUtc = report.CheckedAtUtc.ToString("O", CultureInfo.InvariantCulture)
+                overallStatus = overallStatusToken report.OverallStatus
+                repositoryRoot = report.RepositoryRoot
+                surfaces = surfaces
+                canonicalSourceCount = report.CanonicalSourceCount
+                wrapperCount = report.WrapperCount
+                findingCountsBySeverity =
+                    {|
+                        critical = report.FindingCountsBySeverity.Critical
+                        high = report.FindingCountsBySeverity.High
+                        warning = report.FindingCountsBySeverity.Warning
+                        info = report.FindingCountsBySeverity.Info
+                    |}
+                apiSymbolCoverage = coverage
+                guardedThemeCoverage = themeCoverage
+                findings = findings
+                caveats = report.Caveats
+            |},
             options
         )
 
@@ -2762,7 +3031,12 @@ Before acting, read the canonical instructions in:
     let private generatedEnd = "<!-- SKILL-PARITY:END -->"
 
     let private generatedBlock (content: string) =
-        generatedStart + Environment.NewLine + content.TrimEnd() + Environment.NewLine + generatedEnd + Environment.NewLine
+        generatedStart
+        + Environment.NewLine
+        + content.TrimEnd()
+        + Environment.NewLine
+        + generatedEnd
+        + Environment.NewLine
 
     let private mergeGeneratedSection (existing: string) (generated: string) =
         let startIndex = existing.IndexOf(generatedStart, StringComparison.Ordinal)
@@ -2792,7 +3066,10 @@ Before acting, read the canonical instructions in:
         let sb = StringBuilder()
         sb.AppendLine("# Skill API Symbol Coverage") |> ignore
         sb.AppendLine() |> ignore
-        sb.AppendLine($"Overall status: `{overallStatusToken report.OverallStatus}`") |> ignore
+
+        sb.AppendLine($"Overall status: `{overallStatusToken report.OverallStatus}`")
+        |> ignore
+
         sb.AppendLine() |> ignore
 
         sb.AppendLine(
@@ -2804,17 +3081,22 @@ Before acting, read the canonical instructions in:
         |> ignore
 
         sb.AppendLine() |> ignore
-        sb.AppendLine(markdownTableRow [ "Skill"; "Documented"; "Exercised"; "Unexercised"; "Unresolved" ]) |> ignore
+
+        sb.AppendLine(markdownTableRow [ "Skill"; "Documented"; "Exercised"; "Unexercised"; "Unresolved" ])
+        |> ignore
+
         sb.AppendLine(markdownTableRow [ "---"; "---"; "---"; "---"; "---" ]) |> ignore
 
         for summary in report.ApiSymbolCoverage do
             sb.AppendLine(
                 markdownTableRow
-                    [ summary.SkillName
-                      string summary.Documented
-                      string summary.Exercised
-                      string summary.Unexercised
-                      string summary.Unresolved ]
+                    [
+                        summary.SkillName
+                        string summary.Documented
+                        string summary.Exercised
+                        string summary.Unexercised
+                        string summary.Unresolved
+                    ]
             )
             |> ignore
 
@@ -2829,42 +3111,59 @@ Before acting, read the canonical instructions in:
             if String.IsNullOrWhiteSpace request.OutDir || request.FixtureMode.IsSome then
                 None
             else
-                let path = Path.Combine(request.OutDir, "..", "skill-parity-report.md") |> Path.GetFullPath
+                let path =
+                    Path.Combine(request.OutDir, "..", "skill-parity-report.md") |> Path.GetFullPath
+
                 Some(writeGenerated path (renderMarkdown report))
 
         let coveragePath =
             if String.IsNullOrWhiteSpace request.OutDir || request.FixtureMode.IsSome then
                 None
             else
-                let path = Path.Combine(request.OutDir, "..", "api-symbol-coverage.md") |> Path.GetFullPath
+                let path =
+                    Path.Combine(request.OutDir, "..", "api-symbol-coverage.md") |> Path.GetFullPath
+
                 Some(writeGenerated path (renderCoverageMarkdown report))
 
-        [ Some reportPath
-          Some report.StructuredSummaryPath
-          readinessReport
-          coveragePath ]
+        [
+            Some reportPath
+            Some report.StructuredSummaryPath
+            readinessReport
+            coveragePath
+        ]
         |> List.choose id
 
     let init request =
-        { Request = request
-          Surfaces = []
-          Entries = []
-          Findings = []
-          Symbols = []
-          Artifacts = []
-          Report = None
-          Diagnostics = [] },
+        {
+            Request = request
+            Surfaces = []
+            Entries = []
+            Findings = []
+            Symbols = []
+            Artifacts = []
+            Report = None
+            Diagnostics = []
+        },
         [ ReadSkillSurfaces ]
 
     let update msg model =
         match msg with
         | InventoryRequested -> model, [ ReadSkillSurfaces ]
-        | InventoryLoaded (surfaces, entries) -> { model with Surfaces = surfaces; Entries = entries }, [ ResolveApiSymbols ]
+        | InventoryLoaded(surfaces, entries) ->
+            { model with
+                Surfaces = surfaces
+                Entries = entries
+            },
+            [ ResolveApiSymbols ]
         | SymbolsResolved symbols -> { model with Symbols = symbols }, [ ResolveArtifactReferences ]
         | ArtifactsResolved artifacts -> { model with Artifacts = artifacts }, [ ClassifyFindings ]
         | FindingsClassified findings -> { model with Findings = findings }, []
         | ReportGenerated report -> { model with Report = Some report }, [ WriteMarkdownReport; WriteSummaryJson ]
-        | WorkflowFailed reason -> { model with Diagnostics = model.Diagnostics @ [ reason ] }, []
+        | WorkflowFailed reason ->
+            { model with
+                Diagnostics = model.Diagnostics @ [ reason ]
+            },
+            []
 
     let private parseSeverity (token: string) =
         match token.ToLowerInvariant() with
@@ -2892,8 +3191,7 @@ Before acting, read the canonical instructions in:
 
         loop [] args
 
-    let private hasFlag flag args =
-        args |> List.exists ((=) flag)
+    let private hasFlag flag args = args |> List.exists ((=) flag)
 
     /// ISSUE #1110 — the ONE place that decides whether a `--surface` argument is usable, and the rule it
     /// applies is `<id>=<path>` with BOTH halves present.
@@ -2963,14 +3261,17 @@ Before acting, read the canonical instructions in:
             AllowedExceptionIds = flagValues "--allow-exception" args |> Set.ofList
             FailOnSeverity = failOn
             ListSymbolsOnly = hasFlag "--list-symbols" args
-            JsonOutput = hasFlag "--json" args }
+            JsonOutput = hasFlag "--json" args
+        }
 
     /// Same pipeline as `runCheck`, minus the report — so `--list-symbols` and the report can never
     /// disagree about what a symbol resolves to, and `--fixture` materializes here too.
     let private printSymbols request =
         let effectiveRequest = effectiveRequestFor request
         let surfaces = effectiveSurfaces effectiveRequest effectiveRequest.RepositoryRoot
-        let entries, readFailures = inventorySkillsWith File.ReadAllText effectiveRequest surfaces
+
+        let entries, readFailures =
+            inventorySkillsWith File.ReadAllText effectiveRequest surfaces
 
         // #1098: the same narrowing notice as the report path, but on STDERR — `--list-symbols`'s stdout is
         // a tab-separated table a caller pipes, and a census line in it would corrupt the very output the
@@ -2997,7 +3298,7 @@ Before acting, read the canonical instructions in:
         | Error reason ->
             eprintfn "skill-parity: %s" reason
             1
-        | Ok (symbols, caveats) ->
+        | Ok(symbols, caveats) ->
             symbols
             |> List.iter (fun symbol ->
                 printfn "%s\t%s\t%s" symbol.Symbol (symbolStatusToken symbol.Status) symbol.SkillName)
@@ -3007,16 +3308,19 @@ Before acting, read the canonical instructions in:
             if readFailures.IsEmpty then 0 else 1
 
     let private knownFlags =
-        set [ "--repo"
-              "--out"
-              "--report"
-              "--summary-json"
-              "--fixture"
-              "--surface"
-              "--allow-exception"
-              "--fail-on"
-              "--list-symbols"
-              "--json" ]
+        set
+            [
+                "--repo"
+                "--out"
+                "--report"
+                "--summary-json"
+                "--fixture"
+                "--surface"
+                "--allow-exception"
+                "--fail-on"
+                "--list-symbols"
+                "--json"
+            ]
 
     /// ISSUE #1110 — every `--surface` argument this argv cannot use, quoted, in the order it was written.
     ///
@@ -3046,89 +3350,93 @@ Before acting, read the canonical instructions in:
         let unknown =
             argv
             |> List.filter (fun (arg: string) ->
-                arg.StartsWith("--", StringComparison.Ordinal)
-                && not (knownFlags.Contains arg))
+                arg.StartsWith("--", StringComparison.Ordinal) && not (knownFlags.Contains arg))
 
         if not unknown.IsEmpty then
             eprintfn "skill-parity: unknown option(s): %s" (String.concat " " unknown)
             2
         else
 
-        // ISSUE #1110 — a malformed VALUE of a recognized option is the same configuration error as an
-        // unrecognized option, by the same argument the check above is written from: it would "run a full
-        // check and rewrite the committed report". `--surface` is the flag that makes a run SMALLER, so a
-        // dropped one is uniquely dangerous — the run that happens is the largest one, and it reports
-        // itself as `passed`, exit 0, with no narrowing notice on any of #1098's four channels, because as
-        // far as the request is concerned no override was ever supplied.
-        //
-        // This runs BEFORE `requestFromArgs`, and therefore before `runCheck`/`writeReport`: a run that
-        // refuses its arguments must not have rewritten `docs/reports/skills-parity.md` on its way out.
-        // Exit 2 is the code `contracts/skill-parity-cli.md` reserves for a "surface configuration error".
-        let malformedSurfaces = malformedSurfaceArgs argv
-
-        if not malformedSurfaces.IsEmpty then
-            eprintfn "skill-parity: malformed --surface value(s): %s" (String.concat " " malformedSurfaces)
-
-            eprintfn
-                "skill-parity: --surface takes <id>=<path> with a non-empty id and a non-empty path. Nothing was checked and no report was written."
-
-            2
-        else
-
-        let request = requestFromArgs argv
-
-        if request.ListSymbolsOnly then
-            printSymbols request
-        else
-            let report = runCheck request
-            writeReport request report |> ignore
-
-            // ISSUE #1098 — the surface census, on the channel a caller actually reads.
+            // ISSUE #1110 — a malformed VALUE of a recognized option is the same configuration error as an
+            // unrecognized option, by the same argument the check above is written from: it would "run a full
+            // check and rewrite the committed report". `--surface` is the flag that makes a run SMALLER, so a
+            // dropped one is uniquely dangerous — the run that happens is the largest one, and it reports
+            // itself as `passed`, exit 0, with no narrowing notice on any of #1098's four channels, because as
+            // far as the request is concerned no override was ever supplied.
             //
-            // `contracts/skill-parity-cli.md` has promised "checked repository root" and "checked surfaces"
-            // under Operator Output since Feature 168, and the CLI printed NEITHER: it printed status,
-            // report, summary-json and findings. So the one fact that separates a run over one surface from
-            // a run over all six was reachable only by opening the generated report and counting rows —
-            // exactly the "distinguishable by something other than reading a table" this item's acceptance
-            // criterion 2 asks for. `report.RepositoryRoot` is the EFFECTIVE root (the fixture tree under
-            // `--fixture`), which is the root that was actually checked and therefore the one to print.
-            let surfacesChecked = List.length report.SupportedSurfaces
-            let surfacesDeclared = List.length (baseSurfaces request report.RepositoryRoot)
+            // This runs BEFORE `requestFromArgs`, and therefore before `runCheck`/`writeReport`: a run that
+            // refuses its arguments must not have rewritten `docs/reports/skills-parity.md` on its way out.
+            // Exit 2 is the code `contracts/skill-parity-cli.md` reserves for a "surface configuration error".
+            let malformedSurfaces = malformedSurfaceArgs argv
 
-            if request.JsonOutput then
-                printfn
-                    "{\"summaryJson\":%s,\"report\":%s,\"overallStatus\":%s,\"critical\":%i,\"high\":%i,\"warning\":%i,\"info\":%i,\"surfacesChecked\":%i,\"surfacesDeclared\":%i}"
-                    (JsonSerializer.Serialize report.StructuredSummaryPath)
-                    (JsonSerializer.Serialize report.GeneratedReportPath)
-                    (JsonSerializer.Serialize(overallStatusToken report.OverallStatus))
-                    report.FindingCountsBySeverity.Critical
-                    report.FindingCountsBySeverity.High
-                    report.FindingCountsBySeverity.Warning
-                    report.FindingCountsBySeverity.Info
-                    surfacesChecked
-                    surfacesDeclared
+            if not malformedSurfaces.IsEmpty then
+                eprintfn "skill-parity: malformed --surface value(s): %s" (String.concat " " malformedSurfaces)
+
+                eprintfn
+                    "skill-parity: --surface takes <id>=<path> with a non-empty id and a non-empty path. Nothing was checked and no report was written."
+
+                2
             else
-                printfn "skill-parity status: %s" (overallStatusToken report.OverallStatus)
-                printfn "root: %s" report.RepositoryRoot
 
-                if request.SurfaceOverrides.IsEmpty then
-                    printfn "surfaces: %i checked of %i declared" surfacesChecked surfacesDeclared
+                let request = requestFromArgs argv
+
+                if request.ListSymbolsOnly then
+                    printSymbols request
                 else
-                    printfn
-                        "surfaces: %i checked of %i declared — NARROWED by --surface, this run is not full repository parity"
-                        surfacesChecked
-                        surfacesDeclared
+                    let report = runCheck request
+                    writeReport request report |> ignore
 
-                printfn "report: %s" report.GeneratedReportPath
-                printfn "summary-json: %s" report.StructuredSummaryPath
-                printfn
-                    "findings: critical=%i high=%i warning=%i info=%i"
-                    report.FindingCountsBySeverity.Critical
-                    report.FindingCountsBySeverity.High
-                    report.FindingCountsBySeverity.Warning
-                    report.FindingCountsBySeverity.Info
+                    // ISSUE #1098 — the surface census, on the channel a caller actually reads.
+                    //
+                    // `contracts/skill-parity-cli.md` has promised "checked repository root" and "checked surfaces"
+                    // under Operator Output since Feature 168, and the CLI printed NEITHER: it printed status,
+                    // report, summary-json and findings. So the one fact that separates a run over one surface from
+                    // a run over all six was reachable only by opening the generated report and counting rows —
+                    // exactly the "distinguishable by something other than reading a table" this item's acceptance
+                    // criterion 2 asks for. `report.RepositoryRoot` is the EFFECTIVE root (the fixture tree under
+                    // `--fixture`), which is the root that was actually checked and therefore the one to print.
+                    let surfacesChecked = List.length report.SupportedSurfaces
+                    let surfacesDeclared = List.length (baseSurfaces request report.RepositoryRoot)
 
-            if report.Findings |> List.exists (fun finding -> severityRank finding.Severity >= severityRank request.FailOnSeverity) then
-                1
-            else
-                0
+                    if request.JsonOutput then
+                        printfn
+                            "{\"summaryJson\":%s,\"report\":%s,\"overallStatus\":%s,\"critical\":%i,\"high\":%i,\"warning\":%i,\"info\":%i,\"surfacesChecked\":%i,\"surfacesDeclared\":%i}"
+                            (JsonSerializer.Serialize report.StructuredSummaryPath)
+                            (JsonSerializer.Serialize report.GeneratedReportPath)
+                            (JsonSerializer.Serialize(overallStatusToken report.OverallStatus))
+                            report.FindingCountsBySeverity.Critical
+                            report.FindingCountsBySeverity.High
+                            report.FindingCountsBySeverity.Warning
+                            report.FindingCountsBySeverity.Info
+                            surfacesChecked
+                            surfacesDeclared
+                    else
+                        printfn "skill-parity status: %s" (overallStatusToken report.OverallStatus)
+                        printfn "root: %s" report.RepositoryRoot
+
+                        if request.SurfaceOverrides.IsEmpty then
+                            printfn "surfaces: %i checked of %i declared" surfacesChecked surfacesDeclared
+                        else
+                            printfn
+                                "surfaces: %i checked of %i declared — NARROWED by --surface, this run is not full repository parity"
+                                surfacesChecked
+                                surfacesDeclared
+
+                        printfn "report: %s" report.GeneratedReportPath
+                        printfn "summary-json: %s" report.StructuredSummaryPath
+
+                        printfn
+                            "findings: critical=%i high=%i warning=%i info=%i"
+                            report.FindingCountsBySeverity.Critical
+                            report.FindingCountsBySeverity.High
+                            report.FindingCountsBySeverity.Warning
+                            report.FindingCountsBySeverity.Info
+
+                    if
+                        report.Findings
+                        |> List.exists (fun finding ->
+                            severityRank finding.Severity >= severityRank request.FailOnSeverity)
+                    then
+                        1
+                    else
+                        0

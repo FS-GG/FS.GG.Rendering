@@ -3,35 +3,45 @@ namespace FS.GG.UI.Scene
 
 /// Stable camera transform applied as screen = pan + zoom * scene.
 type SvgCamera =
-    { PanX: float
-      PanY: float
-      Zoom: float }
+    {
+        PanX: float
+        PanY: float
+        Zoom: float
+    }
 
 /// One semantic object backed by the existing Scene vocabulary.
 type SemanticSceneObject =
-    { Id: string
-      Selectable: bool
-      AccessibleLabel: string
-      Content: Scene }
+    {
+        Id: string
+        Selectable: bool
+        AccessibleLabel: string
+        Content: Scene
+    }
 
 /// One ordered, identity-stable retained layer.
 type RetainedSceneLayer =
-    { Id: string
-      Visible: bool
-      Objects: SemanticSceneObject list }
+    {
+        Id: string
+        Visible: bool
+        Objects: SemanticSceneObject list
+    }
 
 /// Retained scene metadata layered over the existing Scene vocabulary.
 type RetainedScene =
-    { RootId: string
-      Revision: int
-      Camera: SvgCamera
-      Layers: RetainedSceneLayer list }
+    {
+        RootId: string
+        Revision: int
+        Camera: SvgCamera
+        Layers: RetainedSceneLayer list
+    }
 
 /// Location and explanation for a scene value that cannot enter the first SVG subset.
 type SvgAdapterIssue =
-    { ObjectId: string option
-      NodePath: int list
-      Reason: string }
+    {
+        ObjectId: string option
+        NodePath: int list
+        Reason: string
+    }
 
 /// Explicit outcome from the portable half of the SVG adapter.
 [<RequireQualifiedAccess>]
@@ -66,15 +76,19 @@ type RetainedInteractionError =
 
 /// Shared interaction state, independent of browser events and game commands.
 type RetainedInteractionState =
-    { Scene: RetainedScene
-      SelectedObjectId: string option
-      FocusedObjectId: string option
-      CapturedPointerId: int option }
+    {
+        Scene: RetainedScene
+        SelectedObjectId: string option
+        FocusedObjectId: string option
+        CapturedPointerId: int option
+    }
 
 /// A reducer result always returns the resulting state; rejected commands leave it unchanged.
 type RetainedInteractionResult =
-    { State: RetainedInteractionState
-      Error: RetainedInteractionError option }
+    {
+        State: RetainedInteractionState
+        Error: RetainedInteractionError option
+    }
 
 [<RequireQualifiedAccess>]
 module SvgRetained =

@@ -36,34 +36,128 @@ module internal ControlKindRegistry =
     /// fill the preview canvas (304×132) rather than the box+label fallback.
     let private richFamilies =
         Set.ofList
-            [ "line-chart"; "bar-chart"; "pie-chart"; "scatter-plot"; "graph-view"
-              "list-view"; "list-box"; "multi-select-list"; "combo-box"; "tree-view"; "data-grid"
-              // Feature 175 (issue #175): the DataGrid child tree's leaves paint tabular cells rather
-              // than the generic box+label leaf. Their containers (`data-grid-header`/`data-grid-row`)
-              // stay unregistered — a container never reaches `faithfulContent`.
-              "data-grid-header-cell"; "data-grid-cell"
-              "menu"; "context-menu"; "radio-group"; "tabs"
-              "slider"; "progress-bar"; "numeric-input"; "switch"; "check-box"
-              "button"; "icon-button"; "badge"; "toggle-button"; "split-button"
-              "date-picker"; "time-picker"; "color-picker"; "spinner"; "image"; "icon"
-              "stack"; "grid"; "dock"; "wrap"; "panel"; "border"; "scroll-viewer"
-              "split-view"; "toolbar"; "overlay"
-              "text-box"; "text-area"; "rich-text"; "separator"
-              "tag"; "avatar"; "card"; "descriptions"; "statistic"; "timeline"; "empty"; "skeleton"; "key-rebind"
-              "qr-code"; "watermark"; "alert"; "result"; "drawer"; "popover"; "popconfirm"; "tour"
-              "float-button"; "breadcrumb"; "steps"; "pagination"; "segmented"; "anchor"; "affix"
-              "collapse"; "rate"; "carousel"; "calendar"; "cascader"; "auto-complete"; "upload"
-              "area-chart"; "column-chart"; "histogram"; "box-plot"; "heatmap"; "radar-chart"
-              "rose-chart"; "waterfall-chart"; "funnel-chart"; "gauge-chart"; "sankey-diagram"
-              "chord-diagram"; "treemap"; "sunburst" ]
+            [
+                "line-chart"
+                "bar-chart"
+                "pie-chart"
+                "scatter-plot"
+                "graph-view"
+                "list-view"
+                "list-box"
+                "multi-select-list"
+                "combo-box"
+                "tree-view"
+                "data-grid"
+                // Feature 175 (issue #175): the DataGrid child tree's leaves paint tabular cells rather
+                // than the generic box+label leaf. Their containers (`data-grid-header`/`data-grid-row`)
+                // stay unregistered — a container never reaches `faithfulContent`.
+                "data-grid-header-cell"
+                "data-grid-cell"
+                "menu"
+                "context-menu"
+                "radio-group"
+                "tabs"
+                "slider"
+                "progress-bar"
+                "numeric-input"
+                "switch"
+                "check-box"
+                "button"
+                "icon-button"
+                "badge"
+                "toggle-button"
+                "split-button"
+                "date-picker"
+                "time-picker"
+                "color-picker"
+                "spinner"
+                "image"
+                "icon"
+                "stack"
+                "grid"
+                "dock"
+                "wrap"
+                "panel"
+                "border"
+                "scroll-viewer"
+                "split-view"
+                "toolbar"
+                "overlay"
+                "text-box"
+                "text-area"
+                "rich-text"
+                "separator"
+                "tag"
+                "avatar"
+                "card"
+                "descriptions"
+                "statistic"
+                "timeline"
+                "empty"
+                "skeleton"
+                "key-rebind"
+                "qr-code"
+                "watermark"
+                "alert"
+                "result"
+                "drawer"
+                "popover"
+                "popconfirm"
+                "tour"
+                "float-button"
+                "breadcrumb"
+                "steps"
+                "pagination"
+                "segmented"
+                "anchor"
+                "affix"
+                "collapse"
+                "rate"
+                "carousel"
+                "calendar"
+                "cascader"
+                "auto-complete"
+                "upload"
+                "area-chart"
+                "column-chart"
+                "histogram"
+                "box-plot"
+                "heatmap"
+                "radar-chart"
+                "rose-chart"
+                "waterfall-chart"
+                "funnel-chart"
+                "gauge-chart"
+                "sankey-diagram"
+                "chord-diagram"
+                "treemap"
+                "sunburst"
+            ]
 
     /// `chartFamilies` (Control.fs:579) — rich kinds whose geometry is additionally clipped to the box.
     let private chartFamilies =
         Set.ofList
-            [ "line-chart"; "bar-chart"; "pie-chart"; "scatter-plot"; "graph-view"
-              "area-chart"; "column-chart"; "histogram"; "box-plot"; "heatmap"; "radar-chart"
-              "rose-chart"; "waterfall-chart"; "funnel-chart"; "gauge-chart"; "sankey-diagram"
-              "chord-diagram"; "treemap"; "sunburst" ]
+            [
+                "line-chart"
+                "bar-chart"
+                "pie-chart"
+                "scatter-plot"
+                "graph-view"
+                "area-chart"
+                "column-chart"
+                "histogram"
+                "box-plot"
+                "heatmap"
+                "radar-chart"
+                "rose-chart"
+                "waterfall-chart"
+                "funnel-chart"
+                "gauge-chart"
+                "sankey-diagram"
+                "chord-diagram"
+                "treemap"
+                "sunburst"
+            ]
 
     /// Rich-family membership — `nodeWidth`/`nodeHeight`/`paintLeaf` (Control.fs:606/613/2050/2351).
     let isRich (kind: string) = Set.contains kind richFamilies
@@ -199,50 +293,139 @@ module internal ControlKindRegistry =
     /// validation are FR-010 retentions, not here). Built from the functions above so the table can
     /// never drift from the live dispatch.
     type ControlKindEntry =
-        { IsRich: bool
-          IsChart: bool
-          ChartSource: ChartDataSource option
-          LayoutRow: bool
-          HasScrollAffordance: bool
-          Virtualization: VirtualizationRole option
-          InspectionNodeKind: VisualInspectionNodeKind
-          SurfaceRole: VisualInspectionSurfaceRole
-          A11yRole: AccessibilityRole }
+        {
+            IsRich: bool
+            IsChart: bool
+            ChartSource: ChartDataSource option
+            LayoutRow: bool
+            HasScrollAffordance: bool
+            Virtualization: VirtualizationRole option
+            InspectionNodeKind: VisualInspectionNodeKind
+            SurfaceRole: VisualInspectionSurfaceRole
+            A11yRole: AccessibilityRole
+        }
 
     let private entryFor (kind: string) =
-        { IsRich = isRich kind
-          IsChart = isChart kind
-          ChartSource = chartSource kind
-          LayoutRow = layoutRow kind
-          HasScrollAffordance = hasScrollAffordance kind
-          Virtualization = virtualizationOf kind
-          InspectionNodeKind = inspectionNodeKind kind
-          SurfaceRole = surfaceRole kind
-          A11yRole = a11yRole kind }
+        {
+            IsRich = isRich kind
+            IsChart = isChart kind
+            ChartSource = chartSource kind
+            LayoutRow = layoutRow kind
+            HasScrollAffordance = hasScrollAffordance kind
+            Virtualization = virtualizationOf kind
+            InspectionNodeKind = inspectionNodeKind kind
+            SurfaceRole = surfaceRole kind
+            A11yRole = a11yRole kind
+        }
 
     /// Every control kind the standard catalog publishes (`Catalog.supportedControls` ids). Hardcoded
     /// here because `Catalog.fs` compiles *after* this module; the catalog↔registry completeness test
     /// (SC-001) asserts this set equals the live catalog both directions, so an omission fails the build.
     let private catalogKinds =
-        [ "affix"; "alert"; "anchor"; "area-chart"; "auto-complete"; "avatar"; "badge"; "bar-chart"
-          "border"; "box-plot"; "breadcrumb"; "button"; "calendar"; "canvas"; "card"; "carousel"; "cascader"
-          "check-box"; "chord-diagram"; "collapse"; "color-picker"; "column-chart"; "combo-box"
-          "context-menu"; "custom-control"; "data-grid"; "date-picker"; "descriptions"; "dialog"
-          "key-rebind"
-          "dock"; "drawer"; "empty"; "float-button"; "funnel-chart"; "gauge-chart"; "graph-view"
-          "grid"; "heatmap"; "histogram"; "icon"; "icon-button"; "image"; "label"; "line-chart"
-          "list-box"; "list-view"; "menu"; "multi-select-list"; "numeric-input"; "overlay"
-          "pagination"; "panel"; "pie-chart"; "popconfirm"; "popover"; "progress-bar"; "qr-code"
-          "radar-chart"; "radio-group"; "rate"; "result"; "rich-text"; "rose-chart"; "sankey-diagram"
-          "scatter-plot"; "scroll-viewer"; "segmented"; "separator"; "skeleton"; "slider"; "spinner"
-          "split-button"; "split-view"; "stack"; "statistic"; "steps"; "sunburst"; "switch"; "tabs"
-          "tag"; "text-area"; "text-block"; "text-box"; "time-picker"; "timeline"; "toast"
-          "toggle-button"; "toolbar"; "tooltip"; "tour"; "tree-view"; "treemap"; "upload"
-          "validation-message"; "waterfall-chart"; "watermark"; "wrap" ]
+        [
+            "affix"
+            "alert"
+            "anchor"
+            "area-chart"
+            "auto-complete"
+            "avatar"
+            "badge"
+            "bar-chart"
+            "border"
+            "box-plot"
+            "breadcrumb"
+            "button"
+            "calendar"
+            "canvas"
+            "card"
+            "carousel"
+            "cascader"
+            "check-box"
+            "chord-diagram"
+            "collapse"
+            "color-picker"
+            "column-chart"
+            "combo-box"
+            "context-menu"
+            "custom-control"
+            "data-grid"
+            "date-picker"
+            "descriptions"
+            "dialog"
+            "key-rebind"
+            "dock"
+            "drawer"
+            "empty"
+            "float-button"
+            "funnel-chart"
+            "gauge-chart"
+            "graph-view"
+            "grid"
+            "heatmap"
+            "histogram"
+            "icon"
+            "icon-button"
+            "image"
+            "label"
+            "line-chart"
+            "list-box"
+            "list-view"
+            "menu"
+            "multi-select-list"
+            "numeric-input"
+            "overlay"
+            "pagination"
+            "panel"
+            "pie-chart"
+            "popconfirm"
+            "popover"
+            "progress-bar"
+            "qr-code"
+            "radar-chart"
+            "radio-group"
+            "rate"
+            "result"
+            "rich-text"
+            "rose-chart"
+            "sankey-diagram"
+            "scatter-plot"
+            "scroll-viewer"
+            "segmented"
+            "separator"
+            "skeleton"
+            "slider"
+            "spinner"
+            "split-button"
+            "split-view"
+            "stack"
+            "statistic"
+            "steps"
+            "sunburst"
+            "switch"
+            "tabs"
+            "tag"
+            "text-area"
+            "text-block"
+            "text-box"
+            "time-picker"
+            "timeline"
+            "toast"
+            "toggle-button"
+            "toolbar"
+            "tooltip"
+            "tour"
+            "tree-view"
+            "treemap"
+            "upload"
+            "validation-message"
+            "waterfall-chart"
+            "watermark"
+            "wrap"
+        ]
 
     /// The per-kind dispatch table — one entry for every catalog kind. Built once at module load and
     /// read by `Map.tryFind` (no per-frame rebuild on the hot paths — contract §4).
-    let registry : Map<string, ControlKindEntry> =
+    let registry: Map<string, ControlKindEntry> =
         catalogKinds |> List.map (fun k -> k, entryFor k) |> Map.ofList
 
     let tryEntry (kind: string) : ControlKindEntry option = Map.tryFind kind registry

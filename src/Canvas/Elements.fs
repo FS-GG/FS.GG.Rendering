@@ -14,12 +14,16 @@ module Elements =
     let private offsetBasis = 0xcbf29ce484222325UL
     let private prime = 0x100000001b3UL
     let private step (h: uint64) (x: uint64) = (h ^^^ x) * prime
-    let private mixFloat (h: uint64) (f: float) = step h (uint64 (BitConverter.DoubleToInt64Bits f))
+
+    let private mixFloat (h: uint64) (f: float) =
+        step h (uint64 (BitConverter.DoubleToInt64Bits f))
 
     let private mixString (h: uint64) (s: string) =
         let mutable acc = step h (uint64 s.Length)
+
         for b in Text.Encoding.UTF8.GetBytes s do
             acc <- step acc (uint64 b)
+
         acc
 
     let private mixBool (h: uint64) (b: bool) = step h (if b then 1UL else 0UL)
@@ -73,13 +77,15 @@ module Elements =
             | BlendMode.ColorBurn -> 8UL
             | BlendMode.Difference -> 9UL
             | BlendMode.Exclusion -> 10UL
+
         step h tag
 
     let private mixShader (h: uint64) =
         function
         | SolidColor color -> mixColor (step h 1UL) color
         | LinearGradient(s, e, colors) -> mixList mixColor (mixPoint (mixPoint (step h 2UL) s) e) colors
-        | RadialGradient(center, radius, colors) -> mixList mixColor (mixFloat (mixPoint (step h 3UL) center) radius) colors
+        | RadialGradient(center, radius, colors) ->
+            mixList mixColor (mixFloat (mixPoint (step h 3UL) center) radius) colors
         | SweepGradient(center, colors) -> mixList mixColor (mixPoint (step h 4UL) center) colors
 
     let private mixColorFilter (h: uint64) =
@@ -155,7 +161,8 @@ module Elements =
         | AdobeRgb -> step h 3UL
 
     let private mixPerspective (h: uint64) (t: PerspectiveTransform) =
-        [ t.M11; t.M12; t.M13; t.M21; t.M22; t.M23; t.M31; t.M32; t.M33 ] |> List.fold mixFloat h
+        [ t.M11; t.M12; t.M13; t.M21; t.M22; t.M23; t.M31; t.M32; t.M33 ]
+        |> List.fold mixFloat h
 
     let private mixFont (h: uint64) (f: FontSpec) =
         mixOption mixInt (mixFloat (mixStringOption h f.Family) f.Size) f.Weight
@@ -169,7 +176,8 @@ module Elements =
         | TriangleStrip -> step h 2UL
         | TriangleFan -> step h 3UL
 
-    let private mixVertex (h: uint64) (v: Vertex) = mixOption mixColor (mixPoint h v.Position) v.Color
+    let private mixVertex (h: uint64) (v: Vertex) =
+        mixOption mixColor (mixPoint h v.Position) v.Color
 
     let private mixGlyphRun (h: uint64) (run: GlyphRun) =
         let h = mixString h run.Data.Text
@@ -186,15 +194,18 @@ module Elements =
     // exhaustive (no wildcard) so any future `SceneNode` case is a compile error until it is hashed.
     let rec private mixScene (h: uint64) (scene: Scene) : uint64 =
         let mutable acc = step h (uint64 (List.length scene.Nodes))
+
         for node in scene.Nodes do
             acc <- mixNode acc node
+
         acc
 
     and private mixNode (h: uint64) (node: SceneNode) : uint64 =
         match node with
         | Empty -> step h 1UL
         | Group children -> List.fold mixScene (step h 2UL) children
-        | Rectangle((x, y, w, ht), fill) -> mixColor (mixFloat (mixFloat (mixFloat (mixFloat (step h 3UL) x) y) w) ht) fill
+        | Rectangle((x, y, w, ht), fill) ->
+            mixColor (mixFloat (mixFloat (mixFloat (mixFloat (step h 3UL) x) y) w) ht) fill
         | PaintedRectangle(b, paint) -> mixPaint (mixRect (step h 4UL) b) paint
         | Circle(c, r, fill) -> mixColor (mixFloat (mixPoint (step h 5UL) c) r) fill
         | FilledEllipse(b, fill) -> mixColor (mixRect (step h 6UL) b) fill
@@ -214,23 +225,34 @@ module Elements =
         | PictureNode picture -> mixScene (mixString (step h 20UL) picture.Name) picture.Scene
         | Chart values -> List.fold mixFloat (step h 21UL) values
         | Translate((dx, dy), s) -> mixScene (mixFloat (mixFloat (step h 22UL) dx) dy) s
-        | SizedText((x, y), t, sz, fill) -> mixColor (mixFloat (mixString (mixFloat (mixFloat (step h 23UL) x) y) t) sz) fill
+        | SizedText((x, y), t, sz, fill) ->
+            mixColor (mixFloat (mixString (mixFloat (mixFloat (step h 23UL) x) y) t) sz) fill
         | CachedSubtree b -> mixScene (step (step h 24UL) b.CacheId) b.Scene
         | GlyphRun run -> mixGlyphRun (step h 25UL) run
 
     let rect (w: float) (h: float) (paint: Paint) : Scene =
-        Scene.rectangleWithPaint { X = 0.0; Y = 0.0; Width = w; Height = h } paint
+        Scene.rectangleWithPaint
+            {
+                X = 0.0
+                Y = 0.0
+                Width = w
+                Height = h
+            }
+            paint
 
     let sprite (image: string) (w: float) (h: float) : Scene = Scene.image (0.0, 0.0, w, h) image
 
-    let circle (r: float) (fill: Color) : Scene = Scene.circle { X = 0.0; Y = 0.0 } r fill
+    let circle (r: float) (fill: Color) : Scene =
+        Scene.circle { X = 0.0; Y = 0.0 } r fill
 
     let polyline (points: Point list) (paint: Paint) : Scene =
         match points with
-        | [] | [ _ ] -> Scene.empty
+        | []
+        | [ _ ] -> Scene.empty
         | first :: rest ->
             let commands =
                 Path.moveTo first.X first.Y :: (rest |> List.map (fun p -> Path.lineTo p.X p.Y))
+
             Scene.path (Path.create PathFillType.Winding commands) paint
 
     let at (x: float) (y: float) (scene: Scene) : Scene = Scene.translate x y scene
@@ -240,4 +262,15 @@ module Elements =
     let cached (key: string) (scene: Scene) : Scene =
         let cacheId = mixString offsetBasis key
         let fingerprint = mixScene offsetBasis scene
-        { Nodes = [ CachedSubtree { CacheId = cacheId; Fingerprint = fingerprint; Scene = scene } ] }
+
+        {
+            Nodes =
+                [
+                    CachedSubtree
+                        {
+                            CacheId = cacheId
+                            Fingerprint = fingerprint
+                            Scene = scene
+                        }
+                ]
+        }

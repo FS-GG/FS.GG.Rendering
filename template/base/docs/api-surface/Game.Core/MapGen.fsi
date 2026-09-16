@@ -10,9 +10,7 @@ namespace FS.GG.Game.Core
 /// Structural equality (element-wise over `Cells`) is the byte-identity a seeded generator is tested on,
 /// so the same seed compares equal across runs and platforms.
 type Grid<'T> =
-    { Width: int
-      Height: int
-      Cells: 'T[] }
+    { Width: int; Height: int; Cells: 'T[] }
 
 /// Public contract type exposed by the FS.GG.Game.Core package.
 /// The base tile classification every wall/floor generator emits. A domain game maps it onto its own
@@ -33,9 +31,7 @@ type TileMap = Grid<Tile>
 /// `Id` is assigned by the row-major scan order of each region's first cell, so the labelling is
 /// independent of the seed that produced the map — a region's identity is a function of the map, not of
 /// generation history. Structural equality makes a region set golden-testable.
-type Region =
-    { Id: int
-      Cells: Cell[] }
+type Region = { Id: int; Cells: Cell[] }
 
 /// Public contract type exposed by the FS.GG.Game.Core package.
 /// Parameters for the cellular-automata cave generator. `WallChance` is the initial random-fill wall
@@ -43,9 +39,11 @@ type Region =
 /// to `>= 0`); `Neighbourhood` governs the final cavern's connectivity/region check (the CA smoothing
 /// itself is always the 8-cell Moore neighbourhood the 4-5 rule is defined over).
 type CaveParams =
-    { WallChance: float
-      SmoothingPasses: int
-      Neighbourhood: Neighbourhood }
+    {
+        WallChance: float
+        SmoothingPasses: int
+        Neighbourhood: Neighbourhood
+    }
 
 /// Public contract type exposed by the FS.GG.Game.Core package.
 /// Parameters for the BSP room-and-corridor dungeon generator. `MinLeaf` is the smallest a partition
@@ -53,9 +51,11 @@ type CaveParams =
 /// (clamped `>= MinLeaf`); `RoomPadding` is the margin left inside each leaf before its room (clamped
 /// `>= 0`).
 type BspParams =
-    { MinLeaf: int
-      MaxLeaf: int
-      RoomPadding: int }
+    {
+        MinLeaf: int
+        MaxLeaf: int
+        RoomPadding: int
+    }
 
 /// Public contract type exposed by the FS.GG.Game.Core package.
 /// One room of a BSP dungeon: a stable integer `Id` (ascending in leaf-traversal order) and its `Bounds`
@@ -68,8 +68,10 @@ type Room = { Id: int; Bounds: Rect }
 /// as room-id pairs a corridor joins. A game places its start/exit/loot on this graph; it is a
 /// deterministically-ordered value, byte-identical for a seed.
 type RoomGraph =
-    { Rooms: Room[]
-      Corridors: (int * int)[] }
+    {
+        Rooms: Room[]
+        Corridors: (int * int)[]
+    }
 
 /// Public contract type exposed by the FS.GG.Game.Core package.
 /// The role of a room in a branching-walk floor (M4, roguelike §4.8). `Start` is the origin; `Boss`/
@@ -87,25 +89,31 @@ type RoomKind =
 /// uses to populate the room interior. Doors are not a field — they are implied by `FloorLayout.Adjacency`
 /// (a door is a shared edge between two adjacent rooms).
 type FloorRoom =
-    { Cell: Cell
-      Kind: RoomKind
-      TemplateId: int }
+    {
+        Cell: Cell
+        Kind: RoomKind
+        TemplateId: int
+    }
 
 /// Public contract type exposed by the FS.GG.Game.Core package.
 /// A branching-walk floor as a graph of rooms: every `FloorRoom` (in placement order, Start first) and the
 /// `Adjacency` as the 4-adjacent room-cell pairs (sorted, each edge once). Byte-identical for a seed.
 type FloorLayout =
-    { Rooms: FloorRoom[]
-      Adjacency: (Cell * Cell)[] }
+    {
+        Rooms: FloorRoom[]
+        Adjacency: (Cell * Cell)[]
+    }
 
 /// Public contract type exposed by the FS.GG.Game.Core package.
 /// Parameters for the branching-walk floor generator. `RoomCount` is the target room count (clamped to
 /// `[1, MaxRooms]`); `MaxRooms` is the hard cap (clamped `>= 1`); `SpecialRooms` is the ordered list of
 /// special kinds to assign to dead-ends, farthest-first (extras that do not fit are omitted).
 type FloorParams =
-    { RoomCount: int
-      MaxRooms: int
-      SpecialRooms: RoomKind list }
+    {
+        RoomCount: int
+        MaxRooms: int
+        SpecialRooms: RoomKind list
+    }
 
 /// Public contract type exposed by the FS.GG.Game.Core package.
 /// Parameters for the fractal value-noise height field (M5). `Octaves` is how many doubling-frequency
@@ -113,9 +121,11 @@ type FloorParams =
 /// non-positive value falls back to `0.1`); `Persistence` is the amplitude falloff per octave (clamped to
 /// `[0,1]`).
 type NoiseParams =
-    { Octaves: int
-      Frequency: float
-      Persistence: float }
+    {
+        Octaves: int
+        Frequency: float
+        Persistence: float
+    }
 
 /// Public contract module exposed by the FS.GG.Game.Core package.
 /// The shared substrate every map generator builds on: a dense `Grid<'T>` container, total addressing,
@@ -175,8 +185,7 @@ module MapGen =
     /// leaf-traversal order) and the corridor room-id pairs, and the threaded `Rng` — all byte-identical for
     /// a seed. Total: a non-positive dimension or impossible params (min > max) yield an empty `TileMap` and
     /// empty `RoomGraph`; never throws.
-    val bspDungeon:
-        width: int -> height: int -> parameters: BspParams -> rng: Rng -> struct (TileMap * RoomGraph * Rng)
+    val bspDungeon: width: int -> height: int -> parameters: BspParams -> rng: Rng -> struct (TileMap * RoomGraph * Rng)
 
     /// Generate an Isaac-style floor as a graph of rooms (M4, roguelike §4.8). A branching random walk from
     /// a `Start` room at the origin places up to `FloorParams.RoomCount` rooms (never on an occupied cell,

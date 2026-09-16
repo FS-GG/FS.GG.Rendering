@@ -4,20 +4,40 @@ open System
 
 /// Independent browser storage families shared with the Game save authority.
 [<RequireQualifiedAccess>]
-type BrowserStorageFamily = ProjectDocument | AssetManifest | GameSave | WorkspacePreferences
+type BrowserStorageFamily =
+    | ProjectDocument
+    | AssetManifest
+    | GameSave
+    | WorkspacePreferences
 
-type BrowserStorageKey = { Family: BrowserStorageFamily; Slot: string }
+type BrowserStorageKey =
+    {
+        Family: BrowserStorageFamily
+        Slot: string
+    }
 
 [<Struct>]
-type BrowserStorageOperationId = { Generation: uint64; Operation: uint64 }
+type BrowserStorageOperationId =
+    {
+        Generation: uint64
+        Operation: uint64
+    }
 
 type BrowserStoredValue =
-    { Key: BrowserStorageKey
-      SchemaVersion: int
-      PayloadHash: string
-      Payload: string }
+    {
+        Key: BrowserStorageKey
+        SchemaVersion: int
+        PayloadHash: string
+        Payload: string
+    }
 
-type BrowserArchiveMember = { Path: string; Hash: string; Content: string }
+type BrowserArchiveMember =
+    {
+        Path: string
+        Hash: string
+        Content: string
+    }
+
 type BrowserArchive = { Members: BrowserArchiveMember list }
 
 [<RequireQualifiedAccess>]
@@ -35,15 +55,23 @@ module BrowserArchive =
     val validate:
         hashContent: (string -> string) ->
         requiredPaths: string list ->
-        archive: BrowserArchive -> Result<BrowserArchive, BrowserArchiveIssue list>
+        archive: BrowserArchive ->
+            Result<BrowserArchive, BrowserArchiveIssue list>
 
 type BrowserPersistenceConfig =
-    { DatabaseName: string
-      MaxPayloadCharacters: int
-      MaxArchiveCharacters: int }
+    {
+        DatabaseName: string
+        MaxPayloadCharacters: int
+        MaxArchiveCharacters: int
+    }
 
 [<RequireQualifiedAccess>]
-type BrowserPersistenceFailure = InvalidRequest of string | QuotaExceeded | DatabaseError of string | StaleGeneration | Disposed
+type BrowserPersistenceFailure =
+    | InvalidRequest of string
+    | QuotaExceeded
+    | DatabaseError of string
+    | StaleGeneration
+    | Disposed
 
 [<RequireQualifiedAccess>]
 type BrowserPersistenceEvent =
@@ -56,10 +84,12 @@ type BrowserPersistenceEvent =
     | Disposed
 
 type BrowserPersistenceObservation =
-    { IsReady: bool
-      Generation: uint64
-      PendingRequestCount: int
-      IsDisposed: bool }
+    {
+        IsReady: bool
+        Generation: uint64
+        PendingRequestCount: int
+        IsDisposed: bool
+    }
 
 /// Disposable IndexedDB interpreter. Imports validate every member and hash before one atomic replacement.
 [<Sealed>]

@@ -8,8 +8,7 @@ open FS.GG.TestSupport
 
 let private repositoryRoot = RepositoryRoot.value
 
-let private pendingCall =
-    Regex(@"\bptest(?:List)?\b", RegexOptions.Compiled)
+let private pendingCall = Regex(@"\bptest(?:List)?\b", RegexOptions.Compiled)
 
 let private ownership =
     Regex(
@@ -44,24 +43,26 @@ let private pendingTests () =
 
 [<Tests>]
 let tests =
-    testList "Pending test ownership" [
-        test "every unconditional pending test names an owning issue and a future review date" {
-            let today = DateOnly.FromDateTime DateTime.UtcNow
-            let pending = pendingTests ()
+    testList
+        "Pending test ownership"
+        [
+            test "every unconditional pending test names an owning issue and a future review date" {
+                let today = DateOnly.FromDateTime DateTime.UtcNow
+                let pending = pendingTests ()
 
-            Expect.isGreaterThan pending.Length 0 "the guard exercises the repository's pending-test declarations"
+                Expect.isGreaterThan pending.Length 0 "the guard exercises the repository's pending-test declarations"
 
-            for path, line, marker in pending do
-                let relative = Path.GetRelativePath(repositoryRoot, path).Replace('\\', '/')
-                Expect.isSome marker $"{relative}:{line} has a nearby PendingTest owner/review marker"
+                for path, line, marker in pending do
+                    let relative = Path.GetRelativePath(repositoryRoot, path).Replace('\\', '/')
+                    Expect.isSome marker $"{relative}:{line} has a nearby PendingTest owner/review marker"
 
-                let marker = marker |> Option.get
-                let reviewBy = DateOnly.ParseExact(marker.Groups["date"].Value, "yyyy-MM-dd")
-                let owner = marker.Groups["owner"].Value
+                    let marker = marker |> Option.get
+                    let reviewBy = DateOnly.ParseExact(marker.Groups["date"].Value, "yyyy-MM-dd")
+                    let owner = marker.Groups["owner"].Value
 
-                Expect.isGreaterThanOrEqual
-                    reviewBy
-                    today
-                    $"{relative}:{line} pending ownership review has not expired ({owner})"
-        }
-    ]
+                    Expect.isGreaterThanOrEqual
+                        reviewBy
+                        today
+                        $"{relative}:{line} pending ownership review has not expired ({owner})"
+            }
+        ]

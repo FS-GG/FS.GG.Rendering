@@ -55,18 +55,22 @@ open System.IO
 open System.Text.RegularExpressions
 
 let repoRoot = Directory.GetParent(__SOURCE_DIRECTORY__).FullName
-let repo (rel: string) = Path.Combine(repoRoot, rel.Replace('/', Path.DirectorySeparatorChar))
+
+let repo (rel: string) =
+    Path.Combine(repoRoot, rel.Replace('/', Path.DirectorySeparatorChar))
 
 /// Raised for an unreadable input / an empty subject ⇒ exit 2 (fail closed).
 exception GuardError of string
 
 /// A named, located imbalance ⇒ exit 1.
 type Failure =
-    { Rule: string
-      Location: string
-      Expected: string
-      Actual: string
-      Fix: string }
+    {
+        Rule: string
+        Location: string
+        Expected: string
+        Actual: string
+        Fix: string
+    }
 
 // ---- the directive grammar --------------------------------------------------------------------
 type Directive =
@@ -82,10 +86,12 @@ type Directive =
 /// Both prefixes are the template engine's own: `//#` for the C-comment family (F#, `.fsx`, `.sh`,
 /// `.cmd`) and `<!--#` for the XML family (`.fsproj`, `.props`). See the header for why this anchors on
 /// the prefix rather than on the keyword.
-let private directiveRegex = Regex(@"^\s*(?://|<!--)#(?<kw>endif|elif|else|if)\b", RegexOptions.Compiled)
+let private directiveRegex =
+    Regex(@"^\s*(?://|<!--)#(?<kw>endif|elif|else|if)\b", RegexOptions.Compiled)
 
 let private parseDirective (line: string) : Directive option =
     let m = directiveRegex.Match line
+
     if not m.Success then
         None
     else
@@ -94,7 +100,14 @@ let private parseDirective (line: string) : Directive option =
         | "elif" -> Some Elif
         | "else" -> Some Else
         | "endif" -> Some Endif
-        | kw -> raise (GuardError(sprintf "directive regex matched `%s`, which parseDirective does not handle — the two have drifted apart" kw))
+        | kw ->
+            raise (
+                GuardError(
+                    sprintf
+                        "directive regex matched `%s`, which parseDirective does not handle — the two have drifted apart"
+                        kw
+                )
+            )
 
 // ---- the scan ---------------------------------------------------------------------------------
 /// Trees that are build output rather than template payload. A scaffolded product's `obj/` can contain
@@ -104,7 +117,21 @@ let private skipDirs = set [ "obj"; "bin"; ".git"; ".vs"; "node_modules" ]
 /// Binary payload a text scan has no business reading. The template is text today; this keeps a future
 /// icon or font from being decoded as source and blowing up the guard.
 let private skipExtensions =
-    set [ ".png"; ".jpg"; ".jpeg"; ".gif"; ".ico"; ".dll"; ".exe"; ".pdf"; ".zip"; ".woff"; ".woff2"; ".ttf" ]
+    set
+        [
+            ".png"
+            ".jpg"
+            ".jpeg"
+            ".gif"
+            ".ico"
+            ".dll"
+            ".exe"
+            ".pdf"
+            ".zip"
+            ".woff"
+            ".woff2"
+            ".ttf"
+        ]
 
 let rec private filesUnder (dir: string) : string seq =
     seq {
@@ -118,9 +145,7 @@ let rec private filesUnder (dir: string) : string seq =
     }
 
 /// One open `//#if` region: where it was opened, and whether its `#else` has already been seen.
-type private Region =
-    { Line: int
-      mutable SawElse: bool }
+type private Region = { Line: int; mutable SawElse: bool }
 
 /// Walk one file's directive nesting. `rel` is the repo-relative path used in every message.
 ///
@@ -148,65 +173,83 @@ let private scanFile (rel: string) (lines: string[]) : Failure list * int =
             | Endif ->
                 if stack.Count = 0 then
                     failures.Add
-                        { Rule = "orphan-endif"
-                          Location = at lineNo
-                          Expected = "an `#endif` closes an open `#if`"
-                          Actual = "`#endif` with no open `#if`"
-                          Fix =
-                            "delete it, or add the `#if` it was meant to close. A STRAY `#endif` is the #680 defect exactly: it closes an OUTER region early, and the rest of that region's body silently escapes its guard — valid F#, wrong profile, green build." }
+                        {
+                            Rule = "orphan-endif"
+                            Location = at lineNo
+                            Expected = "an `#endif` closes an open `#if`"
+                            Actual = "`#endif` with no open `#if`"
+                            Fix =
+                                "delete it, or add the `#if` it was meant to close. A STRAY `#endif` is the #680 defect exactly: it closes an OUTER region early, and the rest of that region's body silently escapes its guard — valid F#, wrong profile, green build."
+                        }
                 else
                     stack.Pop() |> ignore
 
             | Else ->
                 if stack.Count = 0 then
                     failures.Add
-                        { Rule = "orphan-else"
-                          Location = at lineNo
-                          Expected = "an `#else` sits inside an open `#if`"
-                          Actual = "`#else` with no open `#if`"
-                          Fix = "an `#else` outside a region guards nothing — its body is emitted for EVERY profile" }
+                        {
+                            Rule = "orphan-else"
+                            Location = at lineNo
+                            Expected = "an `#else` sits inside an open `#if`"
+                            Actual = "`#else` with no open `#if`"
+                            Fix = "an `#else` outside a region guards nothing — its body is emitted for EVERY profile"
+                        }
                 else
                     let region = stack.Peek()
 
                     if region.SawElse then
                         failures.Add
-                            { Rule = "duplicate-else"
-                              Location = at lineNo
-                              Expected = sprintf "at most one `#else` per region (this one opened at %s)" (at region.Line)
-                              Actual = "a second `#else` in the same region"
-                              Fix = "two `#else` branches in one `#if` — one of them is dead, and which one is silently up to the template engine" }
+                            {
+                                Rule = "duplicate-else"
+                                Location = at lineNo
+                                Expected =
+                                    sprintf "at most one `#else` per region (this one opened at %s)" (at region.Line)
+                                Actual = "a second `#else` in the same region"
+                                Fix =
+                                    "two `#else` branches in one `#if` — one of them is dead, and which one is silently up to the template engine"
+                            }
                     else
                         region.SawElse <- true
 
             | Elif ->
                 if stack.Count = 0 then
                     failures.Add
-                        { Rule = "orphan-elif"
-                          Location = at lineNo
-                          Expected = "an `#elif` sits inside an open `#if`"
-                          Actual = "`#elif` with no open `#if`"
-                          Fix = "an `#elif` outside a region guards nothing — its body is emitted for EVERY profile" }
+                        {
+                            Rule = "orphan-elif"
+                            Location = at lineNo
+                            Expected = "an `#elif` sits inside an open `#if`"
+                            Actual = "`#elif` with no open `#if`"
+                            Fix = "an `#elif` outside a region guards nothing — its body is emitted for EVERY profile"
+                        }
                 else
                     let region = stack.Peek()
 
                     if region.SawElse then
                         failures.Add
-                            { Rule = "elif-after-else"
-                              Location = at lineNo
-                              Expected = sprintf "every `#elif` precedes the region's `#else` (region opened at %s)" (at region.Line)
-                              Actual = "`#elif` after `#else`"
-                              Fix = "an `#elif` after the catch-all `#else` is unreachable — the condition can never be consulted" })
+                            {
+                                Rule = "elif-after-else"
+                                Location = at lineNo
+                                Expected =
+                                    sprintf
+                                        "every `#elif` precedes the region's `#else` (region opened at %s)"
+                                        (at region.Line)
+                                Actual = "`#elif` after `#else`"
+                                Fix =
+                                    "an `#elif` after the catch-all `#else` is unreachable — the condition can never be consulted"
+                            })
 
     // Anything still open at EOF was never closed. Reported OLDEST-FIRST: the outermost unclosed `#if`
     // is the one to fix, and an inner one is usually its consequence rather than a second defect.
     for region in stack |> Seq.rev do
         failures.Add
-            { Rule = "unclosed-if"
-              Location = at region.Line
-              Expected = "every `#if` is closed by an `#endif`"
-              Actual = "`#if` still open at end of file"
-              Fix =
-                "add the missing `#endif`. Everything from here to EOF is inside the region, so a profile the condition excludes silently loses all of it." }
+            {
+                Rule = "unclosed-if"
+                Location = at region.Line
+                Expected = "every `#if` is closed by an `#endif`"
+                Actual = "`#if` still open at end of file"
+                Fix =
+                    "add the missing `#endif`. Everything from here to EOF is inside the region, so a profile the condition excludes silently loses all of it."
+            }
 
     List.ofSeq failures, directives
 
@@ -226,7 +269,10 @@ let private writeStepSummary (title: string) (body: string seq) =
         let sb = Text.StringBuilder()
         sb.AppendLine(sprintf "### %s" title) |> ignore
         sb.AppendLine "" |> ignore
-        for l in body do sb.AppendLine l |> ignore
+
+        for l in body do
+            sb.AppendLine l |> ignore
+
         sb.AppendLine "" |> ignore
         File.AppendAllText(path, sb.ToString())
 
@@ -250,26 +296,30 @@ let private main (argv: string list) =
     let files = filesUnder root |> Seq.sort |> List.ofSeq
 
     let scanned =
-        [ for file in files do
-            let lines =
-                try
-                    File.ReadAllLines file
-                with ex ->
-                    raise (GuardError(sprintf "cannot read %s: %s" file ex.Message))
+        [
+            for file in files do
+                let lines =
+                    try
+                        File.ReadAllLines file
+                    with ex ->
+                        raise (GuardError(sprintf "cannot read %s: %s" file ex.Message))
 
-            // Repo-relative when the subject is in the repo (the real run, and what a reader wants to
-            // paste into an editor); root-relative when it is not (a test fixture in a temp dir, where
-            // a repo-relative path would be a wall of `../..`).
-            let rel =
-                let fromRepo = Path.GetRelativePath(repoRoot, file).Replace('\\', '/')
+                // Repo-relative when the subject is in the repo (the real run, and what a reader wants to
+                // paste into an editor); root-relative when it is not (a test fixture in a temp dir, where
+                // a repo-relative path would be a wall of `../..`).
+                let rel =
+                    let fromRepo = Path.GetRelativePath(repoRoot, file).Replace('\\', '/')
 
-                if fromRepo.StartsWith ".." then
-                    Path.GetRelativePath(root, file).Replace('\\', '/')
-                else
-                    fromRepo
+                    if fromRepo.StartsWith ".." then
+                        Path.GetRelativePath(root, file).Replace('\\', '/')
+                    else
+                        fromRepo
 
-            let failures, directives = scanFile rel lines
-            if directives > 0 then yield rel, failures, directives ]
+                let failures, directives = scanFile rel lines
+
+                if directives > 0 then
+                    yield rel, failures, directives
+        ]
 
     let totalDirectives = scanned |> List.sumBy (fun (_, _, d) -> d)
     let failures = scanned |> List.collect (fun (_, f, _) -> f)
@@ -286,7 +336,11 @@ let private main (argv: string list) =
             )
         )
 
-    printfn "template conditionals: %d directive(s) across %d file(s) under %s" totalDirectives scanned.Length (Path.GetRelativePath(repoRoot, root).Replace('\\', '/'))
+    printfn
+        "template conditionals: %d directive(s) across %d file(s) under %s"
+        totalDirectives
+        scanned.Length
+        (Path.GetRelativePath(repoRoot, root).Replace('\\', '/'))
 
     // The scanned set is printed on BOTH verdicts, not just the happy one. On a red gate this is the
     // evidence that says WHICH files were in scope — the first question anyone asks when a guard fires,
@@ -299,7 +353,9 @@ let private main (argv: string list) =
 
         writeStepSummary
             "Template conditionals — balanced"
-            [ sprintf "- **%d** directives across **%d** files, all regions balanced." totalDirectives scanned.Length ]
+            [
+                sprintf "- **%d** directives across **%d** files, all regions balanced." totalDirectives scanned.Length
+            ]
 
         0
     else
@@ -307,14 +363,23 @@ let private main (argv: string list) =
 
         writeStepSummary
             "Template conditionals — IMBALANCE"
-            [ for f in failures ->
-                sprintf "- `IMBALANCE [%s]` %s — expected `%s`; actual `%s` — fix: %s" f.Rule f.Location f.Expected f.Actual f.Fix ]
+            [
+                for f in failures ->
+                    sprintf
+                        "- `IMBALANCE [%s]` %s — expected `%s`; actual `%s` — fix: %s"
+                        f.Rule
+                        f.Location
+                        f.Expected
+                        f.Actual
+                        f.Fix
+            ]
 
         // Count the files that are BROKEN, not the files that were LOOKED AT. `scanned` is every file
         // carrying a directive (11 today), and reporting it here read as "11 files are broken" when one
         // stray `#endif` in one file was the whole defect. This is the first line a human sees on a red
         // gate; it has to be about their bug, not about the size of the subject.
-        let brokenFiles = scanned |> List.filter (fun (_, f, _) -> not f.IsEmpty) |> List.length
+        let brokenFiles =
+            scanned |> List.filter (fun (_, f, _) -> not f.IsEmpty) |> List.length
 
         eprintfn
             "template conditionals: IMBALANCE — %d defect(s) in %d of %d file(s) carrying directives."

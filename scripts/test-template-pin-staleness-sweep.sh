@@ -182,7 +182,7 @@ FMT_FIX=$(fsx_lit 'let printDrift'        'eprintfn "  fix:')      || exit 2
 # The `pin-lags-feed` failure's own shape, from `stalenessFailures`.
 STALE_RULE=$(fsx_lit 'let stalenessFailures' 'Rule = "')            || exit 2
 FMT_LOCATION=$(fsx_lit 'let stalenessFailures' 'Location = sprintf "') || exit 2
-FMT_EXPECTED_VALUE=$(fsx_lit 'let stalenessFailures' 'Expected = sprintf "') || exit 2
+FMT_EXPECTED_VALUE=$(fsx_lit_after 'let stalenessFailures' 'Expected =') || exit 2
 PROPS_REL=$(fsx_lit 'let propsRel' 'let propsRel')                  || exit 2
 
 # The STALE banner — the sentence the sweep step keys `reported=` on. Taken as the first bare string

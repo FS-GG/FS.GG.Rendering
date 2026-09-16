@@ -28,21 +28,23 @@ let size: Size = { Width = 1024; Height = 768 }
 /// `canvas` control kind, so games paint real colored shapes (`SceneNode.Rectangle` etc.)
 /// rather than ASCII text — rendered identically in the live window and the offscreen capture.
 /// No new framework control is added; this is a consumer use of the existing public surface.
-let canvas (id: string) (widthPx: float) (heightPx: float) (draw: unit -> Scene): Control<'msg> =
+let canvas (id: string) (widthPx: float) (heightPx: float) (draw: unit -> Scene) : Control<'msg> =
     Canvas.create [ Attr.width widthPx; Attr.height heightPx; Canvas.scene (draw ()) ]
     |> Control.withKey id
 
 /// The closure-erased registry element (research R2). Its sample-specific `Model`/`Msg`
 /// live inside the `RunEvidence`/`Interactive` closures, so the type carries no parameter.
 type SampleEntry =
-    { Id: string
-      Family: string
-      Title: string
-      Controls: string list
-      Inputs: string list
-      RunEvidence: int -> string -> SampleEvidenceRecord
-      Interactive: ThemeMode -> int
-      Outcome: ExpectedOutcome }
+    {
+        Id: string
+        Family: string
+        Title: string
+        Controls: string list
+        Inputs: string list
+        RunEvidence: int -> string -> SampleEvidenceRecord
+        Interactive: ThemeMode -> int
+        Outcome: ExpectedOutcome
+    }
 
 /// Build a host from a sample's pure pieces. Effects are always empty — all I/O happens at
 /// the App edge (Principle IV). `tick` is non-None for games (the gravity/advance/step seam).
@@ -55,23 +57,26 @@ let host
     (tick: TimeSpan -> 'msg option)
     (theme: Theme)
     : InteractiveAppHost<'model, 'msg> =
-    { Init = fun () -> init (), []
-      Update = fun msg model -> update msg model, []
-      View = view
-      Theme = theme
-      MapKey = mapKey
-      MapPointer = mapPointer
-      Tick = tick
-      MapKeyChord = fun _ _ -> None
-      OnFrameMetrics = ignore
-      Diagnostics = Viewer.defaultDiagnostics }
+    {
+        Init = fun () -> init (), []
+        Update = fun msg model -> update msg model, []
+        View = view
+        Theme = theme
+        MapKey = mapKey
+        MapPointer = mapPointer
+        Tick = tick
+        MapKeyChord = fun _ _ -> None
+        OnFrameMetrics = ignore
+        Diagnostics = Viewer.defaultDiagnostics
+    }
 
 /// Replay a seeded `FrameInput` script through a host's pure `Update`, returning the final
 /// model. Mirrors the live repaint loop's input routing (`MapKeyChord` before `MapKey`; a
 /// `Key` frame is a press; `Tick` advances time) so the derived outcome matches what the
 /// running app reaches. Pure — no GL, no wall-clock.
-let replay (host: InteractiveAppHost<'model, 'msg>) (script: FrameInput<'msg> list): 'model =
+let replay (host: InteractiveAppHost<'model, 'msg>) (script: FrameInput<'msg> list) : 'model =
     let mutable model = fst (host.Init())
+
     for input in script do
         let msgOpt =
             match input with
@@ -82,13 +87,15 @@ let replay (host: InteractiveAppHost<'model, 'msg>) (script: FrameInput<'msg> li
             | FrameInput.Pointer p -> host.MapPointer p
             | FrameInput.Tick dt -> host.Tick dt
             | FrameInput.Idle -> None
+
         match msgOpt with
         | Some msg -> model <- fst (host.Update msg model)
         | None -> ()
+
     model
 
 /// The golden state outcome from the deterministic `Perf.runScript` driver (no GL).
-let goldenStateFor (host: InteractiveAppHost<'model, 'msg>) (script: FrameInput<'msg> list): string =
+let goldenStateFor (host: InteractiveAppHost<'model, 'msg>) (script: FrameInput<'msg> list) : string =
     Evidence.goldenState (ControlsElmish.Perf.runScript host size script)
 
 /// Build a record WITHOUT touching the filesystem or GL — the pure path the Expecto suites
@@ -109,26 +116,40 @@ let recordFor
 /// failure — never a fabricated frame (FR-008/R-E4). A sample may supply `sceneOf` to paint a
 /// bespoke `Scene` directly (games draw a colored board via the public `Scene` primitives);
 /// otherwise the control tree is rendered via `Control.renderTree`.
-let private capture (sceneOf: (Size -> 'model -> Scene) option) (host: InteractiveAppHost<'model, 'msg>) (model: 'model) (sampleId: string) (outPath: string): ScreenshotEvidenceResult =
+let private capture
+    (sceneOf: (Size -> 'model -> Scene) option)
+    (host: InteractiveAppHost<'model, 'msg>)
+    (model: 'model)
+    (sampleId: string)
+    (outPath: string)
+    : ScreenshotEvidenceResult =
     let scene =
         match sceneOf with
         | Some paint -> SceneNode.Group [ paint size model ]
         | None -> SceneNode.Group [ (Control.renderTree host.Theme size (host.View size model)).Scene ]
+
     let request: ScreenshotEvidenceRequest =
-        { Command = "evidence"
-          AppOrSample = sampleId
-          OutputPath = outPath
-          Width = size.Width
-          Height = size.Height
-          RendererMode = "viewer-render-target"
-          CaptureMode = ViewerRenderTargetPng
-          HostFacts = []
-          Timeout = TimeSpan.FromSeconds 10.0 }
+        {
+            Command = "evidence"
+            AppOrSample = sampleId
+            OutputPath = outPath
+            Width = size.Width
+            Height = size.Height
+            RendererMode = "viewer-render-target"
+            CaptureMode = ViewerRenderTargetPng
+            HostFacts = []
+            Timeout = TimeSpan.FromSeconds 10.0
+        }
+
     let options: ViewerOptions =
-        { Title = sprintf "sample-apps-evidence-%s" sampleId
-          InitialSize = size
-          PresentMode = ViewerPresentMode.OffscreenReadback
-          FrameRateCap = None; LogicalSize = None }
+        {
+            Title = sprintf "sample-apps-evidence-%s" sampleId
+            InitialSize = size
+            PresentMode = ViewerPresentMode.OffscreenReadback
+            FrameRateCap = None
+            LogicalSize = None
+        }
+
     Viewer.captureScreenshotEvidence request options scene
 
 /// The production evidence runner reused by every `SampleEntry.RunEvidence`: writes
@@ -158,10 +179,17 @@ let evidenceForWith
 
     // 3. screenshot — degrade-and-disclose on any GL/capture failure.
     let framePath = Path.Combine(dir, "frame.png")
+
     let summary =
         try
             let shot = capture sceneOf host finalModel sampleId framePath
-            let path = if shot.ProvesScreenshot && File.Exists framePath then Some "frame.png" else None
+
+            let path =
+                if shot.ProvesScreenshot && File.Exists framePath then
+                    Some "frame.png"
+                else
+                    None
+
             Evidence.ofScreenshotResult shot path
         with ex ->
             Evidence.degraded (sprintf "screenshot capture raised: %s" ex.Message)
@@ -186,13 +214,15 @@ let evidenceForScene (paint: Size -> 'model -> Scene) sampleId host script deriv
     evidenceForWith (Some paint) sampleId host script deriveOutcome seed outDir
 
 /// Common GL-gating disclosure used by both interactive paths.
-let private discloseNoWindow (capability: ViewerRuntimeCapability): int =
+let private discloseNoWindow (capability: ViewerRuntimeCapability) : int =
     printfn "sample-apps: interactive mode skipped — no live window/GL host."
     let reasons = capability.UnsupportedHostReasons
+
     if not (List.isEmpty reasons) then
         printfn "  reason: %s" (String.concat "; " reasons)
     else
         printfn "  reason: renderer mode '%s' reports no persistent window." capability.RendererMode
+
     0
 
 /// GL-gated **scene-based** interactive launch: paints a raw `SceneNode` each frame via
@@ -209,22 +239,34 @@ let runInteractiveScene
     (tick: TimeSpan -> 'msg option)
     : int =
     let capability = Viewer.runtimeCapability ()
+
     if not capability.PersistentWindow then
         discloseNoWindow capability
     else
         let host: InteractiveViewerHost<'model, 'msg> =
-            { Init = fun () -> init (), []
-              Update = fun msg model -> update msg model, []
-              View = fun sz model -> SceneNode.Group [ renderScene sz model ]
-              MapKey = fun k pressed -> match mapKey k pressed with | Some m -> [ m ] | None -> []
-              MapPointer = fun _ _ _ -> []
-              Tick = tick
-              Diagnostics = Viewer.defaultDiagnostics }
+            {
+                Init = fun () -> init (), []
+                Update = fun msg model -> update msg model, []
+                View = fun sz model -> SceneNode.Group [ renderScene sz model ]
+                MapKey =
+                    fun k pressed ->
+                        match mapKey k pressed with
+                        | Some m -> [ m ]
+                        | None -> []
+                MapPointer = fun _ _ _ -> []
+                Tick = tick
+                Diagnostics = Viewer.defaultDiagnostics
+            }
+
         let options: ViewerOptions =
-            { Title = title
-              InitialSize = windowSize
-              PresentMode = ViewerPresentMode.DirectToSwapchain
-              FrameRateCap = Some 60; LogicalSize = None }
+            {
+                Title = title
+                InitialSize = windowSize
+                PresentMode = ViewerPresentMode.DirectToSwapchain
+                FrameRateCap = Some 60
+                LogicalSize = None
+            }
+
         match Viewer.runInteractiveViewer options host with
         | Result.Ok outcome ->
             printfn "sample-apps: interactive session ended (status=%s)." outcome.Status
@@ -236,22 +278,28 @@ let runInteractiveScene
 /// GL-gated interactive launch (mirror of G1's `Interactive.run`). On a no-window/no-GL
 /// host it discloses the reason and exits 0 without launching — it never hangs and never
 /// fakes a successful render (FR-008).
-let runInteractive (title: string) (host: InteractiveAppHost<'model, 'msg>): int =
+let runInteractive (title: string) (host: InteractiveAppHost<'model, 'msg>) : int =
     let capability = Viewer.runtimeCapability ()
+
     if not capability.PersistentWindow then
         printfn "sample-apps: interactive mode skipped — no live window/GL host."
         let reasons = capability.UnsupportedHostReasons
+
         if not (List.isEmpty reasons) then
             printfn "  reason: %s" (String.concat "; " reasons)
         else
             printfn "  reason: renderer mode '%s' reports no persistent window." capability.RendererMode
+
         0
     else
         let options: ViewerOptions =
-            { Title = title
-              InitialSize = { Width = 1280; Height = 800 }
-              PresentMode = ViewerPresentMode.DirectToSwapchain
-              FrameRateCap = Some 60; LogicalSize = None }
+            {
+                Title = title
+                InitialSize = { Width = 1280; Height = 800 }
+                PresentMode = ViewerPresentMode.DirectToSwapchain
+                FrameRateCap = Some 60
+                LogicalSize = None
+            }
         // `Result.Ok`/`Result.Error` are qualified: a viewer namespace also defines an `Ok`
         // union case which would otherwise shadow the F# Result constructors.
         match ControlsElmish.runInteractiveApp options host with

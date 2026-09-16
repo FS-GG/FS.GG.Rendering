@@ -7,44 +7,60 @@ open FS.GG.UI.Testing
 open FS.GG.TestSupport
 
 let private repositoryRoot = RepositoryRoot.value
-let private path (relative: string) = Path.Combine(repositoryRoot, relative.Replace('/', Path.DirectorySeparatorChar))
+
+let private path (relative: string) =
+    Path.Combine(repositoryRoot, relative.Replace('/', Path.DirectorySeparatorChar))
 
 [<Tests>]
 let feature146CompatibilityLedgerTests =
-    testList "Feature146 compatibility ledger and package surface" [
-        test "SceneCodec public contract files are present" {
-            let sceneCodecFsi = File.ReadAllText(path "src/Scene/SceneCodec.fsi")
-            let referenceFsi = File.ReadAllText(path "src/SkiaViewer/ReferenceRendering.fsi")
-            let testingFsi = File.ReadAllText(path "src/Testing/Testing.fsi")
+    testList
+        "Feature146 compatibility ledger and package surface"
+        [
+            test "SceneCodec public contract files are present" {
+                let sceneCodecFsi = File.ReadAllText(path "src/Scene/SceneCodec.fsi")
+                let referenceFsi = File.ReadAllText(path "src/SkiaViewer/ReferenceRendering.fsi")
+                let testingFsi = File.ReadAllText(path "src/Testing/Testing.fsi")
 
-            Expect.stringContains sceneCodecFsi "module SceneCodec" "SceneCodec module is public"
-            Expect.stringContains sceneCodecFsi "val exportScene" "SceneCodec export is public"
-            Expect.stringContains sceneCodecFsi "val inspectWith" "SceneCodec inspection is public"
-            Expect.stringContains referenceFsi "module ReferenceRendering" "ReferenceRendering module is public"
-            Expect.stringContains referenceFsi "type ReferenceRenderingEffect" "ReferenceRendering effect surface is public"
-            Expect.stringContains testingFsi "module PackageInspectionAssertions" "Testing package inspection helpers are public"
-        }
+                Expect.stringContains sceneCodecFsi "module SceneCodec" "SceneCodec module is public"
+                Expect.stringContains sceneCodecFsi "val exportScene" "SceneCodec export is public"
+                Expect.stringContains sceneCodecFsi "val inspectWith" "SceneCodec inspection is public"
+                Expect.stringContains referenceFsi "module ReferenceRendering" "ReferenceRendering module is public"
 
-        test "package inspection assertion helper accepts expected report" {
-            let package = SceneCodec.export (Scene.rectangle (0.0, 0.0, 8.0, 8.0) Colors.white)
-            let report = SceneCodec.inspect package.CanonicalBytes
+                Expect.stringContains
+                    referenceFsi
+                    "type ReferenceRenderingEffect"
+                    "ReferenceRendering effect surface is public"
 
-            let result =
-                PackageInspectionAssertions.validate
-                    { Report = report
-                      ExpectedStatus = PackageAccepted
-                      RequiredDiagnosticFragments = [] }
+                Expect.stringContains
+                    testingFsi
+                    "module PackageInspectionAssertions"
+                    "Testing package inspection helpers are public"
+            }
 
-            Expect.isTrue result.Accepted (String.concat "; " result.Diagnostics)
-        }
+            test "package inspection assertion helper accepts expected report" {
+                let package = SceneCodec.export (Scene.rectangle (0.0, 0.0, 8.0, 8.0) Colors.white)
+                let report = SceneCodec.inspect package.CanonicalBytes
 
-        test "compatibility ledger names Feature146 surfaces and evidence links" {
-            let ledgerPath = path "specs/146-render-anywhere-protocol/readiness/compatibility-ledger.md"
-            Expect.isTrue (File.Exists ledgerPath) "compatibility ledger exists"
+                let result =
+                    PackageInspectionAssertions.validate
+                        {
+                            Report = report
+                            ExpectedStatus = PackageAccepted
+                            RequiredDiagnosticFragments = []
+                        }
 
-            let ledger = File.ReadAllText ledgerPath
-            Expect.stringContains ledger "SceneCodec" "ledger names SceneCodec"
-            Expect.stringContains ledger "ReferenceRendering" "ledger names ReferenceRendering"
-            Expect.stringContains ledger "browser-feasibility" "ledger links browser feasibility evidence"
-        }
-    ]
+                Expect.isTrue result.Accepted (String.concat "; " result.Diagnostics)
+            }
+
+            test "compatibility ledger names Feature146 surfaces and evidence links" {
+                let ledgerPath =
+                    path "specs/146-render-anywhere-protocol/readiness/compatibility-ledger.md"
+
+                Expect.isTrue (File.Exists ledgerPath) "compatibility ledger exists"
+
+                let ledger = File.ReadAllText ledgerPath
+                Expect.stringContains ledger "SceneCodec" "ledger names SceneCodec"
+                Expect.stringContains ledger "ReferenceRendering" "ledger names ReferenceRendering"
+                Expect.stringContains ledger "browser-feasibility" "ledger links browser feasibility evidence"
+            }
+        ]

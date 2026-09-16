@@ -10,60 +10,96 @@ open Expecto
 open FS.GG.UI.Controls
 
 let private columns: DataGridColumn list =
-    [ { Key = "name"; Header = "Name"; Width = 200.0; ColumnType = TextColumn } ]
+    [
+        {
+            Key = "name"
+            Header = "Name"
+            Width = 200.0
+            ColumnType = TextColumn
+        }
+    ]
 
 let private rowsUpTo (n: int) : DataGridRow list =
-    [ for r in 0 .. n - 1 ->
-          { Key = sprintf "r%d" r
-            Cells = [ { RowKey = sprintf "r%d" r; ColumnKey = "name"; Value = sprintf "Row %d" r } ] } ]
+    [
+        for r in 0 .. n - 1 ->
+            {
+                Key = sprintf "r%d" r
+                Cells =
+                    [
+                        {
+                            RowKey = sprintf "r%d" r
+                            ColumnKey = "name"
+                            Value = sprintf "Row %d" r
+                        }
+                    ]
+            }
+    ]
 
 let private collectionOf (control: Control<'msg>) : CollectionPosition option =
     control.Accessibility |> Option.bind (fun a -> a.Collection)
 
 [<Tests>]
 let tests =
-    testList "Feature 114 accessibility total + position (US3, SC-005)" [
+    testList
+        "Feature 114 accessibility total + position (US3, SC-005)"
+        [
 
-        test "a virtualized DataGrid reports TotalItems = logical row count, independent of materialization (FR-012)" {
-            let total = 10000
-            // a narrow realized window (11 rows) over 10000 logical rows.
-            let vr = Collections.visibleRange 24.0 240.0 0.0 total 0
-            let grid = DataGrid.create columns [ DataGrid.rows (rowsUpTo total); DataGrid.visibleRange vr ]
+            test
+                "a virtualized DataGrid reports TotalItems = logical row count, independent of materialization (FR-012)" {
+                let total = 10000
+                // a narrow realized window (11 rows) over 10000 logical rows.
+                let vr = Collections.visibleRange 24.0 240.0 0.0 total 0
 
-            match collectionOf grid with
-            | Some c ->
-                Expect.equal c.TotalItems total "TotalItems is the full logical count (10000), not the materialized slice"
-                Expect.isTrue (vr.Count < total) "precondition: only a small window is materialized"
-            | None -> failtest "a virtualized DataGrid must report a Collection position"
-        }
+                let grid =
+                    DataGrid.create columns [ DataGrid.rows (rowsUpTo total); DataGrid.visibleRange vr ]
 
-        test "FocusedIndex is the focused row's LOGICAL index (from FocusedCell.RowKey) (FR-012)" {
-            let total = 10000
-            let cell = { RowKey = "r4200"; ColumnKey = "name" }
-            let grid =
-                DataGrid.create columns [
-                    DataGrid.rows (rowsUpTo total)
-                    DataGrid.visibleRange (Collections.visibleRange 24.0 240.0 0.0 total 0)
-                    DataGrid.focusedCell (Some cell) ]
+                match collectionOf grid with
+                | Some c ->
+                    Expect.equal
+                        c.TotalItems
+                        total
+                        "TotalItems is the full logical count (10000), not the materialized slice"
 
-            match collectionOf grid with
-            | Some c -> Expect.equal c.FocusedIndex (Some 4200) "FocusedIndex is the logical index of the focused row key, even though it is offscreen"
-            | None -> failtest "expected a Collection position"
-        }
+                    Expect.isTrue (vr.Count < total) "precondition: only a small window is materialized"
+                | None -> failtest "a virtualized DataGrid must report a Collection position"
+            }
 
-        test "FocusedIndex is None when nothing is focused" {
-            let total = 500
-            let grid = DataGrid.create columns [ DataGrid.rows (rowsUpTo total) ]
-            match collectionOf grid with
-            | Some c -> Expect.equal c.FocusedIndex None "no focus => FocusedIndex None"
-            | None -> failtest "expected a Collection position"
-        }
+            test "FocusedIndex is the focused row's LOGICAL index (from FocusedCell.RowKey) (FR-012)" {
+                let total = 10000
+                let cell = { RowKey = "r4200"; ColumnKey = "name" }
 
-        test "a non-collection control reports Collection = None (at-rest a11y byte-identical)" {
-            let button = Button.create [ Button.text "ok" ]
-            Expect.equal (collectionOf button) None "Button carries no Collection position"
+                let grid =
+                    DataGrid.create
+                        columns
+                        [
+                            DataGrid.rows (rowsUpTo total)
+                            DataGrid.visibleRange (Collections.visibleRange 24.0 240.0 0.0 total 0)
+                            DataGrid.focusedCell (Some cell)
+                        ]
 
-            let label = TextBlock.create [ TextBlock.text "hello" ]
-            Expect.equal (collectionOf label) None "TextBlock carries no Collection position"
-        }
-    ]
+                match collectionOf grid with
+                | Some c ->
+                    Expect.equal
+                        c.FocusedIndex
+                        (Some 4200)
+                        "FocusedIndex is the logical index of the focused row key, even though it is offscreen"
+                | None -> failtest "expected a Collection position"
+            }
+
+            test "FocusedIndex is None when nothing is focused" {
+                let total = 500
+                let grid = DataGrid.create columns [ DataGrid.rows (rowsUpTo total) ]
+
+                match collectionOf grid with
+                | Some c -> Expect.equal c.FocusedIndex None "no focus => FocusedIndex None"
+                | None -> failtest "expected a Collection position"
+            }
+
+            test "a non-collection control reports Collection = None (at-rest a11y byte-identical)" {
+                let button = Button.create [ Button.text "ok" ]
+                Expect.equal (collectionOf button) None "Button carries no Collection position"
+
+                let label = TextBlock.create [ TextBlock.text "hello" ]
+                Expect.equal (collectionOf label) None "TextBlock carries no Collection position"
+            }
+        ]

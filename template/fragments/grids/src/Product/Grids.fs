@@ -44,7 +44,12 @@ module Grids =
     /// A grid EDGE — the shared boundary between two adjacent faces. `Col`/`Row` plus `Orientation` give
     /// each edge exactly ONE canonical name (a `Vertical` edge is named from the cell on its right; a
     /// `Horizontal` edge from the cell below it), so two references to the same boundary are equal.
-    type Edge = { Col: int; Row: int; Orientation: EdgeOrientation }
+    type Edge =
+        {
+            Col: int
+            Row: int
+            Orientation: EdgeOrientation
+        }
 
     /// A grid VERTEX — a corner where edges meet. `(Col, Row)` is the top-left corner of cell `(Col, Row)`;
     /// the corner lattice is offset by half a cell from the faces.
@@ -62,17 +67,37 @@ module Grids =
 
     /// A cell's four corners, in top-left, top-right, bottom-right, bottom-left order.
     let cellCorners (c: Cell) : Vertex list =
-        [ { Col = c.Col; Row = c.Row } // TL
-          { Col = c.Col + 1; Row = c.Row } // TR
-          { Col = c.Col + 1; Row = c.Row + 1 } // BR
-          { Col = c.Col; Row = c.Row + 1 } ] // BL
+        [
+            { Col = c.Col; Row = c.Row } // TL
+            { Col = c.Col + 1; Row = c.Row } // TR
+            { Col = c.Col + 1; Row = c.Row + 1 } // BR
+            { Col = c.Col; Row = c.Row + 1 }
+        ] // BL
 
     /// A cell's four edges, in top, right, bottom, left order.
     let cellEdges (c: Cell) : Edge list =
-        [ { Col = c.Col; Row = c.Row; Orientation = Horizontal } // top
-          { Col = c.Col + 1; Row = c.Row; Orientation = Vertical } // right
-          { Col = c.Col; Row = c.Row + 1; Orientation = Horizontal } // bottom
-          { Col = c.Col; Row = c.Row; Orientation = Vertical } ] // left
+        [
+            {
+                Col = c.Col
+                Row = c.Row
+                Orientation = Horizontal
+            } // top
+            {
+                Col = c.Col + 1
+                Row = c.Row
+                Orientation = Vertical
+            } // right
+            {
+                Col = c.Col
+                Row = c.Row + 1
+                Orientation = Horizontal
+            } // bottom
+            {
+                Col = c.Col
+                Row = c.Row
+                Orientation = Vertical
+            }
+        ] // left
 
     /// The two faces an edge separates, in ascending order (left-then-right for a `Vertical` edge,
     /// above-then-below for a `Horizontal` one).
@@ -89,17 +114,37 @@ module Grids =
 
     /// The four faces meeting at a vertex, in top-left, top-right, bottom-right, bottom-left order.
     let vertexCells (v: Vertex) : Cell list =
-        [ { Col = v.Col - 1; Row = v.Row - 1 } // TL
-          { Col = v.Col; Row = v.Row - 1 } // TR
-          { Col = v.Col; Row = v.Row } // BR
-          { Col = v.Col - 1; Row = v.Row } ] // BL
+        [
+            { Col = v.Col - 1; Row = v.Row - 1 } // TL
+            { Col = v.Col; Row = v.Row - 1 } // TR
+            { Col = v.Col; Row = v.Row } // BR
+            { Col = v.Col - 1; Row = v.Row }
+        ] // BL
 
     /// The four edges meeting at a vertex, in up, right, down, left order.
     let vertexEdges (v: Vertex) : Edge list =
-        [ { Col = v.Col; Row = v.Row - 1; Orientation = Vertical } // up
-          { Col = v.Col; Row = v.Row; Orientation = Horizontal } // right
-          { Col = v.Col; Row = v.Row; Orientation = Vertical } // down
-          { Col = v.Col - 1; Row = v.Row; Orientation = Horizontal } ] // left
+        [
+            {
+                Col = v.Col
+                Row = v.Row - 1
+                Orientation = Vertical
+            } // up
+            {
+                Col = v.Col
+                Row = v.Row
+                Orientation = Horizontal
+            } // right
+            {
+                Col = v.Col
+                Row = v.Row
+                Orientation = Vertical
+            } // down
+            {
+                Col = v.Col - 1
+                Row = v.Row
+                Orientation = Horizontal
+            }
+        ] // left
 
     // ---------------------------------------------------------------------------------------------
     // Pixel mapping — reuse the shared `Point`/`Rect`. Total: a non-finite / non-positive `CellSize`
@@ -113,33 +158,45 @@ module Grids =
             1.0
 
     let private safeOriginX (spec: GridSpec) =
-        if System.Double.IsFinite spec.Origin.X then spec.Origin.X else 0.0
+        if System.Double.IsFinite spec.Origin.X then
+            spec.Origin.X
+        else
+            0.0
 
     let private safeOriginY (spec: GridSpec) =
-        if System.Double.IsFinite spec.Origin.Y then spec.Origin.Y else 0.0
+        if System.Double.IsFinite spec.Origin.Y then
+            spec.Origin.Y
+        else
+            0.0
 
     /// The pixel AABB of a cell.
     let cellRect (spec: GridSpec) (c: Cell) : Rect =
         let s = safeCellSize spec
 
-        { X = safeOriginX spec + float c.Col * s
-          Y = safeOriginY spec + float c.Row * s
-          Width = s
-          Height = s }
+        {
+            X = safeOriginX spec + float c.Col * s
+            Y = safeOriginY spec + float c.Row * s
+            Width = s
+            Height = s
+        }
 
     /// The pixel center of a cell.
     let cellCenter (spec: GridSpec) (c: Cell) : Point =
         let s = safeCellSize spec
 
-        { X = safeOriginX spec + (float c.Col + 0.5) * s
-          Y = safeOriginY spec + (float c.Row + 0.5) * s }
+        {
+            X = safeOriginX spec + (float c.Col + 0.5) * s
+            Y = safeOriginY spec + (float c.Row + 0.5) * s
+        }
 
     /// The pixel position of a vertex.
     let vertexPoint (spec: GridSpec) (v: Vertex) : Point =
         let s = safeCellSize spec
 
-        { X = safeOriginX spec + float v.Col * s
-          Y = safeOriginY spec + float v.Row * s }
+        {
+            X = safeOriginX spec + float v.Col * s
+            Y = safeOriginY spec + float v.Row * s
+        }
 
     /// An edge as its two endpoint pixels (draw a fence/border by stroking this segment).
     let edgeSegment (spec: GridSpec) (e: Edge) : Point * Point =
@@ -153,7 +210,11 @@ module Grids =
     /// The pixel midpoint of an edge.
     let edgeMidpoint (spec: GridSpec) (e: Edge) : Point =
         let a, b = edgeSegment spec e
-        { X = (a.X + b.X) * 0.5; Y = (a.Y + b.Y) * 0.5 }
+
+        {
+            X = (a.X + b.X) * 0.5
+            Y = (a.Y + b.Y) * 0.5
+        }
 
     /// Inverse of `cellCenter`/`cellRect`: the cell that contains a pixel point (floor-based, so a point
     /// exactly on a boundary belongs to the cell to its right/below). Total on non-finite input — a

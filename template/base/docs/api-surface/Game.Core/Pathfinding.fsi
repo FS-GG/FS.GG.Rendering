@@ -28,12 +28,14 @@ module Pathfinding =
     /// One settled cell of a `reachable` search: what it cost to get here, and which cell we came from.
     /// `CameFrom` is `None` for exactly one cell — the `start` the search was seeded with.
     type Step =
-        { /// Total cost of entering this cell from `start`, in the same `baseStep`-scaled units as
-          /// `reachableWithin`'s values (`baseStep` per orthogonal step, `baseStep * 14 / 10` per
-          /// diagonal, times `cost`) — *not* movement points. See `baseStep`.
-          Cost: int
-          /// The predecessor on the cheapest route from `start`. `None` only for `start` itself.
-          CameFrom: Cell option }
+        {
+            /// Total cost of entering this cell from `start`, in the same `baseStep`-scaled units as
+            /// `reachableWithin`'s values (`baseStep` per orthogonal step, `baseStep * 14 / 10` per
+            /// diagonal, times `cost`) — *not* movement points. See `baseStep`.
+            Cost: int
+            /// The predecessor on the cheapest route from `start`. `None` only for `start` itself.
+            CameFrom: Cell option
+        }
 
     /// Public contract type exposed by the FS.GG.Game.Core package.
     /// The result of a `reachable` search: **two sets, and they are deliberately not the same set.**
@@ -48,11 +50,13 @@ module Pathfinding =
     /// absent from `Endable`. Reconstruct from the filtered set and you dead-end on precisely the routes
     /// `canEndOn` exists to allow.
     type Reach =
-        { /// Every settled cell, including pass-through-only ones. The path source.
-          Steps: Map<Cell, Step>
-          /// The subset of `Steps` that `canEndOn` admitted. The highlight set, and the only set from
-          /// which a destination may be offered.
-          Endable: Set<Cell> }
+        {
+            /// Every settled cell, including pass-through-only ones. The path source.
+            Steps: Map<Cell, Step>
+            /// The subset of `Steps` that `canEndOn` admitted. The highlight set, and the only set from
+            /// which a destination may be offered.
+            Endable: Set<Cell>
+        }
 
     /// Public contract function exposed by the FS.GG.Game.Core package.
     /// A* shortest path from `start` to `goal` over walkable cells. Returns `Some path` where `path` is
@@ -117,11 +121,7 @@ module Pathfinding =
     /// a negative coefficient (≈ `-1.2`) and re-relax, then roll downhill. The coefficient is a tuning
     /// constant — game policy, not navigation — so it lives in the caller, not here.
     val distanceField:
-        neighbourhood: Neighbourhood ->
-        maxVisited: int ->
-        cost: (Cell -> int) ->
-        goals: Cell list ->
-            Map<Cell, int>
+        neighbourhood: Neighbourhood -> maxVisited: int -> cost: (Cell -> int) -> goals: Cell list -> Map<Cell, int>
 
     /// Public contract function exposed by the FS.GG.Game.Core package.
     /// The negative gradient of a `distanceField`: maps each cell to its strictly-lowest-valued

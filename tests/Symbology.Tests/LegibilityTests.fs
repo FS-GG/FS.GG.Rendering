@@ -28,13 +28,21 @@ let private baseUnit = Symbology.defaultToken
 
 /// Distinct `Custom` faction by index (each colour counted separately, research D2).
 let private customFaction i =
-    Custom { Red = byte i; Green = 0uy; Blue = 0uy; Alpha = 255uy }
+    Custom
+        {
+            Red = byte i
+            Green = 0uy
+            Blue = 0uy
+            Alpha = 255uy
+        }
 
 /// Distinct `Mark` sigil by index (distinct PathSpec value).
 let private markSigil i =
     Sigil.Mark
-        { Commands = [ PathCommand.MoveTo { X = float i; Y = 0.0 } ]
-          FillType = PathFillType.Winding }
+        {
+            Commands = [ PathCommand.MoveTo { X = float i; Y = 0.0 } ]
+            FillType = PathFillType.Winding
+        }
 
 let private usageOf (report: Legibility.Report) (channel: Legibility.Channel) =
     report.Usage |> List.find (fun u -> u.Channel = channel)
@@ -43,314 +51,447 @@ let private usageOf (report: Legibility.Report) (channel: Legibility.Channel) =
 /// and 5 by two each. Ranking by (frequency desc, first appearance asc) keeps 0,1,2,3 and leaves 4
 /// and 5 as the excess — units 12,13 and 14,15.
 let private sixSpeedLevels =
-    [ for s in [ 0; 0; 0; 1; 1; 1; 2; 2; 2; 3; 3; 3; 4; 4; 5; 5 ] -> { baseUnit with Speed = s } ]
+    [
+        for s in [ 0; 0; 0; 1; 1; 1; 2; 2; 2; 3; 3; 3; 4; 4; 5; 5 ] -> { baseUnit with Speed = s }
+    ]
 
 [<Tests>]
 let tests =
     testList
         "Legibility"
         [
-          // ── C1 / C10 / C9 — clean / all-identical / empty ────────────────────────────────
-          test "C1 — a within-capacity board → Findings = [], Verdict = Clean" {
-              let board =
-                  [ { baseUnit with Faction = Ally; Klass = Heavy; Sigil = Ring; Speed = 1 }
-                    { baseUnit with Faction = Enemy; Klass = Scout; Sigil = Fang; Speed = 2 }
-                    { baseUnit with Faction = Neutral; Klass = Mobile; Sigil = Bolt; Speed = 3 } ]
-
-              let report = Legibility.score board
-              Expect.equal report.Findings [] "a within-capacity board yields no findings"
-              Expect.equal report.Verdict Legibility.Clean "verdict is Clean"
-          }
-
-          test "C10 — all-identical roster → Clean, each categorical channel DistinctLevels = 1" {
-              let board = List.replicate 5 baseUnit
-              let report = Legibility.score board
-              Expect.equal report.Verdict Legibility.Clean "all-identical is Clean"
-
-              for ch in [ Legibility.Faction; Legibility.Klass; Legibility.Sigil; Legibility.State; Legibility.Shield ] do
-                  Expect.equal (usageOf report ch).DistinctLevels 1 (sprintf "%A reports exactly one distinct level" ch)
-          }
-
-          test "C9 — empty score [] / scoreAnimated [] → Findings = [], Clean, usage all 0" {
-              let r = Legibility.score []
-              Expect.equal r.Findings [] "empty board: no findings"
-              Expect.equal r.Verdict Legibility.Clean "empty board: Clean"
-              Expect.equal r.Usage.Length 12 "usage has one entry per per-unit channel"
-              Expect.isTrue (r.Usage |> List.forall (fun u -> u.DistinctLevels = 0)) "all usage at 0 distinct levels"
-
-              let ra = Legibility.scoreAnimated []
-              Expect.equal ra.Findings [] "empty animated board: no findings"
-              Expect.equal ra.Verdict Legibility.Clean "empty animated board: Clean"
-          }
-
-          // ── C2 — categorical overload (one Warning per over-capacity channel) ─────────────
-          test "C2 — > 7 distinct factions → exactly one Warning on Faction; in-capacity channels silent" {
-              let board = [ for i in 0..7 -> { baseUnit with Faction = customFaction i } ] // 8 distinct
-              let report = Legibility.score board
-              Expect.equal report.Findings.Length 1 "exactly one finding"
-              let f = report.Findings.Head
-              Expect.equal f.Channel Legibility.Faction "finding is on Faction"
-              Expect.equal f.Severity Legibility.Severity.Warning "overload is a Warning"
-              Expect.stringContains f.Message "8" "message reports the used count"
-              Expect.stringContains f.Message "7" "message reports the capacity"
-              Expect.isNonEmpty f.Units "the contributing units are named"
-              Expect.equal report.Verdict Legibility.HasWarnings "verdict is HasWarnings"
-          }
-
-          test "C2 — > 12 distinct sigils → exactly one Warning on Sigil" {
-              // Bolt, Ring, Fang (3) + 10 distinct Marks = 13 distinct > capacity 12.
-              let board =
-                  [ yield { baseUnit with Sigil = Bolt }
-                    yield { baseUnit with Sigil = Ring }
-                    yield { baseUnit with Sigil = Fang }
-                    for i in 0..9 -> { baseUnit with Sigil = markSigil i } ]
-
-              let report = Legibility.score board
-              Expect.equal report.Findings.Length 1 "exactly one finding"
-              let f = report.Findings.Head
-              Expect.equal f.Channel Legibility.Sigil "finding is on Sigil"
-              Expect.equal f.Severity Legibility.Severity.Warning "overload is a Warning"
-              Expect.stringContains f.Message "13" "message reports 13 distinct"
-          }
-
-          // ── C3 — Speed (Ordered) overload ────────────────────────────────────────────────
-          test "C3 — > 4 distinct Speed bead counts → one Warning on Speed naming the units" {
-              let board = [ for s in 0..4 -> { baseUnit with Speed = s } ] // 5 distinct, all in [0,6]
-              let report = Legibility.score board
-              Expect.equal report.Findings.Length 1 "exactly one finding"
-              let f = report.Findings.Head
-              Expect.equal f.Channel Legibility.Speed "finding is on Speed"
-              Expect.equal f.Severity Legibility.Severity.Warning "ordered overload is a Warning"
-              Expect.isNonEmpty f.Units "units are named"
-          }
-
-          // ── C4 / C5 / C6 — out-of-domain / degenerate / non-finite (Errors, scan continues) ─
-          test "C4 — Threat/Charge/Health outside [0,1] or Speed outside [0,6] → Error on that channel" {
-              let report =
-                  Legibility.score
-                      [ { baseUnit with Threat = 2.0 } // unit 0: Threat out of band
-                        baseUnit // unit 1: clean (scan must continue)
-                        { baseUnit with Speed = 7 } ] // unit 2: Speed out of band
-
-              let threat = report.Findings |> List.filter (fun f -> f.Channel = Legibility.Threat)
-              Expect.equal threat.Length 1 "one Threat error"
-              Expect.equal threat.Head.Severity Legibility.Severity.Error "Threat out-of-domain is an Error"
-              Expect.equal threat.Head.Units [ 0 ] "names the offending unit"
-
-              let speed = report.Findings |> List.filter (fun f -> f.Channel = Legibility.Speed)
-              Expect.equal speed.Length 1 "one Speed error"
-              Expect.equal speed.Head.Severity Legibility.Severity.Error "Speed out-of-domain is an Error"
-              Expect.equal speed.Head.Units [ 2 ] "names the offending unit (scan continued past unit 0)"
-          }
-
-          test "C5 — R <= 0 degenerate → one Error on Size; remaining units still scored" {
-              let report =
-                  Legibility.score
-                      [ { baseUnit with R = 0.0 } // degenerate
-                        { baseUnit with Threat = 5.0 } ] // still scored after the degenerate
-
-              let size = report.Findings |> List.filter (fun f -> f.Channel = Legibility.Size)
-              Expect.equal size.Length 1 "one Size error"
-              Expect.equal size.Head.Severity Legibility.Severity.Error "degenerate is an Error"
-              Expect.equal size.Head.Units [ 0 ] "names the degenerate unit"
-
-              let threat = report.Findings |> List.filter (fun f -> f.Channel = Legibility.Threat)
-              Expect.equal threat.Length 1 "the unit after the degenerate is still scored"
-              Expect.equal threat.Head.Units [ 1 ] "the second unit's out-of-domain Threat is reported"
-          }
-
-          test "C6 — non-finite float on any field → one Error on that channel, no exception" {
-              let report =
-                  Legibility.score
-                      [ { baseUnit with Threat = nan }
-                        { baseUnit with R = infinity }
-                        { baseUnit with Heading = -infinity } ]
-
-              Expect.equal
-                  (report.Findings |> List.filter (fun f -> f.Channel = Legibility.Threat) |> List.length)
-                  1
-                  "NaN Threat → one Error on Threat"
-              Expect.equal
-                  (report.Findings |> List.filter (fun f -> f.Channel = Legibility.Size) |> List.length)
-                  1
-                  "infinite R → one Error on Size"
-              Expect.equal
-                  (report.Findings |> List.filter (fun f -> f.Channel = Legibility.Heading) |> List.length)
-                  1
-                  "non-finite Heading → one Error on Heading"
-              Expect.isTrue (report.Findings |> List.forall (fun f -> f.Severity = Legibility.Severity.Error)) "all are Errors"
-          }
-
-          // ── C9 (continuous exempt) — many distinct continuous values, no overload ─────────
-          test "C9-continuous-exempt — many distinct continuous values emit no overload (FR-009)" {
-              // 20 units, identical categoricals/speed/size, but every CONTINUOUS channel distinct &
-              // in-domain. Health and the two rotations are read as a position on a scale, not a rank,
-              // so an arbitrary number of distinct values is legible (#285: Size/Threat/Charge are NOT
-              // in this set — they are Ordered, and the test below asserts they overload).
-              let board =
-                  [ for i in 0..19 ->
+            // ── C1 / C10 / C9 — clean / all-identical / empty ────────────────────────────────
+            test "C1 — a within-capacity board → Findings = [], Verdict = Clean" {
+                let board =
+                    [
                         { baseUnit with
-                            Health = float i / 30.0
-                            Heading = float i * 13.0
-                            SecondaryHeading = Some(float i * 7.0) } ]
-
-              let report = Legibility.score board
-              Expect.equal report.Findings [] "continuous channels are overload-exempt — no findings"
-              Expect.equal report.Verdict Legibility.Clean "Clean despite 20 distinct continuous values"
-          }
-
-          // ── #285 — the doctrine's headline channels are the ones the linter must enforce ──
-          test "#285 — Size/Threat/Charge are Ordered: a float ramp overloads, one Warning each" {
-              // The defect this pins: these three advertise ~4 reliable levels in the skill's §4 table,
-              // and used to be `Continuous`, cap 0 — so `overloadFindings` skipped them and a board of
-              // twelve distinct radii lint `Clean`. Every other channel here is held at one level.
-              let board =
-                  [ for i in 0..11 ->
+                            Faction = Ally
+                            Klass = Heavy
+                            Sigil = Ring
+                            Speed = 1
+                        }
                         { baseUnit with
-                            R = 10.0 + float i
-                            Threat = float i / 20.0
-                            Charge = float i / 25.0 } ]
-
-              let report = Legibility.score board
-              Expect.equal report.Verdict Legibility.HasWarnings "twelve distinct radii is not a legible board"
-
-              for ch in [ Legibility.Size; Legibility.Threat; Legibility.Charge ] do
-                  let found = report.Findings |> List.filter (fun f -> f.Channel = ch)
-                  Expect.equal found.Length 1 (sprintf "exactly one %A overload" ch)
-                  Expect.equal found.Head.Severity Legibility.Severity.Warning (sprintf "%A overload is a Warning" ch)
-                  Expect.stringContains found.Head.Message "12" (sprintf "%A message reports the 12 used levels" ch)
-                  Expect.stringContains found.Head.Message "4" (sprintf "%A message reports the capacity" ch)
-                  Expect.equal (usageOf report ch).Capacity 4 (sprintf "%A usage carries the capacity as evidence" ch)
-                  Expect.equal (usageOf report ch).DistinctLevels 12 (sprintf "%A usage carries the used count as evidence" ch)
-
-                  // `Units` names the units holding levels past capacity (#295's `excessUnits`), which
-                  // ranks levels by (frequency DESC, first-appearance ASC) and calls the tail excess.
-                  // On a MONOTONIC RAMP every level has frequency 1, so the tie-break collapses to first
-                  // appearance: the named units are the last 12-4 introduced — here the LARGEST radii,
-                  // not the rarest levels. Pinned deliberately, because it is what a float channel gets
-                  // and it is not obviously what a ramp wants (merging adjacent bands would be). If
-                  // #295's ordering ever learns about magnitude, this expectation is the thing that
-                  // should fail and force the conversation.
-                  Expect.equal
-                      found.Head.Units
-                      [ 4..11 ]
-                      (sprintf "%A names the eight units past capacity, ascending" ch)
-          }
-
-          test "#285 — a mapping that quantises Size/Threat/Charge to 4 levels stays Clean" {
-              // The tweak the finding above asks for: quantise in the mapping, don't widen the grammar.
-              let board =
-                  [ for i in 0..11 ->
+                            Faction = Enemy
+                            Klass = Scout
+                            Sigil = Fang
+                            Speed = 2
+                        }
                         { baseUnit with
-                            R = 10.0 + float (i % 4) * 5.0
-                            Threat = float (i % 4) / 4.0
-                            Charge = float (i % 4) / 4.0 } ]
+                            Faction = Neutral
+                            Klass = Mobile
+                            Sigil = Bolt
+                            Speed = 3
+                        }
+                    ]
 
-              let report = Legibility.score board
-              Expect.equal report.Findings [] "four levels across twelve units is within capacity"
-              Expect.equal report.Verdict Legibility.Clean "verdict is Clean"
-          }
+                let report = Legibility.score board
+                Expect.equal report.Findings [] "a within-capacity board yields no findings"
+                Expect.equal report.Verdict Legibility.Clean "verdict is Clean"
+            }
 
-          // ── C11 / C12 — whole-board motion load ──────────────────────────────────────────
-          test "C11 — > 1 distinct non-Idle rhythm → one Warning on Motion, Units = []" {
-              let report = Legibility.scoreAnimated [ (Pulse, baseUnit); (Spin, baseUnit) ]
-              let motion = report.Findings |> List.filter (fun f -> f.Channel = Legibility.Motion)
-              Expect.equal motion.Length 1 "one Motion finding"
-              Expect.equal motion.Head.Severity Legibility.Severity.Warning "motion load is a Warning"
-              Expect.equal motion.Head.Units [] "a whole-board finding names no single unit"
-          }
+            test "C10 — all-identical roster → Clean, each categorical channel DistinctLevels = 1" {
+                let board = List.replicate 5 baseUnit
+                let report = Legibility.score board
+                Expect.equal report.Verdict Legibility.Clean "all-identical is Clean"
 
-          test "C12 — one rhythm across many moving units → no Motion finding" {
-              let report = Legibility.scoreAnimated [ (Moving, baseUnit); (Moving, baseUnit); (Moving, baseUnit) ]
-              Expect.isEmpty
-                  (report.Findings |> List.filter (fun f -> f.Channel = Legibility.Motion))
-                  "a single rhythm is not a stack"
+                for ch in
+                    [
+                        Legibility.Faction
+                        Legibility.Klass
+                        Legibility.Sigil
+                        Legibility.State
+                        Legibility.Shield
+                    ] do
+                    Expect.equal
+                        (usageOf report ch).DistinctLevels
+                        1
+                        (sprintf "%A reports exactly one distinct level" ch)
+            }
 
-              // Idle does not count as an active rhythm: Idle + one rhythm is still a single beat.
-              let withIdle = Legibility.scoreAnimated [ (Idle, baseUnit); (Pulse, baseUnit); (Pulse, baseUnit) ]
-              Expect.isEmpty
-                  (withIdle.Findings |> List.filter (fun f -> f.Channel = Legibility.Motion))
-                  "Idle is not an active rhythm"
-          }
+            test "C9 — empty score [] / scoreAnimated [] → Findings = [], Clean, usage all 0" {
+                let r = Legibility.score []
+                Expect.equal r.Findings [] "empty board: no findings"
+                Expect.equal r.Verdict Legibility.Clean "empty board: Clean"
+                Expect.equal r.Usage.Length 12 "usage has one entry per per-unit channel"
+                Expect.isTrue (r.Usage |> List.forall (fun u -> u.DistinctLevels = 0)) "all usage at 0 distinct levels"
 
-          // ── C7 / C8 / C14 — determinism / machine-actionable / advisory ──────────────────
-          test "C7 — determinism: score s = score s (structural equality)" {
-              let board = [ for i in 0..7 -> { baseUnit with Faction = customFaction i; Speed = i % 3 } ]
-              Expect.equal (Legibility.score board) (Legibility.score board) "two scorings are structurally equal"
-          }
+                let ra = Legibility.scoreAnimated []
+                Expect.equal ra.Findings [] "empty animated board: no findings"
+                Expect.equal ra.Verdict Legibility.Clean "empty animated board: Clean"
+            }
 
-          test "C8 — machine-actionable: filter by Channel + Severity, derive Verdict without parsing text" {
-              let board =
-                  [ for i in 0..7 -> { baseUnit with Faction = customFaction i } ] @ [ { baseUnit with Threat = 9.0 } ]
+            // ── C2 — categorical overload (one Warning per over-capacity channel) ─────────────
+            test "C2 — > 7 distinct factions → exactly one Warning on Faction; in-capacity channels silent" {
+                let board =
+                    [
+                        for i in 0..7 ->
+                            { baseUnit with
+                                Faction = customFaction i
+                            }
+                    ] // 8 distinct
 
-              let report = Legibility.score board
-              let warnings = report.Findings |> List.filter (fun f -> f.Severity = Legibility.Severity.Warning)
-              let errors = report.Findings |> List.filter (fun f -> f.Severity = Legibility.Severity.Error)
-              Expect.isNonEmpty warnings "the faction overload is filterable as a Warning"
-              Expect.isNonEmpty errors "the out-of-domain Threat is filterable as an Error"
-              Expect.isTrue (warnings |> List.exists (fun f -> f.Channel = Legibility.Faction)) "Warning on Faction by identity"
+                let report = Legibility.score board
+                Expect.equal report.Findings.Length 1 "exactly one finding"
+                let f = report.Findings.Head
+                Expect.equal f.Channel Legibility.Faction "finding is on Faction"
+                Expect.equal f.Severity Legibility.Severity.Warning "overload is a Warning"
+                Expect.stringContains f.Message "8" "message reports the used count"
+                Expect.stringContains f.Message "7" "message reports the capacity"
+                Expect.isNonEmpty f.Units "the contributing units are named"
+                Expect.equal report.Verdict Legibility.HasWarnings "verdict is HasWarnings"
+            }
 
-              let derived = if report.Findings.IsEmpty then Legibility.Clean else Legibility.HasWarnings
-              Expect.equal report.Verdict derived "Verdict is derivable from Findings without reading Message"
-          }
+            test "C2 — > 12 distinct sigils → exactly one Warning on Sigil" {
+                // Bolt, Ring, Fang (3) + 10 distinct Marks = 13 distinct > capacity 12.
+                let board =
+                    [
+                        yield { baseUnit with Sigil = Bolt }
+                        yield { baseUnit with Sigil = Ring }
+                        yield { baseUnit with Sigil = Fang }
+                        for i in 0..9 -> { baseUnit with Sigil = markSigil i }
+                    ]
 
-          test "C14 — advisory: a valid-but-overloaded set returns a report, never throws" {
-              let board = [ for i in 0..9 -> { baseUnit with Faction = customFaction i } ]
-              let report = Legibility.score board // must not raise
-              Expect.equal report.Verdict Legibility.HasWarnings "an overloaded set scores HasWarnings, not an exception"
-              Expect.isNonEmpty report.Findings "the overload is reported as data"
-          }
+                let report = Legibility.score board
+                Expect.equal report.Findings.Length 1 "exactly one finding"
+                let f = report.Findings.Head
+                Expect.equal f.Channel Legibility.Sigil "finding is on Sigil"
+                Expect.equal f.Severity Legibility.Severity.Warning "overload is a Warning"
+                Expect.stringContains f.Message "13" "message reports 13 distinct"
+            }
 
-          // ── C2/C3 `Units` — an overload names the units PAST capacity, not the whole board ──
-          // Answering "which units do I re-tune?" is the entire point of the backstop; `[0..n-1]`
-          // answers "all of them" and is noise on any board bigger than the reference roster.
+            // ── C3 — Speed (Ordered) overload ────────────────────────────────────────────────
+            test "C3 — > 4 distinct Speed bead counts → one Warning on Speed naming the units" {
+                let board = [ for s in 0..4 -> { baseUnit with Speed = s } ] // 5 distinct, all in [0,6]
+                let report = Legibility.score board
+                Expect.equal report.Findings.Length 1 "exactly one finding"
+                let f = report.Findings.Head
+                Expect.equal f.Channel Legibility.Speed "finding is on Speed"
+                Expect.equal f.Severity Legibility.Severity.Warning "ordered overload is a Warning"
+                Expect.isNonEmpty f.Units "units are named"
+            }
 
-          test "an overload names only the units holding the levels past capacity, not every unit" {
-              // Speed capacity 4. Levels 0..3 are each held by two units; level 4 by one. The single
-              // rare level is the excess, so only the unit carrying it is named.
-              let board =
-                  [ for s in [ 0; 0; 1; 1; 2; 2; 3; 3; 4 ] -> { baseUnit with Speed = s } ]
+            // ── C4 / C5 / C6 — out-of-domain / degenerate / non-finite (Errors, scan continues) ─
+            test "C4 — Threat/Charge/Health outside [0,1] or Speed outside [0,6] → Error on that channel" {
+                let report =
+                    Legibility.score
+                        [
+                            { baseUnit with Threat = 2.0 } // unit 0: Threat out of band
+                            baseUnit // unit 1: clean (scan must continue)
+                            { baseUnit with Speed = 7 }
+                        ] // unit 2: Speed out of band
 
-              let report = Legibility.score board
-              let f = report.Findings |> List.find (fun f -> f.Channel = Legibility.Speed)
-              Expect.equal f.Severity Legibility.Severity.Warning "overload is a Warning"
-              Expect.equal f.Units [ 8 ] "only the unit holding the 5th (rarest) Speed level is named"
-              Expect.notEqual f.Units [ 0..8 ] "the whole scored set is NOT named"
-          }
+                let threat = report.Findings |> List.filter (fun f -> f.Channel = Legibility.Threat)
+                Expect.equal threat.Length 1 "one Threat error"
+                Expect.equal threat.Head.Severity Legibility.Severity.Error "Threat out-of-domain is an Error"
+                Expect.equal threat.Head.Units [ 0 ] "names the offending unit"
 
-          test "an overload names every unit sharing an excess level, ascending" {
-              let report = Legibility.score sixSpeedLevels
-              let f = report.Findings |> List.find (fun f -> f.Channel = Legibility.Speed)
-              Expect.equal f.Units [ 12; 13; 14; 15 ] "both units of each excess level, in ascending order"
-          }
+                let speed = report.Findings |> List.filter (fun f -> f.Channel = Legibility.Speed)
+                Expect.equal speed.Length 1 "one Speed error"
+                Expect.equal speed.Head.Severity Legibility.Severity.Error "Speed out-of-domain is an Error"
+                Expect.equal speed.Head.Units [ 2 ] "names the offending unit (scan continued past unit 0)"
+            }
 
-          test "the named units are exactly the ones whose re-mapping clears the overload" {
-              // The linter's contract as a property: fold every named unit onto a surviving level and
-              // the channel drops back inside capacity. This is what makes `Units` actionable.
-              let named =
-                  (Legibility.score sixSpeedLevels).Findings
-                  |> List.find (fun f -> f.Channel = Legibility.Speed)
-                  |> fun f -> Set.ofList f.Units
+            test "C5 — R <= 0 degenerate → one Error on Size; remaining units still scored" {
+                let report =
+                    Legibility.score
+                        [
+                            { baseUnit with R = 0.0 } // degenerate
+                            { baseUnit with Threat = 5.0 }
+                        ] // still scored after the degenerate
 
-              let remapped =
-                  sixSpeedLevels
-                  |> List.mapi (fun i t -> if named.Contains i then { t with Speed = 0 } else t)
+                let size = report.Findings |> List.filter (fun f -> f.Channel = Legibility.Size)
+                Expect.equal size.Length 1 "one Size error"
+                Expect.equal size.Head.Severity Legibility.Severity.Error "degenerate is an Error"
+                Expect.equal size.Head.Units [ 0 ] "names the degenerate unit"
 
-              Expect.equal (Legibility.score remapped).Verdict Legibility.Clean "re-mapping exactly the named units clears the finding"
-          }
+                let threat = report.Findings |> List.filter (fun f -> f.Channel = Legibility.Threat)
+                Expect.equal threat.Length 1 "the unit after the degenerate is still scored"
+                Expect.equal threat.Head.Units [ 1 ] "the second unit's out-of-domain Threat is reported"
+            }
 
-          test "overload `Units` is deterministic across scorings (SC-001)" {
-              let board = [ for i in 0..9 -> { baseUnit with Faction = customFaction i } ]
-              Expect.equal (Legibility.score board).Findings (Legibility.score board).Findings "same input, same Units"
-          }
+            test "C6 — non-finite float on any field → one Error on that channel, no exception" {
+                let report =
+                    Legibility.score
+                        [
+                            { baseUnit with Threat = nan }
+                            { baseUnit with R = infinity }
+                            { baseUnit with Heading = -infinity }
+                        ]
 
-          test "a distinct-level-per-unit board names the levels introduced last" {
-              // 8 distinct factions, all frequency 1: the tie breaks on first appearance, so the
-              // 7 introduced first fit and the 8th is the excess. Keeps C2's `isNonEmpty` honest.
-              let board = [ for i in 0..7 -> { baseUnit with Faction = customFaction i } ]
-              let f = (Legibility.score board).Findings.Head
-              Expect.equal f.Units [ 7 ] "the last-introduced faction is the one past capacity"
-          } ]
+                Expect.equal
+                    (report.Findings
+                     |> List.filter (fun f -> f.Channel = Legibility.Threat)
+                     |> List.length)
+                    1
+                    "NaN Threat → one Error on Threat"
+
+                Expect.equal
+                    (report.Findings
+                     |> List.filter (fun f -> f.Channel = Legibility.Size)
+                     |> List.length)
+                    1
+                    "infinite R → one Error on Size"
+
+                Expect.equal
+                    (report.Findings
+                     |> List.filter (fun f -> f.Channel = Legibility.Heading)
+                     |> List.length)
+                    1
+                    "non-finite Heading → one Error on Heading"
+
+                Expect.isTrue
+                    (report.Findings |> List.forall (fun f -> f.Severity = Legibility.Severity.Error))
+                    "all are Errors"
+            }
+
+            // ── C9 (continuous exempt) — many distinct continuous values, no overload ─────────
+            test "C9-continuous-exempt — many distinct continuous values emit no overload (FR-009)" {
+                // 20 units, identical categoricals/speed/size, but every CONTINUOUS channel distinct &
+                // in-domain. Health and the two rotations are read as a position on a scale, not a rank,
+                // so an arbitrary number of distinct values is legible (#285: Size/Threat/Charge are NOT
+                // in this set — they are Ordered, and the test below asserts they overload).
+                let board =
+                    [
+                        for i in 0..19 ->
+                            { baseUnit with
+                                Health = float i / 30.0
+                                Heading = float i * 13.0
+                                SecondaryHeading = Some(float i * 7.0)
+                            }
+                    ]
+
+                let report = Legibility.score board
+                Expect.equal report.Findings [] "continuous channels are overload-exempt — no findings"
+                Expect.equal report.Verdict Legibility.Clean "Clean despite 20 distinct continuous values"
+            }
+
+            // ── #285 — the doctrine's headline channels are the ones the linter must enforce ──
+            test "#285 — Size/Threat/Charge are Ordered: a float ramp overloads, one Warning each" {
+                // The defect this pins: these three advertise ~4 reliable levels in the skill's §4 table,
+                // and used to be `Continuous`, cap 0 — so `overloadFindings` skipped them and a board of
+                // twelve distinct radii lint `Clean`. Every other channel here is held at one level.
+                let board =
+                    [
+                        for i in 0..11 ->
+                            { baseUnit with
+                                R = 10.0 + float i
+                                Threat = float i / 20.0
+                                Charge = float i / 25.0
+                            }
+                    ]
+
+                let report = Legibility.score board
+                Expect.equal report.Verdict Legibility.HasWarnings "twelve distinct radii is not a legible board"
+
+                for ch in [ Legibility.Size; Legibility.Threat; Legibility.Charge ] do
+                    let found = report.Findings |> List.filter (fun f -> f.Channel = ch)
+                    Expect.equal found.Length 1 (sprintf "exactly one %A overload" ch)
+                    Expect.equal found.Head.Severity Legibility.Severity.Warning (sprintf "%A overload is a Warning" ch)
+                    Expect.stringContains found.Head.Message "12" (sprintf "%A message reports the 12 used levels" ch)
+                    Expect.stringContains found.Head.Message "4" (sprintf "%A message reports the capacity" ch)
+                    Expect.equal (usageOf report ch).Capacity 4 (sprintf "%A usage carries the capacity as evidence" ch)
+
+                    Expect.equal
+                        (usageOf report ch).DistinctLevels
+                        12
+                        (sprintf "%A usage carries the used count as evidence" ch)
+
+                    // `Units` names the units holding levels past capacity (#295's `excessUnits`), which
+                    // ranks levels by (frequency DESC, first-appearance ASC) and calls the tail excess.
+                    // On a MONOTONIC RAMP every level has frequency 1, so the tie-break collapses to first
+                    // appearance: the named units are the last 12-4 introduced — here the LARGEST radii,
+                    // not the rarest levels. Pinned deliberately, because it is what a float channel gets
+                    // and it is not obviously what a ramp wants (merging adjacent bands would be). If
+                    // #295's ordering ever learns about magnitude, this expectation is the thing that
+                    // should fail and force the conversation.
+                    Expect.equal
+                        found.Head.Units
+                        [ 4..11 ]
+                        (sprintf "%A names the eight units past capacity, ascending" ch)
+            }
+
+            test "#285 — a mapping that quantises Size/Threat/Charge to 4 levels stays Clean" {
+                // The tweak the finding above asks for: quantise in the mapping, don't widen the grammar.
+                let board =
+                    [
+                        for i in 0..11 ->
+                            { baseUnit with
+                                R = 10.0 + float (i % 4) * 5.0
+                                Threat = float (i % 4) / 4.0
+                                Charge = float (i % 4) / 4.0
+                            }
+                    ]
+
+                let report = Legibility.score board
+                Expect.equal report.Findings [] "four levels across twelve units is within capacity"
+                Expect.equal report.Verdict Legibility.Clean "verdict is Clean"
+            }
+
+            // ── C11 / C12 — whole-board motion load ──────────────────────────────────────────
+            test "C11 — > 1 distinct non-Idle rhythm → one Warning on Motion, Units = []" {
+                let report = Legibility.scoreAnimated [ (Pulse, baseUnit); (Spin, baseUnit) ]
+                let motion = report.Findings |> List.filter (fun f -> f.Channel = Legibility.Motion)
+                Expect.equal motion.Length 1 "one Motion finding"
+                Expect.equal motion.Head.Severity Legibility.Severity.Warning "motion load is a Warning"
+                Expect.equal motion.Head.Units [] "a whole-board finding names no single unit"
+            }
+
+            test "C12 — one rhythm across many moving units → no Motion finding" {
+                let report =
+                    Legibility.scoreAnimated [ (Moving, baseUnit); (Moving, baseUnit); (Moving, baseUnit) ]
+
+                Expect.isEmpty
+                    (report.Findings |> List.filter (fun f -> f.Channel = Legibility.Motion))
+                    "a single rhythm is not a stack"
+
+                // Idle does not count as an active rhythm: Idle + one rhythm is still a single beat.
+                let withIdle =
+                    Legibility.scoreAnimated [ (Idle, baseUnit); (Pulse, baseUnit); (Pulse, baseUnit) ]
+
+                Expect.isEmpty
+                    (withIdle.Findings |> List.filter (fun f -> f.Channel = Legibility.Motion))
+                    "Idle is not an active rhythm"
+            }
+
+            // ── C7 / C8 / C14 — determinism / machine-actionable / advisory ──────────────────
+            test "C7 — determinism: score s = score s (structural equality)" {
+                let board =
+                    [
+                        for i in 0..7 ->
+                            { baseUnit with
+                                Faction = customFaction i
+                                Speed = i % 3
+                            }
+                    ]
+
+                Expect.equal (Legibility.score board) (Legibility.score board) "two scorings are structurally equal"
+            }
+
+            test "C8 — machine-actionable: filter by Channel + Severity, derive Verdict without parsing text" {
+                let board =
+                    [
+                        for i in 0..7 ->
+                            { baseUnit with
+                                Faction = customFaction i
+                            }
+                    ]
+                    @ [ { baseUnit with Threat = 9.0 } ]
+
+                let report = Legibility.score board
+
+                let warnings =
+                    report.Findings
+                    |> List.filter (fun f -> f.Severity = Legibility.Severity.Warning)
+
+                let errors =
+                    report.Findings |> List.filter (fun f -> f.Severity = Legibility.Severity.Error)
+
+                Expect.isNonEmpty warnings "the faction overload is filterable as a Warning"
+                Expect.isNonEmpty errors "the out-of-domain Threat is filterable as an Error"
+
+                Expect.isTrue
+                    (warnings |> List.exists (fun f -> f.Channel = Legibility.Faction))
+                    "Warning on Faction by identity"
+
+                let derived =
+                    if report.Findings.IsEmpty then
+                        Legibility.Clean
+                    else
+                        Legibility.HasWarnings
+
+                Expect.equal report.Verdict derived "Verdict is derivable from Findings without reading Message"
+            }
+
+            test "C14 — advisory: a valid-but-overloaded set returns a report, never throws" {
+                let board =
+                    [
+                        for i in 0..9 ->
+                            { baseUnit with
+                                Faction = customFaction i
+                            }
+                    ]
+
+                let report = Legibility.score board // must not raise
+
+                Expect.equal
+                    report.Verdict
+                    Legibility.HasWarnings
+                    "an overloaded set scores HasWarnings, not an exception"
+
+                Expect.isNonEmpty report.Findings "the overload is reported as data"
+            }
+
+            // ── C2/C3 `Units` — an overload names the units PAST capacity, not the whole board ──
+            // Answering "which units do I re-tune?" is the entire point of the backstop; `[0..n-1]`
+            // answers "all of them" and is noise on any board bigger than the reference roster.
+
+            test "an overload names only the units holding the levels past capacity, not every unit" {
+                // Speed capacity 4. Levels 0..3 are each held by two units; level 4 by one. The single
+                // rare level is the excess, so only the unit carrying it is named.
+                let board =
+                    [ for s in [ 0; 0; 1; 1; 2; 2; 3; 3; 4 ] -> { baseUnit with Speed = s } ]
+
+                let report = Legibility.score board
+                let f = report.Findings |> List.find (fun f -> f.Channel = Legibility.Speed)
+                Expect.equal f.Severity Legibility.Severity.Warning "overload is a Warning"
+                Expect.equal f.Units [ 8 ] "only the unit holding the 5th (rarest) Speed level is named"
+                Expect.notEqual f.Units [ 0..8 ] "the whole scored set is NOT named"
+            }
+
+            test "an overload names every unit sharing an excess level, ascending" {
+                let report = Legibility.score sixSpeedLevels
+                let f = report.Findings |> List.find (fun f -> f.Channel = Legibility.Speed)
+                Expect.equal f.Units [ 12; 13; 14; 15 ] "both units of each excess level, in ascending order"
+            }
+
+            test "the named units are exactly the ones whose re-mapping clears the overload" {
+                // The linter's contract as a property: fold every named unit onto a surviving level and
+                // the channel drops back inside capacity. This is what makes `Units` actionable.
+                let named =
+                    (Legibility.score sixSpeedLevels).Findings
+                    |> List.find (fun f -> f.Channel = Legibility.Speed)
+                    |> fun f -> Set.ofList f.Units
+
+                let remapped =
+                    sixSpeedLevels
+                    |> List.mapi (fun i t -> if named.Contains i then { t with Speed = 0 } else t)
+
+                Expect.equal
+                    (Legibility.score remapped).Verdict
+                    Legibility.Clean
+                    "re-mapping exactly the named units clears the finding"
+            }
+
+            test "overload `Units` is deterministic across scorings (SC-001)" {
+                let board =
+                    [
+                        for i in 0..9 ->
+                            { baseUnit with
+                                Faction = customFaction i
+                            }
+                    ]
+
+                Expect.equal
+                    (Legibility.score board).Findings
+                    (Legibility.score board).Findings
+                    "same input, same Units"
+            }
+
+            test "a distinct-level-per-unit board names the levels introduced last" {
+                // 8 distinct factions, all frequency 1: the tie breaks on first appearance, so the
+                // 7 introduced first fit and the 8th is the excess. Keeps C2's `isNonEmpty` honest.
+                let board =
+                    [
+                        for i in 0..7 ->
+                            { baseUnit with
+                                Faction = customFaction i
+                            }
+                    ]
+
+                let f = (Legibility.score board).Findings.Head
+                Expect.equal f.Units [ 7 ] "the last-introduced faction is the one past capacity"
+            }
+        ]
 
 // ---- Feature 254 — the SecondaryHeading channel ------------------------------------------------------
 // The second rotation channel is scored exactly like `Heading`: `Continuous`, so overload-exempt, and
@@ -359,59 +500,109 @@ let tests =
 let secondaryHeadingLinter =
     testList
         "Feature254 SecondaryHeading linter"
-        [ test "SecondaryHeading is a Continuous table row, capacity-exempt" {
-              let spec = Legibility.table |> List.find (fun s -> s.Channel = Legibility.SecondaryHeading)
-              Expect.equal spec.Kind Legibility.Continuous "a rotation channel is read as a magnitude, like Heading"
-          }
+        [
+            test "SecondaryHeading is a Continuous table row, capacity-exempt" {
+                let spec =
+                    Legibility.table |> List.find (fun s -> s.Channel = Legibility.SecondaryHeading)
 
-          test "an all-None roster is Clean and reports one distinct level" {
-              let report = Legibility.score (List.replicate 5 baseUnit)
-              Expect.equal report.Verdict Legibility.Clean "leaving the channel unset is not a finding"
-              Expect.equal (usageOf report Legibility.SecondaryHeading).DistinctLevels 1 "None is itself one level"
-          }
+                Expect.equal spec.Kind Legibility.Continuous "a rotation channel is read as a magnitude, like Heading"
+            }
 
-          test "many distinct secondary angles emit no overload (Continuous ⇒ exempt)" {
-              let board = [ for i in 0..19 -> { baseUnit with SecondaryHeading = Some(float i * 13.0) } ]
-              let report = Legibility.score board
-              Expect.equal report.Findings [] "20 distinct angles is not an overload"
-              Expect.equal (usageOf report Legibility.SecondaryHeading).DistinctLevels 20 "each angle is a distinct level"
-          }
+            test "an all-None roster is Clean and reports one distinct level" {
+                let report = Legibility.score (List.replicate 5 baseUnit)
+                Expect.equal report.Verdict Legibility.Clean "leaving the channel unset is not a finding"
+                Expect.equal (usageOf report Legibility.SecondaryHeading).DistinctLevels 1 "None is itself one level"
+            }
 
-          test "a non-finite secondary angle → one Error on SecondaryHeading, naming the unit" {
-              let report =
-                  Legibility.score [ baseUnit; { baseUnit with SecondaryHeading = Some nan }; { baseUnit with SecondaryHeading = Some infinity } ]
+            test "many distinct secondary angles emit no overload (Continuous ⇒ exempt)" {
+                let board =
+                    [
+                        for i in 0..19 ->
+                            { baseUnit with
+                                SecondaryHeading = Some(float i * 13.0)
+                            }
+                    ]
 
-              let found = report.Findings |> List.filter (fun f -> f.Channel = Legibility.SecondaryHeading)
-              Expect.equal found.Length 2 "one Error per non-finite unit"
-              Expect.isTrue (found |> List.forall (fun f -> f.Severity = Legibility.Severity.Error)) "non-finite is an Error"
-              Expect.equal (found |> List.collect (fun f -> f.Units)) [ 1; 2 ] "the offending units are named, in ascending order"
-          }
+                let report = Legibility.score board
+                Expect.equal report.Findings [] "20 distinct angles is not an overload"
 
-          test "a finite secondary angle outside 0..2π is in-domain (angles wrap, as Heading does)" {
-              let report = Legibility.score [ { baseUnit with SecondaryHeading = Some -97.0 } ]
-              Expect.equal report.Verdict Legibility.Clean "any finite angle is legal"
-          }
+                Expect.equal
+                    (usageOf report Legibility.SecondaryHeading).DistinctLevels
+                    20
+                    "each angle is a distinct level"
+            }
 
-          test "SecondaryHeading findings sort after Heading and before Motion (deterministic order)" {
-              // Two DISTINCT non-Idle rhythms, so a whole-board Motion warning is actually emitted —
-              // otherwise the `before Motion` half of this claim would go unexercised.
-              let bad = { baseUnit with Heading = nan; SecondaryHeading = Some nan }
-              let report = Legibility.scoreAnimated [ (Pulse, bad); (Spin, bad) ]
+            test "a non-finite secondary angle → one Error on SecondaryHeading, naming the unit" {
+                let report =
+                    Legibility.score
+                        [
+                            baseUnit
+                            { baseUnit with
+                                SecondaryHeading = Some nan
+                            }
+                            { baseUnit with
+                                SecondaryHeading = Some infinity
+                            }
+                        ]
 
-              Expect.equal
-                  (report.Findings |> List.map (fun f -> f.Channel))
-                  [ Legibility.Heading
-                    Legibility.Heading
-                    Legibility.SecondaryHeading
-                    Legibility.SecondaryHeading
-                    Legibility.Motion ]
-                  "table order: both Heading errors, then both SecondaryHeading errors, then whole-board Motion"
+                let found =
+                    report.Findings
+                    |> List.filter (fun f -> f.Channel = Legibility.SecondaryHeading)
 
-              Expect.equal
-                  (report.Findings |> List.filter (fun f -> f.Channel = Legibility.SecondaryHeading) |> List.collect (fun f -> f.Units))
-                  [ 0; 1 ]
-                  "and within a channel, ascending unit index"
-          } ]
+                Expect.equal found.Length 2 "one Error per non-finite unit"
+
+                Expect.isTrue
+                    (found |> List.forall (fun f -> f.Severity = Legibility.Severity.Error))
+                    "non-finite is an Error"
+
+                Expect.equal
+                    (found |> List.collect (fun f -> f.Units))
+                    [ 1; 2 ]
+                    "the offending units are named, in ascending order"
+            }
+
+            test "a finite secondary angle outside 0..2π is in-domain (angles wrap, as Heading does)" {
+                let report =
+                    Legibility.score
+                        [
+                            { baseUnit with
+                                SecondaryHeading = Some -97.0
+                            }
+                        ]
+
+                Expect.equal report.Verdict Legibility.Clean "any finite angle is legal"
+            }
+
+            test "SecondaryHeading findings sort after Heading and before Motion (deterministic order)" {
+                // Two DISTINCT non-Idle rhythms, so a whole-board Motion warning is actually emitted —
+                // otherwise the `before Motion` half of this claim would go unexercised.
+                let bad =
+                    { baseUnit with
+                        Heading = nan
+                        SecondaryHeading = Some nan
+                    }
+
+                let report = Legibility.scoreAnimated [ (Pulse, bad); (Spin, bad) ]
+
+                Expect.equal
+                    (report.Findings |> List.map (fun f -> f.Channel))
+                    [
+                        Legibility.Heading
+                        Legibility.Heading
+                        Legibility.SecondaryHeading
+                        Legibility.SecondaryHeading
+                        Legibility.Motion
+                    ]
+                    "table order: both Heading errors, then both SecondaryHeading errors, then whole-board Motion"
+
+                Expect.equal
+                    (report.Findings
+                     |> List.filter (fun f -> f.Channel = Legibility.SecondaryHeading)
+                     |> List.collect (fun f -> f.Units))
+                    [ 0; 1 ]
+                    "and within a channel, ascending unit index"
+            }
+        ]
 
 // T024 [US3] Label is inspection-detail, NOT a pre-attentive channel (FR-011/SC-006). Adding labels to a
 // roster must NOT change the linter's `Report` — the label is not in the capacity table, so the verdict and
@@ -420,104 +611,214 @@ let secondaryHeadingLinter =
 [<Tests>]
 let labelInvariance =
     let roster =
-        [ { baseUnit with Faction = Ally; Klass = Heavy; Sigil = Ring; Speed = 1 }
-          { baseUnit with Faction = Enemy; Klass = Scout; Sigil = Fang; Speed = 2 }
-          { baseUnit with Faction = Neutral; Klass = Mobile; Sigil = Bolt; Speed = 3 } ]
+        [
+            { baseUnit with
+                Faction = Ally
+                Klass = Heavy
+                Sigil = Ring
+                Speed = 1
+            }
+            { baseUnit with
+                Faction = Enemy
+                Klass = Scout
+                Sigil = Fang
+                Speed = 2
+            }
+            { baseUnit with
+                Faction = Neutral
+                Klass = Mobile
+                Sigil = Bolt
+                Speed = 3
+            }
+        ]
 
     let labelled =
-        roster |> List.mapi (fun i t -> { t with Label = Some(LabelText.Plain(sprintf "U-%d" i)) })
+        roster
+        |> List.mapi (fun i t ->
+            { t with
+                Label = Some(LabelText.Plain(sprintf "U-%d" i))
+            })
 
     testList
         "US3 label linter-invariance"
-        [ test "label presence does not change the roster's Report (score)" {
-              Expect.equal (Legibility.score labelled) (Legibility.score roster) "the label is inspection-detail; it does not enter pop-out governance (FR-011)"
-          }
+        [
+            test "label presence does not change the roster's Report (score)" {
+                Expect.equal
+                    (Legibility.score labelled)
+                    (Legibility.score roster)
+                    "the label is inspection-detail; it does not enter pop-out governance (FR-011)"
+            }
 
-          test "label presence does not change the animated Report (scoreAnimated)" {
-              let board = roster |> List.map (fun t -> Pulse, t)
-              let boardL = labelled |> List.map (fun t -> Pulse, t)
-              Expect.equal (Legibility.scoreAnimated boardL) (Legibility.scoreAnimated board) "labels do not alter animated governance (FR-011)"
-          }
+            test "label presence does not change the animated Report (scoreAnimated)" {
+                let board = roster |> List.map (fun t -> Pulse, t)
+                let boardL = labelled |> List.map (fun t -> Pulse, t)
 
-          test "even a roster of all-identical labels leaves the verdict unchanged" {
-              let sameLabel = roster |> List.map (fun t -> { t with Label = Some (LabelText.Plain "SAME") })
-              Expect.equal (Legibility.score sameLabel) (Legibility.score roster) "the label channel is never governed (SC-006)"
-          }
+                Expect.equal
+                    (Legibility.scoreAnimated boardL)
+                    (Legibility.scoreAnimated board)
+                    "labels do not alter animated governance (FR-011)"
+            }
 
-          // T015 [US3] MULTI-LINE labels are inspection-detail too (FR-011/SC-006): a roster carrying
-          // `\n`-bearing / over-budget labels yields an IDENTICAL Report to the same roster with no labels —
-          // multi-line content never enters the capacity table, so the verdict is unchanged and (since
-          // `score` takes `Token list` with no grammar parameter) grammar-independent by construction.
-          test "multi-line label presence does not change the roster's Report (score)" {
-              let multiline = roster |> List.mapi (fun i t -> { t with Label = Some(LabelText.Plain(sprintf "U-%d\nLINE-B\nLINE-C\nLINE-D" i)) })
-              Expect.equal (Legibility.score multiline) (Legibility.score roster) "a multi-line label is inspection-detail; it does not enter governance (FR-011)"
-          }
+            test "even a roster of all-identical labels leaves the verdict unchanged" {
+                let sameLabel =
+                    roster
+                    |> List.map (fun t ->
+                        { t with
+                            Label = Some(LabelText.Plain "SAME")
+                        })
 
-          test "multi-line label presence does not change the animated Report (scoreAnimated)" {
-              let multiline = roster |> List.mapi (fun i t -> { t with Label = Some(LabelText.Plain(sprintf "U-%d\nLINE-B" i)) })
-              let board = roster |> List.map (fun t -> Spin, t)
-              let boardL = multiline |> List.map (fun t -> Spin, t)
-              Expect.equal (Legibility.scoreAnimated boardL) (Legibility.scoreAnimated board) "multi-line labels do not alter animated governance (FR-011)"
-          }
+                Expect.equal
+                    (Legibility.score sameLabel)
+                    (Legibility.score roster)
+                    "the label channel is never governed (SC-006)"
+            }
 
-          // Feature 198 [US3] STYLED-run labels are inspection-detail too (FR-012/SC-006/B13): a roster
-          // carrying per-run colour/weight/size labels yields an IDENTICAL Report to (a) the same roster
-          // with no labels and (b) the same roster with PLAIN labels — run styling never enters the
-          // pre-attentive capacity table, so the verdict is unchanged and grammar-independent.
-          let styled =
-              roster
-              |> List.mapi (fun i t ->
-                  { t with
-                      Label =
-                          Some(
-                              LabelText.Rich
-                                  [ { Symbology.run (sprintf "U-%d" i) with Weight = Some 700; Color = Some(Colors.rgb 24uy 144uy 255uy) }
-                                    { Symbology.run " tag" with Scale = Some 0.6 } ]
-                          ) })
+            // T015 [US3] MULTI-LINE labels are inspection-detail too (FR-011/SC-006): a roster carrying
+            // `\n`-bearing / over-budget labels yields an IDENTICAL Report to the same roster with no labels —
+            // multi-line content never enters the capacity table, so the verdict is unchanged and (since
+            // `score` takes `Token list` with no grammar parameter) grammar-independent by construction.
+            test "multi-line label presence does not change the roster's Report (score)" {
+                let multiline =
+                    roster
+                    |> List.mapi (fun i t ->
+                        { t with
+                            Label = Some(LabelText.Plain(sprintf "U-%d\nLINE-B\nLINE-C\nLINE-D" i))
+                        })
 
-          test "styled-run label presence does not change the roster's Report (vs no labels)" {
-              Expect.equal (Legibility.score styled) (Legibility.score roster) "styled labels are inspection-detail; pre-attentive governance is unchanged (FR-012)"
-          }
+                Expect.equal
+                    (Legibility.score multiline)
+                    (Legibility.score roster)
+                    "a multi-line label is inspection-detail; it does not enter governance (FR-011)"
+            }
 
-          test "styled-run label Report equals the PLAIN-label Report (styling never governs)" {
-              Expect.equal (Legibility.score styled) (Legibility.score labelled) "swapping plain labels for styled runs does not alter the verdict (B13/SC-006)"
-          }
+            test "multi-line label presence does not change the animated Report (scoreAnimated)" {
+                let multiline =
+                    roster
+                    |> List.mapi (fun i t ->
+                        { t with
+                            Label = Some(LabelText.Plain(sprintf "U-%d\nLINE-B" i))
+                        })
 
-          test "styled-run label presence does not change the animated Report (scoreAnimated)" {
-              let board = roster |> List.map (fun t -> Pulse, t)
-              let boardS = styled |> List.map (fun t -> Pulse, t)
-              Expect.equal (Legibility.scoreAnimated boardS) (Legibility.scoreAnimated board) "styled labels do not alter animated governance (FR-012)"
-          }
+                let board = roster |> List.map (fun t -> Spin, t)
+                let boardL = multiline |> List.map (fun t -> Spin, t)
 
-          // Feature 199 [US3] (T035/B18/SC-006): LAID-OUT / decorated labels are inspection-detail too. A
-          // roster carrying aligned / justified / italic / underlined / tracked labels yields an IDENTICAL
-          // Report to the same roster with (a) no labels, (b) plain labels, and (c) 198-era styled labels —
-          // layout/decoration never enters the pre-attentive capacity table; the verdict is unchanged.
-          let laidOut =
-              roster
-              |> List.mapi (fun i t ->
-                  { t with
-                      Label =
-                          Some(
-                              Symbology.laidLabel
-                                  [ Symbology.align Justify [ { Symbology.run (sprintf "UNIT %d alpha bravo" i) with Italic = Some true; Color = Some(Colors.rgb 24uy 144uy 255uy) } ]
-                                    Symbology.align Trailing [ { Symbology.run "OLD" with Strike = Some true; Underline = Some true }; { Symbology.run " S P" with Tracking = Some 0.2 } ] ]
-                          ) })
+                Expect.equal
+                    (Legibility.scoreAnimated boardL)
+                    (Legibility.scoreAnimated board)
+                    "multi-line labels do not alter animated governance (FR-011)"
+            }
 
-          test "laid-out / decorated label presence does not change the roster's Report (vs no labels, B18)" {
-              Expect.equal (Legibility.score laidOut) (Legibility.score roster) "layout/decoration is inspection-detail; pre-attentive governance is unchanged (FR-014)"
-          }
+            // Feature 198 [US3] STYLED-run labels are inspection-detail too (FR-012/SC-006/B13): a roster
+            // carrying per-run colour/weight/size labels yields an IDENTICAL Report to (a) the same roster
+            // with no labels and (b) the same roster with PLAIN labels — run styling never enters the
+            // pre-attentive capacity table, so the verdict is unchanged and grammar-independent.
+            let styled =
+                roster
+                |> List.mapi (fun i t ->
+                    { t with
+                        Label =
+                            Some(
+                                LabelText.Rich
+                                    [
+                                        { Symbology.run (sprintf "U-%d" i) with
+                                            Weight = Some 700
+                                            Color = Some(Colors.rgb 24uy 144uy 255uy)
+                                        }
+                                        { Symbology.run " tag" with
+                                            Scale = Some 0.6
+                                        }
+                                    ]
+                            )
+                    })
 
-          test "laid-out label Report equals the styled-run and plain Reports (layout never governs, SC-006)" {
-              Expect.equal (Legibility.score laidOut) (Legibility.score styled) "swapping styled runs for a laid-out label does not alter the verdict (B18)"
-              Expect.equal (Legibility.score laidOut) (Legibility.score labelled) "and equals the plain-label verdict (grammar-independent, SC-006)"
-          }
+            test "styled-run label presence does not change the roster's Report (vs no labels)" {
+                Expect.equal
+                    (Legibility.score styled)
+                    (Legibility.score roster)
+                    "styled labels are inspection-detail; pre-attentive governance is unchanged (FR-012)"
+            }
 
-          test "laid-out label presence does not change the animated Report (scoreAnimated)" {
-              let board = roster |> List.map (fun t -> Pulse, t)
-              let boardL = laidOut |> List.map (fun t -> Pulse, t)
-              Expect.equal (Legibility.scoreAnimated boardL) (Legibility.scoreAnimated board) "laid-out labels do not alter animated governance (FR-014)"
-          } ]
+            test "styled-run label Report equals the PLAIN-label Report (styling never governs)" {
+                Expect.equal
+                    (Legibility.score styled)
+                    (Legibility.score labelled)
+                    "swapping plain labels for styled runs does not alter the verdict (B13/SC-006)"
+            }
+
+            test "styled-run label presence does not change the animated Report (scoreAnimated)" {
+                let board = roster |> List.map (fun t -> Pulse, t)
+                let boardS = styled |> List.map (fun t -> Pulse, t)
+
+                Expect.equal
+                    (Legibility.scoreAnimated boardS)
+                    (Legibility.scoreAnimated board)
+                    "styled labels do not alter animated governance (FR-012)"
+            }
+
+            // Feature 199 [US3] (T035/B18/SC-006): LAID-OUT / decorated labels are inspection-detail too. A
+            // roster carrying aligned / justified / italic / underlined / tracked labels yields an IDENTICAL
+            // Report to the same roster with (a) no labels, (b) plain labels, and (c) 198-era styled labels —
+            // layout/decoration never enters the pre-attentive capacity table; the verdict is unchanged.
+            let laidOut =
+                roster
+                |> List.mapi (fun i t ->
+                    { t with
+                        Label =
+                            Some(
+                                Symbology.laidLabel
+                                    [
+                                        Symbology.align
+                                            Justify
+                                            [
+                                                { Symbology.run (sprintf "UNIT %d alpha bravo" i) with
+                                                    Italic = Some true
+                                                    Color = Some(Colors.rgb 24uy 144uy 255uy)
+                                                }
+                                            ]
+                                        Symbology.align
+                                            Trailing
+                                            [
+                                                { Symbology.run "OLD" with
+                                                    Strike = Some true
+                                                    Underline = Some true
+                                                }
+                                                { Symbology.run " S P" with
+                                                    Tracking = Some 0.2
+                                                }
+                                            ]
+                                    ]
+                            )
+                    })
+
+            test "laid-out / decorated label presence does not change the roster's Report (vs no labels, B18)" {
+                Expect.equal
+                    (Legibility.score laidOut)
+                    (Legibility.score roster)
+                    "layout/decoration is inspection-detail; pre-attentive governance is unchanged (FR-014)"
+            }
+
+            test "laid-out label Report equals the styled-run and plain Reports (layout never governs, SC-006)" {
+                Expect.equal
+                    (Legibility.score laidOut)
+                    (Legibility.score styled)
+                    "swapping styled runs for a laid-out label does not alter the verdict (B18)"
+
+                Expect.equal
+                    (Legibility.score laidOut)
+                    (Legibility.score labelled)
+                    "and equals the plain-label verdict (grammar-independent, SC-006)"
+            }
+
+            test "laid-out label presence does not change the animated Report (scoreAnimated)" {
+                let board = roster |> List.map (fun t -> Pulse, t)
+                let boardL = laidOut |> List.map (fun t -> Pulse, t)
+
+                Expect.equal
+                    (Legibility.scoreAnimated boardL)
+                    (Legibility.scoreAnimated board)
+                    "laid-out labels do not alter animated governance (FR-014)"
+            }
+        ]
 
 // Feature 200 [US3] (T032) Auto/motion labels are inspection-detail (FR-018/SC-006). The linter does NOT
 // read Token.Label / AutoLabel / LabelMotion, so a roster with auto-derived and/or motion-bound labels
@@ -527,13 +828,37 @@ let labelInvariance =
 [<Tests>]
 let autoMotionLinterInvariance =
     let roster =
-        [ { baseUnit with Faction = Ally; Klass = Heavy; Sigil = Ring; Speed = 1; Health = 0.9 }
-          { baseUnit with Faction = Enemy; Klass = Scout; Sigil = Fang; Speed = 2; Threat = 0.8 }
-          { baseUnit with Faction = Neutral; Klass = Mobile; Sigil = Bolt; Speed = 3; Shield = true } ]
+        [
+            { baseUnit with
+                Faction = Ally
+                Klass = Heavy
+                Sigil = Ring
+                Speed = 1
+                Health = 0.9
+            }
+            { baseUnit with
+                Faction = Enemy
+                Klass = Scout
+                Sigil = Fang
+                Speed = 2
+                Threat = 0.8
+            }
+            { baseUnit with
+                Faction = Neutral
+                Klass = Mobile
+                Sigil = Bolt
+                Speed = 3
+                Shield = true
+            }
+        ]
 
     // Same NON-label channels; only the label-channel fields differ between the two versions.
     let staticLabelled =
-        roster |> List.mapi (fun i t -> { t with Label = Some(LabelText.Plain(sprintf "U-%d" i)) })
+        roster
+        |> List.mapi (fun i t ->
+            { t with
+                Label = Some(LabelText.Plain(sprintf "U-%d" i))
+            })
 
     let autoMotion =
         roster
@@ -541,19 +866,37 @@ let autoMotionLinterInvariance =
             { t with
                 Label = None
                 AutoLabel = Some(Symbology.autoLabel [ FactionCode; HealthTier; SpeedPips ])
-                LabelMotion = Some LabelMotion.TypeOn })
+                LabelMotion = Some LabelMotion.TypeOn
+            })
 
     testList
         "US3.200 auto/motion linter-invariance"
-        [ test "auto/motion labels do not change the static Report (score) — equals the hand-authored verdict" {
-              Expect.equal (Legibility.score autoMotion) (Legibility.score staticLabelled) "auto/motion is inspection-detail (FR-018)"
-              Expect.equal (Legibility.score autoMotion) (Legibility.score roster) "and equals the no-label verdict (grammar-independent, SC-006)"
-          }
+        [
+            test "auto/motion labels do not change the static Report (score) — equals the hand-authored verdict" {
+                Expect.equal
+                    (Legibility.score autoMotion)
+                    (Legibility.score staticLabelled)
+                    "auto/motion is inspection-detail (FR-018)"
 
-          test "auto/motion labels do not change the animated Report (scoreAnimated)" {
-              let board = roster |> List.map (fun t -> Pulse, t)
-              let boardAM = autoMotion |> List.map (fun t -> Pulse, t)
-              let boardStatic = staticLabelled |> List.map (fun t -> Pulse, t)
-              Expect.equal (Legibility.scoreAnimated boardAM) (Legibility.scoreAnimated boardStatic) "auto/motion does not alter animated governance (FR-018)"
-              Expect.equal (Legibility.scoreAnimated boardAM) (Legibility.scoreAnimated board) "and equals the no-label animated verdict"
-          } ]
+                Expect.equal
+                    (Legibility.score autoMotion)
+                    (Legibility.score roster)
+                    "and equals the no-label verdict (grammar-independent, SC-006)"
+            }
+
+            test "auto/motion labels do not change the animated Report (scoreAnimated)" {
+                let board = roster |> List.map (fun t -> Pulse, t)
+                let boardAM = autoMotion |> List.map (fun t -> Pulse, t)
+                let boardStatic = staticLabelled |> List.map (fun t -> Pulse, t)
+
+                Expect.equal
+                    (Legibility.scoreAnimated boardAM)
+                    (Legibility.scoreAnimated boardStatic)
+                    "auto/motion does not alter animated governance (FR-018)"
+
+                Expect.equal
+                    (Legibility.scoreAnimated boardAM)
+                    (Legibility.scoreAnimated board)
+                    "and equals the no-label animated verdict"
+            }
+        ]

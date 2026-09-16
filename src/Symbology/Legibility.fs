@@ -38,30 +38,38 @@ module Legibility =
         | Error
 
     type Finding =
-        { Channel: Channel
-          Severity: Severity
-          Message: string
-          Units: int list }
+        {
+            Channel: Channel
+            Severity: Severity
+            Message: string
+            Units: int list
+        }
 
     type ChannelSpec =
-        { Channel: Channel
-          Kind: ChannelKind
-          Capacity: int }
+        {
+            Channel: Channel
+            Kind: ChannelKind
+            Capacity: int
+        }
 
     type ChannelUsage =
-        { Channel: Channel
-          Kind: ChannelKind
-          DistinctLevels: int
-          Capacity: int }
+        {
+            Channel: Channel
+            Kind: ChannelKind
+            DistinctLevels: int
+            Capacity: int
+        }
 
     type Verdict =
         | Clean
         | HasWarnings
 
     type Report =
-        { Findings: Finding list
-          Usage: ChannelUsage list
-          Verdict: Verdict }
+        {
+            Findings: Finding list
+            Usage: ChannelUsage list
+            Verdict: Verdict
+        }
 
     /// The fixed capacity table (research D2), §4 grammar order — and the SINGLE source of the
     /// reliable-level counts the skill's §4 prose table quotes (a test parses that table and fails on
@@ -74,23 +82,73 @@ module Legibility =
     /// only ~4 bead counts are reliably ranked at board size, so a fifth distinct speed is legal per
     /// unit and warns per board. The same holds for `Faction`/`Sigil`, whose domains are open.
     let table: ChannelSpec list =
-        [ { Channel = Faction; Kind = Categorical; Capacity = 7 }
-          { Channel = Klass; Kind = Categorical; Capacity = 6 }
-          { Channel = Sigil; Kind = Categorical; Capacity = 12 }
-          { Channel = State; Kind = Categorical; Capacity = 3 }
-          { Channel = Shield; Kind = Categorical; Capacity = 3 }
-          { Channel = Speed; Kind = Ordered; Capacity = 4 }
-          // Size/Threat/Charge carry a float, but the eye ranks radius, stroke width and gradient
-          // depth at ~4 levels — so they are Ordered and DO overload. A board using twelve distinct
-          // radii is the legibility defect the doctrine names; leaving them Continuous made the
-          // doctrine's most salient numbers the only ones the linter never enforced (#285).
-          { Channel = Size; Kind = Ordered; Capacity = 4 }
-          { Channel = Threat; Kind = Ordered; Capacity = 4 }
-          { Channel = Charge; Kind = Ordered; Capacity = 4 }
-          // Genuinely continuous: read as a magnitude or an angle, never as a rank of levels.
-          { Channel = Health; Kind = Continuous; Capacity = 0 }
-          { Channel = Heading; Kind = Continuous; Capacity = 0 }
-          { Channel = SecondaryHeading; Kind = Continuous; Capacity = 0 } ]
+        [
+            {
+                Channel = Faction
+                Kind = Categorical
+                Capacity = 7
+            }
+            {
+                Channel = Klass
+                Kind = Categorical
+                Capacity = 6
+            }
+            {
+                Channel = Sigil
+                Kind = Categorical
+                Capacity = 12
+            }
+            {
+                Channel = State
+                Kind = Categorical
+                Capacity = 3
+            }
+            {
+                Channel = Shield
+                Kind = Categorical
+                Capacity = 3
+            }
+            {
+                Channel = Speed
+                Kind = Ordered
+                Capacity = 4
+            }
+            // Size/Threat/Charge carry a float, but the eye ranks radius, stroke width and gradient
+            // depth at ~4 levels — so they are Ordered and DO overload. A board using twelve distinct
+            // radii is the legibility defect the doctrine names; leaving them Continuous made the
+            // doctrine's most salient numbers the only ones the linter never enforced (#285).
+            {
+                Channel = Size
+                Kind = Ordered
+                Capacity = 4
+            }
+            {
+                Channel = Threat
+                Kind = Ordered
+                Capacity = 4
+            }
+            {
+                Channel = Charge
+                Kind = Ordered
+                Capacity = 4
+            }
+            // Genuinely continuous: read as a magnitude or an angle, never as a rank of levels.
+            {
+                Channel = Health
+                Kind = Continuous
+                Capacity = 0
+            }
+            {
+                Channel = Heading
+                Kind = Continuous
+                Capacity = 0
+            }
+            {
+                Channel = SecondaryHeading
+                Kind = Continuous
+                Capacity = 0
+            }
+        ]
 
     /// Deterministic channel order: the §4 table order, with the two non-table channels sorting last —
     /// whole-board `Motion`, then per-unit `Label`.
@@ -119,7 +177,8 @@ module Legibility =
     /// rank of two, they read as noise.
     let private motionBudget = 1
 
-    let private isFiniteF (v: float) = not (Double.IsNaN v || Double.IsInfinity v)
+    let private isFiniteF (v: float) =
+        not (Double.IsNaN v || Double.IsInfinity v)
 
     /// The per-unit level each token occupies on a channel, boxed so one projection serves every
     /// channel. Structural equality decides sameness (each distinct `Custom` colour and each distinct
@@ -184,27 +243,31 @@ module Legibility =
     /// levels exceed capacity. `Units` names only the units holding the levels PAST capacity — the
     /// ones a re-map must move — not the whole scored set. Continuous channels are exempt (FR-009).
     let private overloadFindings (tokens: Token list) =
-        [ for spec in table do
-              match spec.Kind with
-              | Continuous -> ()
-              | Categorical
-              | Ordered ->
-                  let keys = levelKeys spec.Channel tokens
-                  let used = keys |> List.distinct |> List.length
+        [
+            for spec in table do
+                match spec.Kind with
+                | Continuous -> ()
+                | Categorical
+                | Ordered ->
+                    let keys = levelKeys spec.Channel tokens
+                    let used = keys |> List.distinct |> List.length
 
-                  if used > spec.Capacity then
-                      let finding =
-                          { Channel = spec.Channel
-                            Severity = Severity.Warning
-                            Message =
-                                sprintf
-                                    "%A overloaded: %d distinct levels used, capacity %d"
-                                    spec.Channel
-                                    used
-                                    spec.Capacity
-                            Units = excessUnits spec.Capacity keys }
+                    if used > spec.Capacity then
+                        let finding =
+                            {
+                                Channel = spec.Channel
+                                Severity = Severity.Warning
+                                Message =
+                                    sprintf
+                                        "%A overloaded: %d distinct levels used, capacity %d"
+                                        spec.Channel
+                                        used
+                                        spec.Capacity
+                                Units = excessUnits spec.Capacity keys
+                            }
 
-                      yield (channelOrder spec.Channel, -1), finding ]
+                        yield (channelOrder spec.Channel, -1), finding
+        ]
 
     /// Per-unit out-of-domain / degenerate / non-finite check (FR-004/FR-005). Each produces an
     /// `Error` naming the channel and the offending unit; the scan always continues (FR-008).
@@ -212,87 +275,102 @@ module Legibility =
         let band channel (v: float) =
             if not (isFiniteF v) then
                 Some
-                    { Channel = channel
-                      Severity = Severity.Error
-                      Message = sprintf "%A non-finite: %g" channel v
-                      Units = [ i ] }
+                    {
+                        Channel = channel
+                        Severity = Severity.Error
+                        Message = sprintf "%A non-finite: %g" channel v
+                        Units = [ i ]
+                    }
             elif v < 0.0 || v > 1.0 then
                 Some
-                    { Channel = channel
-                      Severity = Severity.Error
-                      Message = sprintf "%A out of domain: %g (expected 0..1)" channel v
-                      Units = [ i ] }
+                    {
+                        Channel = channel
+                        Severity = Severity.Error
+                        Message = sprintf "%A out of domain: %g (expected 0..1)" channel v
+                        Units = [ i ]
+                    }
             else
                 None
 
         [ // Size: non-finite, then degenerate R <= 0 (research D6).
-          match (if not (isFiniteF t.R) then
+            match
+                (if not (isFiniteF t.R) then
                      Some(sprintf "Size non-finite: %g" t.R)
                  elif t.R <= 0.0 then
                      Some(sprintf "Size degenerate: R = %g (expected R > 0)" t.R)
                  else
                      None)
-              with
-          | Some msg ->
-              yield
-                  (channelOrder Size, i),
-                  { Channel = Size
-                    Severity = Severity.Error
-                    Message = msg
-                    Units = [ i ] }
-          | None -> ()
+            with
+            | Some msg ->
+                yield
+                    (channelOrder Size, i),
+                    {
+                        Channel = Size
+                        Severity = Severity.Error
+                        Message = msg
+                        Units = [ i ]
+                    }
+            | None -> ()
 
-          // Speed: discrete count, must fall inside the legible bead range [0,6].
-          if t.Speed < 0 || t.Speed > 6 then
-              yield
-                  (channelOrder Speed, i),
-                  { Channel = Speed
-                    Severity = Severity.Error
-                    Message = sprintf "Speed out of domain: %d (expected 0..6)" t.Speed
-                    Units = [ i ] }
+            // Speed: discrete count, must fall inside the legible bead range [0,6].
+            if t.Speed < 0 || t.Speed > 6 then
+                yield
+                    (channelOrder Speed, i),
+                    {
+                        Channel = Speed
+                        Severity = Severity.Error
+                        Message = sprintf "Speed out of domain: %d (expected 0..6)" t.Speed
+                        Units = [ i ]
+                    }
 
-          // Continuous magnitude bands (non-finite first, then [0,1]).
-          for channel, v in [ Threat, t.Threat; Charge, t.Charge; Health, t.Health ] do
-              match band channel v with
-              | Some f -> yield (channelOrder channel, i), f
-              | None -> ()
+            // Continuous magnitude bands (non-finite first, then [0,1]).
+            for channel, v in [ Threat, t.Threat; Charge, t.Charge; Health, t.Health ] do
+                match band channel v with
+                | Some f -> yield (channelOrder channel, i), f
+                | None -> ()
 
-          // Heading: any finite angle is valid (angles wrap); only non-finite is an error.
-          if not (isFiniteF t.Heading) then
-              yield
-                  (channelOrder Heading, i),
-                  { Channel = Heading
-                    Severity = Severity.Error
-                    Message = sprintf "Heading non-finite: %g" t.Heading
-                    Units = [ i ] }
+            // Heading: any finite angle is valid (angles wrap); only non-finite is an error.
+            if not (isFiniteF t.Heading) then
+                yield
+                    (channelOrder Heading, i),
+                    {
+                        Channel = Heading
+                        Severity = Severity.Error
+                        Message = sprintf "Heading non-finite: %g" t.Heading
+                        Units = [ i ]
+                    }
 
-          // SecondaryHeading: an unset channel is legal (the grammar simply omits the indicator).
-          // When set it is scored exactly like Heading — angles wrap, so only non-finite is an error.
-          match t.SecondaryHeading with
-          | Some a when not (isFiniteF a) ->
-              yield
-                  (channelOrder SecondaryHeading, i),
-                  { Channel = SecondaryHeading
-                    Severity = Severity.Error
-                    Message = sprintf "SecondaryHeading non-finite: %g" a
-                    Units = [ i ] }
-          | _ -> () ]
+            // SecondaryHeading: an unset channel is legal (the grammar simply omits the indicator).
+            // When set it is scored exactly like Heading — angles wrap, so only non-finite is an error.
+            match t.SecondaryHeading with
+            | Some a when not (isFiniteF a) ->
+                yield
+                    (channelOrder SecondaryHeading, i),
+                    {
+                        Channel = SecondaryHeading
+                        Severity = Severity.Error
+                        Message = sprintf "SecondaryHeading non-finite: %g" a
+                        Units = [ i ]
+                    }
+            | _ -> ()
+        ]
 
     /// One `ChannelUsage` per per-unit channel (12), in table order (FR-007). Motion excluded.
     let private usageOf (tokens: Token list) =
         table
         |> List.map (fun spec ->
-            { Channel = spec.Channel
-              Kind = spec.Kind
-              DistinctLevels = distinctLevels spec.Channel tokens
-              Capacity = spec.Capacity })
+            {
+                Channel = spec.Channel
+                Kind = spec.Kind
+                DistinctLevels = distinctLevels spec.Channel tokens
+                Capacity = spec.Capacity
+            })
 
     /// Score the per-unit channels (shared by `score` and `scoreAnimated`). Findings are emitted in
     /// deterministic order: table order, then ascending unit index (overload before per-unit errors).
     let private scoreTokens (tokens: Token list) : (int * int) list * Finding list * ChannelUsage list =
         let keyed =
-            overloadFindings tokens
-            @ (tokens |> List.mapi unitFindings |> List.concat)
+            overloadFindings tokens @ (tokens |> List.mapi unitFindings |> List.concat)
             |> List.sortBy fst
 
         let keys = keyed |> List.map fst
@@ -305,9 +383,11 @@ module Legibility =
     let score (tokens: Token list) : Report =
         let _, findings, usage = scoreTokens tokens
 
-        { Findings = findings
-          Usage = usage
-          Verdict = verdictOf findings }
+        {
+            Findings = findings
+            Usage = usage
+            Verdict = verdictOf findings
+        }
 
     /// Whole-board motion load (FR-010): count distinct *non-Idle* rhythms; more than `motionBudget`
     /// simultaneous rhythms is a board-level Warning (Units = []). A single rhythm (any count of
@@ -317,14 +397,18 @@ module Legibility =
             board |> List.map fst |> List.filter (fun m -> m <> Idle) |> List.distinct
 
         if List.length activeRhythms > motionBudget then
-            [ { Channel = Motion
-                Severity = Severity.Warning
-                Message =
-                    sprintf
-                        "Motion overloaded: %d distinct active rhythms across the board, budget %d"
-                        (List.length activeRhythms)
-                        motionBudget
-                Units = [] } ]
+            [
+                {
+                    Channel = Motion
+                    Severity = Severity.Warning
+                    Message =
+                        sprintf
+                            "Motion overloaded: %d distinct active rhythms across the board, budget %d"
+                            (List.length activeRhythms)
+                            motionBudget
+                    Units = []
+                }
+            ]
         else
             []
 
@@ -335,9 +419,11 @@ module Legibility =
         // Motion sorts last (channelOrder = 12), so appending preserves the deterministic order.
         let allFindings = findings @ motionLoadFindings board
 
-        { Findings = allFindings
-          Usage = usage
-          Verdict = verdictOf allFindings }
+        {
+            Findings = allFindings
+            Usage = usage
+            Verdict = verdictOf allFindings
+        }
 
     // ---- Grammar-aware scoring (#286) --------------------------------------------------------------
     // `score` is grammar-blind by contract (FR-009/SC-005) and stays so. Everything below is strictly
@@ -371,21 +457,25 @@ module Legibility =
         // Read from the renderer, never re-declared here: the emitters cap at this exact number.
         let budget = Symbology.labelLineBudget grammar
 
-        [ for i, t in List.indexed tokens do
-              let lines = labelLineCount t
+        [
+            for i, t in List.indexed tokens do
+                let lines = labelLineCount t
 
-              if lines > budget then
-                  yield
-                      (channelOrder Label, i),
-                      { Channel = Label
-                        Severity = Severity.Warning
-                        Message =
-                            sprintf
-                                "Label over budget under %A: %d hard lines, budget %d — the surplus is dropped and the last drawn line gains an ellipsis"
-                                grammar
-                                lines
-                                budget
-                        Units = [ i ] } ]
+                if lines > budget then
+                    yield
+                        (channelOrder Label, i),
+                        {
+                            Channel = Label
+                            Severity = Severity.Warning
+                            Message =
+                                sprintf
+                                    "Label over budget under %A: %d hard lines, budget %d — the surplus is dropped and the last drawn line gains an ellipsis"
+                                    grammar
+                                    lines
+                                    budget
+                            Units = [ i ]
+                        }
+        ]
 
     /// Per-unit `Motion` Error: `animateIn` composes non-`Token` grammars from the grammar-agnostic
     /// overlays only (`Pulse`/`Blink`/`Damage`), so `Spin` and `Moving` contribute NO node. The unit is
@@ -395,24 +485,28 @@ module Legibility =
         match grammar with
         | Grammar.Token -> [] // whole-body rotation and travel are drawn; nothing is dropped
         | g ->
-            [ for i, (motion, _) in List.indexed board do
-                  match motion with
-                  | Spin
-                  | Moving ->
-                      yield
-                          (channelOrder Motion, i),
-                          { Channel = Motion
-                            Severity = Severity.Error
-                            Message =
-                                sprintf
-                                    "%A cannot draw Motion.%A: the rhythm is dropped, so the unit renders identically to Idle"
-                                    g
-                                    motion
-                            Units = [ i ] }
-                  | Idle
-                  | Pulse
-                  | Blink
-                  | Damage -> () ]
+            [
+                for i, (motion, _) in List.indexed board do
+                    match motion with
+                    | Spin
+                    | Moving ->
+                        yield
+                            (channelOrder Motion, i),
+                            {
+                                Channel = Motion
+                                Severity = Severity.Error
+                                Message =
+                                    sprintf
+                                        "%A cannot draw Motion.%A: the rhythm is dropped, so the unit renders identically to Idle"
+                                        g
+                                        motion
+                                Units = [ i ]
+                            }
+                    | Idle
+                    | Pulse
+                    | Blink
+                    | Damage -> ()
+            ]
 
     /// Merge keyed finding groups into the one deterministic order the contract promises: table order,
     /// then unit index. Whole-board findings carry index -1 and so precede the per-unit findings of the
@@ -426,9 +520,11 @@ module Legibility =
         let allFindings =
             ordered (List.zip keys findings @ labelBudgetFindings grammar tokens)
 
-        { Findings = allFindings
-          Usage = usage
-          Verdict = verdictOf allFindings }
+        {
+            Findings = allFindings
+            Usage = usage
+            Verdict = verdictOf allFindings
+        }
 
     let scoreAnimatedIn (grammar: Grammar) (board: (Motion * Token) list) : Report =
         let tokens = board |> List.map snd
@@ -447,6 +543,8 @@ module Legibility =
                 @ labelBudgetFindings grammar tokens
             )
 
-        { Findings = allFindings
-          Usage = usage
-          Verdict = verdictOf allFindings }
+        {
+            Findings = allFindings
+            Usage = usage
+            Verdict = verdictOf allFindings
+        }

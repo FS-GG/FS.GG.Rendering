@@ -110,8 +110,11 @@ module Geometry =
     /// boundary where the float enters the model.
     let clamp (lo: Vec2) (hi: Vec2) (v: Vec2) : Vec2 =
         let clamp1 lo hi x = x |> max lo |> min (max lo hi)
-        { Vx = clamp1 lo.Vx hi.Vx v.Vx
-          Vy = clamp1 lo.Vy hi.Vy v.Vy }
+
+        {
+            Vx = clamp1 lo.Vx hi.Vx v.Vx
+            Vy = clamp1 lo.Vy hi.Vy v.Vy
+        }
 
     /// Cross into the shared scene vocabulary: a `Vec2` position becomes a `Scene.Point`.
     let toPoint (v: Vec2) : Point = { X = v.Vx; Y = v.Vy }
@@ -156,5 +159,7 @@ module Geometry =
     /// back to hand-writing the bridge. Size is deliberately not returned: a `Vec2` model expresses
     /// size through `toSimRect`/`toRect`, never as labels on its own record.
     let ofSimRectCenter (r: SimRect) : Vec2 =
-        { Vx = r.X + r.Width / 2.0
-          Vy = r.Y + r.Height / 2.0 }
+        {
+            Vx = r.X + r.Width / 2.0
+            Vy = r.Y + r.Height / 2.0
+        }

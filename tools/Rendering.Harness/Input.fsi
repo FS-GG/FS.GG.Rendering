@@ -51,4 +51,10 @@ module Input =
     ///   path) and confirms a visible change; honest-skips with no display, fail-classified on Wayland.
     /// - `Uinput`: requires `/dev/uinput`; honest-skips promptly when absent (the kernel-drive executor
     ///   is the env-gated Workstream A4 follow-up).
-    val run: backend: InputBackend -> script: InputScript -> facts: ProbeFacts -> selfDll: string -> outDir: string -> Evidence.Evidence
+    val run:
+        backend: InputBackend ->
+        script: InputScript ->
+        facts: ProbeFacts ->
+        selfDll: string ->
+        outDir: string ->
+            Evidence.Evidence

@@ -27,11 +27,13 @@ type BehaviorVerdict =
 
 /// One documented behavior driven against the showcase MVU.
 type BehaviorOutcome =
-    { BehaviorId: string
-      Description: string
-      Expected: string
-      Observed: string
-      Verdict: BehaviorVerdict }
+    {
+        BehaviorId: string
+        Description: string
+        Expected: string
+        Observed: string
+        Verdict: BehaviorVerdict
+    }
 
 /// The interaction states an interactive control can be driven into (D4).
 type InteractionStateKind =
@@ -44,10 +46,12 @@ type InteractionStateKind =
 
 /// One driven interaction state, verified to differ from rest (VR-4).
 type InteractionStateOutcome =
-    { State: InteractionStateKind
-      DiffersFromRest: bool
-      EvidenceRef: string
-      Verdict: BehaviorVerdict }
+    {
+        State: InteractionStateKind
+        DiffersFromRest: bool
+        EvidenceRef: string
+        Verdict: BehaviorVerdict
+    }
 
 /// Damage-locality classification, sourced from `DamageRegionInspection` (D5).
 type DamageStatus =
@@ -59,11 +63,13 @@ type DamageStatus =
 
 /// One state-transition damage record.
 type DamageOutcome =
-    { TransitionId: string
-      DamageStatus: DamageStatus
-      DirtyPercentage: float
-      AffectedRegionIds: string list
-      Verdict: BehaviorVerdict }
+    {
+        TransitionId: string
+        DamageStatus: DamageStatus
+        DirtyPercentage: float
+        AffectedRegionIds: string list
+        Verdict: BehaviorVerdict
+    }
 
 /// The two appearances captured per control (FR-003).
 type Appearance =
@@ -99,14 +105,16 @@ type FidelityVerdict =
 
 /// One appearance x size x state visual cell.
 type VisualEvidenceItem =
-    { TargetId: string
-      Appearance: Appearance
-      Size: SizeRole
-      State: VisualState
-      CapturePath: string
-      CaptureStatus: CaptureStatus
-      FidelityVerdict: FidelityVerdict
-      Reasons: string list }
+    {
+        TargetId: string
+        Appearance: Appearance
+        Size: SizeRole
+        State: VisualState
+        CapturePath: string
+        CaptureStatus: CaptureStatus
+        FidelityVerdict: FidelityVerdict
+        Reasons: string list
+    }
 
 /// Aggregate functional verdict of a record. `NotApplicable` only for display-only (VR-5).
 type FunctionalVerdict =
@@ -126,19 +134,21 @@ type VisualVerdict =
 /// One classified record per cataloged control — the atomic unit of "every control exercised
 /// and classified" (data-model Control Verdict Record).
 type ControlVerdictRecord =
-    { ControlId: string
-      Family: string
-      PageContext: string list
-      Classification: Classification
-      ClassificationReason: string
-      BehaviorsExercised: BehaviorOutcome list
-      InteractionStates: InteractionStateOutcome list
-      VisualEvidence: VisualEvidenceItem list
-      DamageEvidence: DamageOutcome list
-      FunctionalVerdict: FunctionalVerdict
-      VisualVerdict: VisualVerdict
-      Findings: string list
-      Diagnostics: string list }
+    {
+        ControlId: string
+        Family: string
+        PageContext: string list
+        Classification: Classification
+        ClassificationReason: string
+        BehaviorsExercised: BehaviorOutcome list
+        InteractionStates: InteractionStateOutcome list
+        VisualEvidence: VisualEvidenceItem list
+        DamageEvidence: DamageOutcome list
+        FunctionalVerdict: FunctionalVerdict
+        VisualVerdict: VisualVerdict
+        Findings: string list
+        Diagnostics: string list
+    }
 
 // --- finding ----------------------------------------------------------------
 
@@ -163,17 +173,19 @@ type FindingLifecycle =
 
 /// A discovered defect and its lifecycle (data-model Finding entity).
 type Finding =
-    { FindingId: string
-      Description: string
-      AffectedControls: string list
-      Classification: FindingClassification
-      Tier: FindingTier
-      Severity: FindingSeverity
-      Lifecycle: FindingLifecycle
-      BeforeEvidence: string
-      AfterEvidence: string option
-      DeferralRationale: string option
-      FollowUpRef: string option }
+    {
+        FindingId: string
+        Description: string
+        AffectedControls: string list
+        Classification: FindingClassification
+        Tier: FindingTier
+        Severity: FindingSeverity
+        Lifecycle: FindingLifecycle
+        BeforeEvidence: string
+        AfterEvidence: string option
+        DeferralRationale: string option
+        FollowUpRef: string option
+    }
 
 // --- pure plan --------------------------------------------------------------
 
@@ -212,8 +224,7 @@ val exerciseBehavior:
 val exerciseControl: seed: SecondAntShowcaseModel -> controlId: string -> BehaviorOutcome list
 
 /// Aggregate a record's functional verdict from its classification + behavior outcomes (VR-5).
-val aggregateFunctional:
-    classification: Classification -> behaviors: BehaviorOutcome list -> FunctionalVerdict
+val aggregateFunctional: classification: Classification -> behaviors: BehaviorOutcome list -> FunctionalVerdict
 
 /// Aggregate a record's visual verdict from its captured cells.
 val aggregateVisual: cells: VisualEvidenceItem list -> VisualVerdict

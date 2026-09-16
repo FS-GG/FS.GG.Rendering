@@ -2,12 +2,14 @@ namespace FS.GG.UI.Controls
 
 module Diagnostics =
     let create controlId kind code severity message =
-        { ControlId = controlId
-          ControlKind = kind
-          Code = code
-          Severity = severity
-          Message = message
-          EvidencePath = None }
+        {
+            ControlId = controlId
+            ControlKind = kind
+            Code = code
+            Severity = severity
+            Message = message
+            EvidencePath = None
+        }
 
     let private runtimeSeverity severity =
         match severity with
@@ -63,74 +65,185 @@ module Diagnostics =
             context
 
     let missingRequired controlId kind (name: string) =
-        create controlId kind MissingRequiredAttribute ControlDiagnosticSeverity.Error $"Missing required attribute `{name}`."
+        create
+            controlId
+            kind
+            MissingRequiredAttribute
+            ControlDiagnosticSeverity.Error
+            $"Missing required attribute `{name}`."
 
     let duplicateAttribute controlId kind (name: string) =
-        create controlId kind DuplicateAttribute ControlDiagnosticSeverity.Warning $"Duplicate attribute `{name}` uses last-value-wins precedence."
+        create
+            controlId
+            kind
+            DuplicateAttribute
+            ControlDiagnosticSeverity.Warning
+            $"Duplicate attribute `{name}` uses last-value-wins precedence."
 
     let missingAccessibility controlId kind =
-        create controlId kind MissingAccessibilityMetadata ControlDiagnosticSeverity.Error "Supported interactive control is missing accessibility metadata."
+        create
+            controlId
+            kind
+            MissingAccessibilityMetadata
+            ControlDiagnosticSeverity.Error
+            "Supported interactive control is missing accessibility metadata."
 
     let keyCollision key kind =
-        create (Some key) kind KeyCollision ControlDiagnosticSeverity.Error $"Duplicate stable key `{key}` in the control tree."
+        create
+            (Some key)
+            kind
+            KeyCollision
+            ControlDiagnosticSeverity.Error
+            $"Duplicate stable key `{key}` in the control tree."
 
     let unsupportedEnvironment kind (capability: string) =
-        create None kind UnsupportedEnvironment ControlDiagnosticSeverity.Warning $"Host environment does not expose {capability}; operation reports diagnostics instead."
+        create
+            None
+            kind
+            UnsupportedEnvironment
+            ControlDiagnosticSeverity.Warning
+            $"Host environment does not expose {capability}; operation reports diagnostics instead."
 
     let unsupportedStandardAttribute (kind: StandardControlKind) (name: StandardAttributeName) =
-        create None $"{kind}" UnsupportedStateCombination ControlDiagnosticSeverity.Error $"Unsupported standard attribute `{name}` for `{kind}`."
+        create
+            None
+            $"{kind}"
+            UnsupportedStateCombination
+            ControlDiagnosticSeverity.Error
+            $"Unsupported standard attribute `{name}` for `{kind}`."
 
     let unsupportedStandardEvent (kind: StandardControlKind) (eventKind: StandardEventKind) =
-        create None $"{kind}" UnsupportedStateCombination ControlDiagnosticSeverity.Error $"Unsupported standard event `{eventKind}` for `{kind}`."
+        create
+            None
+            $"{kind}"
+            UnsupportedStateCombination
+            ControlDiagnosticSeverity.Error
+            $"Unsupported standard event `{eventKind}` for `{kind}`."
 
     let missingStandardAttribute (kind: StandardControlKind) (name: StandardAttributeName) =
-        create None $"{kind}" MissingRequiredAttribute ControlDiagnosticSeverity.Error $"Missing required standard attribute `{name}` for `{kind}`."
+        create
+            None
+            $"{kind}"
+            MissingRequiredAttribute
+            ControlDiagnosticSeverity.Error
+            $"Missing required standard attribute `{name}` for `{kind}`."
 
     let customExtension (kind: string) (extensionName: string) =
-        create None kind UnsupportedEnvironment ControlDiagnosticSeverity.Info $"Custom extension `{extensionName}` is accepted for custom control `{kind}`."
+        create
+            None
+            kind
+            UnsupportedEnvironment
+            ControlDiagnosticSeverity.Info
+            $"Custom extension `{extensionName}` is accepted for custom control `{kind}`."
 
     let stalePackageReference (packageId: string) (path: string) =
-        create None packageId StaleGeneratedReference ControlDiagnosticSeverity.Error $"Stale package reference `{packageId}` found in `{path}`."
+        create
+            None
+            packageId
+            StaleGeneratedReference
+            ControlDiagnosticSeverity.Error
+            $"Stale package reference `{packageId}` found in `{path}`."
 
     let dependencyLeak (packageId: string) (dependencyPath: string) =
-        create None packageId StaleGeneratedReference ControlDiagnosticSeverity.Error $"Package `{packageId}` leaks dependency `{dependencyPath}` across the declared boundary."
+        create
+            None
+            packageId
+            StaleGeneratedReference
+            ControlDiagnosticSeverity.Error
+            $"Package `{packageId}` leaks dependency `{dependencyPath}` across the declared boundary."
 
     let catalogOmission (controlId: string) (requiredField: string) =
-        create (Some controlId) "catalog" MissingRequiredAttribute ControlDiagnosticSeverity.Error $"Catalog entry `{controlId}` is missing required field `{requiredField}`."
+        create
+            (Some controlId)
+            "catalog"
+            MissingRequiredAttribute
+            ControlDiagnosticSeverity.Error
+            $"Catalog entry `{controlId}` is missing required field `{requiredField}`."
 
     let duplicateRuntimeDefinition (runtimeName: string) (path: string) =
-        create None runtimeName DuplicateAttribute ControlDiagnosticSeverity.Error $"Duplicate runtime definition `{runtimeName}` found in `{path}`."
+        create
+            None
+            runtimeName
+            DuplicateAttribute
+            ControlDiagnosticSeverity.Error
+            $"Duplicate runtime definition `{runtimeName}` found in `{path}`."
 
     let staleEventTarget (controlId: ControlId) (eventKind: string) =
-        create (Some controlId) "control-runtime" StaleGeneratedReference ControlDiagnosticSeverity.Warning $"Stale event target `{controlId}` for event `{eventKind}` was ignored."
+        create
+            (Some controlId)
+            "control-runtime"
+            StaleGeneratedReference
+            ControlDiagnosticSeverity.Warning
+            $"Stale event target `{controlId}` for event `{eventKind}` was ignored."
 
     let unsupportedScopeExpansion (scopeName: string) (owner: string) =
-        create None scopeName UnsupportedEnvironment ControlDiagnosticSeverity.Error $"Unsupported scope expansion `{scopeName}` requested by `{owner}`."
+        create
+            None
+            scopeName
+            UnsupportedEnvironment
+            ControlDiagnosticSeverity.Error
+            $"Unsupported scope expansion `{scopeName}` requested by `{owner}`."
 
     let missingOverlayAnchor (surfaceId: ControlId) (anchorId: ControlId) =
-        create (Some surfaceId) "overlay-state" MissingOverlayAnchor ControlDiagnosticSeverity.Error $"Overlay surface `{surfaceId}` is missing anchor `{anchorId}`."
+        create
+            (Some surfaceId)
+            "overlay-state"
+            MissingOverlayAnchor
+            ControlDiagnosticSeverity.Error
+            $"Overlay surface `{surfaceId}` is missing anchor `{anchorId}`."
 
     let staleOverlayFocusTarget (surfaceId: ControlId option) (targetId: ControlId) =
-        create surfaceId "overlay-state" StaleOverlayFocusTarget ControlDiagnosticSeverity.Warning $"Overlay focus target `{targetId}` is stale and will be recovered."
+        create
+            surfaceId
+            "overlay-state"
+            StaleOverlayFocusTarget
+            ControlDiagnosticSeverity.Warning
+            $"Overlay focus target `{targetId}` is stale and will be recovered."
 
     let blockedOverlayDismissal (surfaceId: ControlId) (reason: string) =
-        create (Some surfaceId) "overlay-state" BlockedOverlayDismissal ControlDiagnosticSeverity.Info $"Overlay surface `{surfaceId}` blocked dismissal `{reason}`."
+        create
+            (Some surfaceId)
+            "overlay-state"
+            BlockedOverlayDismissal
+            ControlDiagnosticSeverity.Info
+            $"Overlay surface `{surfaceId}` blocked dismissal `{reason}`."
 
     let disabledOverlayTrigger (triggerId: ControlId) (surfaceId: ControlId) =
-        create (Some triggerId) "overlay-state" DisabledOverlayTrigger ControlDiagnosticSeverity.Info $"Disabled trigger `{triggerId}` ignored open request for overlay surface `{surfaceId}`."
+        create
+            (Some triggerId)
+            "overlay-state"
+            DisabledOverlayTrigger
+            ControlDiagnosticSeverity.Info
+            $"Disabled trigger `{triggerId}` ignored open request for overlay surface `{surfaceId}`."
 
     let noFitOverlayPlacement (surfaceId: ControlId) (placement: string) =
-        create (Some surfaceId) "overlay-state" NoFitOverlayPlacement ControlDiagnosticSeverity.Warning $"Overlay surface `{surfaceId}` has no fully fitting placement for `{placement}`."
+        create
+            (Some surfaceId)
+            "overlay-state"
+            NoFitOverlayPlacement
+            ControlDiagnosticSeverity.Warning
+            $"Overlay surface `{surfaceId}` has no fully fitting placement for `{placement}`."
 
     let duplicateOverlayDispatch (surfaceId: ControlId) (dispatchKey: string) =
-        create (Some surfaceId) "overlay-state" DuplicateOverlayDispatch ControlDiagnosticSeverity.Warning $"Overlay surface `{surfaceId}` suppressed duplicate product dispatch `{dispatchKey}`."
+        create
+            (Some surfaceId)
+            "overlay-state"
+            DuplicateOverlayDispatch
+            ControlDiagnosticSeverity.Warning
+            $"Overlay surface `{surfaceId}` suppressed duplicate product dispatch `{dispatchKey}`."
 
     let invalidOverlayMessage (surfaceId: ControlId option) (message: string) =
         create surfaceId "overlay-state" InvalidOverlayMessage ControlDiagnosticSeverity.Warning message
 
     let lowerLayerBlocked (surfaceId: ControlId) (targetId: ControlId option) =
         let target = targetId |> Option.defaultValue "<none>"
-        create (Some surfaceId) "overlay-state" LowerLayerBlocked ControlDiagnosticSeverity.Info $"Modal overlay `{surfaceId}` blocked lower-layer target `{target}`."
+
+        create
+            (Some surfaceId)
+            "overlay-state"
+            LowerLayerBlocked
+            ControlDiagnosticSeverity.Info
+            $"Modal overlay `{surfaceId}` blocked lower-layer target `{target}`."
 
     // Feature 113 (Phase 5): is an attribute/event value STABLE across two builds of the same model?
     // Stability is exactly the reuse condition: a structurally-equal scalar value is stable; a
@@ -168,7 +281,14 @@ module Diagnostics =
             // Unstable key: the same logical node carries a different `Key` across builds — itself a
             // reuse-breaking instability (re-keys the retained identity).
             if a.Key <> b.Key then
-                findings.Add(create (Some id) a.Kind UnstableReuseInput ControlDiagnosticSeverity.Info $"Unstable key on `{a.Kind}` node `{id}`: the key changed across two builds of the same model, defeating memoized reuse.")
+                findings.Add(
+                    create
+                        (Some id)
+                        a.Kind
+                        UnstableReuseInput
+                        ControlDiagnosticSeverity.Info
+                        $"Unstable key on `{a.Kind}` node `{id}`: the key changed across two builds of the same model, defeating memoized reuse."
+                )
 
             // Attributes/events matched by name (last-writer-wins, mirroring lowering); for a name present
             // in BOTH builds, an unstable value is an always-new input that defeats reuse.
@@ -180,7 +300,15 @@ module Diagnostics =
                 match Map.tryFind at.Name bByName with
                 | Some bt when not (attrValueStable at.Value bt.Value) ->
                     let inputKind = if at.Category = Event then "event" else "attribute"
-                    findings.Add(create (Some id) a.Kind UnstableReuseInput ControlDiagnosticSeverity.Info $"Always-new {inputKind} `{at.Name}` on `{a.Kind}` node `{id}` compared unequal across two builds of the same model; it defeats memoized reuse.")
+
+                    findings.Add(
+                        create
+                            (Some id)
+                            a.Kind
+                            UnstableReuseInput
+                            ControlDiagnosticSeverity.Info
+                            $"Always-new {inputKind} `{at.Name}` on `{a.Kind}` node `{id}` compared unequal across two builds of the same model; it defeats memoized reuse."
+                    )
                 | _ -> ()
 
             // Parallel child walk over the shared prefix (the same logical tree ⇒ aligned children).
@@ -218,7 +346,8 @@ module Diagnostics =
                                 kind
                                 MissingStableKey
                                 ControlDiagnosticSeverity.Warning
-                                $"{List.length group} unkeyed interactive `{kind}` siblings resolve by positional path (Key ?? path); a structural insert/remove shifts their ids, so their hover/focus/press identity is unstable across such a change. Give each a distinct `Control.withKey` for stable identity.")
+                                $"{List.length group} unkeyed interactive `{kind}` siblings resolve by positional path (Key ?? path); a structural insert/remove shifts their ids, so their hover/focus/press identity is unstable across such a change. Give each a distinct `Control.withKey` for stable identity."
+                        )
                     else
                         None)
 

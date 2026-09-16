@@ -21,36 +21,38 @@ let tests =
     testSequenced
     <| testList
         "DocFences.Drive (explicitly self-contained product-skill corpus)"
-        [ test "every self-contained skill fence compiles against the published pin" {
-              let plan = Harness.productSkillCompilationPlan ()
+        [
+            test "every self-contained skill fence compiles against the published pin" {
+                let plan = Harness.productSkillCompilationPlan ()
 
-              let fences =
-                  plan
-                  |> List.choose (fun (fence, disposition) ->
-                      match disposition with
-                      | Harness.SelfContained -> Some fence
-                      | Harness.Contextual reason ->
-                          printfn "docfences: CONTEXTUAL %s:%d — %s" fence.Doc fence.StartLine reason
-                          None)
+                let fences =
+                    plan
+                    |> List.choose (fun (fence, disposition) ->
+                        match disposition with
+                        | Harness.SelfContained -> Some fence
+                        | Harness.Contextual reason ->
+                            printfn "docfences: CONTEXTUAL %s:%d — %s" fence.Doc fence.StartLine reason
+                            None)
 
-              let units, skipped = Harness.unitsFor fences
+                let units, skipped = Harness.unitsFor fences
 
-              for f, reason in skipped do
-                  printfn "docfences: SKIP %s:%d — %s" f.Doc f.StartLine reason
+                for f, reason in skipped do
+                    printfn "docfences: SKIP %s:%d — %s" f.Doc f.StartLine reason
 
-              let outcome = Harness.compile Pins.pinnedPackages units
+                let outcome = Harness.compile Pins.pinnedPackages units
 
-              if Harness.pinUnpublished outcome then
-                  skiptestf
-                      "pin %s not yet published to nuget.org (release window) — waiver applies"
-                      Pins.uiVersion.Value
+                if Harness.pinUnpublished outcome then
+                    skiptestf
+                        "pin %s not yet published to nuget.org (release window) — waiver applies"
+                        Pins.uiVersion.Value
 
-              let report =
-                  outcome.Diagnostics
-                  |> List.map (fun d -> sprintf "  %s:%d  %s" d.Doc d.Line d.Message)
-                  |> String.concat "\n"
+                let report =
+                    outcome.Diagnostics
+                    |> List.map (fun d -> sprintf "  %s:%d  %s" d.Doc d.Line d.Message)
+                    |> String.concat "\n"
 
-              Expect.isTrue
-                  outcome.Succeeded
-                  (sprintf "shipped skill fences failed to compile against the pin:\n%s" report)
-          } ]
+                Expect.isTrue
+                    outcome.Succeeded
+                    (sprintf "shipped skill fences failed to compile against the pin:\n%s" report)
+            }
+        ]

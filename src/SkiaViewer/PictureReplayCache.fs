@@ -20,10 +20,12 @@ module internal PictureReplayCache =
     let private bytesPerNode = 64
 
     type internal Entry =
-        { mutable Picture: SKPicture
-          mutable Fingerprint: uint64
-          mutable Stamp: int64
-          mutable NodeBytes: int }
+        {
+            mutable Picture: SKPicture
+            mutable Fingerprint: uint64
+            mutable Stamp: int64
+            mutable NodeBytes: int
+        }
 
     [<Sealed>]
     type internal Cache(enabled: bool) =
@@ -44,21 +46,25 @@ module internal PictureReplayCache =
         | ParityMismatch
 
     type internal SplitReplayRequest =
-        { ContentCacheId: uint64
-          ContentFingerprint: uint64
-          PlacementFingerprint: uint64
-          RunProfileMatches: bool
-          RetainedResident: bool
-          ResourceLimited: bool
-          ParityPassed: bool
-          ReplayEnabled: bool }
+        {
+            ContentCacheId: uint64
+            ContentFingerprint: uint64
+            PlacementFingerprint: uint64
+            RunProfileMatches: bool
+            RetainedResident: bool
+            ResourceLimited: bool
+            ParityPassed: bool
+            ReplayEnabled: bool
+        }
 
     type internal SplitReplayDecision =
-        { Status: string
-          FallbackReason: SplitReplayFallbackReason option
-          ContentKey: uint64
-          PlacementOnlyChange: bool
-          RecordRequired: bool }
+        {
+            Status: string
+            FallbackReason: SplitReplayFallbackReason option
+            ContentKey: uint64
+            PlacementOnlyChange: bool
+            RecordRequired: bool
+        }
 
     let create (enabled: bool) = Cache(enabled)
 
@@ -71,50 +77,65 @@ module internal PictureReplayCache =
 
         let placementOnlyChange =
             contentMatches
-            && previous |> Option.exists (fun prior -> prior.PlacementFingerprint <> current.PlacementFingerprint)
+            && previous
+               |> Option.exists (fun prior -> prior.PlacementFingerprint <> current.PlacementFingerprint)
 
         if not current.ReplayEnabled then
-            { Status = "fallback-full-redraw"
-              FallbackReason = Some DisabledReplay
-              ContentKey = current.ContentCacheId
-              PlacementOnlyChange = placementOnlyChange
-              RecordRequired = false }
+            {
+                Status = "fallback-full-redraw"
+                FallbackReason = Some DisabledReplay
+                ContentKey = current.ContentCacheId
+                PlacementOnlyChange = placementOnlyChange
+                RecordRequired = false
+            }
         elif not current.RunProfileMatches then
-            { Status = "reuse-rejected"
-              FallbackReason = Some ChangedRunOrProfile
-              ContentKey = current.ContentCacheId
-              PlacementOnlyChange = placementOnlyChange
-              RecordRequired = false }
+            {
+                Status = "reuse-rejected"
+                FallbackReason = Some ChangedRunOrProfile
+                ContentKey = current.ContentCacheId
+                PlacementOnlyChange = placementOnlyChange
+                RecordRequired = false
+            }
         elif current.ResourceLimited then
-            { Status = "fallback-full-redraw"
-              FallbackReason = Some ResourceLimitedRetention
-              ContentKey = current.ContentCacheId
-              PlacementOnlyChange = placementOnlyChange
-              RecordRequired = false }
+            {
+                Status = "fallback-full-redraw"
+                FallbackReason = Some ResourceLimitedRetention
+                ContentKey = current.ContentCacheId
+                PlacementOnlyChange = placementOnlyChange
+                RecordRequired = false
+            }
         elif not current.ParityPassed then
-            { Status = "reuse-rejected"
-              FallbackReason = Some ParityMismatch
-              ContentKey = current.ContentCacheId
-              PlacementOnlyChange = placementOnlyChange
-              RecordRequired = false }
+            {
+                Status = "reuse-rejected"
+                FallbackReason = Some ParityMismatch
+                ContentKey = current.ContentCacheId
+                PlacementOnlyChange = placementOnlyChange
+                RecordRequired = false
+            }
         elif not current.RetainedResident then
-            { Status = "fallback-full-redraw"
-              FallbackReason = Some MissingResidentPicture
-              ContentKey = current.ContentCacheId
-              PlacementOnlyChange = placementOnlyChange
-              RecordRequired = false }
+            {
+                Status = "fallback-full-redraw"
+                FallbackReason = Some MissingResidentPicture
+                ContentKey = current.ContentCacheId
+                PlacementOnlyChange = placementOnlyChange
+                RecordRequired = false
+            }
         elif contentMatches then
-            { Status = "content-reused-placement-updated"
-              FallbackReason = None
-              ContentKey = current.ContentCacheId
-              PlacementOnlyChange = placementOnlyChange
-              RecordRequired = false }
+            {
+                Status = "content-reused-placement-updated"
+                FallbackReason = None
+                ContentKey = current.ContentCacheId
+                PlacementOnlyChange = placementOnlyChange
+                RecordRequired = false
+            }
         else
-            { Status = "content-re-recorded"
-              FallbackReason = None
-              ContentKey = current.ContentCacheId
-              PlacementOnlyChange = false
-              RecordRequired = true }
+            {
+                Status = "content-re-recorded"
+                FallbackReason = None
+                ContentKey = current.ContentCacheId
+                PlacementOnlyChange = false
+                RecordRequired = true
+            }
 
     // Painted-node count of a scene — `Scene.describe` sees through wrappers, matching the RetainedRender
     // skipped-node model.
@@ -134,7 +155,10 @@ module internal PictureReplayCache =
 
             if seen then
                 let victim = cache.Entries.[lruKey]
-                if not (isNull victim.Picture) then victim.Picture.Dispose()
+
+                if not (isNull victim.Picture) then
+                    victim.Picture.Dispose()
+
                 cache.Entries.Remove lruKey |> ignore
 
     let paintBoundary
@@ -162,7 +186,10 @@ module internal PictureReplayCache =
                     entry.Picture.Dispose()
 
                 let bounds = canvas.DeviceClipBounds
-                let cull = SKRect(float32 bounds.Left, float32 bounds.Top, float32 bounds.Right, float32 bounds.Bottom)
+
+                let cull =
+                    SKRect(float32 bounds.Left, float32 bounds.Top, float32 bounds.Right, float32 bounds.Bottom)
+
                 use recorder = new SKPictureRecorder()
                 let recCanvas = recorder.BeginRecording cull
                 paintScene recCanvas boundary.Scene
@@ -178,10 +205,12 @@ module internal PictureReplayCache =
                     entry.NodeBytes <- nb
                 else
                     cache.Entries.[boundary.CacheId] <-
-                        { Picture = picture
-                          Fingerprint = boundary.Fingerprint
-                          Stamp = cache.Clock
-                          NodeBytes = nb }
+                        {
+                            Picture = picture
+                            Fingerprint = boundary.Fingerprint
+                            Stamp = cache.Clock
+                            NodeBytes = nb
+                        }
 
                 cache.Misses <- cache.Misses + 1
                 cache.Records <- cache.Records + 1
@@ -189,15 +218,18 @@ module internal PictureReplayCache =
 
     let stats (cache: Cache) =
         let mutable nb = 0
+
         for kv in cache.Entries do
             nb <- nb + kv.Value.NodeBytes
 
-        {| Entries = cache.Entries.Count
-           NativeBytes = nb
-           Hits = cache.Hits
-           Misses = cache.Misses
-           Records = cache.Records
-           SkippedNodes = cache.SkippedNodes |}
+        {|
+            Entries = cache.Entries.Count
+            NativeBytes = nb
+            Hits = cache.Hits
+            Misses = cache.Misses
+            Records = cache.Records
+            SkippedNodes = cache.SkippedNodes
+        |}
 
     let resetCounters (cache: Cache) =
         cache.Hits <- 0
@@ -207,6 +239,7 @@ module internal PictureReplayCache =
 
     let dispose (cache: Cache) =
         for kv in cache.Entries do
-            if not (isNull kv.Value.Picture) then kv.Value.Picture.Dispose()
+            if not (isNull kv.Value.Picture) then
+                kv.Value.Picture.Dispose()
 
         cache.Entries.Clear()

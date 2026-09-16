@@ -112,7 +112,10 @@ let private resultFor policy name =
 
 /// `overall` rendered as the report token.
 let private overallToken policy =
-    if ColorPolicy.overall (ColorPolicy.evaluate policy catalog) then "PASS" else "FAIL"
+    if ColorPolicy.overall (ColorPolicy.evaluate policy catalog) then
+        "PASS"
+    else
+        "FAIL"
 
 // ---- coverage source: the template's own designSystem choice set (FR-009/SC-006/TP-7) ---------
 // Parsed straight out of .template.config/template.json so a new accepted value cannot ship
@@ -123,18 +126,28 @@ let private enumerateDesignSystemChoices () =
     let json = File.ReadAllText(repoPath ".template.config/template.json")
     let marker = "\"designSystem\""
     let mi = json.IndexOf(marker, StringComparison.Ordinal)
-    if mi < 0 then failwith "designSystem symbol not found in template.json"
+
+    if mi < 0 then
+        failwith "designSystem symbol not found in template.json"
     // bound the search to this symbol's object (up to the next top-level symbol or the symbols end)
     let choicesIdx = json.IndexOf("\"choices\"", mi, StringComparison.Ordinal)
-    if choicesIdx < 0 then failwith "designSystem.choices not found in template.json"
+
+    if choicesIdx < 0 then
+        failwith "designSystem.choices not found in template.json"
+
     let arrStart = json.IndexOf('[', choicesIdx)
     let arrEnd = json.IndexOf(']', arrStart)
-    if arrStart < 0 || arrEnd < 0 then failwith "designSystem.choices array malformed"
+
+    if arrStart < 0 || arrEnd < 0 then
+        failwith "designSystem.choices array malformed"
+
     let body = json.Substring(arrStart, arrEnd - arrStart)
     // collect each "choice": "<value>" in declaration order
     let token = "\"choice\""
+
     let rec loop i acc =
         let ci = body.IndexOf(token, i, StringComparison.Ordinal)
+
         if ci < 0 then
             List.rev acc
         else
@@ -143,8 +156,12 @@ let private enumerateDesignSystemChoices () =
             let q2 = body.IndexOf('"', q1 + 1)
             let value = body.Substring(q1 + 1, q2 - q1 - 1)
             loop (q2 + 1) (value :: acc)
+
     let choices = loop 0 []
-    if List.isEmpty choices then failwith "designSystem has no choices"
+
+    if List.isEmpty choices then
+        failwith "designSystem has no choices"
+
     choices
 
 // ---- US2 verdict core (always runs; needs no dotnet new) --------------------------------------
@@ -152,7 +169,8 @@ let private enumerateDesignSystemChoices () =
 // oracle, and assert the divergence + no-overclaim disclosure.
 
 let private assertTrue cond msg =
-    if not cond then failwithf "VERDICT-CORE FAIL: %s" msg
+    if not cond then
+        failwithf "VERDICT-CORE FAIL: %s" msg
 
 let private verifyVerdictCore (values: string list) =
     for v in values do
@@ -177,10 +195,17 @@ let private verifyVerdictCore (values: string list) =
     let aHover = resultFor ant divergentPairing
     assertTrue (disclosure wHover = "Fail") (sprintf "%s must be Fail under wcag" divergentPairing)
     assertTrue (disclosure aHover = "Aa") (sprintf "%s must be Aa under ant" divergentPairing)
-    assertTrue (aHover.AuthorityNote = Some "ant: not WCAG-certified") "ant must carry the no-overclaim note on the divergent pairing"
 
-    printfn "verdict-core OK: %s; divergent %s wcag=%s ant=%s; no-overclaim note present"
-        (String.concat ", " values) divergentPairing (disclosure wHover) (disclosure aHover)
+    assertTrue
+        (aHover.AuthorityNote = Some "ant: not WCAG-certified")
+        "ant must carry the no-overclaim note on the divergent pairing"
+
+    printfn
+        "verdict-core OK: %s; divergent %s wcag=%s ant=%s; no-overclaim note present"
+        (String.concat ", " values)
+        divergentPairing
+        (disclosure wHover)
+        (disclosure aHover)
 
 // ---- live scaffold + build helpers (env-gated only) -------------------------------------------
 
@@ -200,10 +225,17 @@ let private runProc (workDir: string) (exe: string) (args: string list) =
 /// Recursively list a scaffold tree as (relativePath, sha256) for a byte-identical comparison.
 let private treeFingerprint (root: string) =
     use sha = System.Security.Cryptography.SHA256.Create()
+
     Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories)
     |> Seq.map (fun f -> Path.GetRelativePath(root, f).Replace('\\', '/'), f)
     // ignore build artifacts so a post-scaffold build cannot perturb the byte comparison.
-    |> Seq.filter (fun (rel, _) -> not (rel.Contains "/bin/" || rel.Contains "/obj/" || rel.StartsWith "bin/" || rel.StartsWith "obj/"))
+    |> Seq.filter (fun (rel, _) ->
+        not (
+            rel.Contains "/bin/"
+            || rel.Contains "/obj/"
+            || rel.StartsWith "bin/"
+            || rel.StartsWith "obj/"
+        ))
     |> Seq.map (fun (rel, f) -> rel, sha.ComputeHash(File.ReadAllBytes f) |> Convert.ToHexString)
     |> Seq.sortBy fst
     |> Seq.toList
@@ -214,14 +246,19 @@ let private productName = "Demo"
 
 let private scaffold (tmpRoot: string) (designSystem: string option) (outSubdir: string) =
     let outDir = Path.Combine(tmpRoot, outSubdir)
-    if Directory.Exists outDir then Directory.Delete(outDir, true)
+
+    if Directory.Exists outDir then
+        Directory.Delete(outDir, true)
+
     let args =
         // dotnet new derives the CLI option from the symbol name verbatim: the `designSystem`
         // symbol surfaces as `--designSystem` (not kebab `--design-system`). A hyphenated symbol
         // name would break the `(designSystem == "ant")` conditional sources, so the symbol stays
         // camelCase and the option is `--designSystem`.
         [ "new"; "fs-gg-ui"; "--name"; productName; "-o"; outDir ]
-        @ (match designSystem with Some v -> [ "--designSystem"; v ] | None -> [])
+        @ (match designSystem with
+           | Some v -> [ "--designSystem"; v ]
+           | None -> [])
 
     let psi = ProcessStartInfo("dotnet")
     psi.WorkingDirectory <- repoRoot
@@ -239,6 +276,7 @@ let private scaffold (tmpRoot: string) (designSystem: string option) (outSubdir:
     // tree has fully materialised (file count stabilises) and then force-kills the stuck post-action.
     // A genuine template failure exits non-zero before any tree is written and is surfaced loudly.
     let productProj = Path.Combine(outDir, "src", productName, productName + ".fsproj")
+
     let treeComplete () =
         File.Exists(Path.Combine(outDir, "Directory.Build.props"))
         && File.Exists productProj
@@ -248,7 +286,11 @@ let private scaffold (tmpRoot: string) (designSystem: string option) (outSubdir:
     // Feature 205: default generation is side-effect-free — no auto-run post-action spins, so the
     // process exits promptly on its own. The old 900 s wait/`Kill` loop that defended against the
     // trailing auto-init post-action is reduced to a short sanity bound.
-    if not (proc.WaitForExit 60000) then (try proc.Kill true with _ -> ())
+    if not (proc.WaitForExit 60000) then
+        (try
+            proc.Kill true
+         with _ ->
+             ())
 
     if proc.HasExited && proc.ExitCode <> 0 && not (treeComplete ()) then
         failwithf "dotnet new failed for %A (exit %d):\n%s\n%s" designSystem proc.ExitCode outTask.Result errTask.Result
@@ -260,11 +302,13 @@ let private scaffold (tmpRoot: string) (designSystem: string option) (outSubdir:
 
 /// One row of the validation report.
 type private ValueResult =
-    { Value: string
-      Build: string
-      Marker: string // "diff-vs-today=none" for wcag, "record=ant" for ant, generic otherwise
-      Overall: string
-      Authority: string }
+    {
+        Value: string
+        Build: string
+        Marker: string // "diff-vs-today=none" for wcag, "record=ant" for ant, generic otherwise
+        Overall: string
+        Authority: string
+    }
 
 let private validateValueLive (tmpRoot: string) (noValueTree: (string * string) list) (v: string) =
     let dir = scaffold tmpRoot (Some v) (sprintf "value-%s" v)
@@ -274,15 +318,24 @@ let private validateValueLive (tmpRoot: string) (noValueTree: (string * string) 
             // (T019) byte-identical to the no-value scaffold ⇒ diff-vs-today=none. Fingerprint BEFORE
             // building so build artifacts cannot perturb the comparison (bin/obj are excluded too).
             let tree = treeFingerprint dir
-            if tree = noValueTree then "diff-vs-today=none"
-            else failwithf "wcag scaffold differs from the no-value scaffold (SC-001 broken)"
+
+            if tree = noValueTree then
+                "diff-vs-today=none"
+            else
+                failwithf "wcag scaffold differs from the no-value scaffold (SC-001 broken)"
         else
             // (T019) ant records its policy
             let recordPath = Path.Combine(dir, "design-system.json")
-            if not (File.Exists recordPath) then failwithf "%s scaffold missing design-system.json" v
+
+            if not (File.Exists recordPath) then
+                failwithf "%s scaffold missing design-system.json" v
+
             let record = File.ReadAllText recordPath
-            if record.Contains "\"policy\"" && record.Contains "\"ant\"" then sprintf "record=%s" v
-            else failwithf "%s design-system.json does not record policy:\"ant\": %s" v record
+
+            if record.Contains "\"policy\"" && record.Contains "\"ant\"" then
+                sprintf "record=%s" v
+            else
+                failwithf "%s design-system.json does not record policy:\"ant\": %s" v record
 
     // (T020) real build — the scaffold ships no solution file, so build every project it emits.
     let projects =
@@ -292,19 +345,28 @@ let private validateValueLive (tmpRoot: string) (noValueTree: (string * string) 
             not (n.Contains "/bin/" || n.Contains "/obj/"))
         |> Seq.sort
         |> Seq.toList
-    if List.isEmpty projects then failwithf "%s scaffold emitted no .fsproj to build" v
+
+    if List.isEmpty projects then
+        failwithf "%s scaffold emitted no .fsproj to build" v
+
     for proj in projects do
         let code, out, err = runProc dir "dotnet" [ "build"; proj ]
-        if code <> 0 then failwithf "dotnet build failed for %s (%s):\n%s\n%s" v proj out err
+
+        if code <> 0 then
+            failwithf "dotnet build failed for %s (%s):\n%s\n%s" v proj out err
+
     let build = "build=pass"
 
     // (T020) wire in the recorded-policy verdicts
     let policy = resolvePolicy v
-    { Value = v
-      Build = build
-      Marker = marker
-      Overall = overallToken policy
-      Authority = authorityToken policy.Authority }
+
+    {
+        Value = v
+        Build = build
+        Marker = marker
+        Overall = overallToken policy
+        Authority = authorityToken policy.Authority
+    }
 
 // ---- report rendering (T021) ------------------------------------------------------------------
 // Deterministic: declaration-order values, invariant culture, no clock/random. Emits the exact
@@ -316,7 +378,10 @@ let private renderReport (values: string list) (results: ValueResult list) =
     let wHover = resultFor wcag divergentPairing
     let aHover = resultFor ant divergentPairing
     let note = defaultArg aHover.AuthorityNote "ant: not WCAG-certified"
-    let byValue v = results |> List.find (fun r -> r.Value = v)
+
+    let byValue v =
+        results |> List.find (fun r -> r.Value = v)
+
     let w = byValue "wcag"
     let a = byValue "ant"
 
@@ -347,12 +412,20 @@ let private synthVerdictCoreResults (values: string list) : ValueResult list =
     values
     |> List.map (fun v ->
         let policy = resolvePolicy v
-        let marker = if v = "wcag" then "diff-vs-today=none" else sprintf "record=%s" v
-        { Value = v
-          Build = "build=pass"
-          Marker = marker
-          Overall = overallToken policy
-          Authority = authorityToken policy.Authority })
+
+        let marker =
+            if v = "wcag" then
+                "diff-vs-today=none"
+            else
+                sprintf "record=%s" v
+
+        {
+            Value = v
+            Build = "build=pass"
+            Marker = marker
+            Overall = overallToken policy
+            Authority = authorityToken policy.Authority
+        })
 
 let private emitReportFromVerdictCore (values: string list) =
     let report = renderReport values (synthVerdictCoreResults values)
@@ -360,7 +433,9 @@ let private emitReportFromVerdictCore (values: string list) =
     let disclosed =
         report.Replace(
             "result: pass\n",
-            "provenance: verdict-core (env-free; full live scaffold+build proof gated behind FS_GG_RUN_DESIGN_SYSTEM_VALIDATION=1)\nresult: pass\n")
+            "provenance: verdict-core (env-free; full live scaffold+build proof gated behind FS_GG_RUN_DESIGN_SYSTEM_VALIDATION=1)\nresult: pass\n"
+        )
+
     let reportPath = repoPath reportRelPath
     Directory.CreateDirectory(Path.GetDirectoryName reportPath) |> ignore
     File.WriteAllText(reportPath, disclosed)
@@ -376,7 +451,10 @@ let private main () =
     verifyVerdictCore values
 
     let emitReport = fsi.CommandLineArgs |> Array.exists (fun a -> a = "--emit-report")
-    let liveGate = Environment.GetEnvironmentVariable "FS_GG_RUN_DESIGN_SYSTEM_VALIDATION" = "1"
+
+    let liveGate =
+        Environment.GetEnvironmentVariable "FS_GG_RUN_DESIGN_SYSTEM_VALIDATION" = "1"
+
     if emitReport && not liveGate then
         // Env-free self-provisioning: verdict-core passed above, so write its report.
         emitReportFromVerdictCore values
@@ -388,7 +466,10 @@ let private main () =
         0
     else
         let tmpRoot = Path.Combine(Path.GetTempPath(), "fs-gg-design-system-validation")
-        if Directory.Exists tmpRoot then Directory.Delete(tmpRoot, true)
+
+        if Directory.Exists tmpRoot then
+            Directory.Delete(tmpRoot, true)
+
         Directory.CreateDirectory tmpRoot |> ignore
 
         // baseline: a no-value scaffold (same product name) is the byte-identical reference for the
@@ -400,6 +481,7 @@ let private main () =
         let results = values |> List.map (validateValueLive tmpRoot noValueTree)
         let processed = results |> List.map (fun r -> r.Value) |> Set.ofList
         let missing = values |> List.filter (fun v -> not (processed.Contains v))
+
         if not (List.isEmpty missing) then
             failwithf "coverage guard: accepted values not processed: %s" (String.concat ", " missing)
 

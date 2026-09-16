@@ -25,21 +25,25 @@ module Perf =
         | DamageScoped
 
     type TimingSample =
-        { ScenarioId: string
-          Path: TimingPath
-          RunId: string
-          HostProfileId: string
-          DurationMs: float
-          ArtifactPath: string }
+        {
+            ScenarioId: string
+            Path: TimingPath
+            RunId: string
+            HostProfileId: string
+            DurationMs: float
+            ArtifactPath: string
+        }
 
     type SampleDistribution =
-        { Count: int
-          P50Ms: float
-          P95Ms: float
-          P99Ms: float
-          MinMs: float
-          MaxMs: float
-          RawSamplePath: string }
+        {
+            Count: int
+            P50Ms: float
+            P95Ms: float
+            P99Ms: float
+            MinMs: float
+            MaxMs: float
+            RawSamplePath: string
+        }
 
     type TimingVerdict =
         | Positive
@@ -51,10 +55,12 @@ module Perf =
         | Limited
 
     type ScenarioTimingDecision =
-        { NoiseBandMs: float
-          Verdict: TimingVerdict
-          ConfidenceDecision: string
-          Reasons: string list }
+        {
+            NoiseBandMs: float
+            Verdict: TimingVerdict
+            ConfidenceDecision: string
+            Reasons: string list
+        }
 
     type ExpectedWorkloadClass =
         | NormalPlay
@@ -63,10 +69,12 @@ module Perf =
         | LiveCompositor
 
     type ExpectedWorkloadBudget =
-        { P95Ms: float
-          P99Ms: float
-          MaximumSceneNodes: int
-          AllowSustainedCatchUp: bool }
+        {
+            P95Ms: float
+            P99Ms: float
+            MaximumSceneNodes: int
+            AllowSustainedCatchUp: bool
+        }
 
     type ExpectedWorkloadVerdict = { Passed: bool; Reasons: string list }
 
@@ -119,17 +127,19 @@ module Perf =
         | FailedProofReadback
 
     type ClassifiedTimingSample =
-        { ScenarioId: string
-          ScenarioDefinitionId: string
-          Path: TimingPath
-          RunId: string
-          HostProfileId: string
-          PackageVersion: string
-          DurationMs: float
-          MeasurementPolicy: MeasurementPolicy
-          InclusionStatus: InclusionStatus
-          ExclusionReason: ExclusionReason option
-          ArtifactPath: string }
+        {
+            ScenarioId: string
+            ScenarioDefinitionId: string
+            Path: TimingPath
+            RunId: string
+            HostProfileId: string
+            PackageVersion: string
+            DurationMs: float
+            MeasurementPolicy: MeasurementPolicy
+            InclusionStatus: InclusionStatus
+            ExclusionReason: ExclusionReason option
+            ArtifactPath: string
+        }
 
     let parseMode token =
         match token with
@@ -263,7 +273,8 @@ module Perf =
 
         { sample with
             InclusionStatus = status
-            ExclusionReason = reason }
+            ExclusionReason = reason
+        }
 
     let percentile percentile samples =
         let finite =
@@ -295,13 +306,15 @@ module Perf =
             match percentile 50.0 finite, percentile 95.0 finite, percentile 99.0 finite with
             | Some p50, Some p95, Some p99 ->
                 Some
-                    { Count = finite.Length
-                      P50Ms = p50
-                      P95Ms = p95
-                      P99Ms = p99
-                      MinMs = List.min finite
-                      MaxMs = List.max finite
-                      RawSamplePath = rawSamplePath }
+                    {
+                        Count = finite.Length
+                        P50Ms = p50
+                        P95Ms = p95
+                        P99Ms = p99
+                        MinMs = List.min finite
+                        MaxMs = List.max finite
+                        RawSamplePath = rawSamplePath
+                    }
             | _ -> None
 
     let noiseBandMs fullRedrawP50Ms = max 0.25 (fullRedrawP50Ms * 0.05)
@@ -310,19 +323,23 @@ module Perf =
         match fullRedraw, damageScoped with
         | None, _
         | _, None ->
-            { NoiseBandMs = 0.0
-              Verdict = Incomplete
-              ConfidenceDecision = "incomplete"
-              Reasons = [ "missing or invalid timing distribution" ] }
+            {
+                NoiseBandMs = 0.0
+                Verdict = Incomplete
+                ConfidenceDecision = "incomplete"
+                Reasons = [ "missing or invalid timing distribution" ]
+            }
         | Some full, Some damage when
             full.Count < measuredRepetitions
             || damage.Count < measuredRepetitions
             || measuredRepetitions < 5
             ->
-            { NoiseBandMs = noiseBandMs full.P50Ms
-              Verdict = Incomplete
-              ConfidenceDecision = "incomplete"
-              Reasons = [ "fewer than five measured repetitions per path" ] }
+            {
+                NoiseBandMs = noiseBandMs full.P50Ms
+                Verdict = Incomplete
+                ConfidenceDecision = "incomplete"
+                Reasons = [ "fewer than five measured repetitions per path" ]
+            }
         | Some full, Some damage ->
             let noise = noiseBandMs full.P50Ms
             let p50Gain = full.P50Ms - damage.P50Ms
@@ -330,20 +347,26 @@ module Perf =
             let p99Guard = damage.P99Ms <= full.P99Ms + noise
 
             if p50Gain >= noise && p95Gain >= noise && p99Guard then
-                { NoiseBandMs = noise
-                  Verdict = Positive
-                  ConfidenceDecision = "positive-outside-noise-band"
-                  Reasons = [] }
+                {
+                    NoiseBandMs = noise
+                    Verdict = Positive
+                    ConfidenceDecision = "positive-outside-noise-band"
+                    Reasons = []
+                }
             elif Math.Abs(p50Gain) < noise || Math.Abs(p95Gain) < noise then
-                { NoiseBandMs = noise
-                  Verdict = Noisy
-                  ConfidenceDecision = "inside-noise-band"
-                  Reasons = [ "p50 or p95 difference is inside the declared noise band" ] }
+                {
+                    NoiseBandMs = noise
+                    Verdict = Noisy
+                    ConfidenceDecision = "inside-noise-band"
+                    Reasons = [ "p50 or p95 difference is inside the declared noise band" ]
+                }
             else
-                { NoiseBandMs = noise
-                  Verdict = NonBeneficial
-                  ConfidenceDecision = "non-beneficial"
-                  Reasons = [ "damage-scoped path is slower, equivalent, or has an unacceptable p99 tail" ] }
+                {
+                    NoiseBandMs = noise
+                    Verdict = NonBeneficial
+                    ConfidenceDecision = "non-beneficial"
+                    Reasons = [ "damage-scoped path is slower, equivalent, or has an unacceptable p99 tail" ]
+                }
 
     let evaluateExpectedWorkload classification budget blockingDebt p95Ms p99Ms catchUpFrames sceneNodes =
         let linkedDebt =
@@ -354,52 +377,66 @@ module Perf =
 
         match classification, budget with
         | NormalPlay, None ->
-            { Passed = false
-              Reasons = [ "normal-play workload has no declared budget" ] }
+            {
+                Passed = false
+                Reasons = [ "normal-play workload has no declared budget" ]
+            }
         | NormalPlay, Some target ->
             let reasons =
-                [ if p95Ms > target.P95Ms then
-                      $"p95 {p95Ms:F3} ms exceeds {target.P95Ms:F3} ms"
-                  if p99Ms > target.P99Ms then
-                      $"p99 {p99Ms:F3} ms exceeds {target.P99Ms:F3} ms"
-                  if sceneNodes > target.MaximumSceneNodes then
-                      $"scene nodes {sceneNodes} exceed {target.MaximumSceneNodes}"
-                  if catchUpFrames > 0 && not target.AllowSustainedCatchUp then
-                      $"sustained catch-up observed in {catchUpFrames} frame(s)" ]
+                [
+                    if p95Ms > target.P95Ms then
+                        $"p95 {p95Ms:F3} ms exceeds {target.P95Ms:F3} ms"
+                    if p99Ms > target.P99Ms then
+                        $"p99 {p99Ms:F3} ms exceeds {target.P99Ms:F3} ms"
+                    if sceneNodes > target.MaximumSceneNodes then
+                        $"scene nodes {sceneNodes} exceed {target.MaximumSceneNodes}"
+                    if catchUpFrames > 0 && not target.AllowSustainedCatchUp then
+                        $"sustained catch-up observed in {catchUpFrames} frame(s)"
+                ]
 
             if List.isEmpty reasons then
                 { Passed = true; Reasons = [] }
             elif linkedDebt then
-                { Passed = true
-                  Reasons = "baseline-over-budget-with-linked-debt" :: reasons }
+                {
+                    Passed = true
+                    Reasons = "baseline-over-budget-with-linked-debt" :: reasons
+                }
             else
-                { Passed = false
-                  Reasons = "active normal-play target failed without a blocking debt reference" :: reasons }
+                {
+                    Passed = false
+                    Reasons = "active normal-play target failed without a blocking debt reference" :: reasons
+                }
         | _, _ ->
-            { Passed = true
-              Reasons = [ "informational non-normal workload; not used as the normal-play gate" ] }
+            {
+                Passed = true
+                Reasons = [ "informational non-normal workload; not used as the normal-play gate" ]
+            }
 
     let scene: SceneNode = Rectangle((20.0, 20.0, 160.0, 120.0), Colors.white)
 
     // One offscreen render, timed (ms). Uses the proven headless capture path.
     let renderOnce (path: string) : float =
         let request: ScreenshotEvidenceRequest =
-            { Command = "perf"
-              AppOrSample = "harness"
-              OutputPath = path
-              Width = 200
-              Height = 160
-              RendererMode = "viewer-render-target"
-              CaptureMode = ViewerRenderTargetPng
-              HostFacts = []
-              Timeout = TimeSpan.FromSeconds 10.0 }
+            {
+                Command = "perf"
+                AppOrSample = "harness"
+                OutputPath = path
+                Width = 200
+                Height = 160
+                RendererMode = "viewer-render-target"
+                CaptureMode = ViewerRenderTargetPng
+                HostFacts = []
+                Timeout = TimeSpan.FromSeconds 10.0
+            }
 
         let options: ViewerOptions =
-            { Title = "harness-perf"
-              InitialSize = { Width = 200; Height = 160 }
-              PresentMode = ViewerPresentMode.OffscreenReadback
-              FrameRateCap = None
-              LogicalSize = None }
+            {
+                Title = "harness-perf"
+                InitialSize = { Width = 200; Height = 160 }
+                PresentMode = ViewerPresentMode.OffscreenReadback
+                FrameRateCap = None
+                LogicalSize = None
+            }
 
         let sw = Stopwatch.StartNew()
         Viewer.captureScreenshotEvidence request options scene |> ignore
@@ -419,20 +456,22 @@ module Perf =
         // vsync-faithful — RunPlan already withholds vsync-faithful (no present facts), and we add
         // the live-present caveats so the artifact cannot be read as faithful frame pacing.
         let evidence: Evidence.Evidence =
-            { Evidence.RunId = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss-fff")
-              Evidence.Tier = T3
-              Evidence.Subcommand = "perf"
-              Evidence.Status = RunStatus.Passed
-              Evidence.SkipReason = None
-              Evidence.ProofLevel = p.ClaimableProof
-              Evidence.AuthoritativeFor = [ "offscreen-render-throughput" ]
-              Evidence.NotAuthoritativeFor =
-                p.NotAuthoritativeFor @ [ "paint-compose-swap-timing"; "live-present-timing" ]
-              Evidence.Facts = facts
-              Evidence.Frames = n
-              Evidence.P50Ms = p50
-              Evidence.P95Ms = p95
-              Evidence.P99Ms = p99
-              Evidence.Artifacts = [ "metrics.csv"; "summary.md" ] }
+            {
+                Evidence.RunId = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss-fff")
+                Evidence.Tier = T3
+                Evidence.Subcommand = "perf"
+                Evidence.Status = RunStatus.Passed
+                Evidence.SkipReason = None
+                Evidence.ProofLevel = p.ClaimableProof
+                Evidence.AuthoritativeFor = [ "offscreen-render-throughput" ]
+                Evidence.NotAuthoritativeFor =
+                    p.NotAuthoritativeFor @ [ "paint-compose-swap-timing"; "live-present-timing" ]
+                Evidence.Facts = facts
+                Evidence.Frames = n
+                Evidence.P50Ms = p50
+                Evidence.P95Ms = p95
+                Evidence.P99Ms = p99
+                Evidence.Artifacts = [ "metrics.csv"; "summary.md" ]
+            }
 
         evidence, frameMs

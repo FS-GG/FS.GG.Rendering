@@ -45,24 +45,27 @@ open FS.GG.TestSupport
 
 /// The public signature files the pure/render packages ship, and the skill sends authors to.
 let private mirrorFiles =
-    [ "Symbology/Symbology.fsi"
-      // The pure label / rich-text LAYOUT engine was extracted out of `Symbology.fs` (F-CORE-1). Its
-      // `.fsi` carries the PUBLIC label text types (`LabelRun`/`LabelText`/…) a product needs to author a
-      // `Token.Label`; the `module internal LabelLayout` seam is not product-visible (S-INT, #585).
-      "Symbology/LabelLayout.fsi"
-      "Symbology/Legibility.fsi"
-      "Symbology.Render/Render.fsi" ]
+    [
+        "Symbology/Symbology.fsi"
+        // The pure label / rich-text LAYOUT engine was extracted out of `Symbology.fs` (F-CORE-1). Its
+        // `.fsi` carries the PUBLIC label text types (`LabelRun`/`LabelText`/…) a product needs to author a
+        // `Token.Label`; the `module internal LabelLayout` seam is not product-visible (S-INT, #585).
+        "Symbology/LabelLayout.fsi"
+        "Symbology/Legibility.fsi"
+        "Symbology.Render/Render.fsi"
+    ]
 
 [<Tests>]
 let apiSurfaceMirrorTests =
     testList
         "Issue276 shipped api-surface mirror"
         [
-          // The mirror is what a product reads, so a signature the skill names must actually be there.
-          test "the mirror ships every public symbology surface file" {
-              for mirror in mirrorFiles do
-                  let mirrorPath =
-                      Path.Combine(RepositoryRoot.value, "template", "base", "docs", "api-surface", mirror)
+            // The mirror is what a product reads, so a signature the skill names must actually be there.
+            test "the mirror ships every public symbology surface file" {
+                for mirror in mirrorFiles do
+                    let mirrorPath =
+                        Path.Combine(RepositoryRoot.value, "template", "base", "docs", "api-surface", mirror)
 
-                  Expect.isTrue (File.Exists mirrorPath) $"{mirror} is named by the skill but is not shipped"
-          } ]
+                    Expect.isTrue (File.Exists mirrorPath) $"{mirror} is named by the skill but is not shipped"
+            }
+        ]

@@ -69,25 +69,37 @@ module SkillMirror =
     type MirrorWrite = { Path: string; Body: string }
 
     let mirror (roots: string list) (skills: (string * string) list) : MirrorWrite list =
-        [ for (id, body) in skills |> List.sortBy fst do
-              for root in roots -> { Path = skillPath root id; Body = body } ]
+        [
+            for (id, body) in skills |> List.sortBy fst do
+                for root in roots ->
+                    {
+                        Path = skillPath root id
+                        Body = body
+                    }
+        ]
 
     type ExpectedSkill =
-        { Id: string
-          Scope: SkillScope
-          Sha256: string }
+        {
+            Id: string
+            Scope: SkillScope
+            Sha256: string
+        }
 
     type ActualCopy =
-        { Root: string
-          Id: string
-          Body: string option }
+        {
+            Root: string
+            Id: string
+            Body: string option
+        }
 
     type SkillDrift =
-        { Id: string
-          Scope: SkillScope
-          MissingRoots: string list
-          Divergent: bool
-          HashMismatchRoots: string list }
+        {
+            Id: string
+            Scope: SkillScope
+            MissingRoots: string list
+            Divergent: bool
+            HashMismatchRoots: string list
+        }
 
     let verify (roots: string list) (expected: ExpectedSkill list) (actual: ActualCopy list) : SkillDrift list =
         let bodyAt =
@@ -99,8 +111,7 @@ module SkillMirror =
         |> List.sortBy (fun skill -> skill.Id)
         |> List.choose (fun skill ->
             let perRoot =
-                roots
-                |> List.map (fun root -> root, Map.tryFind (root, skill.Id) bodyAt)
+                roots |> List.map (fun root -> root, Map.tryFind (root, skill.Id) bodyAt)
 
             let missingRoots =
                 perRoot
@@ -129,8 +140,10 @@ module SkillMirror =
                 None
             else
                 Some
-                    { Id = skill.Id
-                      Scope = skill.Scope
-                      MissingRoots = missingRoots
-                      Divergent = divergent
-                      HashMismatchRoots = hashMismatchRoots })
+                    {
+                        Id = skill.Id
+                        Scope = skill.Scope
+                        MissingRoots = missingRoots
+                        Divergent = divergent
+                        HashMismatchRoots = hashMismatchRoots
+                    })

@@ -8,16 +8,16 @@ open FS.GG.UI.Controls
 open AntShowcase.Core.Model
 
 /// All catalog control ids (the domain of the map) — the live 97 after the R1 feed refresh.
-let catalogIds (): string list =
+let catalogIds () : string list =
     Catalog.supportedControls |> List.map (fun d -> d.Id)
 
 /// All ids assigned across the Catalog-kind pages (with multiplicity, to detect duplicates).
-let assignedIds (): string list =
+let assignedIds () : string list =
     PageRegistry.catalogPages |> List.collect (fun p -> p.ControlIds)
 
 /// Run the check. Empty/empty ⇒ pass (bijection). `Unreferenced` are catalog ids on zero
 /// Catalog pages plus assigned ids no longer in the catalog; `Duplicated` are ids on >1.
-let check (): CoverageResult =
+let check () : CoverageResult =
     let catalog = catalogIds ()
     let catalogSet = Set.ofList catalog
     let assigned = assignedIds ()
@@ -33,17 +33,21 @@ let check (): CoverageResult =
         |> List.countBy id
         |> List.choose (fun (k, n) -> if n > 1 then Some k else None)
 
-    { Unreferenced = unreferenced; Duplicated = duplicated }
+    {
+        Unreferenced = unreferenced
+        Duplicated = duplicated
+    }
 
 /// True when the registry is a clean bijection with the catalog.
-let isClean (result: CoverageResult): bool = Model.isClean result
+let isClean (result: CoverageResult) : bool = Model.isClean result
 
 /// One-line human summary for the `coverage` CLI subcommand.
-let summary (): string =
+let summary () : string =
     let result = check ()
     let catalogCount = List.length (catalogIds ())
     let catalogPageCount = List.length PageRegistry.catalogPages
     let templatePageCount = List.length PageRegistry.templatePages
+
     if isClean result then
         sprintf
             "%d/%d controls mapped, %d pages (%d catalog + %d template), 0 unreferenced, 0 duplicated"

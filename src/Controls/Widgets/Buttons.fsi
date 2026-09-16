@@ -11,24 +11,28 @@ type SplitButtonItem = { Key: string; Label: string }
 /// is dispatched with the NEXT state on activation and lowers to NO binding when
 /// `None`.
 type ToggleButtonProps<'msg> =
-    { Id: ControlId option
-      Text: string
-      IsOn: bool
-      Enabled: bool
-      OnToggle: (bool -> 'msg) option }
+    {
+        Id: ControlId option
+        Text: string
+        IsOn: bool
+        Enabled: bool
+        OnToggle: (bool -> 'msg) option
+    }
 
 /// Immutable, compiler-checked authoring surface for a primary action plus a popup
 /// menu of secondary commands. `IsOpen` is product-owned popup visibility; empty
 /// `Items` lowers to an empty/disabled menu. `OnClick`/`OnSelected = None` lower to
 /// no binding.
 type SplitButtonProps<'msg> =
-    { Id: ControlId option
-      Text: string
-      Enabled: bool
-      IsOpen: bool
-      Items: SplitButtonItem list
-      OnClick: 'msg option
-      OnSelected: (string -> 'msg) option }
+    {
+        Id: ControlId option
+        Text: string
+        Enabled: bool
+        IsOpen: bool
+        Items: SplitButtonItem list
+        OnClick: 'msg option
+        OnSelected: (string -> 'msg) option
+    }
 
 /// Typed Props front door for the `ToggleButton` control.
 module ToggleButton =

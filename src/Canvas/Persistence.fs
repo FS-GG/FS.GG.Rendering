@@ -22,9 +22,11 @@ type SaveSlot = SaveSlot of string
 type SavePayload = SavePayload of string
 
 type SaveEnvelope =
-    { Version: int
-      Slot: SaveSlot
-      Payload: SavePayload }
+    {
+        Version: int
+        Slot: SaveSlot
+        Payload: SavePayload
+    }
 
 type PersistenceEffect =
     | Save of envelope: SaveEnvelope
@@ -46,8 +48,10 @@ type PersistenceOutcome =
 type PersistenceBackend = RecordOnly
 
 type PersistenceEvidence =
-    { Requested: PersistenceEffect list
-      Backend: PersistenceBackend }
+    {
+        Requested: PersistenceEffect list
+        Backend: PersistenceBackend
+    }
 
 [<RequireQualifiedAccess>]
 module Persistence =
@@ -60,9 +64,11 @@ module Persistence =
         if version < minVersion then minVersion else version
 
     let saveEnvelope (version: int) (slot: SaveSlot) (payload: string) : SaveEnvelope =
-        { Version = clampVersion version
-          Slot = slot
-          Payload = SavePayload payload }
+        {
+            Version = clampVersion version
+            Slot = slot
+            Payload = SavePayload payload
+        }
 
     let save (envelope: SaveEnvelope) : PersistenceEffect = Save envelope
 
@@ -75,19 +81,25 @@ module Persistence =
     // touched — the framework does not own the format. Load/DeleteSlot pass through unchanged.
     let private normalize (effect: PersistenceEffect) : PersistenceEffect =
         match effect with
-        | Save envelope -> Save { envelope with Version = clampVersion envelope.Version }
+        | Save envelope ->
+            Save
+                { envelope with
+                    Version = clampVersion envelope.Version
+                }
         | Load _
         | DeleteSlot _ -> effect
 
-    let emptyEvidence: PersistenceEvidence =
-        { Requested = []
-          Backend = RecordOnly }
+    let emptyEvidence: PersistenceEvidence = { Requested = []; Backend = RecordOnly }
 
     // Append to the tail so Requested stays oldest-first without a reverse per call. Requested is a
     // small per-frame batch, so the O(n) append is not a hot path.
     let record (effect: PersistenceEffect) (evidence: PersistenceEvidence) : PersistenceEvidence =
-        { evidence with Requested = evidence.Requested @ [ normalize effect ] }
+        { evidence with
+            Requested = evidence.Requested @ [ normalize effect ]
+        }
 
     let interpretRecordOnly (effects: PersistenceEffect list) : PersistenceEvidence =
-        { Requested = List.map normalize effects
-          Backend = RecordOnly }
+        {
+            Requested = List.map normalize effects
+            Backend = RecordOnly
+        }

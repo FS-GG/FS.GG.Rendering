@@ -16,9 +16,7 @@ type StackOrientation =
     | Horizontal
 
 /// Immutable, compiler-checked authoring surface for a text block.
-type TextBlockProps<'msg> =
-    { Id: ControlId option
-      Text: string }
+type TextBlockProps<'msg> = { Id: ControlId option; Text: string }
 
 /// Immutable, compiler-checked authoring surface for a button. `OnClick = None`
 /// lowers to NO event binding (FR-008 edge case), never a default message.
@@ -31,31 +29,37 @@ type TextBlockProps<'msg> =
 /// data-bound template; filling a region a kind does NOT declare is a compile error — there is no
 /// field for it (FR-001, SC-006).
 type ButtonProps<'msg> =
-    { Id: ControlId option
-      Text: string
-      Enabled: bool
-      Intent: ButtonIntent
-      Classes: StyleClass list
-      Leading: Widget<'msg> option
-      Trailing: Widget<'msg> option
-      OnClick: 'msg option }
+    {
+        Id: ControlId option
+        Text: string
+        Enabled: bool
+        Intent: ButtonIntent
+        Classes: StyleClass list
+        Leading: Widget<'msg> option
+        Trailing: Widget<'msg> option
+        OnClick: 'msg option
+    }
 
 /// Immutable, compiler-checked authoring surface for a checkbox.
 /// Feature 093 (E3): `Classes` attaches an ordered list of style classes/variants; default `[]`
 /// lowers to NO style attribute — byte-identical to the pre-feature front door (A1 additive).
 type CheckBoxProps<'msg> =
-    { Id: ControlId option
-      Text: string
-      Checked: bool
-      Classes: StyleClass list
-      OnChanged: (bool -> 'msg) option }
+    {
+        Id: ControlId option
+        Text: string
+        Checked: bool
+        Classes: StyleClass list
+        OnChanged: (bool -> 'msg) option
+    }
 
 /// Immutable, compiler-checked authoring surface for a stack container.
 type StackProps<'msg> =
-    { Id: ControlId option
-      Orientation: StackOrientation
-      Spacing: float
-      Children: Widget<'msg> list }
+    {
+        Id: ControlId option
+        Orientation: StackOrientation
+        Spacing: float
+        Children: Widget<'msg> list
+    }
 
 /// Typed Props front door for the `TextBlock` control.
 module TextBlock =

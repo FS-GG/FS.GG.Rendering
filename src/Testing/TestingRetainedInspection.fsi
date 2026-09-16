@@ -14,6 +14,7 @@ module RetainedInspectionValidation =
     val defaultRules: RetainedInspectionRule list
     /// Validate an artifact with explicit rules, exceptions, expected regions, and optional previous artifact.
     val validateCheck: check: RetainedInspectionValidationCheck -> RetainedInspectionValidationResult
+
     /// Validate an artifact with the default check shape.
     ///
     /// This convenience entry point uses the artifact transition's expected
@@ -49,6 +50,7 @@ module RetainedInspectionMarkdown =
     val renderSummary: summary: RetainedInspectionSummary -> string
     /// Render deterministic machine-readable JSON for a retained inspection summary.
     val renderJson: summary: RetainedInspectionSummary -> string
-    /// Update or insert exactly one generated retained inspection section while preserving manual text.
-    val updateManagedSection: existingText: string -> generatedMarkdown: string -> RetainedInspectionSummarySectionUpdate
 
+    /// Update or insert exactly one generated retained inspection section while preserving manual text.
+    val updateManagedSection:
+        existingText: string -> generatedMarkdown: string -> RetainedInspectionSummarySectionUpdate

@@ -16,9 +16,11 @@ type Verdict =
     | Indeterminate
 
 type ContrastResult =
-    { Ratio: float
-      Role: Role
-      Verdict: Verdict }
+    {
+        Ratio: float
+        Role: Role
+        Verdict: Verdict
+    }
 
 module Contrast =
 
@@ -54,10 +56,12 @@ module Contrast =
                 let value = float src * alpha + float dst * (1.0 - alpha)
                 value |> round |> int |> max 0 |> min 255 |> byte
 
-            { Red = blend foreground.Red background.Red
-              Green = blend foreground.Green background.Green
-              Blue = blend foreground.Blue background.Blue
-              Alpha = 255uy }
+            {
+                Red = blend foreground.Red background.Red
+                Green = blend foreground.Green background.Green
+                Blue = blend foreground.Blue background.Blue
+                Alpha = 255uy
+            }
 
     let verdict (role: Role) (ratio: float) =
         match role with
@@ -73,9 +77,11 @@ module Contrast =
         let resolved = compositeOver background foreground
         let measured = ratio resolved background
 
-        { Ratio = measured
-          Role = role
-          Verdict = verdict role measured }
+        {
+            Ratio = measured
+            Role = role
+            Verdict = verdict role measured
+        }
 
     let checkPaint (role: Role) (background: Color) (paint: Paint) =
         // A paint measures only when it resolves to a single solid fill color: a
@@ -91,6 +97,8 @@ module Contrast =
         match solidFill with
         | Some color -> check role background color
         | None ->
-            { Ratio = nan
-              Role = role
-              Verdict = Indeterminate }
+            {
+                Ratio = nan
+                Role = role
+                Verdict = Indeterminate
+            }

@@ -20,6 +20,7 @@ module VisualInspection =
     val clipStatusText: status: VisualInspectionClipStatus -> string
     /// Stable lowercase token for paint coverage status.
     val coverageStatusText: status: VisualInspectionCoverageStatus -> string
+
     /// Create an explicit unsupported fact.
     val unsupportedFact:
         fact: string ->
@@ -29,8 +30,10 @@ module VisualInspection =
         diagnostic: string ->
         environmentLimited: bool ->
             VisualInspectionUnsupportedFact
+
     /// Build a stable finding id from a rule id and affected ids.
     val stableFindingId: ruleId: string -> affectedIds: string list -> string
+
     /// Create a deterministic finding with a generated stable id.
     val finding:
         ruleId: string ->
@@ -41,6 +44,7 @@ module VisualInspection =
         expected: string ->
         actual: string ->
             VisualInspectionFinding
+
     /// Validate artifact identity, ordering, and unsupported-fact disclosure.
     val artifactDiagnostics: artifact: VisualInspectionArtifact -> string list
     /// Sort nodes, regions, text runs, findings, and unsupported facts deterministically.
@@ -54,6 +58,7 @@ module RetainedInspection =
     val nodeStatusText: status: RetainedNodeStatus -> string
     /// Stable lowercase token for a damage status.
     val damageStatusText: status: DamageInspectionStatus -> string
+
     /// Create an explicit retained/damage unsupported fact.
     val unsupportedFact:
         fact: string ->
@@ -63,8 +68,10 @@ module RetainedInspection =
         diagnostic: string ->
         environmentLimited: bool ->
             VisualInspectionUnsupportedFact
+
     /// Build a stable retained finding id from a rule, transition, and affected ids.
     val stableFindingId: ruleId: string -> transitionId: string -> affectedIds: string list -> string
+
     /// Create a deterministic retained/damage finding.
     val finding:
         ruleId: string ->
@@ -76,10 +83,12 @@ module RetainedInspection =
         expected: string ->
         actual: string ->
             DamageLocalityFinding
+
     /// Compute the true visible union area of dirty rectangles clipped to a frame.
     val dirtyUnionArea: frameBounds: Rect -> dirtyRectangles: Rect list -> int
     /// Compute the bounding rectangle of clipped dirty rectangles.
     val dirtyUnionBounds: frameBounds: Rect -> dirtyRectangles: Rect list -> Rect option
+
     /// Build visible damage evidence from dirty rectangles and retained counters.
     ///
     /// The returned `DirtyPercentage` is computed from the true clipped dirty
@@ -94,6 +103,7 @@ module RetainedInspection =
         cause: string option ->
         maximumDirtyPercentage: float option ->
             DamageRegionInspection
+
     /// Validate artifact identity, retained node bounds, and unsupported-fact disclosure.
     val artifactDiagnostics: artifact: RetainedInspectionArtifact -> string list
     /// Sort retained nodes, damage facts, findings, and unsupported facts deterministically.
@@ -106,7 +116,6 @@ module SceneInspection =
     /// clipped drawable bounds relative to `viewport`.
     val inspect: viewport: Rect -> scene: Scene -> SceneInspectionNode list
     /// Select contributing rows at or below `subtreePath`.
-    val contributingDescendants:
-        subtreePath: string -> nodes: SceneInspectionNode list -> SceneInspectionNode list
+    val contributingDescendants: subtreePath: string -> nodes: SceneInspectionNode list -> SceneInspectionNode list
     /// Select contributing rows that are partly or wholly outside the inspection viewport.
     val outsideViewport: nodes: SceneInspectionNode list -> SceneInspectionNode list

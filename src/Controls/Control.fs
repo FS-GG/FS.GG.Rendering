@@ -7,25 +7,29 @@ open FS.GG.UI.DesignSystem
 module LayoutDefaults = FS.GG.UI.Layout.Defaults
 
 type TransientWidgetMetadata =
-    { SurfaceKind: TransientSurfaceKind
-      SurfaceId: ControlId
-      ParentSurfaceId: ControlId option
-      TriggerId: ControlId
-      AnchorId: ControlId
-      LayerPriority: int
-      DismissalPolicy: DismissalPolicy
-      FocusScope: FocusScope
-      Modal: bool
-      SelectionDispatchKey: string option
-      VisibilityState: bool
-      TriggerEnabled: bool }
+    {
+        SurfaceKind: TransientSurfaceKind
+        SurfaceId: ControlId
+        ParentSurfaceId: ControlId option
+        TriggerId: ControlId
+        AnchorId: ControlId
+        LayerPriority: int
+        DismissalPolicy: DismissalPolicy
+        FocusScope: FocusScope
+        Modal: bool
+        SelectionDispatchKey: string option
+        VisibilityState: bool
+        TriggerEnabled: bool
+    }
 
 type WidgetActivationRequest =
-    { TriggerId: ControlId
-      SurfaceId: ControlId
-      ActivationSource: OverlayActivationSource
-      RequestedOpenState: bool
-      Diagnostic: ControlDiagnostic option }
+    {
+        TriggerId: ControlId
+        SurfaceId: ControlId
+        ActivationSource: OverlayActivationSource
+        RequestedOpenState: bool
+        Diagnostic: ControlDiagnostic option
+    }
 
 module TransientWidget =
     let private attrName = "transientWidgetMetadata"
@@ -55,13 +59,21 @@ module TransientWidget =
         let findings = System.Collections.Generic.List<ControlDiagnostic>()
 
         if not (OverlayState.supportedSurfaceKinds () |> List.contains metadata.SurfaceKind) then
-            findings.Add(Diagnostics.invalidOverlayMessage (Some metadata.SurfaceId) $"Unsupported transient surface kind `{metadata.SurfaceKind}`.")
+            findings.Add(
+                Diagnostics.invalidOverlayMessage
+                    (Some metadata.SurfaceId)
+                    $"Unsupported transient surface kind `{metadata.SurfaceKind}`."
+            )
 
         if blank metadata.SurfaceId then
             findings.Add(Diagnostics.invalidOverlayMessage None "Transient widget metadata is missing a surface id.")
 
         if blank metadata.TriggerId then
-            findings.Add(Diagnostics.invalidOverlayMessage (Some metadata.SurfaceId) "Transient widget metadata is missing a trigger id.")
+            findings.Add(
+                Diagnostics.invalidOverlayMessage
+                    (Some metadata.SurfaceId)
+                    "Transient widget metadata is missing a trigger id."
+            )
 
         if blank metadata.AnchorId then
             findings.Add(Diagnostics.missingOverlayAnchor metadata.SurfaceId metadata.AnchorId)
@@ -78,21 +90,27 @@ module TransientWidget =
         List.ofSeq findings
 
     let toSurface (anchor: AnchorEvidence) (metadata: TransientWidgetMetadata) : OverlaySurface =
-        { Id =
-            { SurfaceId = metadata.SurfaceId
-              ParentSurfaceId = metadata.ParentSurfaceId
-              TriggerId = metadata.TriggerId }
-          Kind = metadata.SurfaceKind
-          Trigger =
-            { ControlId = metadata.TriggerId
-              Enabled = metadata.TriggerEnabled
-              ActivationSource = ProductOwnedOpen
-              RecoveryTarget = metadata.FocusScope.RecoveryTarget }
-          LayerPriority = metadata.LayerPriority
-          Anchor = anchor
-          DismissalPolicy = metadata.DismissalPolicy
-          FocusScope = metadata.FocusScope
-          Modal = metadata.Modal }
+        {
+            Id =
+                {
+                    SurfaceId = metadata.SurfaceId
+                    ParentSurfaceId = metadata.ParentSurfaceId
+                    TriggerId = metadata.TriggerId
+                }
+            Kind = metadata.SurfaceKind
+            Trigger =
+                {
+                    ControlId = metadata.TriggerId
+                    Enabled = metadata.TriggerEnabled
+                    ActivationSource = ProductOwnedOpen
+                    RecoveryTarget = metadata.FocusScope.RecoveryTarget
+                }
+            LayerPriority = metadata.LayerPriority
+            Anchor = anchor
+            DismissalPolicy = metadata.DismissalPolicy
+            FocusScope = metadata.FocusScope
+            Modal = metadata.Modal
+        }
 
     let activationRequest source requestedOpenState metadata =
         let diagnostic =
@@ -101,11 +119,13 @@ module TransientWidget =
             else
                 None
 
-        { TriggerId = metadata.TriggerId
-          SurfaceId = metadata.SurfaceId
-          ActivationSource = source
-          RequestedOpenState = requestedOpenState && diagnostic.IsNone
-          Diagnostic = diagnostic }
+        {
+            TriggerId = metadata.TriggerId
+            SurfaceId = metadata.SurfaceId
+            ActivationSource = source
+            RequestedOpenState = requestedOpenState && diagnostic.IsNone
+            Diagnostic = diagnostic
+        }
 
 module StandardControlKindHelpers =
     let toControlKind kind =
@@ -143,34 +163,61 @@ module internal ControlInternals =
     let slotFillsOf attrs = ControlPrimitives.slotFillsOf attrs
     let slotFor name attrs = ControlPrimitives.slotFor name attrs
     let lowerSlots control = ControlPrimitives.lowerSlots control
-    let accessibility kind attrs text = ControlPrimitives.accessibility kind attrs text
+
+    let accessibility kind attrs text =
+        ControlPrimitives.accessibility kind attrs text
+
     let childrenFrom attrs = ControlPrimitives.childrenFrom attrs
-    let disabledOrReadOnly control = ControlPrimitives.disabledOrReadOnly control
+
+    let disabledOrReadOnly control =
+        ControlPrimitives.disabledOrReadOnly control
     // Feature 191 (US2, D4): the volatile/no-cache marker reader, surfaced for the retained step.
-    let isVolatileCanvas control = ControlPrimitives.isVolatileCanvas control
-    let eventBindings path control = ControlPrimitives.eventBindings path control
-    let recursively collect control = ControlPrimitives.recursively collect control
-    let ellipsize family size maxWidth label = ControlPrimitives.ellipsize family size maxWidth label
+    let isVolatileCanvas control =
+        ControlPrimitives.isVolatileCanvas control
+
+    let eventBindings path control =
+        ControlPrimitives.eventBindings path control
+
+    let recursively collect control =
+        ControlPrimitives.recursively collect control
+
+    let ellipsize family size maxWidth label =
+        ControlPrimitives.ellipsize family size maxWidth label
+
     let chartValues control = ControlPrimitives.chartValues control
     let measureText text font = ControlPrimitives.measureText text font
-    let setMeasureTextHook hook = ControlPrimitives.setMeasureTextHook hook
+
+    let setMeasureTextHook hook =
+        ControlPrimitives.setMeasureTextHook hook
 
     // --- US2 re-exports: hashScene (SceneHash), faithfulContent/dataGridCells (ContentRender) ---
     let hashScene scenes = SceneHash.hashScene scenes
-    let faithfulContent theme box control = ContentRender.faithfulContent theme box control
+
+    let faithfulContent theme box control =
+        ContentRender.faithfulContent theme box control
+
     let dataGridCells control = ContentRender.dataGridCells control
 
     // --- US2 re-exports: layout evaluators (LayoutEval) ---
     let layoutAffectingAttrNames = LayoutEval.layoutAffectingAttrNames
-    let applyScrollOffsets root result = LayoutEval.applyScrollOffsets root result
+
+    let applyScrollOffsets root result =
+        LayoutEval.applyScrollOffsets root result
+
     let evaluateLayout size control = LayoutEval.evaluateLayout size control
-    let sceneWithViewportBackground theme size scenes = LayoutEval.sceneWithViewportBackground theme size scenes
-    let evaluateLayoutIncremental size control previous dirty = LayoutEval.evaluateLayoutIncremental size control previous dirty
+
+    let sceneWithViewportBackground theme size scenes =
+        LayoutEval.sceneWithViewportBackground theme size scenes
+
+    let evaluateLayoutIncremental size control previous dirty =
+        LayoutEval.evaluateLayoutIncremental size control previous dirty
 
     // --- US2 re-exports: node assembly + preview render (NodeAssembly) ---
     let renderNode theme y control = NodeAssembly.renderNode theme y control
     let renderScene theme control = NodeAssembly.renderScene theme control
-    let paintNode theme boundsById path c = NodeAssembly.paintNode theme boundsById path c
+
+    let paintNode theme boundsById path c =
+        NodeAssembly.paintNode theme boundsById path c
 
 
     let rec layoutNode (theme: Theme) (control: Control<'msg>) : FS.GG.UI.Layout.LayoutNode =
@@ -187,9 +234,15 @@ module internal ControlInternals =
         { LayoutDefaults.layoutNode id with
             Intent =
                 { LayoutDefaults.layoutIntent with
-                    Size = { Width = Some width; Height = Some height } }
+                    Size =
+                        {
+                            Width = Some width
+                            Height = Some height
+                        }
+                }
             Content = Some content
-            Children = children }
+            Children = children
+        }
 
     let duplicateDiagnostics (control: Control<'msg>) =
         control.Attributes
@@ -214,7 +267,9 @@ module internal ControlInternals =
         |> List.groupBy fst
         |> List.collect (fun (key, rows) ->
             if rows.Length > 1 then
-                rows |> List.tail |> List.map (fun (_, kind) -> Diagnostics.keyCollision key kind)
+                rows
+                |> List.tail
+                |> List.map (fun (_, kind) -> Diagnostics.keyCollision key kind)
             else
                 [])
 
@@ -245,8 +300,12 @@ module internal ControlInternals =
             // Feature 184 (US2): the overlay path emits the modern modifier IR directly — the literal
             // entry the retired `Composition.legacyLower LegacyOverlay` produced (byte-stable: same
             // Source/Effect → same normalize/fingerprint; see Feature184OverlayByteStabilityTests).
-            [ { Composition.Source = Composition.LegacyOverlaySource
-                Composition.Effect = Composition.LayerHint "overlay" } ]
+            [
+                {
+                    Composition.Source = Composition.LegacyOverlaySource
+                    Composition.Effect = Composition.LayerHint "overlay"
+                }
+            ]
         else
             []
 
@@ -283,10 +342,12 @@ module internal ControlInternals =
         | Some box ->
             fingerprintParts
                 0x1411
-                [ fingerprintFloat box.X
-                  fingerprintFloat box.Y
-                  fingerprintFloat box.Width
-                  fingerprintFloat box.Height ]
+                [
+                    fingerprintFloat box.X
+                    fingerprintFloat box.Y
+                    fingerprintFloat box.Width
+                    fingerprintFloat box.Height
+                ]
 
     let private fingerprintChildList domain children select =
         let mutable h = Hashing.offsetBasis
@@ -328,24 +389,30 @@ module internal ControlInternals =
     /// Feature 141 (R1b): per-child metadata retained rendering stores as owner-produced assembly
     /// evidence. It is deliberately descriptive; scene semantics remain the assembled scene lists.
     type CurrentNodeChildContribution =
-        { Index: int
-          InFlowFingerprint: uint64
-          OverlayFingerprint: uint64 }
+        {
+            Index: int
+            InFlowFingerprint: uint64
+            OverlayFingerprint: uint64
+        }
 
     /// Feature 139 (R1a): one node's assembled contribution split into normal in-flow paint and the
     /// deferred overlay group. This is internal contract shape only; no public scene IR changes.
     type CurrentNodeAssemblyResult =
-        { InFlowScene: Scene list
-          OverlayScene: Scene list
-          InFlowFingerprint: uint64
-          OverlayFingerprint: uint64
-          Fingerprint: uint64
-          Diagnostics: ControlDiagnostic list
-          ChildContributions: CurrentNodeChildContribution list }
+        {
+            InFlowScene: Scene list
+            OverlayScene: Scene list
+            InFlowFingerprint: uint64
+            OverlayFingerprint: uint64
+            Fingerprint: uint64
+            Diagnostics: ControlDiagnostic list
+            ChildContributions: CurrentNodeChildContribution list
+        }
 
     type CurrentNodeBoundsResult =
-        { InFlowBounds: (ControlId * Rect) list
-          OverlayBounds: (ControlId * Rect) list }
+        {
+            InFlowBounds: (ControlId * Rect) list
+            OverlayBounds: (ControlId * Rect) list
+        }
 
     /// Feature 139 (R1a): the single current-semantics assembly owner. It deliberately captures only
     /// today's own-paint + child-paint + container-clip + overlay-promotion behavior; R2/R1b work such as
@@ -360,39 +427,53 @@ module internal ControlInternals =
         let childInFlow = childAssemblies |> collectAssemblyScenes _.InFlowScene
         let childOverlay = childAssemblies |> collectAssemblyScenes _.OverlayScene
         let chain = compositionEntriesForControl control |> Composition.normalize
-        let composed = composeContainerScene box ownScene childInFlow |> Composition.applyChain chain
+
+        let composed =
+            composeContainerScene box ownScene childInFlow |> Composition.applyChain chain
+
         let ownFingerprint = fingerprintSceneShape ownScene
-        let childInFlowFingerprint = fingerprintChildList 0x1412 childAssemblies _.InFlowFingerprint
-        let childOverlayFingerprint = fingerprintChildList 0x1414 childAssemblies _.OverlayFingerprint
+
+        let childInFlowFingerprint =
+            fingerprintChildList 0x1412 childAssemblies _.InFlowFingerprint
+
+        let childOverlayFingerprint =
+            fingerprintChildList 0x1414 childAssemblies _.OverlayFingerprint
+
         let chainFingerprint = fingerprintString chain.FingerprintInput
         let controlFingerprint = fingerprintString control.Kind
 
         let composedFingerprint =
             fingerprintParts
                 0x1416
-                [ controlFingerprint
-                  ownFingerprint
-                  childInFlowFingerprint
-                  uint64 childInFlow.Length
-                  fingerprintBox box
-                  chainFingerprint ]
+                [
+                    controlFingerprint
+                    ownFingerprint
+                    childInFlowFingerprint
+                    uint64 childInFlow.Length
+                    fingerprintBox box
+                    chainFingerprint
+                ]
 
         let childContributions =
             childAssemblies
             |> List.mapi (fun index child ->
-                { Index = index
-                  InFlowFingerprint = child.InFlowFingerprint
-                  OverlayFingerprint = child.OverlayFingerprint })
+                {
+                    Index = index
+                    InFlowFingerprint = child.InFlowFingerprint
+                    OverlayFingerprint = child.OverlayFingerprint
+                })
 
         let diagnostics =
             chain.Diagnostics
             |> List.map (fun d ->
-                { ControlId = control.Key
-                  ControlKind = control.Kind
-                  Code = UnsupportedStateCombination
-                  Severity = ControlDiagnosticSeverity.Warning
-                  Message = d.Message
-                  EvidencePath = None })
+                {
+                    ControlId = control.Key
+                    ControlKind = control.Kind
+                    Code = UnsupportedStateCombination
+                    Severity = ControlDiagnosticSeverity.Warning
+                    Message = d.Message
+                    EvidencePath = None
+                })
 
         if isOverlayNode control then
             let overlayScene = composed @ childOverlay
@@ -403,13 +484,15 @@ module internal ControlInternals =
             let inFlowFingerprint = emptySceneListFingerprint
             let fingerprint = fingerprintParts 0x1418 [ inFlowFingerprint; overlayFingerprint ]
 
-            { InFlowScene = []
-              OverlayScene = overlayScene
-              InFlowFingerprint = inFlowFingerprint
-              OverlayFingerprint = overlayFingerprint
-              Fingerprint = fingerprint
-              Diagnostics = diagnostics
-              ChildContributions = childContributions }
+            {
+                InFlowScene = []
+                OverlayScene = overlayScene
+                InFlowFingerprint = inFlowFingerprint
+                OverlayFingerprint = overlayFingerprint
+                Fingerprint = fingerprint
+                Diagnostics = diagnostics
+                ChildContributions = childContributions
+            }
         else
             let overlayFingerprint =
                 fingerprintParts 0x1419 [ childOverlayFingerprint; uint64 childOverlay.Length ]
@@ -417,9 +500,11 @@ module internal ControlInternals =
             let fingerprint =
                 fingerprintParts
                     0x1418
-                    [ composedFingerprint
-                      overlayFingerprint
-                      uint64 (List.length composed + List.length childOverlay) ]
+                    [
+                        composedFingerprint
+                        overlayFingerprint
+                        uint64 (List.length composed + List.length childOverlay)
+                    ]
 
             let inFlowFingerprint, overlayFingerprint, fingerprint =
                 if needsExactAssemblyFingerprint control then
@@ -428,13 +513,15 @@ module internal ControlInternals =
                 else
                     composedFingerprint, overlayFingerprint, fingerprint
 
-            { InFlowScene = composed
-              OverlayScene = childOverlay
-              InFlowFingerprint = inFlowFingerprint
-              OverlayFingerprint = overlayFingerprint
-              Fingerprint = fingerprint
-              Diagnostics = diagnostics
-              ChildContributions = childContributions }
+            {
+                InFlowScene = composed
+                OverlayScene = childOverlay
+                InFlowFingerprint = inFlowFingerprint
+                OverlayFingerprint = overlayFingerprint
+                Fingerprint = fingerprint
+                Diagnostics = diagnostics
+                ChildContributions = childContributions
+            }
 
     let assembleCurrentNodeBounds
         (control: Control<'msg>)
@@ -443,6 +530,7 @@ module internal ControlInternals =
         (childBounds: CurrentNodeBoundsResult list)
         : CurrentNodeBoundsResult =
         let controlId: ControlId = control.Key |> Option.defaultValue path
+
         let here =
             match box with
             | Some b -> [ controlId, b ]
@@ -452,11 +540,15 @@ module internal ControlInternals =
         let childOverlay = childBounds |> List.collect _.OverlayBounds
 
         if isOverlayNode control then
-            { InFlowBounds = []
-              OverlayBounds = here @ childInFlow @ childOverlay }
+            {
+                InFlowBounds = []
+                OverlayBounds = here @ childInFlow @ childOverlay
+            }
         else
-            { InFlowBounds = here @ childInFlow
-              OverlayBounds = childOverlay }
+            {
+                InFlowBounds = here @ childInFlow
+                OverlayBounds = childOverlay
+            }
 
     /// The evaluated absolute box of a node, looked up by the same structural id `paintNode`
     /// uses (`Key |> defaultValue path`). `None` when the node was not laid out.
@@ -469,7 +561,13 @@ module internal ControlInternals =
 
         Map.tryFind id boundsById
         |> Option.map (fun (b: FS.GG.UI.Layout.LayoutBounds) ->
-            { X = b.X; Y = b.Y; Width = b.Width; Height = b.Height }: Rect)
+            {
+                X = b.X
+                Y = b.Y
+                Width = b.Width
+                Height = b.Height
+            }
+            : Rect)
 
     /// The evaluated `Bounds` list (`ControlId * Rect`) `renderTree` surfaces, computed from a
     /// pre-evaluated `boundsById` so the retained path produces the identical list.
@@ -490,10 +588,23 @@ module internal ControlInternals =
 
             let here =
                 match Map.tryFind layoutId boundsById with
-                | Some(b: FS.GG.UI.Layout.LayoutBounds) -> [ controlId, ({ X = b.X; Y = b.Y; Width = b.Width; Height = b.Height }: Rect) ]
+                | Some(b: FS.GG.UI.Layout.LayoutBounds) ->
+                    [
+                        controlId,
+                        ({
+                            X = b.X
+                            Y = b.Y
+                            Width = b.Width
+                            Height = b.Height
+                        }
+                        : Rect)
+                    ]
                 | None -> []
 
-            let childResults = c.Children |> List.mapi (fun index child -> go (path + "." + string index) child)
+            let childResults =
+                c.Children
+                |> List.mapi (fun index child -> go (path + "." + string index) child)
+
             let childInFlow = childResults |> List.collect fst
             let childOverlay = childResults |> List.collect snd
 
@@ -544,43 +655,43 @@ type ScrollExtentSource =
 
 /// Feature 137/150 — read-back geometry of a `scroll-viewer` viewport.
 type ScrollViewport =
-    { Viewport: Rect
-      ContentWidth: float
-      ContentHeight: float
-      OffsetX: float
-      OffsetY: float
-      Offset: float
-      MaxHorizontalOffset: float
-      MaxVerticalOffset: float
-      ExtentSource: ScrollExtentSource
-      Diagnostics: ControlDiagnostic list }
+    {
+        Viewport: Rect
+        ContentWidth: float
+        ContentHeight: float
+        OffsetX: float
+        OffsetY: float
+        Offset: float
+        MaxHorizontalOffset: float
+        MaxVerticalOffset: float
+        ExtentSource: ScrollExtentSource
+        Diagnostics: ControlDiagnostic list
+    }
 
 module Control =
     let create kind (attrs: Attr<'msg> list) =
         let text = ControlInternals.textFrom attrs
         let children = ControlInternals.childrenFrom attrs
 
-        { Kind = kind
-          Key = None
-          Attributes = attrs
-          Children = children
-          Content = text
-          Accessibility = ControlInternals.accessibility kind attrs text }
+        {
+            Kind = kind
+            Key = None
+            Attributes = attrs
+            Children = children
+            Content = text
+            Accessibility = ControlInternals.accessibility kind attrs text
+        }
 
     let standard kind attrs =
         create (StandardControlKindHelpers.toControlKind kind) attrs
 
-    let customControl kind attrs =
-        create kind attrs
+    let customControl kind attrs = create kind attrs
 
-    let lowerStandard (control: Control<'msg>) =
-        control
+    let lowerStandard (control: Control<'msg>) = control
 
-    let lowerCustom (control: Control<'msg>) =
-        control
+    let lowerCustom (control: Control<'msg>) = control
 
-    let withKey key (control: Control<'msg>) =
-        { control with Key = Some key }
+    let withKey key (control: Control<'msg>) = { control with Key = Some key }
 
     // Feature 108 (US5, FR-014): rewrite a single AttrValue's message type. Only the two
     // handler-bearing cases (`MessageValue`/`EventValue`) actually thread `f`; the nested-control
@@ -606,17 +717,21 @@ module Control =
         | UntypedValue v -> UntypedValue v
 
     and mapControl (f: 'a -> 'b) (control: Control<'a>) : Control<'b> =
-        { Kind = control.Kind
-          Key = control.Key
-          Attributes =
-            control.Attributes
-            |> List.map (fun attr ->
-                { Name = attr.Name
-                  Category = attr.Category
-                  Value = mapAttrValue f attr.Value })
-          Children = control.Children |> List.map (mapControl f)
-          Content = control.Content
-          Accessibility = control.Accessibility }
+        {
+            Kind = control.Kind
+            Key = control.Key
+            Attributes =
+                control.Attributes
+                |> List.map (fun attr ->
+                    {
+                        Name = attr.Name
+                        Category = attr.Category
+                        Value = mapAttrValue f attr.Value
+                    })
+            Children = control.Children |> List.map (mapControl f)
+            Content = control.Content
+            Accessibility = control.Accessibility
+        }
 
     let map (f: 'a -> 'b) (control: Control<'a>) : Control<'b> = mapControl f control
 
@@ -628,18 +743,20 @@ module Control =
         @ ControlInternals.keyDiagnostics control
 
     let render (theme: Theme) (control: Control<'msg>) =
-        { Scene = ControlInternals.renderScene theme control
-          Layout = ControlInternals.layoutNode theme control
-          // The 080 single-control PREVIEW does not expose per-control evaluated bounds;
-          // that is a `renderTree` (nested layout) feature (FR-011). Kept empty here so the
-          // preview Scene stays byte-identical (FR-010).
-          Bounds = []
-          Diagnostics = diagnostics control
-          EventBindings = ControlInternals.eventBindingsOf control
-          // FR-002 (feature 098): the preview keeps `Bounds = []` but DOES populate `BoundIds`
-          // (mirroring its populated `EventBindings`) in the unified `Key ?? path` scheme.
-          BoundIds = ControlInternals.boundIdsOf control
-          NodeCount = count control }
+        {
+            Scene = ControlInternals.renderScene theme control
+            Layout = ControlInternals.layoutNode theme control
+            // The 080 single-control PREVIEW does not expose per-control evaluated bounds;
+            // that is a `renderTree` (nested layout) feature (FR-011). Kept empty here so the
+            // preview Scene stays byte-identical (FR-010).
+            Bounds = []
+            Diagnostics = diagnostics control
+            EventBindings = ControlInternals.eventBindingsOf control
+            // FR-002 (feature 098): the preview keeps `Bounds = []` but DOES populate `BoundIds`
+            // (mirroring its populated `EventBindings`) in the unified `Key ?? path` scheme.
+            BoundIds = ControlInternals.boundIdsOf control
+            NodeCount = count control
+        }
 
     // Feature 085 (FR-001/FR-002/FR-003) — faithful NESTED-tree renderer.
     //
@@ -663,19 +780,24 @@ module Control =
             let own = ControlInternals.paintNode theme boundsById path c
 
             let childAssemblies =
-                c.Children |> List.mapi (fun index child -> paint (path + "." + string index) child)
+                c.Children
+                |> List.mapi (fun index child -> paint (path + "." + string index) child)
 
             ControlInternals.assembleCurrentNode c (ControlInternals.nodeBox boundsById path c) own childAssemblies
 
         let assembled = paint "0" control
 
-        { Scene = (assembled.InFlowScene @ assembled.OverlayScene) |> ControlInternals.sceneWithViewportBackground theme size
-          Layout = root
-          Bounds = ControlInternals.collectBoundsWith boundsById control
-          Diagnostics = diagnostics control
-          EventBindings = ControlInternals.eventBindingsOf control
-          BoundIds = ControlInternals.boundIdsOf control
-          NodeCount = count control }
+        {
+            Scene =
+                (assembled.InFlowScene @ assembled.OverlayScene)
+                |> ControlInternals.sceneWithViewportBackground theme size
+            Layout = root
+            Bounds = ControlInternals.collectBoundsWith boundsById control
+            Diagnostics = diagnostics control
+            EventBindings = ControlInternals.eventBindingsOf control
+            BoundIds = ControlInternals.boundIdsOf control
+            NodeCount = count control
+        }
 
     // FR-012: resolve which rendered control (if any) contains the point (x, y), from the
     // public render result alone — `None` in a gap. Layered over `Layout.hitTestComputed` by
@@ -683,15 +805,26 @@ module Control =
     // shipped topmost-wins (reverse-scan) semantics return the deepest containing control.
     let hitTest (result: ControlRenderResult<'msg>) (x: float) (y: float) : ControlId option =
         let computed: FS.GG.UI.Layout.LayoutResult =
-            { Bounds =
-                result.Bounds
-                |> List.map (fun (controlId, (rect: Rect)) ->
-                    { NodeId = controlId
-                      Bounds = { X = rect.X; Y = rect.Y; Width = rect.Width; Height = rect.Height }
-                      Visibility = FS.GG.UI.Layout.Visible }: FS.GG.UI.Layout.ComputedBounds)
-              Diagnostics = []
-              Invalidated = []
-              Revision = 0L }
+            {
+                Bounds =
+                    result.Bounds
+                    |> List.map (fun (controlId, (rect: Rect)) ->
+                        {
+                            NodeId = controlId
+                            Bounds =
+                                {
+                                    X = rect.X
+                                    Y = rect.Y
+                                    Width = rect.Width
+                                    Height = rect.Height
+                                }
+                            Visibility = FS.GG.UI.Layout.Visible
+                        }
+                        : FS.GG.UI.Layout.ComputedBounds)
+                Diagnostics = []
+                Invalidated = []
+                Revision = 0L
+            }
 
         FS.GG.UI.Layout.Layout.hitTestComputed (LayoutDefaults.pixelSnapPolicy 1.0) computed x y
 
@@ -712,7 +845,11 @@ module Control =
     // `Id = Key |> defaultValue path`, so `Id <> path` ⇔ the node carries an explicit `Key`). No
     // clock/randomness; resume-safe; reads existing render data only — no layout-math change.
     let nearestAuthored (result: ControlRenderResult<'msg>) (hit: ControlId) : ControlId option =
-        let rec search (path: string) (nearestKeyed: ControlId option) (node: FS.GG.UI.Layout.LayoutNode) : ControlId option =
+        let rec search
+            (path: string)
+            (nearestKeyed: ControlId option)
+            (node: FS.GG.UI.Layout.LayoutNode)
+            : ControlId option =
             // FR-003 (feature 098): a node is *authored* when it is KEYED (`node.Id <> path`) OR its
             // canonical id is BOUND (`node.Id ∈ result.BoundIds`). `node.Id` is already `Key ?? path`,
             // so it IS the canonical id: a directly-keyed leaf stays a fixed point, and an unkeyed-bound
@@ -758,16 +895,18 @@ module Control =
             | _ when diagnostic.FallbackApplied -> ScrollExtentFallback
             | _ -> LayoutConflict
 
-        { ControlId = Some controlId
-          ControlKind = "scroll-viewer"
-          Code = code
-          Severity =
-            match diagnostic.Severity with
-            | FS.GG.UI.Layout.DiagnosticSeverity.Info -> ControlDiagnosticSeverity.Info
-            | FS.GG.UI.Layout.DiagnosticSeverity.Warning -> ControlDiagnosticSeverity.Warning
-            | FS.GG.UI.Layout.DiagnosticSeverity.Error -> ControlDiagnosticSeverity.Error
-          Message = diagnostic.Message
-          EvidencePath = None }
+        {
+            ControlId = Some controlId
+            ControlKind = "scroll-viewer"
+            Code = code
+            Severity =
+                match diagnostic.Severity with
+                | FS.GG.UI.Layout.DiagnosticSeverity.Info -> ControlDiagnosticSeverity.Info
+                | FS.GG.UI.Layout.DiagnosticSeverity.Warning -> ControlDiagnosticSeverity.Warning
+                | FS.GG.UI.Layout.DiagnosticSeverity.Error -> ControlDiagnosticSeverity.Error
+            Message = diagnostic.Message
+            EvidencePath = None
+        }
 
     /// Feature 137/150 — read back the scroll geometry of a `scroll-viewer` from a render result.
     /// The content extent is derived from the Layout intrinsic protocol.
@@ -782,20 +921,24 @@ module Control =
 
         match find result.Layout, Map.tryFind scrollViewerId boundsMap with
         | Some node, Some viewport ->
-            let extent = FS.GG.UI.Layout.Layout.contentExtent viewport.Width viewport.Height (node.Children |> List.tryHead)
+            let extent =
+                FS.GG.UI.Layout.Layout.contentExtent viewport.Width viewport.Height (node.Children |> List.tryHead)
+
             let diagnostics = extent.Diagnostics |> List.map (scrollDiagnostic scrollViewerId)
 
             Some
-                { Viewport = viewport
-                  ContentWidth = extent.ContentWidth
-                  ContentHeight = extent.ContentHeight
-                  OffsetX = 0.0
-                  OffsetY = 0.0
-                  Offset = 0.0
-                  MaxHorizontalOffset = extent.MaxHorizontalOffset
-                  MaxVerticalOffset = extent.MaxVerticalOffset
-                  ExtentSource = scrollExtentSource extent.ExtentSource
-                  Diagnostics = diagnostics }
+                {
+                    Viewport = viewport
+                    ContentWidth = extent.ContentWidth
+                    ContentHeight = extent.ContentHeight
+                    OffsetX = 0.0
+                    OffsetY = 0.0
+                    Offset = 0.0
+                    MaxHorizontalOffset = extent.MaxHorizontalOffset
+                    MaxVerticalOffset = extent.MaxVerticalOffset
+                    ExtentSource = scrollExtentSource extent.ExtentSource
+                    Diagnostics = diagnostics
+                }
         | _ -> None
 
     /// Feature 137 (US2) — the public entry to the deferred overlay render pass: does this control author
@@ -891,12 +1034,18 @@ module Switch =
 
 module Slider =
     let create attrs = Control.create "slider" attrs
-    let value value = Attr.create "value" Content (FloatValue value)
+
+    let value value =
+        Attr.create "value" Content (FloatValue value)
+
     let onChanged map = ChangeAdapters.onChangedFloat map
 
 module NumericInput =
     let create attrs = Control.create "numeric-input" attrs
-    let value value = Attr.create "value" Content (FloatValue value)
+
+    let value value =
+        Attr.create "value" Content (FloatValue value)
+
     let onChanged map = ChangeAdapters.onChangedFloat map
 
 module TextBox =
@@ -922,7 +1071,8 @@ module Stack =
     let children controls = Attr.children controls
     // FR-007: opt a stack into row layout. "horizontal" lays children along the row axis;
     // any other value (or omission) keeps the default vertical column.
-    let orientation value = Attr.create "orientation" Layout (TextValue value)
+    let orientation value =
+        Attr.create "orientation" Layout (TextValue value)
 
 module Grid =
     let create attrs = Control.create "grid" attrs
@@ -946,13 +1096,17 @@ module Panel =
 
 module ProgressBar =
     let create attrs = Control.create "progress-bar" attrs
-    let value value = Attr.create "value" Content (FloatValue value)
+
+    let value value =
+        Attr.create "value" Content (FloatValue value)
 
 module Spinner =
     let create attrs = Control.create "spinner" attrs
 
 module ValidationMessage =
-    let create attrs = Control.create "validation-message" attrs
+    let create attrs =
+        Control.create "validation-message" attrs
+
     let text value = Attr.text value
 
 module Tabs =
@@ -964,7 +1118,9 @@ module Tabs =
 module Menu =
     let create attrs = Control.create "menu" attrs
     let items values = Attr.items values
-    let onSelected map = Attr.onWith "onSelected" (fun event -> ControlEvent.navText event |> Option.defaultValue "" |> map)
+
+    let onSelected map =
+        Attr.onWith "onSelected" (fun event -> ControlEvent.navText event |> Option.defaultValue "" |> map)
 
 module Toolbar =
     let create attrs = Control.create "toolbar" attrs

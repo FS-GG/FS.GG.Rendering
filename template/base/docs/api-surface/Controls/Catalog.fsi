@@ -5,33 +5,37 @@ namespace FS.GG.UI.Controls
 /// where the accessible name comes from (`NameSource`), reported `StateMetadata`,
 /// `FocusBehavior`, `KeyboardOperation`, and the `ContrastEvidence` backing it.
 type CatalogAccessibility =
-    { Role: string
-      NameSource: string
-      StateMetadata: string list
-      FocusBehavior: string
-      KeyboardOperation: string
-      ContrastEvidence: string }
+    {
+        Role: string
+        NameSource: string
+        StateMetadata: string list
+        FocusBehavior: string
+        KeyboardOperation: string
+        ContrastEvidence: string
+    }
 
 /// One control's full authoring contract as published by `Catalog`: identity
 /// (`Id`/`DisplayName`/`Category`/`Module`), `Purpose`, its `RequiredAttributes`
 /// and `CommonAttributes`, bindable `Events`, `VisualStates`, `Accessibility`,
 /// plus `Examples`/`Tests`/`Evidence` and `SupportStatus`/`Owner` provenance.
 type ControlDefinition =
-    { Id: string
-      DisplayName: string
-      Category: string
-      Module: string
-      Purpose: string
-      RequiredAttributes: string list
-      CommonAttributes: string list
-      Events: string list
-      VisualStates: string list
-      Accessibility: CatalogAccessibility
-      Examples: string list
-      Tests: string list
-      Evidence: string list
-      SupportStatus: string
-      Owner: string }
+    {
+        Id: string
+        DisplayName: string
+        Category: string
+        Module: string
+        Purpose: string
+        RequiredAttributes: string list
+        CommonAttributes: string list
+        Events: string list
+        VisualStates: string list
+        Accessibility: CatalogAccessibility
+        Examples: string list
+        Tests: string list
+        Evidence: string list
+        SupportStatus: string
+        Owner: string
+    }
 
 /// Discovery surface for the standard control library: enumerate every control's
 /// authoring contract (required/supported attributes, events) and validate

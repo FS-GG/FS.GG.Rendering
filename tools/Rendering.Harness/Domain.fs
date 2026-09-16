@@ -26,16 +26,18 @@ type Backend =
 
 /// Facts the environment probe records per run.
 type ProbeFacts =
-    { EffectiveBackend: Backend
-      Display: string option
-      GlRenderer: string option
-      GlVersion: string option
-      GlDirect: bool
-      RefreshHz: float option
-      Extensions: string list
-      SwapControl: int option
-      VblankSource: string option
-      UinputAvailable: bool }
+    {
+        EffectiveBackend: Backend
+        Display: string option
+        GlRenderer: string option
+        GlVersion: string option
+        GlDirect: bool
+        RefreshHz: float option
+        Extensions: string list
+        SwapControl: int option
+        VblankSource: string option
+        UinputAvailable: bool
+    }
 
 /// Outcome of a run.
 type RunStatus =

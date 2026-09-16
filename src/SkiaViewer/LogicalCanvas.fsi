@@ -5,9 +5,11 @@ open FS.GG.UI.Scene
 /// Issue #246: how a fixed logical canvas maps onto the actual output surface — a uniform
 /// scale plus the centering offset that puts the unused surface into letterbox bars.
 type LogicalCanvasFit =
-    { Scale: float
-      OffsetX: float
-      OffsetY: float }
+    {
+        Scale: float
+        OffsetX: float
+        OffsetY: float
+    }
 
 /// Issue #246: the letterbox seam for a fixed-logical-resolution product.
 ///

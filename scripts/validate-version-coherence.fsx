@@ -36,8 +36,12 @@ open System.IO
 open System.Text.RegularExpressions
 
 let repoRoot = Directory.GetParent(__SOURCE_DIRECTORY__).FullName
-let repo (rel: string) = Path.Combine(repoRoot, rel.Replace('/', Path.DirectorySeparatorChar))
-let live = Environment.GetEnvironmentVariable "FS_GG_RUN_VERSION_COHERENCE_SMOKE" = "1"
+
+let repo (rel: string) =
+    Path.Combine(repoRoot, rel.Replace('/', Path.DirectorySeparatorChar))
+
+let live =
+    Environment.GetEnvironmentVariable "FS_GG_RUN_VERSION_COHERENCE_SMOKE" = "1"
 
 /// RELEASE LANE — set by any job that gates a PUBLISH (`release.yml`). Disables every RELEASE-PENDING
 /// waiver: the waivers exist because a tag cannot point at a commit that does not exist yet, which is
@@ -50,13 +54,15 @@ let live = Environment.GetEnvironmentVariable "FS_GG_RUN_VERSION_COHERENCE_SMOKE
 /// (`inputs.version` on a dispatch). Those are the same string only because release.yml now asserts they
 /// are, immediately before pushing. Without that assertion the release lane validates one version and
 /// publishes another — the `workflow_dispatch` hole.
-let releaseLane = Environment.GetEnvironmentVariable "FS_GG_VERSION_COHERENCE_RELEASE_LANE" = "1"
+let releaseLane =
+    Environment.GetEnvironmentVariable "FS_GG_VERSION_COHERENCE_RELEASE_LANE" = "1"
 
 /// FEED LANE (#718) — the only layer that reads the network. Opt-in, exactly as the restore smoke is:
 /// the verdict-core must stay offline and env-free, because it runs inside the REQUIRED `Deterministic
 /// gate` and a required check that depends on a feed hands the merge button to that feed's uptime
 /// (ADR-0105, cadence-map §4b/§5).
-let feedLane = Environment.GetEnvironmentVariable "FS_GG_RUN_VERSION_COHERENCE_FEED" = "1"
+let feedLane =
+    Environment.GetEnvironmentVariable "FS_GG_RUN_VERSION_COHERENCE_FEED" = "1"
 
 /// The flat-container base the feed lane probes. nuget.org is the SUBJECT because it is the feed a
 /// consumer actually restores from: `release.yml` dual-publishes to the org feed FIRST and then to
@@ -70,7 +76,8 @@ let feedLane = Environment.GetEnvironmentVariable "FS_GG_RUN_VERSION_COHERENCE_F
 /// required gate, which is the very thing the layer exists to keep out of it.
 let feedBase =
     match Environment.GetEnvironmentVariable "FS_GG_VERSION_COHERENCE_FEED_URL" with
-    | null | "" -> "https://api.nuget.org/v3-flatcontainer"
+    | null
+    | "" -> "https://api.nuget.org/v3-flatcontainer"
     | url -> url.TrimEnd '/'
 
 /// Raised for any unreadable input / unfetched tags / tooling failure ⇒ exit 2 (fail closed).
@@ -97,7 +104,8 @@ exception GuardError of string
 let publishGraceMinutes =
     lazy
         (match Environment.GetEnvironmentVariable "FS_GG_VERSION_COHERENCE_PUBLISH_GRACE_MIN" with
-         | null | "" -> 60.0
+         | null
+         | "" -> 60.0
          | s ->
              match Double.TryParse(s, Globalization.NumberStyles.Float, Globalization.CultureInfo.InvariantCulture) with
              | true, v when v >= 0.0 && not (Double.IsInfinity v) -> v
@@ -137,7 +145,9 @@ let run (workDir: string) (exe: string) (args: string list) =
     proc.ExitCode, out.Result + err.Result
 
 let readFile (path: string) =
-    if not (File.Exists path) then raise (GuardError(sprintf "required input missing: %s" path))
+    if not (File.Exists path) then
+        raise (GuardError(sprintf "required input missing: %s" path))
+
     File.ReadAllText path
 
 // ---- preview-aware SemVer comparator (D7, T008) -----------------------------------------------
@@ -146,25 +156,38 @@ let readFile (path: string) =
 // and a version WITHOUT prerelease outranks the same core WITH prerelease). Hand-rolled so the
 // script needs no package reference.
 module SemVer =
-    type V = { Major: int; Minor: int; Patch: int; Pre: string list }
+    type V =
+        {
+            Major: int
+            Minor: int
+            Patch: int
+            Pre: string list
+        }
 
     let parse (s: string) : V =
         let s = s.Trim()
+
         let core, pre =
             match s.IndexOf '-' with
             | -1 -> s, ""
             | i -> s.Substring(0, i), s.Substring(i + 1)
+
         let nums = core.Split('.')
+
         let n i =
             if i < nums.Length then
                 match Int32.TryParse nums.[i] with
                 | true, v -> v
                 | _ -> raise (GuardError(sprintf "malformed version (non-numeric core): %s" s))
-            else 0
-        { Major = n 0
-          Minor = n 1
-          Patch = n 2
-          Pre = if pre = "" then [] else pre.Split('.') |> List.ofArray }
+            else
+                0
+
+        {
+            Major = n 0
+            Minor = n 1
+            Patch = n 2
+            Pre = if pre = "" then [] else pre.Split('.') |> List.ofArray
+        }
 
     let private cmpId (a: string) (b: string) =
         match Int32.TryParse a, Int32.TryParse b with
@@ -176,12 +199,16 @@ module SemVer =
     /// -1 / 0 / +1, preview-aware.
     let cmp (a: V) (b: V) : int =
         let core =
-            [ Operators.compare a.Major b.Major
-              Operators.compare a.Minor b.Minor
-              Operators.compare a.Patch b.Patch ]
+            [
+                Operators.compare a.Major b.Major
+                Operators.compare a.Minor b.Minor
+                Operators.compare a.Patch b.Patch
+            ]
             |> List.tryFind ((<>) 0)
             |> Option.defaultValue 0
-        if core <> 0 then core
+
+        if core <> 0 then
+            core
         else
             match a.Pre, b.Pre with
             | [], [] -> 0
@@ -193,8 +220,8 @@ module SemVer =
                     | [], [] -> 0
                     | [], _ -> -1 // fewer identifiers ⇒ lower precedence
                     | _, [] -> 1
-                    | x :: xs', y :: ys' ->
-                        let c = cmpId x y in if c <> 0 then c else loop xs' ys'
+                    | x :: xs', y :: ys' -> let c = cmpId x y in if c <> 0 then c else loop xs' ys'
+
                 loop pa pb
 
     let lt a b = cmp (parse a) (parse b) < 0
@@ -205,6 +232,7 @@ module SemVer =
 let semverSelfCheck () =
     if not (SemVer.lt "0.1.9-preview.1" "0.1.10-preview.1") then
         raise (GuardError "comparator regressed: 0.1.9-preview.1 must be < 0.1.10-preview.1")
+
     if not (SemVer.lt "0.1.51-preview.1" "0.1.51-preview.2") then
         raise (GuardError "comparator regressed: …-preview.1 must be < …-preview.2")
 
@@ -213,18 +241,22 @@ let semverSelfCheck () =
 /// (an unhandled comparer exception, not a named rule), and a numeric stray like `v9.9` invents a
 /// `pkg-lags-release-tag` against a tag that was never a release. Nothing forbids `v`-prefixed tags,
 /// so filter by SHAPE rather than trusting the glob. Load-bearing now that `ReleaseTagCut` reads it.
-let private versionShaped (s: string) = Regex.IsMatch(s, @"^\d+\.\d+(\.\d+)?(-[0-9A-Za-z.\-]+)?$")
+let private versionShaped (s: string) =
+    Regex.IsMatch(s, @"^\d+\.\d+(\.\d+)?(-[0-9A-Za-z.\-]+)?$")
 
 // ---- failure shape + verdict (data-model §8) --------------------------------------------------
 type Failure =
-    { Rule: string
-      Location: string
-      Expected: string
-      Actual: string
-      Fix: string }
+    {
+        Rule: string
+        Location: string
+        Expected: string
+        Actual: string
+        Fix: string
+    }
 
 let private lineOf (text: string) (needle: string) =
     let lines = text.Replace("\r\n", "\n").Split('\n')
+
     lines
     |> Array.tryFindIndex (fun l -> l.Contains needle)
     |> Option.map ((+) 1)
@@ -246,23 +278,43 @@ let symbologyRecipeRel = "template/product-skills/fs-gg-symbology/reference.fsx"
 // scaffold shipped the fs-gg-symbology skill and the Symbology api-surface while pinning neither.
 let templateExpected =
     Set.ofList
-        [ "FS.GG.UI.Build"; "FS.GG.UI.Scene"; "FS.GG.UI.Canvas"; "FS.GG.UI.SkiaViewer"; "FS.GG.UI.Elmish"
-          "FS.GG.UI.KeyboardInput"; "FS.GG.UI.Layout"; "FS.GG.UI.Controls"; "FS.GG.UI.Controls.Elmish"
-          "FS.GG.UI.DesignSystem"; "FS.GG.UI.Themes.Default"; "FS.GG.UI.Testing"
-          "FS.GG.UI.Symbology"; "FS.GG.UI.Symbology.Render" ]
+        [
+            "FS.GG.UI.Build"
+            "FS.GG.UI.Scene"
+            "FS.GG.UI.Canvas"
+            "FS.GG.UI.SkiaViewer"
+            "FS.GG.UI.Elmish"
+            "FS.GG.UI.KeyboardInput"
+            "FS.GG.UI.Layout"
+            "FS.GG.UI.Controls"
+            "FS.GG.UI.Controls.Elmish"
+            "FS.GG.UI.DesignSystem"
+            "FS.GG.UI.Themes.Default"
+            "FS.GG.UI.Testing"
+            "FS.GG.UI.Symbology"
+            "FS.GG.UI.Symbology.Render"
+        ]
 
 // The FS.GG.UI packages the symbology reference recipe MUST `#r` (#304). A floor so the pin check cannot
 // go silently green when the regex matches nothing — a recipe reformatted, renamed, or switched to
 // `#load` would otherwise reserve no pins and read as coherent.
 let symbologyRecipeExpected =
     Set.ofList
-        [ "FS.GG.UI.Scene"; "FS.GG.UI.SkiaViewer"; "FS.GG.UI.Symbology"; "FS.GG.UI.Symbology.Render" ]
+        [
+            "FS.GG.UI.Scene"
+            "FS.GG.UI.SkiaViewer"
+            "FS.GG.UI.Symbology"
+            "FS.GG.UI.Symbology.Render"
+        ]
 
 /// Versions carried by tags matching `glob` whose ref starts with `prefix` (the prefix stripped).
 /// Fails closed if git errors — never green-by-absence.
 let tagVersionsOf (glob: string) (prefix: string) =
     let ec, out = run repoRoot "git" [ "tag"; "--list"; glob ]
-    if ec <> 0 then raise (GuardError(sprintf "git tag --list %s failed" glob))
+
+    if ec <> 0 then
+        raise (GuardError(sprintf "git tag --list %s failed" glob))
+
     out.Replace("\r\n", "\n").Split('\n')
     |> Array.map (fun s -> s.Trim())
     |> Array.filter (fun s -> s.StartsWith(prefix, StringComparison.Ordinal))
@@ -272,32 +324,34 @@ let tagVersionsOf (glob: string) (prefix: string) =
 
 /// Everything the rules read, derived once from the repo + the pushed tags.
 type Inputs =
-    { PropsText: string
-      Occurrences: int
-      PinVersion: string
-      PropsLoc: string
-      TagVersions: string list
-      LatestTag: string
-      PublishedMembers: Set<string>
-      BomDeps: (string * string) list
-      BomIds: Set<string>
-      TemplatePins: (string * string) list
-      TemplateIds: Set<string>
-      SymbologyRecipePins: (string * string) list
-      RuntimeRegexResolves: bool
-      PkgVersion: string
-      PkgVersionLoc: string
-      ReleaseTagVersions: string list
-      TemplateTagVersions: string list
-      LatestReleaseTag: string
-      LatestTemplateTag: string
-      PinAheadOfTags: bool
-      PkgAheadOfTags: bool
-      TemplateTagCut: bool
-      ReleaseTagCut: bool
-      PinPending: bool
-      TemplateTagPending: bool
-      ReleaseTagPending: bool }
+    {
+        PropsText: string
+        Occurrences: int
+        PinVersion: string
+        PropsLoc: string
+        TagVersions: string list
+        LatestTag: string
+        PublishedMembers: Set<string>
+        BomDeps: (string * string) list
+        BomIds: Set<string>
+        TemplatePins: (string * string) list
+        TemplateIds: Set<string>
+        SymbologyRecipePins: (string * string) list
+        RuntimeRegexResolves: bool
+        PkgVersion: string
+        PkgVersionLoc: string
+        ReleaseTagVersions: string list
+        TemplateTagVersions: string list
+        LatestReleaseTag: string
+        LatestTemplateTag: string
+        PinAheadOfTags: bool
+        PkgAheadOfTags: bool
+        TemplateTagCut: bool
+        ReleaseTagCut: bool
+        PinPending: bool
+        TemplateTagPending: bool
+        ReleaseTagPending: bool
+    }
 
 // ---- pure input readers (T009) — each fails closed on unreadable input ------------------------
 //
@@ -311,33 +365,65 @@ type Inputs =
 let readInputs () : Inputs =
     // SingleVersionSource
     let propsText = readFile (repo propsRel)
-    let fsGgUiMatches = Regex.Matches(propsText, "<FsGgUiVersion>([^<]*)</FsGgUiVersion>")
+
+    let fsGgUiMatches =
+        Regex.Matches(propsText, "<FsGgUiVersion>([^<]*)</FsGgUiVersion>")
+
     let occurrences = fsGgUiMatches.Count
+
     let pinVersion =
-        if occurrences >= 1 then fsGgUiMatches.[0].Groups.[1].Value.Trim()
-        else raise (GuardError(sprintf "<FsGgUiVersion> not found in %s — single source of version truth missing" propsRel))
-    let propsLoc = sprintf "%s:%d <FsGgUiVersion>" propsRel (lineOf propsText "<FsGgUiVersion>")
+        if occurrences >= 1 then
+            fsGgUiMatches.[0].Groups.[1].Value.Trim()
+        else
+            raise (
+                GuardError(sprintf "<FsGgUiVersion> not found in %s — single source of version truth missing" propsRel)
+            )
+
+    let propsLoc =
+        sprintf "%s:%d <FsGgUiVersion>" propsRel (lineOf propsText "<FsGgUiVersion>")
 
     // CoherentSnapshotTag set (fail closed if tags are unfetched — never green-by-absence)
     let tagVersions = tagVersionsOf "fs-gg-ui/v*" "fs-gg-ui/v"
+
     if tagVersions.IsEmpty then
-        raise (GuardError "no fs-gg-ui/v* tags visible — CI must fetch tags (fetch-depth: 0 / fetch-tags); fail closed rather than green-by-absence")
-    let latestTag = tagVersions |> List.sortWith (fun a b -> SemVer.cmp (SemVer.parse a) (SemVer.parse b)) |> List.last
+        raise (
+            GuardError
+                "no fs-gg-ui/v* tags visible — CI must fetch tags (fetch-depth: 0 / fetch-tags); fail closed rather than green-by-absence"
+        )
+
+    let latestTag =
+        tagVersions
+        |> List.sortWith (fun a b -> SemVer.cmp (SemVer.parse a) (SemVer.parse b))
+        |> List.last
 
     // PublishedMemberSet P — packable FS.GG.UI.* under src/** (reuses validate-bom-consumer discovery)
     let publishedMembers =
         Directory.GetFiles(repo "src", "*.fsproj", SearchOption.AllDirectories)
         |> Array.choose (fun proj ->
             let t = File.ReadAllText proj
-            let m name = Regex.Match(t, sprintf "<%s>([^<]*)</%s>" name name)
-            let pid = let g = m "PackageId" in if g.Success then g.Groups.[1].Value.Trim() else ""
-            let packable = let g = m "IsPackable" in g.Success && g.Groups.[1].Value.Trim().Equals("true", StringComparison.OrdinalIgnoreCase)
-            if packable && pid.StartsWith("FS.GG.UI.", StringComparison.Ordinal) then Some pid else None)
+
+            let m name =
+                Regex.Match(t, sprintf "<%s>([^<]*)</%s>" name name)
+
+            let pid =
+                let g = m "PackageId" in if g.Success then g.Groups.[1].Value.Trim() else ""
+
+            let packable =
+                let g = m "IsPackable" in
+
+                g.Success
+                && g.Groups.[1].Value.Trim().Equals("true", StringComparison.OrdinalIgnoreCase)
+
+            if packable && pid.StartsWith("FS.GG.UI.", StringComparison.Ordinal) then
+                Some pid
+            else
+                None)
         |> Set.ofArray
 
     // BomDependencySet B
     let bomDeps =
         let text = readFile (repo nuspecRel)
+
         Regex.Matches(text, "<dependency\\s+id=\"([^\"]+)\"\\s+version=\"([^\"]+)\"")
         |> Seq.map (fun m -> m.Groups.[1].Value, m.Groups.[2].Value)
         |> Seq.toList
@@ -352,8 +438,14 @@ let readInputs () : Inputs =
     // as (id, version) with version "" when the `#r` is unpinned. Read in file order.
     let symbologyRecipePins =
         let text = readFile (repo symbologyRecipeRel)
+
         Regex.Matches(text, "#r\\s+\"nuget:\\s*(FS\\.GG\\.UI\\.[A-Za-z0-9.]+)\\s*(?:,\\s*([^\"]+))?\"")
-        |> Seq.map (fun m -> m.Groups.[1].Value, (if m.Groups.[2].Success then m.Groups.[2].Value.Trim() else ""))
+        |> Seq.map (fun m ->
+            m.Groups.[1].Value,
+            (if m.Groups.[2].Success then
+                 m.Groups.[2].Value.Trim()
+             else
+                 ""))
         |> Seq.toList
 
     // RuntimeResolution (build.fsx:60 regex still matches the literal in the current tree)
@@ -371,28 +463,65 @@ let readInputs () : Inputs =
     // package (a template-only content release advances the package over an unchanged framework pin); it
     // must never LEAD it. Validate that release lane too, env-free, fail-closed, from repo + pushed tags.
     let templateFsprojText = readFile (repo templateFsprojRel)
-    let pkgVersionMatches = Regex.Matches(templateFsprojText, "<Version>([^<]*)</Version>")
+
+    let pkgVersionMatches =
+        Regex.Matches(templateFsprojText, "<Version>([^<]*)</Version>")
+
     let pkgVersion =
-        if pkgVersionMatches.Count = 1 then pkgVersionMatches.[0].Groups.[1].Value.Trim()
-        elif pkgVersionMatches.Count = 0 then raise (GuardError(sprintf "<Version> not found in %s — template-package version source missing" templateFsprojRel))
-        else raise (GuardError(sprintf "<Version> appears %d times in %s — expected exactly one template-package version source" pkgVersionMatches.Count templateFsprojRel))
-    let pkgVersionLoc = sprintf "%s:%d <Version>" templateFsprojRel (lineOf templateFsprojText "<Version>")
+        if pkgVersionMatches.Count = 1 then
+            pkgVersionMatches.[0].Groups.[1].Value.Trim()
+        elif pkgVersionMatches.Count = 0 then
+            raise (
+                GuardError(
+                    sprintf "<Version> not found in %s — template-package version source missing" templateFsprojRel
+                )
+            )
+        else
+            raise (
+                GuardError(
+                    sprintf
+                        "<Version> appears %d times in %s — expected exactly one template-package version source"
+                        pkgVersionMatches.Count
+                        templateFsprojRel
+                )
+            )
+
+    let pkgVersionLoc =
+        sprintf "%s:%d <Version>" templateFsprojRel (lineOf templateFsprojText "<Version>")
 
     // `v*` matches only the release trigger tags (fs-gg-ui/v* and fs-gg-ui-template/v* do not start "v").
     let releaseTagVersions = tagVersionsOf "v*" "v"
     let templateTagVersions = tagVersionsOf "fs-gg-ui-template/v*" "fs-gg-ui-template/v"
+
     if releaseTagVersions.IsEmpty then
-        raise (GuardError "no v* release tags visible — CI must fetch tags (fetch-depth: 0 / fetch-tags); fail closed rather than green-by-absence")
+        raise (
+            GuardError
+                "no v* release tags visible — CI must fetch tags (fetch-depth: 0 / fetch-tags); fail closed rather than green-by-absence"
+        )
+
     if templateTagVersions.IsEmpty then
-        raise (GuardError "no fs-gg-ui-template/v* tags visible — CI must fetch tags; fail closed rather than green-by-absence")
-    let latestReleaseTag = releaseTagVersions |> List.sortWith (fun a b -> SemVer.cmp (SemVer.parse a) (SemVer.parse b)) |> List.last
-    let latestTemplateTag = templateTagVersions |> List.sortWith (fun a b -> SemVer.cmp (SemVer.parse a) (SemVer.parse b)) |> List.last
+        raise (
+            GuardError
+                "no fs-gg-ui-template/v* tags visible — CI must fetch tags; fail closed rather than green-by-absence"
+        )
+
+    let latestReleaseTag =
+        releaseTagVersions
+        |> List.sortWith (fun a b -> SemVer.cmp (SemVer.parse a) (SemVer.parse b))
+        |> List.last
+
+    let latestTemplateTag =
+        templateTagVersions
+        |> List.sortWith (fun a b -> SemVer.cmp (SemVer.parse a) (SemVer.parse b))
+        |> List.last
 
     // A version strictly ahead of every tag in its lane is pending until the ordered tag cut completes.
     // Derive this from repository state, rather than only HEAD~1..HEAD: a failed release can require a
     // repair commit before its tags exist, and that repair must be mergeable through the required offline
     // gate. The release lane still disables every waiver, and successor tags still make earlier tags due.
-    let pinAheadOfTags = SemVer.cmp (SemVer.parse pinVersion) (SemVer.parse latestTag) > 0
+    let pinAheadOfTags =
+        SemVer.cmp (SemVer.parse pinVersion) (SemVer.parse latestTag) > 0
+
     let pkgAheadOfTags =
         SemVer.cmp (SemVer.parse pkgVersion) (SemVer.parse latestTemplateTag) > 0
         && SemVer.cmp (SemVer.parse pkgVersion) (SemVer.parse latestReleaseTag) > 0
@@ -451,35 +580,41 @@ let readInputs () : Inputs =
     let templateTagCut = templateTagCutFor pkgVersion
     let releaseTagCut = releaseTagCutFor pkgVersion
 
-    { PropsText = propsText
-      Occurrences = occurrences
-      PinVersion = pinVersion
-      PropsLoc = propsLoc
-      TagVersions = tagVersions
-      LatestTag = latestTag
-      PublishedMembers = publishedMembers
-      BomDeps = bomDeps
-      BomIds = bomDeps |> List.map fst |> Set.ofList
-      TemplatePins = templatePins
-      TemplateIds = templatePins |> List.map fst |> Set.ofList
-      SymbologyRecipePins = symbologyRecipePins
-      RuntimeRegexResolves = runtimeRegexResolves
-      PkgVersion = pkgVersion
-      PkgVersionLoc = pkgVersionLoc
-      ReleaseTagVersions = releaseTagVersions
-      TemplateTagVersions = templateTagVersions
-      LatestReleaseTag = latestReleaseTag
-      LatestTemplateTag = latestTemplateTag
-      PinAheadOfTags = pinAheadOfTags
-      PkgAheadOfTags = pkgAheadOfTags
-      TemplateTagCut = templateTagCut
-      ReleaseTagCut = releaseTagCut
-      PinPending = not releaseLane && pinAheadOfTags && not (templateTagCutFor pinVersion) && not (releaseTagCutFor pinVersion)
-      // `v<pkg>` is the only successor of `fs-gg-ui-template/v<pkg>`, so once it exists the template-scoped
-      // tag is overdue, not pending. `v<pkg>` itself lands last and has no successor to bound it — hence
-      // `ReleaseTagPending` needs only the ahead-of-tags state (and its rule is reached only when `v<pkg>` is absent).
-      TemplateTagPending = not releaseLane && pkgAheadOfTags && not releaseTagCut
-      ReleaseTagPending = not releaseLane && pkgAheadOfTags }
+    {
+        PropsText = propsText
+        Occurrences = occurrences
+        PinVersion = pinVersion
+        PropsLoc = propsLoc
+        TagVersions = tagVersions
+        LatestTag = latestTag
+        PublishedMembers = publishedMembers
+        BomDeps = bomDeps
+        BomIds = bomDeps |> List.map fst |> Set.ofList
+        TemplatePins = templatePins
+        TemplateIds = templatePins |> List.map fst |> Set.ofList
+        SymbologyRecipePins = symbologyRecipePins
+        RuntimeRegexResolves = runtimeRegexResolves
+        PkgVersion = pkgVersion
+        PkgVersionLoc = pkgVersionLoc
+        ReleaseTagVersions = releaseTagVersions
+        TemplateTagVersions = templateTagVersions
+        LatestReleaseTag = latestReleaseTag
+        LatestTemplateTag = latestTemplateTag
+        PinAheadOfTags = pinAheadOfTags
+        PkgAheadOfTags = pkgAheadOfTags
+        TemplateTagCut = templateTagCut
+        ReleaseTagCut = releaseTagCut
+        PinPending =
+            not releaseLane
+            && pinAheadOfTags
+            && not (templateTagCutFor pinVersion)
+            && not (releaseTagCutFor pinVersion)
+        // `v<pkg>` is the only successor of `fs-gg-ui-template/v<pkg>`, so once it exists the template-scoped
+        // tag is overdue, not pending. `v<pkg>` itself lands last and has no successor to bound it — hence
+        // `ReleaseTagPending` needs only the ahead-of-tags state (and its rule is reached only when `v<pkg>` is absent).
+        TemplateTagPending = not releaseLane && pkgAheadOfTags && not releaseTagCut
+        ReleaseTagPending = not releaseLane && pkgAheadOfTags
+    }
 
 // ---- rules ------------------------------------------------------------------------------------
 
@@ -488,22 +623,43 @@ let readInputs () : Inputs =
 // never cut, rather than one this change made due (see `PinPending`).
 let us1Failures (i: Inputs) : Failure list =
     if SemVer.lt i.PinVersion i.LatestTag then
-        [ { Rule = "pin-lags-tag"
-            Location = i.PropsLoc
-            Expected = sprintf ">= %s (latest fs-gg-ui/v* tag)" i.LatestTag
-            Actual = i.PinVersion
-            Fix = sprintf "bump <FsGgUiVersion> to %s (the latest coherent snapshot), or cut a newer fs-gg-ui/v* tag" i.LatestTag } ]
+        [
+            {
+                Rule = "pin-lags-tag"
+                Location = i.PropsLoc
+                Expected = sprintf ">= %s (latest fs-gg-ui/v* tag)" i.LatestTag
+                Actual = i.PinVersion
+                Fix =
+                    sprintf
+                        "bump <FsGgUiVersion> to %s (the latest coherent snapshot), or cut a newer fs-gg-ui/v* tag"
+                        i.LatestTag
+            }
+        ]
     elif not (List.contains i.PinVersion i.TagVersions) && not i.PinPending then
-        [ { Rule = "pin-no-tag"
-            Location = i.PropsLoc
-            Expected = sprintf "a tag fs-gg-ui/v%s" i.PinVersion
-            Actual =
-                if releaseLane then "none — and this is the release lane, where every tag is due; nothing is pending at publish time"
-                elif not i.PinAheadOfTags then "none — and the pin is not ahead of the latest snapshot tag, so no tag is pending"
-                elif List.contains i.PinVersion i.ReleaseTagVersions then sprintf "none — and v%s is already cut, so this tag was due BEFORE it (push order)" i.PinVersion
-                else sprintf "none — and fs-gg-ui-template/v%s is already cut, so this tag was due BEFORE it (push order)" i.PinVersion
-            Fix = sprintf "cut & push the fs-gg-ui/v%s snapshot tag (and feed) — it precedes fs-gg-ui-template/v* and v* — or correct <FsGgUiVersion> to a published version" i.PinVersion } ]
-    else []
+        [
+            {
+                Rule = "pin-no-tag"
+                Location = i.PropsLoc
+                Expected = sprintf "a tag fs-gg-ui/v%s" i.PinVersion
+                Actual =
+                    if releaseLane then
+                        "none — and this is the release lane, where every tag is due; nothing is pending at publish time"
+                    elif not i.PinAheadOfTags then
+                        "none — and the pin is not ahead of the latest snapshot tag, so no tag is pending"
+                    elif List.contains i.PinVersion i.ReleaseTagVersions then
+                        sprintf "none — and v%s is already cut, so this tag was due BEFORE it (push order)" i.PinVersion
+                    else
+                        sprintf
+                            "none — and fs-gg-ui-template/v%s is already cut, so this tag was due BEFORE it (push order)"
+                            i.PinVersion
+                Fix =
+                    sprintf
+                        "cut & push the fs-gg-ui/v%s snapshot tag (and feed) — it precedes fs-gg-ui-template/v* and v* — or correct <FsGgUiVersion> to a published version"
+                        i.PinVersion
+            }
+        ]
+    else
+        []
 
 // US2 — a half-bump cannot ship, independent of any warnings-as-errors policy (FR-003/004/005)
 let bomTokenFailures (i: Inputs) : Failure list =
@@ -511,62 +667,84 @@ let bomTokenFailures (i: Inputs) : Failure list =
     |> List.collect (fun (id, v) ->
         let notToken = v <> "[$version$]"
         let notExact = not (v.StartsWith "[" && v.EndsWith "]" && not (v.Contains ","))
-        [ if notToken then
-              { Rule = "bom-pin-not-token"
-                Location = sprintf "%s %s" nuspecRel id
-                Expected = "[$version$]"
-                Actual = v
-                Fix = sprintf "restore %s's version to the single token [$version$]" id }
-          if notExact then
-              { Rule = "bom-exact-bracket"
-                Location = sprintf "%s %s" nuspecRel id
-                Expected = "an exact [..] bracket with no comma"
-                Actual = v
-                Fix = sprintf "pin %s with an exact bracket so any deviation fails loudly" id } ])
+
+        [
+            if notToken then
+                {
+                    Rule = "bom-pin-not-token"
+                    Location = sprintf "%s %s" nuspecRel id
+                    Expected = "[$version$]"
+                    Actual = v
+                    Fix = sprintf "restore %s's version to the single token [$version$]" id
+                }
+            if notExact then
+                {
+                    Rule = "bom-exact-bracket"
+                    Location = sprintf "%s %s" nuspecRel id
+                    Expected = "an exact [..] bracket with no comma"
+                    Actual = v
+                    Fix = sprintf "pin %s with an exact bracket so any deviation fails loudly" id
+                }
+        ])
 
 let bomMemberSkewFailures (i: Inputs) : Failure list =
-    [ for missing in Set.difference i.PublishedMembers i.BomIds ->
-        { Rule = "bom-member-skew"
-          Location = nuspecRel
-          Expected = sprintf "a <dependency> for every packable FS.GG.UI.* member (%d)" i.PublishedMembers.Count
-          Actual = sprintf "missing %s" missing
-          Fix = sprintf "add <dependency id=\"%s\" version=\"[$version$]\" /> to the BOM" missing }
-      for extra in Set.difference i.BomIds i.PublishedMembers ->
-        { Rule = "bom-member-skew"
-          Location = nuspecRel
-          Expected = sprintf "only packable FS.GG.UI.* members (%d)" i.PublishedMembers.Count
-          Actual = sprintf "extra %s (no packable src/** member)" extra
-          Fix = sprintf "remove %s from the BOM, or add the packable src/** member" extra } ]
+    [
+        for missing in Set.difference i.PublishedMembers i.BomIds ->
+            {
+                Rule = "bom-member-skew"
+                Location = nuspecRel
+                Expected = sprintf "a <dependency> for every packable FS.GG.UI.* member (%d)" i.PublishedMembers.Count
+                Actual = sprintf "missing %s" missing
+                Fix = sprintf "add <dependency id=\"%s\" version=\"[$version$]\" /> to the BOM" missing
+            }
+        for extra in Set.difference i.BomIds i.PublishedMembers ->
+            {
+                Rule = "bom-member-skew"
+                Location = nuspecRel
+                Expected = sprintf "only packable FS.GG.UI.* members (%d)" i.PublishedMembers.Count
+                Actual = sprintf "extra %s (no packable src/** member)" extra
+                Fix = sprintf "remove %s from the BOM, or add the packable src/** member" extra
+            }
+    ]
 
 let templateFailures (i: Inputs) : Failure list =
     [ // every consumed pin derives through $(FsGgUiVersion) — no hardcoded literal
-      for (id, v) in i.TemplatePins do
-          if v <> "$(FsGgUiVersion)" then
-              yield
-                  { Rule = "template-pin-hardcoded"
-                    Location = sprintf "%s %s" propsRel id
-                    Expected = "$(FsGgUiVersion)"
-                    Actual = v
-                    Fix = sprintf "route %s's Version through $(FsGgUiVersion) (the single source)" id }
-      // consumed set ⊆ published, and == the documented 11-member manifest
-      for extra in Set.difference i.TemplateIds i.PublishedMembers ->
-          { Rule = "template-consumed-skew"
-            Location = propsRel
-            Expected = "every consumed pin is a packable FS.GG.UI.* member"
-            Actual = sprintf "%s is not in the published set" extra
-            Fix = sprintf "remove %s from the template, or publish it as a packable member" extra }
-      for missing in Set.difference templateExpected i.TemplateIds ->
-          { Rule = "template-consumed-skew"
-            Location = propsRel
-            Expected = "the documented 11-member consumed manifest"
-            Actual = sprintf "missing %s" missing
-            Fix = sprintf "restore the consumed pin %s" missing }
-      for extra in Set.difference i.TemplateIds templateExpected ->
-          { Rule = "template-consumed-skew"
-            Location = propsRel
-            Expected = "the documented 11-member consumed manifest"
-            Actual = sprintf "unexpected consumed pin %s" extra
-            Fix = sprintf "drop %s, or update the documented consumed manifest in surface-map.md" extra } ]
+        for (id, v) in i.TemplatePins do
+            if v <> "$(FsGgUiVersion)" then
+                yield
+                    {
+                        Rule = "template-pin-hardcoded"
+                        Location = sprintf "%s %s" propsRel id
+                        Expected = "$(FsGgUiVersion)"
+                        Actual = v
+                        Fix = sprintf "route %s's Version through $(FsGgUiVersion) (the single source)" id
+                    }
+        // consumed set ⊆ published, and == the documented 11-member manifest
+        for extra in Set.difference i.TemplateIds i.PublishedMembers ->
+            {
+                Rule = "template-consumed-skew"
+                Location = propsRel
+                Expected = "every consumed pin is a packable FS.GG.UI.* member"
+                Actual = sprintf "%s is not in the published set" extra
+                Fix = sprintf "remove %s from the template, or publish it as a packable member" extra
+            }
+        for missing in Set.difference templateExpected i.TemplateIds ->
+            {
+                Rule = "template-consumed-skew"
+                Location = propsRel
+                Expected = "the documented 11-member consumed manifest"
+                Actual = sprintf "missing %s" missing
+                Fix = sprintf "restore the consumed pin %s" missing
+            }
+        for extra in Set.difference i.TemplateIds templateExpected ->
+            {
+                Rule = "template-consumed-skew"
+                Location = propsRel
+                Expected = "the documented 11-member consumed manifest"
+                Actual = sprintf "unexpected consumed pin %s" extra
+                Fix = sprintf "drop %s, or update the documented consumed manifest in surface-map.md" extra
+            }
+    ]
 
 // #304 — the packaged symbology reference recipe is the skill's one runnable artifact, and its
 // `#r "nuget: FS.GG.UI.*"` lines must resolve the library it ships beside, not "latest published".
@@ -580,36 +758,48 @@ let templateFailures (i: Inputs) : Failure list =
 /// that never drifts.
 let symbologyRecipeRules (pinVersion: string) (pins: (string * string) list) : Failure list =
     [ // Floor: every expected FS.GG.UI `#r` is actually present — the pin check below is vacuous over a
-      // recipe the regex found nothing in (reformatted / renamed / switched to `#load`).
-      let pinned = pins |> List.map fst |> Set.ofList
-      for missing in Set.difference symbologyRecipeExpected pinned ->
-          { Rule = "symbology-recipe-missing"
-            Location = sprintf "%s %s" symbologyRecipeRel missing
-            Expected = sprintf "a pinned `#r \"nuget: %s, %s\"`" missing pinVersion
-            Actual = "no matching `#r \"nuget: FS.GG.UI...\"` directive in the recipe"
-            Fix = sprintf "restore the `#r \"nuget: %s, %s\"` line (the recipe's one runnable proof needs it)" missing pinVersion }
-      // `yield` is NOT optional here, and the compiler said so. Once a list comprehension contains an
-      // explicit `->` arm (the floor above), a bare `for … do` whose body is an `if`/`elif` WITHOUT an
-      // `else` is statement position: the `Failure` records below were built and then implicitly
-      // DISCARDED (`warning FS3221`), so both rules were dead from the day they were written. The floor
-      // checked that the `#r` lines EXIST; nothing ever checked what they were pinned TO — and the
-      // recipe sat at 0.4.0 against a 0.8.0 framework for four minors while the gate reported green
-      // (#478). A guard rule that cannot fail is worse than no rule: it is a green light nobody audits.
-      for (id, v) in pins do
-        if v = "" then
-            yield
-                { Rule = "symbology-recipe-unpinned"
-                  Location = sprintf "%s %s" symbologyRecipeRel id
-                  Expected = sprintf "%s (FsGgUiVersion)" pinVersion
-                  Actual = "unpinned #r — resolves the latest PUBLISHED library, which can predate the recipe"
-                  Fix = sprintf "pin the #r to `nuget: %s, %s` (your FsGgUiVersion)" id pinVersion }
-        elif v <> pinVersion then
-            yield
-                { Rule = "symbology-recipe-pin-skew"
-                  Location = sprintf "%s %s" symbologyRecipeRel id
-                  Expected = pinVersion
-                  Actual = v
-                  Fix = sprintf "repin %s's #r to %s (the single FsGgUiVersion source)" id pinVersion } ]
+        // recipe the regex found nothing in (reformatted / renamed / switched to `#load`).
+        let pinned = pins |> List.map fst |> Set.ofList
+
+        for missing in Set.difference symbologyRecipeExpected pinned ->
+            {
+                Rule = "symbology-recipe-missing"
+                Location = sprintf "%s %s" symbologyRecipeRel missing
+                Expected = sprintf "a pinned `#r \"nuget: %s, %s\"`" missing pinVersion
+                Actual = "no matching `#r \"nuget: FS.GG.UI...\"` directive in the recipe"
+                Fix =
+                    sprintf
+                        "restore the `#r \"nuget: %s, %s\"` line (the recipe's one runnable proof needs it)"
+                        missing
+                        pinVersion
+            }
+        // `yield` is NOT optional here, and the compiler said so. Once a list comprehension contains an
+        // explicit `->` arm (the floor above), a bare `for … do` whose body is an `if`/`elif` WITHOUT an
+        // `else` is statement position: the `Failure` records below were built and then implicitly
+        // DISCARDED (`warning FS3221`), so both rules were dead from the day they were written. The floor
+        // checked that the `#r` lines EXIST; nothing ever checked what they were pinned TO — and the
+        // recipe sat at 0.4.0 against a 0.8.0 framework for four minors while the gate reported green
+        // (#478). A guard rule that cannot fail is worse than no rule: it is a green light nobody audits.
+        for (id, v) in pins do
+            if v = "" then
+                yield
+                    {
+                        Rule = "symbology-recipe-unpinned"
+                        Location = sprintf "%s %s" symbologyRecipeRel id
+                        Expected = sprintf "%s (FsGgUiVersion)" pinVersion
+                        Actual = "unpinned #r — resolves the latest PUBLISHED library, which can predate the recipe"
+                        Fix = sprintf "pin the #r to `nuget: %s, %s` (your FsGgUiVersion)" id pinVersion
+                    }
+            elif v <> pinVersion then
+                yield
+                    {
+                        Rule = "symbology-recipe-pin-skew"
+                        Location = sprintf "%s %s" symbologyRecipeRel id
+                        Expected = pinVersion
+                        Actual = v
+                        Fix = sprintf "repin %s's #r to %s (the single FsGgUiVersion source)" id pinVersion
+                    }
+    ]
 
 let symbologyRecipeFailures (i: Inputs) : Failure list =
     symbologyRecipeRules i.PinVersion i.SymbologyRecipePins
@@ -632,9 +822,13 @@ let symbologyRecipeFailures (i: Inputs) : Failure list =
 /// a new rule family through here too if you ever add one whose body is a bare `for … do`.
 let symbologyRulesSelfCheck () =
     let v = "0.8.0"
-    let fired pins = symbologyRecipeRules v pins |> List.map (fun f -> f.Rule) |> Set.ofList
+
+    let fired pins =
+        symbologyRecipeRules v pins |> List.map (fun f -> f.Rule) |> Set.ofList
+
     let expected = Set.toList symbologyRecipeExpected
     let allGood = expected |> List.map (fun id -> id, v)
+
     let one (id: string) (ver: string) =
         (id, ver) :: (expected |> List.filter ((<>) id) |> List.map (fun x -> x, v))
 
@@ -642,26 +836,41 @@ let symbologyRulesSelfCheck () =
     // that fires on nothing, and would make the whole guard unfalsifiable.
     if not (fired allGood).IsEmpty then
         raise (GuardError "rule regressed: a correctly-pinned symbology recipe must produce no failures")
+
     if not ((fired (one "FS.GG.UI.Scene" "")).Contains "symbology-recipe-unpinned") then
-        raise (GuardError "rule DEAD: symbology-recipe-unpinned did not fire on an unpinned `#r` (see #478 — check for warning FS3221, an implicitly discarded Failure)")
+        raise (
+            GuardError
+                "rule DEAD: symbology-recipe-unpinned did not fire on an unpinned `#r` (see #478 — check for warning FS3221, an implicitly discarded Failure)"
+        )
+
     if not ((fired (one "FS.GG.UI.Scene" "0.4.0")).Contains "symbology-recipe-pin-skew") then
-        raise (GuardError "rule DEAD: symbology-recipe-pin-skew did not fire on a recipe pinned off FsGgUiVersion (see #478 — check for warning FS3221, an implicitly discarded Failure)")
+        raise (
+            GuardError
+                "rule DEAD: symbology-recipe-pin-skew did not fire on a recipe pinned off FsGgUiVersion (see #478 — check for warning FS3221, an implicitly discarded Failure)"
+        )
+
     if not ((fired []).Contains "symbology-recipe-missing") then
         raise (GuardError "rule DEAD: symbology-recipe-missing did not fire on a recipe with no FS.GG.UI `#r` at all")
 
 let invariantFailures (i: Inputs) : Failure list =
-    [ if i.Occurrences <> 1 then
-          { Rule = "single-source-not-unique"
-            Location = i.PropsLoc
-            Expected = "exactly 1 <FsGgUiVersion> literal"
-            Actual = string i.Occurrences
-            Fix = "collapse to a single <FsGgUiVersion> literal (the one source of truth)" }
-      if not i.RuntimeRegexResolves then
-          { Rule = "runtime-regex-broken"
-            Location = sprintf "%s:60" buildFsxRel
-            Expected = "build.fsx's <FsGgUiVersion>([^<]+)</FsGgUiVersion> regex matches the literal"
-            Actual = "no match (renamed/half-renamed property breaks runtime engine resolution)"
-            Fix = "keep the <FsGgUiVersion> element name in lockstep with build.fsx's regex" } ]
+    [
+        if i.Occurrences <> 1 then
+            {
+                Rule = "single-source-not-unique"
+                Location = i.PropsLoc
+                Expected = "exactly 1 <FsGgUiVersion> literal"
+                Actual = string i.Occurrences
+                Fix = "collapse to a single <FsGgUiVersion> literal (the one source of truth)"
+            }
+        if not i.RuntimeRegexResolves then
+            {
+                Rule = "runtime-regex-broken"
+                Location = sprintf "%s:60" buildFsxRel
+                Expected = "build.fsx's <FsGgUiVersion>([^<]+)</FsGgUiVersion> regex matches the literal"
+                Actual = "no match (renamed/half-renamed property breaks runtime engine resolution)"
+                Fix = "keep the <FsGgUiVersion> element name in lockstep with build.fsx's regex"
+            }
+    ]
 
 // P5 (#48) — the template-package RELEASE lane vs the framework pin. The package must not LAG the
 // latest v* / fs-gg-ui-template/v* tag, must not be left UNTAGGED by a release that was never cut,
@@ -694,46 +903,82 @@ let invariantFailures (i: Inputs) : Failure list =
 // push-order bound above then reds inside release.yml, stranding the release mid-flight behind a
 // force-deleted tag. The output that names these tags must name them in the order they are pushed.
 let releaseLaneFailures (i: Inputs) : Failure list =
-    [ if SemVer.lt i.PkgVersion i.LatestTemplateTag then
-          { Rule = "pkg-lags-template-tag"
-            Location = i.PkgVersionLoc
-            Expected = sprintf ">= %s (latest fs-gg-ui-template/v* tag)" i.LatestTemplateTag
-            Actual = i.PkgVersion
-            Fix = sprintf "bump <Version> to %s (the latest template coherent-set snapshot)" i.LatestTemplateTag }
-      elif not (List.contains i.PkgVersion i.TemplateTagVersions) && not i.TemplateTagPending then
-          { Rule = "pkg-no-template-tag"
-            Location = i.PkgVersionLoc
-            Expected = sprintf "a template-scoped tag fs-gg-ui-template/v%s" i.PkgVersion
-            Actual =
-                if releaseLane then "none — and this is the release lane, where every tag is due; nothing is pending at publish time"
-                elif i.ReleaseTagCut then
-                    sprintf "none — and v%s is already cut, so this tag was due BEFORE it (push order); template-dispatch.yml never fired" i.PkgVersion
-                else "none — and <Version> is not ahead of both release tag lanes, so no tag is pending"
-            Fix = sprintf "cut & push fs-gg-ui-template/v%s (the template coherent-set snapshot) BEFORE v%s" i.PkgVersion i.PkgVersion }
-      if SemVer.lt i.PkgVersion i.LatestReleaseTag then
-          { Rule = "pkg-lags-release-tag"
-            Location = i.PkgVersionLoc
-            Expected = sprintf ">= %s (latest v* release tag)" i.LatestReleaseTag
-            Actual = i.PkgVersion
-            Fix = sprintf "bump <Version> to %s (the latest released template package)" i.LatestReleaseTag }
-      elif not (List.contains i.PkgVersion i.ReleaseTagVersions) && not i.ReleaseTagPending then
-          { Rule = "pkg-no-release-tag"
-            Location = i.PkgVersionLoc
-            Expected = sprintf "a release trigger tag v%s" i.PkgVersion
-            Actual =
-                if releaseLane then "none — and this is the release lane; a publish must be triggered by its own v* tag"
-                else "none — and <Version> is not ahead of both release tag lanes, so no tag is pending"
-            Fix = sprintf "cut & push the v%s release tag LAST (it triggers release.yml), or correct <Version> to a released version" i.PkgVersion }
-      if SemVer.lt i.PkgVersion i.PinVersion then
-          { Rule = "pin-leads-package"
-            Location = i.PropsLoc
-            Expected = sprintf "<= the released template package version %s" i.PkgVersion
-            Actual = sprintf "framework pin %s" i.PinVersion
-            Fix = sprintf "a framework bump requires a template release at >= the pin — cut the template package + tags at %s or higher, or lower the pin" i.PinVersion } ]
+    [
+        if SemVer.lt i.PkgVersion i.LatestTemplateTag then
+            {
+                Rule = "pkg-lags-template-tag"
+                Location = i.PkgVersionLoc
+                Expected = sprintf ">= %s (latest fs-gg-ui-template/v* tag)" i.LatestTemplateTag
+                Actual = i.PkgVersion
+                Fix = sprintf "bump <Version> to %s (the latest template coherent-set snapshot)" i.LatestTemplateTag
+            }
+        elif
+            not (List.contains i.PkgVersion i.TemplateTagVersions)
+            && not i.TemplateTagPending
+        then
+            {
+                Rule = "pkg-no-template-tag"
+                Location = i.PkgVersionLoc
+                Expected = sprintf "a template-scoped tag fs-gg-ui-template/v%s" i.PkgVersion
+                Actual =
+                    if releaseLane then
+                        "none — and this is the release lane, where every tag is due; nothing is pending at publish time"
+                    elif i.ReleaseTagCut then
+                        sprintf
+                            "none — and v%s is already cut, so this tag was due BEFORE it (push order); template-dispatch.yml never fired"
+                            i.PkgVersion
+                    else
+                        "none — and <Version> is not ahead of both release tag lanes, so no tag is pending"
+                Fix =
+                    sprintf
+                        "cut & push fs-gg-ui-template/v%s (the template coherent-set snapshot) BEFORE v%s"
+                        i.PkgVersion
+                        i.PkgVersion
+            }
+        if SemVer.lt i.PkgVersion i.LatestReleaseTag then
+            {
+                Rule = "pkg-lags-release-tag"
+                Location = i.PkgVersionLoc
+                Expected = sprintf ">= %s (latest v* release tag)" i.LatestReleaseTag
+                Actual = i.PkgVersion
+                Fix = sprintf "bump <Version> to %s (the latest released template package)" i.LatestReleaseTag
+            }
+        elif not (List.contains i.PkgVersion i.ReleaseTagVersions) && not i.ReleaseTagPending then
+            {
+                Rule = "pkg-no-release-tag"
+                Location = i.PkgVersionLoc
+                Expected = sprintf "a release trigger tag v%s" i.PkgVersion
+                Actual =
+                    if releaseLane then
+                        "none — and this is the release lane; a publish must be triggered by its own v* tag"
+                    else
+                        "none — and <Version> is not ahead of both release tag lanes, so no tag is pending"
+                Fix =
+                    sprintf
+                        "cut & push the v%s release tag LAST (it triggers release.yml), or correct <Version> to a released version"
+                        i.PkgVersion
+            }
+        if SemVer.lt i.PkgVersion i.PinVersion then
+            {
+                Rule = "pin-leads-package"
+                Location = i.PropsLoc
+                Expected = sprintf "<= the released template package version %s" i.PkgVersion
+                Actual = sprintf "framework pin %s" i.PinVersion
+                Fix =
+                    sprintf
+                        "a framework bump requires a template release at >= the pin — cut the template package + tags at %s or higher, or lower the pin"
+                        i.PinVersion
+            }
+    ]
 
 let structuralFailures (i: Inputs) =
-    us1Failures i @ bomTokenFailures i @ bomMemberSkewFailures i @ templateFailures i @ invariantFailures i
-    @ symbologyRecipeFailures i @ releaseLaneFailures i
+    us1Failures i
+    @ bomTokenFailures i
+    @ bomMemberSkewFailures i
+    @ templateFailures i
+    @ invariantFailures i
+    @ symbologyRecipeFailures i
+    @ releaseLaneFailures i
 
 // ---- feed-grounded proof (#718, epic #693) ----------------------------------------------------
 //
@@ -773,27 +1018,31 @@ type FeedProbe =
     | Unavailable of string
 
 type FeedObservation =
-    { Id: string
-      Version: string
-      /// The tag that promises this package — named in the failure, because it is the thing a human must
-      /// either honour (re-run the release) or retract (delete the tag).
-      Tag: string
-      /// Minutes since that tag was created. A publish is not instantaneous, so this is load-bearing.
-      TagAgeMin: float
-      Probe: FeedProbe }
+    {
+        Id: string
+        Version: string
+        /// The tag that promises this package — named in the failure, because it is the thing a human must
+        /// either honour (re-run the release) or retract (delete the tag).
+        Tag: string
+        /// Minutes since that tag was created. A publish is not instantaneous, so this is load-bearing.
+        TagAgeMin: float
+        Probe: FeedProbe
+    }
 
 /// The observations, partitioned. ONE partition, computed once, and everything downstream — the rule, the
 /// log, the success line — reads it. They used to each re-derive their own, which is how the log and the
 /// verdict drift apart, and those two are precisely what a human reads to decide whether a green exit
 /// means "checked" or "could not check".
 type FeedTally =
-    { Published: FeedObservation list
-      /// Absent, and the tag is older than the grace. THE #679 PHANTOM — the only state that is drift.
-      Phantom: FeedObservation list
-      /// Absent, but the tag is younger than the grace: the publish it triggered is still running.
-      InFlight: FeedObservation list
-      /// The feed did not answer. Says nothing about this repo, so it is never drift — and never a pass.
-      Unreachable: (FeedObservation * string) list }
+    {
+        Published: FeedObservation list
+        /// Absent, and the tag is older than the grace. THE #679 PHANTOM — the only state that is drift.
+        Phantom: FeedObservation list
+        /// Absent, but the tag is younger than the grace: the publish it triggered is still running.
+        InFlight: FeedObservation list
+        /// The feed did not answer. Says nothing about this repo, so it is never drift — and never a pass.
+        Unreachable: (FeedObservation * string) list
+    }
 
 /// THE FOUR STATES. Pure, so `feedRulesSelfCheck` can prove every arm still fires without touching the
 /// network — which is not ceremony: this entire layer exists because a guard reported green over a wedged
@@ -812,34 +1061,38 @@ type FeedTally =
 /// option (2), and it is the only thing standing between a nuget.org outage and a gate announcing that
 /// every release in this repo is a phantom.
 let tallyFeed (graceMin: float) (obs: FeedObservation list) : FeedTally =
-    { Published = obs |> List.filter (fun o -> o.Probe = Present)
-      Phantom = obs |> List.filter (fun o -> o.Probe = Absent && o.TagAgeMin >= graceMin)
-      InFlight = obs |> List.filter (fun o -> o.Probe = Absent && o.TagAgeMin < graceMin)
-      Unreachable =
-        obs
-        |> List.choose (fun o ->
-            match o.Probe with
-            | Unavailable why -> Some(o, why)
-            | _ -> None) }
+    {
+        Published = obs |> List.filter (fun o -> o.Probe = Present)
+        Phantom = obs |> List.filter (fun o -> o.Probe = Absent && o.TagAgeMin >= graceMin)
+        InFlight = obs |> List.filter (fun o -> o.Probe = Absent && o.TagAgeMin < graceMin)
+        Unreachable =
+            obs
+            |> List.choose (fun o ->
+                match o.Probe with
+                | Unavailable why -> Some(o, why)
+                | _ -> None)
+    }
 
 let feedRules (graceMin: float) (t: FeedTally) : Failure list =
     t.Phantom
     |> List.map (fun o ->
-        { Rule = "release-phantom"
-          Location = sprintf "tag %s" o.Tag
-          Expected = sprintf "%s %s on the feed — the tag promises a published release" o.Id o.Version
-          Actual =
-            sprintf
-                "the feed ANSWERED, and %s %s is not on it (tag cut %.0f min ago; grace is %.0f min)"
-                o.Id
-                o.Version
-                o.TagAgeMin
-                graceMin
-          Fix =
-            sprintf
-                "the release behind %s never landed. Re-run it (`gh workflow run release.yml -f version=%s`), or DELETE the tag if it was abandoned. Leaving it is the worst option: the verdict-core reads `pin == latest tag` and certifies a release that does not exist (#679)."
-                o.Tag
-                o.Version })
+        {
+            Rule = "release-phantom"
+            Location = sprintf "tag %s" o.Tag
+            Expected = sprintf "%s %s on the feed — the tag promises a published release" o.Id o.Version
+            Actual =
+                sprintf
+                    "the feed ANSWERED, and %s %s is not on it (tag cut %.0f min ago; grace is %.0f min)"
+                    o.Id
+                    o.Version
+                    o.TagAgeMin
+                    graceMin
+            Fix =
+                sprintf
+                    "the release behind %s never landed. Re-run it (`gh workflow run release.yml -f version=%s`), or DELETE the tag if it was abandoned. Leaving it is the worst option: the verdict-core reads `pin == latest tag` and certifies a release that does not exist (#679)."
+                    o.Tag
+                    o.Version
+        })
 
 /// Prove each arm of the table still fires (the `symbologyRulesSelfCheck` pattern, and the same #478
 /// lesson: a rule that cannot fail is a green light nobody audits). A dead rule fails the GUARD — exit 2,
@@ -847,21 +1100,42 @@ let feedRules (graceMin: float) (t: FeedTally) : Failure list =
 /// layer was written to end.
 let feedRulesSelfCheck () =
     let obs probe age =
-        { Id = "FS.GG.UI.Scene"
-          Version = "0.9.1"
-          Tag = "fs-gg-ui/v0.9.1"
-          TagAgeMin = age
-          Probe = probe }
-    let fired o = feedRules 60.0 (tallyFeed 60.0 [ o ]) |> List.map (fun f -> f.Rule) |> Set.ofList
+        {
+            Id = "FS.GG.UI.Scene"
+            Version = "0.9.1"
+            Tag = "fs-gg-ui/v0.9.1"
+            TagAgeMin = age
+            Probe = probe
+        }
+
+    let fired o =
+        feedRules 60.0 (tallyFeed 60.0 [ o ])
+        |> List.map (fun f -> f.Rule)
+        |> Set.ofList
 
     if not ((fired (obs Absent 1440.0)).Contains "release-phantom") then
-        raise (GuardError "rule DEAD: release-phantom did not fire on a day-old tag with NO package behind it — that is #679 exactly, and a guard that cannot see it certifies a release that does not exist")
+        raise (
+            GuardError
+                "rule DEAD: release-phantom did not fire on a day-old tag with NO package behind it — that is #679 exactly, and a guard that cannot see it certifies a release that does not exist"
+        )
+
     if not (fired (obs Present 1440.0)).IsEmpty then
-        raise (GuardError "rule regressed: a package that IS on the feed must not be a phantom — a rule that fires on everything is as useless as one that fires on nothing")
+        raise (
+            GuardError
+                "rule regressed: a package that IS on the feed must not be a phantom — a rule that fires on everything is as useless as one that fires on nothing"
+        )
+
     if not (fired (obs Absent 1.0)).IsEmpty then
-        raise (GuardError "rule regressed: a tag cut a minute ago has its publish IN FLIGHT, not abandoned — reporting it is the false red that teaches people to ignore the gate")
+        raise (
+            GuardError
+                "rule regressed: a tag cut a minute ago has its publish IN FLIGHT, not abandoned — reporting it is the false red that teaches people to ignore the gate"
+        )
+
     if not (fired (obs (Unavailable "HTTP 503") 1440.0)).IsEmpty then
-        raise (GuardError "rule regressed: an unreachable feed says nothing about this repo and must NEVER be drift (ADR-0105) — otherwise a nuget.org outage reads as 'every release here is a phantom'")
+        raise (
+            GuardError
+                "rule regressed: an unreachable feed says nothing about this repo and must NEVER be drift (ADR-0105) — otherwise a nuget.org outage reads as 'every release here is a phantom'"
+        )
 
 /// One HttpClient for the whole lane. `lazy` so it is constructed inside `main`'s try/with, like every
 /// other input reader here — see `readInputs` for why nothing that can throw may run at module init.
@@ -894,14 +1168,17 @@ let private feedClient =
 let probeFeedAsync (id: string) (version: string) : Async<FeedProbe> =
     async {
         let url = sprintf "%s/%s/index.json" feedBase (id.ToLowerInvariant())
+
         try
             use! resp = feedClient.Value.GetAsync url |> Async.AwaitTask
+
             if resp.StatusCode = Net.HttpStatusCode.NotFound then
                 return Absent
             elif not resp.IsSuccessStatusCode then
                 return Unavailable(sprintf "HTTP %d" (int resp.StatusCode))
             else
                 let! body = resp.Content.ReadAsStringAsync() |> Async.AwaitTask
+
                 if not (body.Contains "\"versions\"") then
                     return
                         Unavailable(
@@ -917,7 +1194,11 @@ let probeFeedAsync (id: string) (version: string) : Async<FeedProbe> =
                         |> Seq.map (fun m -> m.Groups.[1].Value.Trim().ToLowerInvariant())
                         |> Set.ofSeq
                     // NuGet normalizes and lowercases what it serves, so compare on that footing.
-                    return (if published.Contains(version.Trim().ToLowerInvariant()) then Present else Absent)
+                    return
+                        (if published.Contains(version.Trim().ToLowerInvariant()) then
+                             Present
+                         else
+                             Absent)
         with ex ->
             return Unavailable(sprintf "%s: %s" (ex.GetType().Name) (ex.Message.Replace("\n", " ")))
     }
@@ -942,9 +1223,12 @@ let probeAll (targets: (string * string) list) : Map<string * string, FeedProbe>
 /// tags on the merge commit, so for every automated release this reads "how long ago did the release
 /// land", which is exactly the clock its publish runs against.
 let tagAgeMinutes (tag: string) : float =
-    let ec, out = run repoRoot "git" [ "for-each-ref"; "--format=%(creatordate:unix)"; sprintf "refs/tags/%s" tag ]
+    let ec, out =
+        run repoRoot "git" [ "for-each-ref"; "--format=%(creatordate:unix)"; sprintf "refs/tags/%s" tag ]
+
     if ec <> 0 then
         raise (GuardError(sprintf "git for-each-ref refs/tags/%s failed — cannot age the tag; fail closed" tag))
+
     match Int64.TryParse(out.Trim()) with
     | true, secs -> (DateTimeOffset.UtcNow - DateTimeOffset.FromUnixTimeSeconds secs).TotalMinutes
     | _ ->
@@ -977,6 +1261,7 @@ let tagAgeMinutes (tag: string) : float =
 /// "the release is fine", and an empty set would silently make every phantom unreportable.
 let membersPromisedBy (tag: string) : Set<string> =
     let ec, out = run repoRoot "git" [ "show"; sprintf "%s:%s" tag nuspecRel ]
+
     if ec <> 0 then
         raise (
             GuardError(
@@ -986,27 +1271,52 @@ let membersPromisedBy (tag: string) : Set<string> =
                     nuspecRel
             )
         )
+
     let deps =
         Regex.Matches(out, "<dependency\\s+id=\"([^\"]+)\"")
         |> Seq.map (fun m -> m.Groups.[1].Value.Trim())
         |> Set.ofSeq
+
     if deps.IsEmpty then
-        raise (GuardError(sprintf "the BOM at %s declares no dependencies — refusing to certify a release complete on the strength of an empty set" tag))
+        raise (
+            GuardError(
+                sprintf
+                    "the BOM at %s declares no dependencies — refusing to certify a release complete on the strength of an empty set"
+                    tag
+            )
+        )
+
     let bomId =
         let m = Regex.Match(out, "<id>([^<]+)</id>")
-        if m.Success then m.Groups.[1].Value.Trim()
-        else raise (GuardError(sprintf "no <id> in %s at %s — cannot name the BOM package" nuspecRel tag))
+
+        if m.Success then
+            m.Groups.[1].Value.Trim()
+        else
+            raise (GuardError(sprintf "no <id> in %s at %s — cannot name the BOM package" nuspecRel tag))
+
     Set.add bomId deps
 
 /// The template package's id AT ITS TAG, for the same reason: a `<PackageId>` rename after the release
 /// would otherwise have us probing a name that release never published.
 let templatePackageIdAt (tag: string) : string =
     let ec, out = run repoRoot "git" [ "show"; sprintf "%s:%s" tag templateFsprojRel ]
+
     if ec <> 0 then
-        raise (GuardError(sprintf "git show %s:%s failed — cannot name the template package that tag promised; fail closed" tag templateFsprojRel))
+        raise (
+            GuardError(
+                sprintf
+                    "git show %s:%s failed — cannot name the template package that tag promised; fail closed"
+                    tag
+                    templateFsprojRel
+            )
+        )
+
     let m = Regex.Match(out, "<PackageId>([^<]+)</PackageId>")
-    if m.Success then m.Groups.[1].Value.Trim()
-    else raise (GuardError(sprintf "<PackageId> not found in %s at %s" templateFsprojRel tag))
+
+    if m.Success then
+        m.Groups.[1].Value.Trim()
+    else
+        raise (GuardError(sprintf "<PackageId> not found in %s at %s" templateFsprojRel tag))
 
 /// What the CUT tags promise, and what the feed says about each.
 ///
@@ -1055,11 +1365,13 @@ let feedObservations (i: Inputs) : FeedObservation list =
 
     targets
     |> List.map (fun (id, v, tag, age) ->
-        { Id = id
-          Version = v
-          Tag = tag
-          TagAgeMin = age
-          Probe = probes.[(id, v)] })
+        {
+            Id = id
+            Version = v
+            Tag = tag
+            TagAgeMin = age
+            Probe = probes.[(id, v)]
+        })
 
 /// What was probed, what answered, and — loudly — what could not be checked.
 ///
@@ -1067,8 +1379,11 @@ let feedObservations (i: Inputs) : FeedObservation list =
 /// is real" must not produce the same observable. That is #216's rule (a check that could not run never
 /// reports a pass), applied to the one layer here most likely to be unable to run.
 let printFeedVerdict (t: FeedTally) (graceMin: float) =
-    let total = t.Published.Length + t.Phantom.Length + t.InFlight.Length + t.Unreachable.Length
+    let total =
+        t.Published.Length + t.Phantom.Length + t.InFlight.Length + t.Unreachable.Length
+
     printfn "feed lane: probed %d package(s) against %s" total feedBase
+
     printfn
         "  on the feed: %d · absent: %d · feed did not answer: %d"
         t.Published.Length
@@ -1080,7 +1395,9 @@ let printFeedVerdict (t: FeedTally) (graceMin: float) =
             "PUBLISH-IN-FLIGHT: %d package(s) are not on the feed yet, but their tag is younger than the %.0f-minute grace."
             t.InFlight.Length
             graceMin
+
         printfn "  a release takes ~25 min to publish and minutes more to index — this is not a phantom yet."
+
         for o in t.InFlight do
             printfn "    %s %s (tag %s, cut %.0f min ago)" o.Id o.Version o.Tag o.TagAgeMin
 
@@ -1088,20 +1405,25 @@ let printFeedVerdict (t: FeedTally) (graceMin: float) =
         eprintfn
             "::error title=Feed coherence did not run::the feed did not answer for %d package(s) — NOTHING was checked for them. This is not a pass."
             t.Unreachable.Length
+
         for (o, why) in t.Unreachable do
             eprintfn "  %s %s (tag %s): %s" o.Id o.Version o.Tag why
+
         match Environment.GetEnvironmentVariable "GITHUB_STEP_SUMMARY" with
-        | null | "" -> ()
+        | null
+        | "" -> ()
         | summaryPath ->
             let s = System.Text.StringBuilder()
             s.AppendLine "### Version coherence — the feed lane could not run" |> ignore
             s.AppendLine "" |> ignore
+
             s.AppendLine(
                 sprintf
                     "The feed did not answer for **%d** package(s). Nothing was compared for them, so this is **not a pass** — it is a check that could not run (#216)."
                     t.Unreachable.Length
             )
             |> ignore
+
             File.AppendAllText(summaryPath, s.ToString())
 
 /// The success LINE, and it must say what is actually true.
@@ -1116,56 +1438,89 @@ let printFeedVerdict (t: FeedTally) (graceMin: float) =
 ///
 /// So: the exit code carries the VERDICT; this line carries the STATE. A run that proved nothing says so.
 let feedNote (t: FeedTally) (graceMin: float) =
-    let total = t.Published.Length + t.Phantom.Length + t.InFlight.Length + t.Unreachable.Length
+    let total =
+        t.Published.Length + t.Phantom.Length + t.InFlight.Length + t.Unreachable.Length
+
     if total = 0 then
         // No cut tag names the current pin/package — a release is pending. Nothing was promised, so nothing
         // was checked, and saying so is the honest form of a green run.
         "no cut tag names the current pin/package — the feed lane had nothing to check"
     elif t.Unreachable.Length = total then
-        sprintf "feed lane DID NOT RUN — the feed did not answer for any of the %d package(s). NOTHING was compared." total
+        sprintf
+            "feed lane DID NOT RUN — the feed did not answer for any of the %d package(s). NOTHING was compared."
+            total
     else
         let parts =
-            [ sprintf "%d/%d on %s" t.Published.Length total feedBase
-              if not t.InFlight.IsEmpty then
-                  sprintf "%d still publishing (inside the %.0f-min grace)" t.InFlight.Length graceMin
-              if not t.Unreachable.IsEmpty then
-                  sprintf "%d NOT CHECKED — the feed did not answer" t.Unreachable.Length ]
+            [
+                sprintf "%d/%d on %s" t.Published.Length total feedBase
+                if not t.InFlight.IsEmpty then
+                    sprintf "%d still publishing (inside the %.0f-min grace)" t.InFlight.Length graceMin
+                if not t.Unreachable.IsEmpty then
+                    sprintf "%d NOT CHECKED — the feed did not answer" t.Unreachable.Length
+            ]
+
         String.Join("; ", parts)
 
 // ---- restore-grounded proof (live, US3/T027) --------------------------------------------------
 type LiveResult =
-    { V: string
-      MembersResolved: int
-      AtV: int
-      Partial: Failure list
-      CleanBuild: bool }
+    {
+        V: string
+        MembersResolved: int
+        AtV: int
+        Partial: Failure list
+        CleanBuild: bool
+    }
 
 let liveProof (i: Inputs) : LiveResult =
     let v = i.PinVersion
-    if String.IsNullOrWhiteSpace v then raise (GuardError "pinned version is undefined — cannot run restore proof")
-    let tmp = Path.Combine(Path.GetTempPath(), "vcoh209-" + Guid.NewGuid().ToString("N").Substring(0, 8))
+
+    if String.IsNullOrWhiteSpace v then
+        raise (GuardError "pinned version is undefined — cannot run restore proof")
+
+    let tmp =
+        Path.Combine(Path.GetTempPath(), "vcoh209-" + Guid.NewGuid().ToString("N").Substring(0, 8))
+
     let feed = Path.Combine(tmp, "feed")
     let gpf = Path.Combine(tmp, "gpf")
     Directory.CreateDirectory feed |> ignore
 
     // pack the coherent snapshot (16 members + BOM) from source at the pinned V
-    let pc, po = run repoRoot "dotnet" [ "pack"; "FS.GG.Rendering.slnx"; "-c"; "Release"; sprintf "-p:Version=%s" v; "-o"; feed ]
-    if pc <> 0 then raise (GuardError(sprintf "pack-from-source at %s failed:\n%s" v po))
+    let pc, po =
+        run
+            repoRoot
+            "dotnet"
+            [
+                "pack"
+                "FS.GG.Rendering.slnx"
+                "-c"
+                "Release"
+                sprintf "-p:Version=%s" v
+                "-o"
+                feed
+            ]
+
+    if pc <> 0 then
+        raise (GuardError(sprintf "pack-from-source at %s failed:\n%s" v po))
 
     // clean consumer: ONLY FS.GG.UI@V
     let cdir = Path.Combine(tmp, "consumer")
     Directory.CreateDirectory cdir |> ignore
+
     let nugetConfig =
         sprintf
             "<configuration><config><add key=\"globalPackagesFolder\" value=\"%s\" /></config><packageSources><clear /><add key=\"local\" value=\"%s\" /><add key=\"nuget.org\" value=\"https://api.nuget.org/v3/index.json\" /></packageSources><packageSourceMapping><packageSource key=\"local\"><package pattern=\"FS.GG.UI*\" /></packageSource><packageSource key=\"nuget.org\"><package pattern=\"*\" /></packageSource></packageSourceMapping></configuration>"
-            gpf feed
+            gpf
+            feed
+
     File.WriteAllText(Path.Combine(cdir, "nuget.config"), nugetConfig)
     File.WriteAllText(Path.Combine(cdir, "Library.fs"), "module Consumer.Library")
+
     File.WriteAllText(
         Path.Combine(cdir, "Consumer.fsproj"),
         sprintf
             "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFramework>net10.0</TargetFramework><OutputType>Library</OutputType></PropertyGroup><ItemGroup><PackageReference Include=\"FS.GG.UI\" Version=\"%s\" /></ItemGroup><ItemGroup><Compile Include=\"Library.fs\" /></ItemGroup></Project>"
-            v)
+            v
+    )
 
     // Use only the generated config. CI's release-window feed action writes a user-level
     // PackageSourceMapping for FS.GG.UI.*; allowing NuGet to merge that mapping here can map the
@@ -1175,45 +1530,65 @@ let liveProof (i: Inputs) : LiveResult =
         run
             cdir
             "dotnet"
-            [ "restore"
-              "Consumer.fsproj"
-              "--configfile"
-              Path.Combine(cdir, "nuget.config") ]
-    if rc <> 0 then raise (GuardError(sprintf "clean restore of FS.GG.UI@%s failed:\n%s" v ro))
-    let _, listOut = run cdir "dotnet" [ "list"; "Consumer.fsproj"; "package"; "--include-transitive" ]
+            [
+                "restore"
+                "Consumer.fsproj"
+                "--configfile"
+                Path.Combine(cdir, "nuget.config")
+            ]
+
+    if rc <> 0 then
+        raise (GuardError(sprintf "clean restore of FS.GG.UI@%s failed:\n%s" v ro))
+
+    let _, listOut =
+        run cdir "dotnet" [ "list"; "Consumer.fsproj"; "package"; "--include-transitive" ]
+
     let resolved =
         Regex.Matches(listOut, "(FS\\.GG\\.UI[A-Za-z.]*)\\s+(?:[0-9][^\\s]*\\s+)?([0-9][0-9A-Za-z.\\-]*)")
         |> Seq.map (fun m -> m.Groups.[1].Value, m.Groups.[2].Value)
         |> Seq.distinct
         |> Seq.filter (fun (id, _) -> id.StartsWith "FS.GG.UI." && id <> "FS.GG.UI")
         |> Seq.toList
-    let bc, _ = run cdir "dotnet" [ "build"; "Consumer.fsproj"; "-c"; "Release"; "--no-restore" ]
+
+    let bc, _ =
+        run cdir "dotnet" [ "build"; "Consumer.fsproj"; "-c"; "Release"; "--no-restore" ]
 
     let offV = resolved |> List.filter (fun (_, rv) -> rv <> v)
     let resolvedIds = resolved |> List.map fst |> Set.ofList
-    let partialFailures =
-        [ for (id, rv) in offV ->
-            { Rule = "restore-partial"
-              Location = sprintf "FS.GG.UI@%s clean restore" v
-              Expected = sprintf "all members @%s" v
-              Actual = sprintf "%s @%s" id rv
-              Fix = "republish the lagging member(s) at the pinned V so the snapshot is complete" }
-          // a member that did not resolve at all is also a partial graph
-          for missing in Set.difference i.PublishedMembers resolvedIds ->
-            { Rule = "restore-partial"
-              Location = sprintf "FS.GG.UI@%s clean restore" v
-              Expected = sprintf "all %d members resolve @%s" i.PublishedMembers.Count v
-              Actual = sprintf "%s did not resolve" missing
-              Fix = sprintf "publish %s@%s to the feed" missing v } ]
 
-    { V = v
-      MembersResolved = resolved.Length
-      AtV = resolved |> List.filter (fun (_, rv) -> rv = v) |> List.length
-      Partial = partialFailures
-      CleanBuild = (bc = 0) }
+    let partialFailures =
+        [
+            for (id, rv) in offV ->
+                {
+                    Rule = "restore-partial"
+                    Location = sprintf "FS.GG.UI@%s clean restore" v
+                    Expected = sprintf "all members @%s" v
+                    Actual = sprintf "%s @%s" id rv
+                    Fix = "republish the lagging member(s) at the pinned V so the snapshot is complete"
+                }
+            // a member that did not resolve at all is also a partial graph
+            for missing in Set.difference i.PublishedMembers resolvedIds ->
+                {
+                    Rule = "restore-partial"
+                    Location = sprintf "FS.GG.UI@%s clean restore" v
+                    Expected = sprintf "all %d members resolve @%s" i.PublishedMembers.Count v
+                    Actual = sprintf "%s did not resolve" missing
+                    Fix = sprintf "publish %s@%s to the feed" missing v
+                }
+        ]
+
+    {
+        V = v
+        MembersResolved = resolved.Length
+        AtV = resolved |> List.filter (fun (_, rv) -> rv = v) |> List.length
+        Partial = partialFailures
+        CleanBuild = (bc = 0)
+    }
 
 // ---- aggregate verdict + report (T014/T024/T028) ----------------------------------------------
-let reportPathRel = "specs/209-version-staleness-guard/readiness/version-coherence.md"
+let reportPathRel =
+    "specs/209-version-staleness-guard/readiness/version-coherence.md"
+
 let reportPath = repo reportPathRel
 
 // #514 — A COMMITTED, BYTE-GATED ARTIFACT MUST BE A PURE FUNCTION OF THE COMMIT IT LIVES IN.
@@ -1262,25 +1637,50 @@ let renderReport (i: Inputs) (provenance: string) (failures: Failure list) (live
     line (sprintf "- provenance: %s" provenance)
     line (sprintf "- single-version-source: %s (`%s`, occurrences=%d)" i.PinVersion i.PropsLoc i.Occurrences)
     line (sprintf "- snapshot-tag-for-pin: fs-gg-ui/v%s" i.PinVersion)
-    line (sprintf "- published-members: %d · bom-deps: %d · template-consumed-pins: %d" i.PublishedMembers.Count i.BomIds.Count i.TemplateIds.Count)
+
+    line (
+        sprintf
+            "- published-members: %d · bom-deps: %d · template-consumed-pins: %d"
+            i.PublishedMembers.Count
+            i.BomIds.Count
+            i.TemplateIds.Count
+    )
+
     line (sprintf "- runtime-regex-resolves: %b" i.RuntimeRegexResolves)
     line (sprintf "- template-package-version: %s (`%s`)" i.PkgVersion i.PkgVersionLoc)
-    line (sprintf "- release-tag-for-package: v%s · template-tag-for-package: fs-gg-ui-template/v%s" i.PkgVersion i.PkgVersion)
-    line (sprintf "- framework-pin-vs-package: %s <= %s = %b" i.PinVersion i.PkgVersion (not (SemVer.lt i.PkgVersion i.PinVersion)))
+
+    line (
+        sprintf
+            "- release-tag-for-package: v%s · template-tag-for-package: fs-gg-ui-template/v%s"
+            i.PkgVersion
+            i.PkgVersion
+    )
+
+    line (
+        sprintf
+            "- framework-pin-vs-package: %s <= %s = %b"
+            i.PinVersion
+            i.PkgVersion
+            (not (SemVer.lt i.PkgVersion i.PinVersion))
+    )
+
     match liveOpt with
     | Some r ->
         line (sprintf "- resolved-members-at-version: %d/%d at %s" r.AtV r.MembersResolved r.V)
         line (sprintf "- clean-consumer-build: %s" (if r.CleanBuild then "pass" else "fail"))
-    | None ->
-        line "- resolved-members-at-version: pending-live (run FS_GG_RUN_VERSION_COHERENCE_SMOKE=1)"
+    | None -> line "- resolved-members-at-version: pending-live (run FS_GG_RUN_VERSION_COHERENCE_SMOKE=1)"
+
     line ""
+
     if ok then
         line "All lockstep conjuncts hold for the layers that ran."
     else
         line "## Drift — named locations (expected-vs-actual)"
         line ""
+
         for f in failures do
             line (sprintf "- `DRIFT [%s]` %s — expected `%s`; actual `%s`" f.Rule f.Location f.Expected f.Actual)
+
     sb.ToString()
 
 let writeRendered (content: string) =
@@ -1334,8 +1734,16 @@ let normalize (s: string) = s.Replace("\r\n", "\n")
 /// coherent", and a shallow or detached checkout must not silently waive the only check of this file.
 let committedReport () : string option =
     let ec, out = run repoRoot "git" [ "rev-parse"; "--verify"; "HEAD" ]
+
     if ec <> 0 then
-        raise (GuardError(sprintf "git rev-parse HEAD failed — cannot read the committed artifact to compare against; fail closed rather than green-by-absence:\n%s" out))
+        raise (
+            GuardError(
+                sprintf
+                    "git rev-parse HEAD failed — cannot read the committed artifact to compare against; fail closed rather than green-by-absence:\n%s"
+                    out
+            )
+        )
+
     let ec, out = run repoRoot "git" [ "show"; sprintf "HEAD:%s" reportPathRel ]
     if ec <> 0 then None else Some out
 
@@ -1346,9 +1754,12 @@ let committedReport () : string option =
 let private firstDiff (committed: string) (fresh: string) =
     let c = (normalize committed).Split('\n')
     let f = (normalize fresh).Split('\n')
+
     Seq.init (max c.Length f.Length) id
     |> Seq.tryPick (fun n ->
-        let at (a: string[]) = if n < a.Length then a.[n] else "<end of file>"
+        let at (a: string[]) =
+            if n < a.Length then a.[n] else "<end of file>"
+
         if at c <> at f then Some(n + 1, at c, at f) else None)
 
 /// Takes the ALREADY-RENDERED verdict-core report — the same string that is written to disk — so the
@@ -1358,22 +1769,31 @@ let artifactStaleFailures (fresh: string) : Failure list =
         sprintf
             "regenerate and commit it: `dotnet fsi scripts/validate-version-coherence.fsx && git add -- %s`  (commit the BARE run's output — the FS_GG_RUN_VERSION_COHERENCE_SMOKE=1 render is transient CI output, not the artifact)"
             reportPathRel
+
     match committedReport () with
     | None ->
-        [ { Rule = "artifact-not-committed"
-            Location = reportPathRel
-            Expected = "the verdict report is committed — it is this feature's readiness evidence"
-            Actual = "no such path at HEAD"
-            Fix = fix } ]
+        [
+            {
+                Rule = "artifact-not-committed"
+                Location = reportPathRel
+                Expected = "the verdict report is committed — it is this feature's readiness evidence"
+                Actual = "no such path at HEAD"
+                Fix = fix
+            }
+        ]
     | Some committed ->
         match firstDiff committed fresh with
         | None -> []
         | Some(n, committed', fresh') ->
-            [ { Rule = "artifact-stale"
-                Location = sprintf "%s:%d" reportPathRel n
-                Expected = fresh'
-                Actual = sprintf "%s (committed)" committed'
-                Fix = fix } ]
+            [
+                {
+                    Rule = "artifact-stale"
+                    Location = sprintf "%s:%d" reportPathRel n
+                    Expected = fresh'
+                    Actual = sprintf "%s (committed)" committed'
+                    Fix = fix
+                }
+            ]
 
 let printDrift (failures: Failure list) =
     for f in failures do
@@ -1383,13 +1803,25 @@ let printDrift (failures: Failure list) =
         eprintfn "  fix:      %s" f.Fix
     // GitHub step summary (SC-006) — reviewer sees the named location without opening logs.
     match Environment.GetEnvironmentVariable "GITHUB_STEP_SUMMARY" with
-    | null | "" -> ()
+    | null
+    | "" -> ()
     | summaryPath ->
         let s = System.Text.StringBuilder()
         s.AppendLine "### Version coherence guard — DRIFT" |> ignore
         s.AppendLine "" |> ignore
+
         for f in failures do
-            s.AppendLine(sprintf "- `DRIFT [%s]` %s — expected `%s`; actual `%s` — fix: %s" f.Rule f.Location f.Expected f.Actual f.Fix) |> ignore
+            s.AppendLine(
+                sprintf
+                    "- `DRIFT [%s]` %s — expected `%s`; actual `%s` — fix: %s"
+                    f.Rule
+                    f.Location
+                    f.Expected
+                    f.Actual
+                    f.Fix
+            )
+            |> ignore
+
         File.AppendAllText(summaryPath, s.ToString())
 
 /// The tags the current versions have made due but that do not exist yet.
@@ -1397,12 +1829,14 @@ let printDrift (failures: Failure list) =
 /// lands. Mirrors the waiver conditions exactly — a tag is PENDING iff its rule is being waived, so
 /// once `v<pkg>` is cut the earlier tags are reported as drift, never as "due next".
 let pendingTags (i: Inputs) : string list =
-    [ if i.PinPending && not (List.contains i.PinVersion i.TagVersions) then
-          sprintf "fs-gg-ui/v%s" i.PinVersion
-      if i.TemplateTagPending && not i.TemplateTagCut then
-          sprintf "fs-gg-ui-template/v%s" i.PkgVersion
-      if i.ReleaseTagPending && not i.ReleaseTagCut then
-          sprintf "v%s" i.PkgVersion ]
+    [
+        if i.PinPending && not (List.contains i.PinVersion i.TagVersions) then
+            sprintf "fs-gg-ui/v%s" i.PinVersion
+        if i.TemplateTagPending && not i.TemplateTagCut then
+            sprintf "fs-gg-ui-template/v%s" i.PkgVersion
+        if i.ReleaseTagPending && not i.ReleaseTagCut then
+            sprintf "v%s" i.PkgVersion
+    ]
 
 /// A version ahead of its tag lanes is a transient, not drift — but it is not silence either. Name the
 /// tags, in push order, with a greppable sentinel. This is the state release PRs sit in.
@@ -1416,18 +1850,29 @@ let printReleasePending (tags: string list) =
     if not tags.IsEmpty then
         printfn "RELEASE-PENDING: current versions require %d tag(s) that are not cut yet." tags.Length
         printfn "  push these tags at the merge commit, in this order (only v* triggers release.yml):"
-        for t in tags do printfn "    git tag %s && git push origin %s" t t
+
+        for t in tags do
+            printfn "    git tag %s && git push origin %s" t t
+
         printfn "  the non-required publication gates remain red until these tags and packages exist."
+
         match Environment.GetEnvironmentVariable "GITHUB_STEP_SUMMARY" with
-        | null | "" -> ()
+        | null
+        | "" -> ()
         | summaryPath ->
             let s = System.Text.StringBuilder()
             s.AppendLine "### Version coherence guard — RELEASE-PENDING" |> ignore
             s.AppendLine "" |> ignore
-            s.AppendLine "Current versions are ahead of their tag lanes. Push at the release commit, in order:" |> ignore
+
+            s.AppendLine "Current versions are ahead of their tag lanes. Push at the release commit, in order:"
+            |> ignore
+
             s.AppendLine "" |> ignore
             s.AppendLine "```sh" |> ignore
-            for t in tags do s.AppendLine(sprintf "git tag %s && git push origin %s" t t) |> ignore
+
+            for t in tags do
+                s.AppendLine(sprintf "git tag %s && git push origin %s" t t) |> ignore
+
             s.AppendLine "```" |> ignore
             File.AppendAllText(summaryPath, s.ToString())
 
@@ -1443,6 +1888,7 @@ let main () =
     feedRulesSelfCheck ()
     let i = readInputs ()
     printReleasePending (pendingTags i)
+
     if feedLane then
         // A SEPARATE LAYER, not a richer verdict-core. It re-runs the structural rules first — they are
         // cheap, and a feed verdict pronounced over an already-incoherent repo would be noise — and then
@@ -1459,6 +1905,7 @@ let main () =
         let t = tallyFeed grace (feedObservations i)
         let failures = structuralFailures i @ feedRules grace t
         printFeedVerdict t grace
+
         if failures.IsEmpty then
             printfn "version coherence: COHERENT (structural verdict-core). %s" (feedNote t grace)
             0
@@ -1470,8 +1917,15 @@ let main () =
         let r = liveProof i
         let allFailures = structuralFailures i @ r.Partial
         writeReport i "live" allFailures (Some r)
+
         if allFailures.IsEmpty then
-            printfn "version coherence: COHERENT (structural + live). %d/%d members @%s; wrote %s" r.AtV r.MembersResolved r.V reportPath
+            printfn
+                "version coherence: COHERENT (structural + live). %d/%d members @%s; wrote %s"
+                r.AtV
+                r.MembersResolved
+                r.V
+                reportPath
+
             0
         else
             printDrift allFailures
@@ -1489,7 +1943,12 @@ let main () =
         // broke, and its `Fix` would tell the author to commit an artifact whose own `result:` is `fail` —
         // advice that fixes nothing and enters a failing verdict into the readiness record. Fix the drift;
         // the evidence is checked on the way back to green.
-        let failures = if structural.IsEmpty then artifactStaleFailures fresh else structural
+        let failures =
+            if structural.IsEmpty then
+                artifactStaleFailures fresh
+            else
+                structural
+
         if failures.IsEmpty then
             // Say what is true of the PIN. `pendingTags` also carries the two package-lane tags, so on a
             // template-only release (the common shape: pin held, <Version> bumped) keying off the whole
@@ -1498,7 +1957,9 @@ let main () =
             let pinNote =
                 if i.PinPending && not (List.contains i.PinVersion i.TagVersions) then
                     sprintf "pin %s RELEASE-PENDING" i.PinVersion
-                else sprintf "pin %s == latest tag" i.PinVersion
+                else
+                    sprintf "pin %s == latest tag" i.PinVersion
+
             printfn "version coherence: COHERENT (structural verdict-core). %s; wrote %s" pinNote reportPath
             0
         else

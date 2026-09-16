@@ -13,15 +13,10 @@ let private flag name args =
 
     loop args
 
-let private hasFlag name args =
-    args |> List.exists ((=) name)
+let private hasFlag name args = args |> List.exists ((=) name)
 
 let private source subsystem =
-    RuntimeDiagnostics.source
-        (Some "AntShowcase")
-        subsystem
-        None
-        (Some "ant-showcase")
+    RuntimeDiagnostics.source (Some "AntShowcase") subsystem None (Some "ant-showcase")
 
 let private context stream =
     RuntimeDiagnostics.context
@@ -31,29 +26,27 @@ let private context stream =
         [ "stream", stream ]
 
 let diagnostics () =
-    [ RuntimeDiagnostics.create
-          (source "sample-cli")
-          (Some "HeadlessEnvironment")
-          (Some DiagnosticSeverity.Warning)
-          (Some DiagnosticCategory.Environment)
-          "The diagnostics command can run without opening a live viewer window."
-          (Some "Use live visual-readiness commands when screenshot proof is required.")
-          (context "stdout")
-      RuntimeDiagnostics.create
-          (source "opengl-host")
-          (Some "DamageScopedDecision")
-          (Some DiagnosticSeverity.Informational)
-          (Some DiagnosticCategory.BackendCost)
-          "Damage-scoped redraw can use an offscreen fallback for deterministic evidence."
-          (Some "No action required unless a performance lane marks this scenario blocked.")
-          (context "runtime") ]
+    [
+        RuntimeDiagnostics.create
+            (source "sample-cli")
+            (Some "HeadlessEnvironment")
+            (Some DiagnosticSeverity.Warning)
+            (Some DiagnosticCategory.Environment)
+            "The diagnostics command can run without opening a live viewer window."
+            (Some "Use live visual-readiness commands when screenshot proof is required.")
+            (context "stdout")
+        RuntimeDiagnostics.create
+            (source "opengl-host")
+            (Some "DamageScopedDecision")
+            (Some DiagnosticSeverity.Informational)
+            (Some DiagnosticCategory.BackendCost)
+            "Damage-scoped redraw can use an offscreen fallback for deterministic evidence."
+            (Some "No action required unless a performance lane marks this scenario blocked.")
+            (context "runtime")
+    ]
 
 let buildSummary outDir =
-    RuntimeDiagnostics.writeArtifacts
-        outDir
-        (Some "antshowcase-diagnostics")
-        []
-        (diagnostics ())
+    RuntimeDiagnostics.writeArtifacts outDir (Some "antshowcase-diagnostics") [] (diagnostics ())
 
 let render verbose outDir =
     let summary = buildSummary outDir
@@ -71,8 +64,7 @@ let run args =
     if json then
         printfn "%s" (RuntimeDiagnostics.renderJson summary)
     else
-        RuntimeDiagnostics.renderConsole verbose 12 summary
-        |> List.iter (printfn "%s")
+        RuntimeDiagnostics.renderConsole verbose 12 summary |> List.iter (printfn "%s")
 
     match summary.Status with
     | ReadinessDiagnosticStatus.Accepted

@@ -5,20 +5,24 @@ open Rendering.Harness
 
 [<Tests>]
 let tests =
-    testList "Feature148 reuse evidence" [
-        test "reuse report records movement, content-change, churn, parity, and same-seed cases" {
-            let rendered = Compositor.Render.emitFeature148ReuseReport ()
+    testList
+        "Feature148 reuse evidence"
+        [
+            test "reuse report records movement, content-change, churn, parity, and same-seed cases" {
+                let rendered = Compositor.Render.emitFeature148ReuseReport ()
 
-            [ "reuse/stable-boundary"
-              "reuse/moving-only"
-              "reuse/scrolling"
-              "reuse/content-changing"
-              "reuse/churning"
-              "reuse/failed-parity"
-              "reuse/same-seed" ]
-            |> List.iter (fun required -> Expect.stringContains rendered required required)
+                [
+                    "reuse/stable-boundary"
+                    "reuse/moving-only"
+                    "reuse/scrolling"
+                    "reuse/content-changing"
+                    "reuse/churning"
+                    "reuse/failed-parity"
+                    "reuse/same-seed"
+                ]
+                |> List.iter (fun required -> Expect.stringContains rendered required required)
 
-            Expect.stringContains rendered "old and new placement regions" "movement damage disclosed"
-            Expect.stringContains rendered "30%" "threshold disclosed"
-        }
-    ]
+                Expect.stringContains rendered "old and new placement regions" "movement damage disclosed"
+                Expect.stringContains rendered "30%" "threshold disclosed"
+            }
+        ]

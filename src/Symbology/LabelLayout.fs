@@ -4,14 +4,16 @@ open System
 open FS.GG.UI.Scene
 
 type LabelRun =
-    { Text: string
-      Color: Color option
-      Weight: int option
-      Scale: float option
-      Italic: bool option
-      Underline: bool option
-      Strike: bool option
-      Tracking: float option }
+    {
+        Text: string
+        Color: Color option
+        Weight: int option
+        Scale: float option
+        Italic: bool option
+        Underline: bool option
+        Strike: bool option
+        Tracking: float option
+    }
 
 type LabelAlign =
     | Leading
@@ -20,8 +22,10 @@ type LabelAlign =
     | Justify
 
 type LabelParagraph =
-    { Runs: LabelRun list
-      Align: LabelAlign }
+    {
+        Runs: LabelRun list
+        Align: LabelAlign
+    }
 
 [<RequireQualifiedAccess>]
 type LabelText =
@@ -60,7 +64,11 @@ module internal LabelLayout =
     // `labelFontOf` exactly (`{ Family = None; Size; Weight = None }`), so the plain/all-default path
     // stays BYTE-IDENTICAL; a styled run passes its own `Weight` through to `FontSpec.Weight` (FR-003).
     let private labelFontWith (weight: int option) (size: float) : FontSpec =
-        { Family = None; Size = max 1.0 size; Weight = weight }
+        {
+            Family = None
+            Size = max 1.0 size
+            Weight = weight
+        }
 
     let private labelFontOf (size: float) : FontSpec = labelFontWith None size
 
@@ -88,7 +96,12 @@ module internal LabelLayout =
     // so the plain path is unchanged; a styled segment fits in ITS OWN weight + scaled size (FR-006). A
     // single over-wide run with no wrap point degrades through exactly this shrink → ellipsis path per
     // segment, so no segment ever clips mid-glyph or overflows the region (research.md R3).
-    let private fitLabelW (weight: int option) (regionWidth: float) (baseSize: float) (raw: string) : (string * FontSpec) option =
+    let private fitLabelW
+        (weight: int option)
+        (regionWidth: float)
+        (baseSize: float)
+        (raw: string)
+        : (string * FontSpec) option =
         if String.IsNullOrWhiteSpace raw then
             None
         else
@@ -107,7 +120,8 @@ module internal LabelLayout =
                     Some(text, labelFontWith weight est)
                 else
                     // Truncate at the floor size: longest prefix whose `prefix + ellipsis` measures within.
-                    let fits (s: string) = labelWidthW weight (s + ellipsis) floor <= regionWidth
+                    let fits (s: string) =
+                        labelWidthW weight (s + ellipsis) floor <= regionWidth
 
                     let rec longest (n: int) =
                         if n <= 0 then ""
@@ -132,7 +146,10 @@ module internal LabelLayout =
     // word wider than the region has no wrap point and becomes its own (over-wide) line — handled downstream
     // by the per-line `fitLabel` (shrink → ellipsis). Pure fold (no mutable); deterministic per provider.
     let private wrapSegment (regionWidth: float) (baseSize: float) (segment: string) : string list =
-        match segment.Split([| ' '; '\t' |], StringSplitOptions.RemoveEmptyEntries) |> List.ofArray with
+        match
+            segment.Split([| ' '; '\t' |], StringSplitOptions.RemoveEmptyEntries)
+            |> List.ofArray
+        with
         | [] -> []
         | first :: rest ->
             let completed, current =
@@ -197,7 +214,13 @@ module internal LabelLayout =
             |> List.choose (fitLabel regionWidth baseSize)
             |> List.mapi (fun i (text, font) ->
                 let w = (Scene.measureTextResolved text font).Width
-                let pos = { X = centerX - w / 2.0; Y = baselineY + lineHeight * float i }
+
+                let pos =
+                    {
+                        X = centerX - w / 2.0
+                        Y = baselineY + lineHeight * float i
+                    }
+
                 Scene.glyphRunProof pos text font (Paint.fill labelInk))
 
     // ---- Rich-text runs (feature 198, FR-001..FR-013) -----------------------------------------------
@@ -228,22 +251,26 @@ module internal LabelLayout =
     // A run resolved to its drawable style at a grammar base size: colour defaults to `labelInk`, size is
     // `base * scale` (floored at 1.0), weight passes straight through (FR-003 / research.md R4).
     type private RunStyle =
-        { Color: Color
-          Weight: int option
-          Size: float
-          Italic: bool
-          Underline: bool
-          Strike: bool
-          Tracking: float } // letter-spacing as an em-fraction of `Size` (feature 199, FR-003)
+        {
+            Color: Color
+            Weight: int option
+            Size: float
+            Italic: bool
+            Underline: bool
+            Strike: bool
+            Tracking: float
+        } // letter-spacing as an em-fraction of `Size` (feature 199, FR-003)
 
     let private resolveStyle (baseSize: float) (r: LabelRun) : RunStyle =
-        { Color = r.Color |> Option.defaultValue labelInk
-          Weight = r.Weight
-          Size = max 1.0 (baseSize * (r.Scale |> Option.defaultValue 1.0))
-          Italic = r.Italic |> Option.defaultValue false
-          Underline = r.Underline |> Option.defaultValue false
-          Strike = r.Strike |> Option.defaultValue false
-          Tracking = r.Tracking |> Option.defaultValue 0.0 }
+        {
+            Color = r.Color |> Option.defaultValue labelInk
+            Weight = r.Weight
+            Size = max 1.0 (baseSize * (r.Scale |> Option.defaultValue 1.0))
+            Italic = r.Italic |> Option.defaultValue false
+            Underline = r.Underline |> Option.defaultValue false
+            Strike = r.Strike |> Option.defaultValue false
+            Tracking = r.Tracking |> Option.defaultValue 0.0
+        }
 
     // Synthetic-slant shear factor (≈12°) — a design-loop constant (data-model §8). The matrix is a
     // baseline-pivoted horizontal shear so glyphs lean while the baseline stays fixed (FR-003/FR-018).
@@ -306,8 +333,7 @@ module internal LabelLayout =
                                 (List.rev cur :: lines, [ (text, style) ], ww))
                 ([], [], 0.0)
 
-        List.rev (List.rev current :: completed)
-        |> List.filter (List.isEmpty >> not)
+        List.rev (List.rev current :: completed) |> List.filter (List.isEmpty >> not)
 
     // Cap to the grammar budget; when lines are dropped, append the ellipsis to the LAST word of the last
     // kept line (re-fitted ≤ region downstream) so the surplus is signalled (FR-006/SC-005).
@@ -341,16 +367,26 @@ module internal LabelLayout =
     // drawn width). The fit target is deflated by the tracking overhead so the tracked draw still lands
     // ≤ region (feature 199, FR-007). `Tracking = 0` ⇒ fit against the full region with the plain measured
     // width (zero drift). Returns None for empty/whitespace (drops the segment).
-    let private fitSegment (regionWidth: float) (style: RunStyle) (text: string) : (string * FontSpec * RunStyle * float) option =
+    let private fitSegment
+        (regionWidth: float)
+        (style: RunStyle)
+        (text: string)
+        : (string * FontSpec * RunStyle * float) option =
         let trackingPad = style.Tracking * style.Size * float (max 0 (text.Length - 1))
-        let regionForFit = if style.Tracking > 0.0 then max 1.0 (regionWidth - trackingPad) else regionWidth
+
+        let regionForFit =
+            if style.Tracking > 0.0 then
+                max 1.0 (regionWidth - trackingPad)
+            else
+                regionWidth
 
         match fitLabelW style.Weight regionForFit style.Size text with
         | None -> None
         | Some(ftext, font) ->
             let drawnWidth =
                 if style.Tracking <> 0.0 && ftext.Length > 0 then
-                    (Scene.measureTextResolved ftext font).Width + style.Tracking * font.Size * float (ftext.Length - 1)
+                    (Scene.measureTextResolved ftext font).Width
+                    + style.Tracking * font.Size * float (ftext.Length - 1)
                 else
                     (Scene.measureTextResolved ftext font).Width
 
@@ -361,7 +397,14 @@ module internal LabelLayout =
     // underline / strike rules spanning the drawn extent only. An all-default style hits NONE of the new
     // branches and emits the EXACT spec-198 single node (zero drift). Tofu-free: every glyph is a real
     // `glyphRunProof`; slant wraps them (glyphs unchanged); decoration is a non-text `line` (FR-006/FR-008).
-    let private emitFitted (x: float) (y: float) (ftext: string) (font: FontSpec) (style: RunStyle) (drawnWidth: float) : Scene list =
+    let private emitFitted
+        (x: float)
+        (y: float)
+        (ftext: string)
+        (font: FontSpec)
+        (style: RunStyle)
+        (drawnWidth: float)
+        : Scene list =
         let paint = Paint.fill style.Color
 
         let glyphNodes =
@@ -383,15 +426,17 @@ module internal LabelLayout =
         let glyphScene =
             if style.Italic then
                 let shear =
-                    { M11 = 1.0
-                      M12 = slantFactor
-                      M13 = -slantFactor * y
-                      M21 = 0.0
-                      M22 = 1.0
-                      M23 = 0.0
-                      M31 = 0.0
-                      M32 = 0.0
-                      M33 = 1.0 }
+                    {
+                        M11 = 1.0
+                        M12 = slantFactor
+                        M13 = -slantFactor * y
+                        M21 = 0.0
+                        M22 = 1.0
+                        M23 = 0.0
+                        M31 = 0.0
+                        M32 = 0.0
+                        M33 = 1.0
+                    }
 
                 [ Scene.withPerspective shear (Scene.group glyphNodes) ]
             else
@@ -402,10 +447,12 @@ module internal LabelLayout =
             Scene.line { X = x; Y = y + offY } { X = x + drawnWidth; Y = y + offY } (Paint.stroke style.Color thick)
 
         let decoration =
-            [ if style.Underline then
-                  yield rule (font.Size * 0.12)
-              if style.Strike then
-                  yield rule (-font.Size * 0.30) ]
+            [
+                if style.Underline then
+                    yield rule (font.Size * 0.12)
+                if style.Strike then
+                    yield rule (-font.Size * 0.30)
+            ]
 
         glyphScene @ decoration
 
@@ -423,12 +470,16 @@ module internal LabelLayout =
         : Scene list =
         let spaceW = labelWidth " " baseSize
 
-        let lines = atomsOf baseSize runs |> breakLines regionWidth baseSize |> capLines budget
+        let lines =
+            atomsOf baseSize runs |> breakLines regionWidth baseSize |> capLines budget
 
         // Per-line height = tallest run on the line; baseline offsets are cumulative prefix sums.
         let heights =
             lines
-            |> List.map (fun line -> line |> List.map (fun (_, st) -> lineHeightOfW st.Weight st.Size) |> List.fold max 0.0)
+            |> List.map (fun line ->
+                line
+                |> List.map (fun (_, st) -> lineHeightOfW st.Weight st.Size)
+                |> List.fold max 0.0)
 
         let offsets = heights |> List.scan (+) 0.0 // [0; h0; h0+h1; …]; entry i is the offset of line i
 
@@ -441,7 +492,10 @@ module internal LabelLayout =
                 segmentsOf line
                 |> List.choose (fun (text, st) -> fitSegment regionWidth st text)
 
-            let total = (segs |> List.sumBy (fun (_, _, _, w) -> w)) + spaceW * float (max 0 (List.length segs - 1))
+            let total =
+                (segs |> List.sumBy (fun (_, _, _, w) -> w))
+                + spaceW * float (max 0 (List.length segs - 1))
+
             let startX = centerX - total / 2.0
 
             // Place left-to-right from the centred start; emit each segment at the shared baseline.
@@ -455,9 +509,11 @@ module internal LabelLayout =
     // authored with, and whether it is the LAST line of its paragraph (justify leaves that line + any
     // single-token line un-justified, FR-008).
     type private LaidLine =
-        { Words: (string * RunStyle) list
-          Align: LabelAlign
-          IsParaLast: bool }
+        {
+            Words: (string * RunStyle) list
+            Align: LabelAlign
+            IsParaLast: bool
+        }
 
     // Place one drawn line's fitted words at baseline `y`, honouring the paragraph alignment within the
     // region span [left, left+regionWidth]. Leading/Center/Trailing position the block; Justify (unless
@@ -482,8 +538,7 @@ module internal LabelLayout =
             |> snd
 
         match alignment with
-        | Justify when not suppressJustify && gaps >= 1 ->
-            emitFrom left ((regionWidth - sumW) / float gaps) // distribute slack: the last word lands on the right edge
+        | Justify when not suppressJustify && gaps >= 1 -> emitFrom left ((regionWidth - sumW) / float gaps) // distribute slack: the last word lands on the right edge
         | _ ->
             let total = sumW + spaceW * float gaps
 
@@ -518,7 +573,14 @@ module internal LabelLayout =
             |> List.collect (fun p ->
                 let lines = atomsOf baseSize p.Runs |> breakLines regionWidth baseSize
                 let n = List.length lines
-                lines |> List.mapi (fun i line -> { Words = line; Align = p.Align; IsParaLast = i = n - 1 }))
+
+                lines
+                |> List.mapi (fun i line ->
+                    {
+                        Words = line
+                        Align = p.Align
+                        IsParaLast = i = n - 1
+                    }))
 
         // Cap to the shared per-grammar budget; ellipsis the last word of the last kept line (FR-007).
         let budget = max 1 budget
@@ -544,7 +606,10 @@ module internal LabelLayout =
         // Per-line height = tallest run; baseline offsets are cumulative prefix sums (common baseline).
         let heights =
             capped
-            |> List.map (fun ll -> ll.Words |> List.map (fun (_, st) -> lineHeightOfW st.Weight st.Size) |> List.fold max 0.0)
+            |> List.map (fun ll ->
+                ll.Words
+                |> List.map (fun (_, st) -> lineHeightOfW st.Weight st.Size)
+                |> List.fold max 0.0)
 
         let offsets = heights |> List.scan (+) 0.0
         let lastIndex = List.length capped - 1
@@ -602,9 +667,15 @@ module internal LabelLayout =
     // (Group / italic PerspectiveNode / Translate / Clip). Glyphs stay real `glyphRunProof` nodes ⇒
     // tofu-freeness is preserved across phases (FR-010).
     let rec private rebuildLabel (glyph: GlyphRun -> SceneNode option) (paint: Paint -> Paint) (s: Scene) : Scene =
-        { Nodes = s.Nodes |> List.choose (rebuildLabelNode glyph paint) }
+        {
+            Nodes = s.Nodes |> List.choose (rebuildLabelNode glyph paint)
+        }
 
-    and private rebuildLabelNode (glyph: GlyphRun -> SceneNode option) (paint: Paint -> Paint) (node: SceneNode) : SceneNode option =
+    and private rebuildLabelNode
+        (glyph: GlyphRun -> SceneNode option)
+        (paint: Paint -> Paint)
+        (node: SceneNode)
+        : SceneNode option =
         match node with
         | Group scenes -> Some(Group(scenes |> List.map (rebuildLabel glyph paint)))
         | PerspectiveNode(tf, sc) -> Some(PerspectiveNode(tf, rebuildLabel glyph paint sc))
@@ -638,48 +709,60 @@ module internal LabelLayout =
                 [] // a motion-bound label resolving to no glyphs draws nothing, every phase (FR-012)
             else
 
-            match kind with
-            | LabelMotion.Fade ->
-                let fade = Paint.withOpacity ph
-                nodes
-                |> List.map (rebuildLabel (fun g -> Some(GlyphRun { g with Paint = fade g.Paint })) fade)
-            | LabelMotion.TypeOn ->
-                // Reveal a whole-glyph PREFIX sized by `ph` (char boundary ⇒ never mid-glyph). The prefix is
-                // re-emitted as a real `glyphRunProof` (tofu-free); `k = 0` drops the run for this frame.
-                let reveal (g: GlyphRun) : SceneNode option =
-                    let text = g.Data.Text
-                    let k = min text.Length (max 0 (int (floor (ph * float text.Length + 1e-9))))
+                match kind with
+                | LabelMotion.Fade ->
+                    let fade = Paint.withOpacity ph
 
-                    if k <= 0 then None
-                    elif k >= text.Length then Some(GlyphRun g)
-                    else (Scene.glyphRunProof g.Position (text.Substring(0, k)) g.Data.Font g.Paint).Nodes |> List.tryHead
+                    nodes
+                    |> List.map (rebuildLabel (fun g -> Some(GlyphRun { g with Paint = fade g.Paint })) fade)
+                | LabelMotion.TypeOn ->
+                    // Reveal a whole-glyph PREFIX sized by `ph` (char boundary ⇒ never mid-glyph). The prefix is
+                    // re-emitted as a real `glyphRunProof` (tofu-free); `k = 0` drops the run for this frame.
+                    let reveal (g: GlyphRun) : SceneNode option =
+                        let text = g.Data.Text
+                        let k = min text.Length (max 0 (int (floor (ph * float text.Length + 1e-9))))
 
-                nodes |> List.map (rebuildLabel reveal id)
-            | LabelMotion.Pulse ->
-                // Size oscillation about the region centre; factor in [1-k, 1] ⇒ never larger than the
-                // already-fitted label ⇒ always within the region (FR-011). Rest (ph=0) ⇒ factor 1 (identity).
-                let f = 1.0 - 0.18 * (0.5 - 0.5 * cos (ph * 2.0 * Math.PI))
+                        if k <= 0 then
+                            None
+                        elif k >= text.Length then
+                            Some(GlyphRun g)
+                        else
+                            (Scene.glyphRunProof g.Position (text.Substring(0, k)) g.Data.Font g.Paint).Nodes
+                            |> List.tryHead
 
-                let m =
-                    { M11 = f
-                      M12 = 0.0
-                      M13 = centerX * (1.0 - f)
-                      M21 = 0.0
-                      M22 = f
-                      M23 = baselineY * (1.0 - f)
-                      M31 = 0.0
-                      M32 = 0.0
-                      M33 = 1.0 }
+                    nodes |> List.map (rebuildLabel reveal id)
+                | LabelMotion.Pulse ->
+                    // Size oscillation about the region centre; factor in [1-k, 1] ⇒ never larger than the
+                    // already-fitted label ⇒ always within the region (FR-011). Rest (ph=0) ⇒ factor 1 (identity).
+                    let f = 1.0 - 0.18 * (0.5 - 0.5 * cos (ph * 2.0 * Math.PI))
 
-                [ Scene.withPerspective m (Scene.group nodes) ]
-            | LabelMotion.Scroll ->
-                // Overflow ticker: translate the line by an X offset and CLIP to the region span so nothing
-                // ever draws outside [centerX ± regionWidth/2] (no overflow into adjacent channels — FR-011).
-                let region =
-                    { X = centerX - regionWidth / 2.0
-                      Y = baselineY - regionWidth
-                      Width = regionWidth
-                      Height = regionWidth * 2.0 }
+                    let m =
+                        {
+                            M11 = f
+                            M12 = 0.0
+                            M13 = centerX * (1.0 - f)
+                            M21 = 0.0
+                            M22 = f
+                            M23 = baselineY * (1.0 - f)
+                            M31 = 0.0
+                            M32 = 0.0
+                            M33 = 1.0
+                        }
 
-                let offset = regionWidth * 0.5 * sin (ph * 2.0 * Math.PI)
-                [ Scene.clipped (RectClip region) (Scene.translate offset 0.0 (Scene.group nodes)) ]
+                    [ Scene.withPerspective m (Scene.group nodes) ]
+                | LabelMotion.Scroll ->
+                    // Overflow ticker: translate the line by an X offset and CLIP to the region span so nothing
+                    // ever draws outside [centerX ± regionWidth/2] (no overflow into adjacent channels — FR-011).
+                    let region =
+                        {
+                            X = centerX - regionWidth / 2.0
+                            Y = baselineY - regionWidth
+                            Width = regionWidth
+                            Height = regionWidth * 2.0
+                        }
+
+                    let offset = regionWidth * 0.5 * sin (ph * 2.0 * Math.PI)
+
+                    [
+                        Scene.clipped (RectClip region) (Scene.translate offset 0.0 (Scene.group nodes))
+                    ]

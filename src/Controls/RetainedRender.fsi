@@ -1,4 +1,5 @@
 namespace FS.GG.UI.Controls
+
 open FS.GG.UI.DesignSystem
 
 /// Feature 091 (E2) — the retained render structure that wires the parked keyed reconciler
@@ -13,7 +14,6 @@ open FS.GG.UI.DesignSystem
 /// via `[<assembly: InternalsVisibleTo("Controls.Tests")>]`. It is a contract between framework
 /// internals and the property tests, NOT a consumer API: it exposes no mutable view-model, no
 /// data binding, and no dependency/attached property (permanent roadmap non-goals).
-
 /// The stable identity the diff confers on a matched node. Monotonic within a host loop; NOT the
 /// path-derived `ControlId` (which is unstable across a positional shift — the very reason
 /// focus/text state resets today). Per-control state (focus, animation clock, text model) re-keys
@@ -48,42 +48,50 @@ type internal RetainedInvalidationReason =
 /// Feature 141 (R1b): deterministic retained invalidation evidence. Fingerprints and boxes are snapshots
 /// around the decision so tests and readiness notes can distinguish reuse, rebuild, discard, and fallback.
 type internal RetainedInvalidationEvidence =
-    { Decision: RetainedInvalidationDecision
-      Reason: RetainedInvalidationReason
-      FingerprintBefore: uint64 option
-      FingerprintAfter: uint64 option
-      BoxBefore: FS.GG.UI.Scene.Rect option
-      BoxAfter: FS.GG.UI.Scene.Rect option }
+    {
+        Decision: RetainedInvalidationDecision
+        Reason: RetainedInvalidationReason
+        FingerprintBefore: uint64 option
+        FingerprintAfter: uint64 option
+        BoxBefore: FS.GG.UI.Scene.Rect option
+        BoxAfter: FS.GG.UI.Scene.Rect option
+    }
 
 /// The cached, reusable unit of measure + paint for one retained node. `OwnScene` is the node's own
 /// painted contribution (`Control.renderTree`'s per-node `here`). `Assembly` is the owner-produced result
 /// from `ControlInternals.assembleCurrentNode`; retained rendering stores and reuses it instead of owning
 /// independent in-flow/overlay composition fields. `Box` is the evaluated absolute box (the reuse key).
 type internal RenderFragment =
-    { OwnScene: FS.GG.UI.Scene.Scene list
-      Assembly: ControlInternals.CurrentNodeAssemblyResult
-      Box: FS.GG.UI.Scene.Rect option
-      InvalidationEvidence: RetainedInvalidationEvidence list }
+    {
+        OwnScene: FS.GG.UI.Scene.Scene list
+        Assembly: ControlInternals.CurrentNodeAssemblyResult
+        Box: FS.GG.UI.Scene.Rect option
+        InvalidationEvidence: RetainedInvalidationEvidence list
+    }
 
 /// Feature 174: retained render-result metadata for one subtree. Bounds keep in-flow and overlay
 /// buckets separate so the final public `Bounds` ordering remains byte-identical to `Control.renderTree`.
 type internal RetainedMetadata<'msg> =
-    { InFlowBounds: (ControlId * FS.GG.UI.Scene.Rect) list
-      OverlayBounds: (ControlId * FS.GG.UI.Scene.Rect) list
-      Diagnostics: ControlDiagnostic list
-      EventBindings: ControlEventBinding<'msg> list
-      BoundIds: Set<ControlId>
-      KeyedNodes: (ControlId * ControlKind) list
-      NodeCount: int }
+    {
+        InFlowBounds: (ControlId * FS.GG.UI.Scene.Rect) list
+        OverlayBounds: (ControlId * FS.GG.UI.Scene.Rect) list
+        Diagnostics: ControlDiagnostic list
+        EventBindings: ControlEventBinding<'msg> list
+        BoundIds: Set<ControlId>
+        KeyedNodes: (ControlId * ControlKind) list
+        NodeCount: int
+    }
 
 /// One retained control node: its stable identity, the lowered control it was built from, its
 /// cached render fragment, and its retained children (mirroring `Control.Children` order).
 type internal RetainedNode<'msg> =
-    { Identity: RetainedId
-      Control: Control<'msg>
-      Fragment: RenderFragment
-      Metadata: RetainedMetadata<'msg>
-      Children: RetainedNode<'msg> list }
+    {
+        Identity: RetainedId
+        Control: Control<'msg>
+        Fragment: RenderFragment
+        Metadata: RetainedMetadata<'msg>
+        Children: RetainedNode<'msg> list
+    }
 
 /// Feature 099 (R4) / Feature 103 (R6) — the per-identity animation clock. Generalizes the
 /// feature-091 carried slot (transform-only, never written) to the feature-073 paint carrier.
@@ -101,10 +109,12 @@ type internal RetainedNode<'msg> =
 /// fade from ⇒ a plain fade-in). `None` on the slot ⇒ the identity is at rest and paints
 /// byte-identically to the static render (FR-004/FR-005).
 type internal AnimationClock =
-    { Anim: FS.GG.UI.Scene.Animation
-      Elapsed: System.TimeSpan
-      Target: VisualState
-      From: FS.GG.UI.Scene.Scene list }
+    {
+        Anim: FS.GG.UI.Scene.Animation
+        Elapsed: System.TimeSpan
+        Target: VisualState
+        From: FS.GG.UI.Scene.Scene list
+    }
 
 /// Feature 113 (Phase 5) — what a single `memoize` call resolved to: a `Hit` reused the
 /// previously-lowered subtree for the identity (the dependency compared equal, the thunk did NOT
@@ -122,8 +132,10 @@ type internal MemoOutcome =
 /// Specialized to `Scene list` this rung because the DataGrid row/column projection is the sole
 /// memoized site; widening the stored subtree type travels with the deferred `Style.resolve` site.
 type internal MemoEntry =
-    { Dependency: obj
-      Subtree: FS.GG.UI.Scene.Scene list }
+    {
+        Dependency: obj
+        Subtree: FS.GG.UI.Scene.Scene list
+    }
 
 /// Feature 113 (Phase 5) — the per-frame memo store, keyed by the control's stable `ControlId`.
 /// Carried frame-to-frame in the retained structure; an absent key is a cold miss.
@@ -136,8 +148,10 @@ type internal MemoCache = Map<ControlId, MemoEntry>
 /// state. Focus itself stays in the consumer model's `ControlRuntime.FocusedControl`; 091 only
 /// remaps the lookup to `RetainedId`.
 type internal RetainedUiState =
-    { Animation: AnimationClock option
-      Text: TextInputModel option }
+    {
+        Animation: AnimationClock option
+        Text: TextInputModel option
+    }
 
 /// Feature 116 (Phase 7, FR-006): the picture cache's COMPLETE correctness key for one cacheable
 /// boundary. `Box` is the node's evaluated absolute box (explicit for attribution); `Picture` is a
@@ -146,12 +160,14 @@ type internal RetainedUiState =
 /// construction, so equality on this key proves a hit is byte-identical to a fresh paint and any
 /// single changed input forces a miss (no input can be omitted). Compared by F# structural `=`.
 type internal PictureCacheKey =
-    { Box: FS.GG.UI.Scene.Rect option
-      /// Feature 120 (US3, FR-008): the collision-resistant structural fingerprint of the boundary's
-      /// painted subtree, replacing the feature-116 truncation-prone `sprintf "%A"` digest. Two subtrees
-      /// that stringify identically under the old truncating key but differ structurally produce different
-      /// fingerprints, so no stale hit can cross a render-affecting change. Compared by `=`.
-      Fingerprint: uint64 }
+    {
+        Box: FS.GG.UI.Scene.Rect option
+        /// Feature 120 (US3, FR-008): the collision-resistant structural fingerprint of the boundary's
+        /// painted subtree, replacing the feature-116 truncation-prone `sprintf "%A"` digest. Two subtrees
+        /// that stringify identically under the old truncating key but differ structurally produce different
+        /// fingerprints, so no stale hit can cross a render-affecting change. Compared by `=`.
+        Fingerprint: uint64
+    }
 
 /// Feature 116 (Phase 7, FR-009/FR-010): the bounded cross-frame picture cache. A fixed-cap LRU over
 /// cacheable picture identities (`RetainedId`), each holding its last-seen `PictureCacheKey` and a
@@ -159,8 +175,10 @@ type internal PictureCacheKey =
 /// wall-clock). On overflow the least-recently-accessed entry is dropped; a dropped identity re-misses
 /// when next needed (never a stale hit). `Entries.Count <= PictureCacheCap` at all times.
 type internal PictureCache =
-    { Entries: Map<RetainedId, int * PictureCacheKey>
-      Clock: int }
+    {
+        Entries: Map<RetainedId, int * PictureCacheKey>
+        Clock: int
+    }
 
 /// Feature 117 (Phase 8, FR-002): the text-measure cache's COMPLETE correctness key for one measurement.
 /// Every input `Scene.measureText` reads is keyed — the text string and the full `FontSpec` value
@@ -170,11 +188,13 @@ type internal PictureCache =
 /// not change `measureText`'s output, only which candidate sizes the search probes, and each candidate
 /// size is already a distinct key via `Size` (research R2). Compared by F# structural `=`.
 type internal TextMeasureKey =
-    { Text: string
-      Family: string option
-      Size: float
-      Weight: int option
-      MeasurementVersionBucket: string }
+    {
+        Text: string
+        Family: string option
+        Size: float
+        Weight: int option
+        MeasurementVersionBucket: string
+    }
 
 /// Feature 117 (Phase 8, FR-003): the bounded cross-frame text-measure cache, mirroring the 116
 /// `PictureCache` discipline. A fixed-cap LRU over measured text identities (`TextMeasureKey`), each
@@ -183,8 +203,10 @@ type internal TextMeasureKey =
 /// dropped key re-misses (re-measures, re-stores) when next needed (never a stale hit).
 /// `Entries.Count <= TextMeasureCacheCap` at all times.
 type internal TextMeasureCache =
-    { Entries: Map<TextMeasureKey, int * FS.GG.UI.Scene.TextMetrics>
-      Clock: int }
+    {
+        Entries: Map<TextMeasureKey, int * FS.GG.UI.Scene.TextMetrics>
+        Clock: int
+    }
 
 /// The per-frame retained root plus the monotonic identity counter, the identity-keyed UI
 /// state map, and the theme this structure was painted under. Lives in the host loop's existing
@@ -192,62 +214,68 @@ type internal TextMeasureCache =
 /// change between `step` calls invalidates all cached fragments so they repaint (FR-008), and
 /// the live host now READS/WRITES `StateByIdentity` (091 only carried it; the host ignored it).
 type internal RetainedRender<'msg> =
-    { Root: RetainedNode<'msg>
-      NextId: uint64
-      StateByIdentity: Map<RetainedId, RetainedUiState>
-      Theme: Theme
-      /// Feature 113 (Phase 5): the per-identity memoization store carried frame-to-frame — the
-      /// DataGrid row/column projection's reuse cache (keyed by stable `ControlId`). Seeded by `init`
-      /// (all cold misses); each `step` consults it for a memoizable node and advances it.
-      Memo: MemoCache
-      /// Feature 113 (Phase 5): the always-miss switch (FR-008). `true` on the live path (the seam is
-      /// active); a parity test flips it `false` to BYPASS the seam — `memoize` is not called at all, so
-      /// nothing is reused and both `MemoHits`/`MemoMisses` stay 0/0 (NOT "every node a miss") — proving the
-      /// rendered scene is byte-identical with the seam disabled.
-      MemoEnabled: bool
-      /// Feature 097 (R2): the previous frame's full `LayoutResult` — the per-frame measure/bounds
-      /// cache (FR-002). `step` threads it into `Layout.evaluateIncremental` so an unchanged subtree's
-      /// bounds survive across frames and are reused without re-measuring. Seeded by `init` with a full
-      /// `evaluate`; advanced each `step` to the incremental result.
-      Layout: FS.GG.UI.Layout.LayoutResult
-      /// Feature 116 (Phase 7, FR-009/FR-010): the bounded cross-frame picture cache carried frame-to-frame.
-      /// Seeded by `init` (every first-frame cacheable boundary a cold miss); each `step` consults it for a
-      /// hit/miss outcome per cacheable identity, refreshes recency, and evicts LRU over the cap. An absent
-      /// or evicted identity is a miss.
-      PictureCache: PictureCache
-      /// Feature 116 (Phase 7, FR-007): the picture-cache always-miss switch (mirrors `MemoEnabled`).
-      /// `true` on the live path; a parity test flips it `false` to force every cacheable boundary down the
-      /// miss path (`PictureCacheHits = 0`), proving the rendered scene is byte-identical with the cache
-      /// disabled (cache-on ≡ cache-off).
-      PictureCacheEnabled: bool
-      /// Feature 117 (Phase 8, FR-001/FR-003): the bounded cross-frame text-measure cache carried
-      /// frame-to-frame. Seeded EMPTY by `init` (so the first `step` is a cold population — misses); each
-      /// `step` consults it for a hit/miss per measured `(text, font)`, refreshes recency, and evicts LRU
-      /// over the cap. An absent or evicted key is a miss.
-      TextCache: TextMeasureCache
-      /// Feature 117 (Phase 8, FR-004): the text-cache always-miss switch (mirrors `MemoEnabled` /
-      /// `PictureCacheEnabled`). `true` on the live path; a parity test flips it `false` to force every
-      /// measurement to re-measure via `Scene.measureText` (`TextMeasureCacheHits = 0`), proving the
-      /// rendered scene and layout are byte-identical with the cache disabled (cache-on ≡ cache-off).
-      TextCacheEnabled: bool }
+    {
+        Root: RetainedNode<'msg>
+        NextId: uint64
+        StateByIdentity: Map<RetainedId, RetainedUiState>
+        Theme: Theme
+        /// Feature 113 (Phase 5): the per-identity memoization store carried frame-to-frame — the
+        /// DataGrid row/column projection's reuse cache (keyed by stable `ControlId`). Seeded by `init`
+        /// (all cold misses); each `step` consults it for a memoizable node and advances it.
+        Memo: MemoCache
+        /// Feature 113 (Phase 5): the always-miss switch (FR-008). `true` on the live path (the seam is
+        /// active); a parity test flips it `false` to BYPASS the seam — `memoize` is not called at all, so
+        /// nothing is reused and both `MemoHits`/`MemoMisses` stay 0/0 (NOT "every node a miss") — proving the
+        /// rendered scene is byte-identical with the seam disabled.
+        MemoEnabled: bool
+        /// Feature 097 (R2): the previous frame's full `LayoutResult` — the per-frame measure/bounds
+        /// cache (FR-002). `step` threads it into `Layout.evaluateIncremental` so an unchanged subtree's
+        /// bounds survive across frames and are reused without re-measuring. Seeded by `init` with a full
+        /// `evaluate`; advanced each `step` to the incremental result.
+        Layout: FS.GG.UI.Layout.LayoutResult
+        /// Feature 116 (Phase 7, FR-009/FR-010): the bounded cross-frame picture cache carried frame-to-frame.
+        /// Seeded by `init` (every first-frame cacheable boundary a cold miss); each `step` consults it for a
+        /// hit/miss outcome per cacheable identity, refreshes recency, and evicts LRU over the cap. An absent
+        /// or evicted identity is a miss.
+        PictureCache: PictureCache
+        /// Feature 116 (Phase 7, FR-007): the picture-cache always-miss switch (mirrors `MemoEnabled`).
+        /// `true` on the live path; a parity test flips it `false` to force every cacheable boundary down the
+        /// miss path (`PictureCacheHits = 0`), proving the rendered scene is byte-identical with the cache
+        /// disabled (cache-on ≡ cache-off).
+        PictureCacheEnabled: bool
+        /// Feature 117 (Phase 8, FR-001/FR-003): the bounded cross-frame text-measure cache carried
+        /// frame-to-frame. Seeded EMPTY by `init` (so the first `step` is a cold population — misses); each
+        /// `step` consults it for a hit/miss per measured `(text, font)`, refreshes recency, and evicts LRU
+        /// over the cap. An absent or evicted key is a miss.
+        TextCache: TextMeasureCache
+        /// Feature 117 (Phase 8, FR-004): the text-cache always-miss switch (mirrors `MemoEnabled` /
+        /// `PictureCacheEnabled`). `true` on the live path; a parity test flips it `false` to force every
+        /// measurement to re-measure via `Scene.measureText` (`TextMeasureCacheHits = 0`), proving the
+        /// rendered scene and layout are byte-identical with the cache disabled (cache-on ≡ cache-off).
+        TextCacheEnabled: bool
+    }
 
 /// The result of one wired frame: the next retained structure, the render result (byte-identical
 /// to a full rebuild of `next`), the diagnostics surfaced from the diff (e.g. `KeyCollision`), and
 /// the measured work reduction.
 type internal RetainedRenderStep<'msg> =
-    { Retained: RetainedRender<'msg>
-      Render: ControlRenderResult<'msg>
-      Diagnostics: ControlDiagnostic list
-      WorkReduction: WorkReductionRecord }
+    {
+        Retained: RetainedRender<'msg>
+        Render: ControlRenderResult<'msg>
+        Diagnostics: ControlDiagnostic list
+        WorkReduction: WorkReductionRecord
+    }
 
 /// The first-frame result (092, FR-009): the seeded retained structure, the render result it
 /// painted (so the adapter paints the first frame ONCE instead of also calling
 /// `Control.renderTree`), and any first-frame diagnostics (e.g. a duplicate-key `KeyCollision`
 /// present in the very first tree — 091 only diffed from frame 1, so it surfaced a frame late).
 type internal RetainedInit<'msg> =
-    { Retained: RetainedRender<'msg>
-      Render: ControlRenderResult<'msg>
-      Diagnostics: ControlDiagnostic list }
+    {
+        Retained: RetainedRender<'msg>
+        Render: ControlRenderResult<'msg>
+        Diagnostics: ControlDiagnostic list
+    }
 
 module internal RetainedRender =
 
@@ -280,9 +308,7 @@ module internal RetainedRender =
 
     /// Feature 140: retained invalidation evidence reads the same modifier classification table as
     /// composition normalization instead of carrying a separate local table.
-    val internal classifyModifierEffect:
-        effect: Composition.ModifierEffect ->
-            Composition.EffectInvalidation
+    val internal classifyModifierEffect: effect: Composition.ModifierEffect -> Composition.EffectInvalidation
 
     /// Feature 117 (Phase 8, FR-003): the fixed text-measure-cache entry cap (aligned with
     /// `PictureCacheCap`). `TextCache.Entries.Count` never exceeds this; the eviction-pressure scenario
@@ -355,7 +381,11 @@ module internal RetainedRender =
     /// unchanged, and DROP a settled return-to-`Normal` clock so the identity is byte-identical at rest
     /// (FR-003/FR-005). On a fresh transition or a mid-flight retarget the new clock's `From = priorOwn`
     /// (the snapshot it cross-fades from); an advance-only/kept clock retains its existing `From`.
-    val internal updateClockForState: desired: VisualState -> priorOwn: FS.GG.UI.Scene.Scene list -> carried: AnimationClock option -> AnimationClock option
+    val internal updateClockForState:
+        desired: VisualState ->
+        priorOwn: FS.GG.UI.Scene.Scene list ->
+        carried: AnimationClock option ->
+            AnimationClock option
 
     /// Feature 099 (R4) / 103 (R6): composite an ACTIVE clock onto an identity's own painted scene
     /// (paint-level only — opacity, never layout). A genuine cross-fade of two opacity-driven layers
@@ -365,67 +395,68 @@ module internal RetainedRender =
     /// endpoints (SC-001). `From = []` degenerates to the plain fade-in. Used only for active clocks —
     /// a settled/absent clock paints `ownScene` unchanged (the settle path is untouched, so the final
     /// frame stays byte-identical, FR-005).
-    val internal sampleOnPaint: clock: AnimationClock -> ownScene: FS.GG.UI.Scene.Scene list -> FS.GG.UI.Scene.Scene list
+    val internal sampleOnPaint:
+        clock: AnimationClock -> ownScene: FS.GG.UI.Scene.Scene list -> FS.GG.UI.Scene.Scene list
 
     /// Feature 190 (Pattern C, promoted from `type private`): the per-frame mutable accumulator threaded
     /// through every stage. Listed here so the stage suites can construct a crafted instance and assert a
     /// single stage's mutations in isolation (FR-003). Fields and `// mutable: hot path` discipline are
     /// unchanged from feature 186; declaring it here adds nothing to the public surface (internal).
     type internal FrameState =
-        { mutable Tc: TextMeasureCache
-          mutable TextHits: int
-          mutable TextMisses: int
-          mutable NextId: uint64
-          mutable Recomputed: int
-          mutable ChangedBound: int
-          mutable Shifted: int
-          mutable Memo: MemoCache
-          mutable MemoHits: int
-          mutable MemoMisses: int
-          mutable MetadataVisited: int
-          mutable VirtualMaterialized: int
-          mutable VirtualTotal: int
-          mutable PcEntries: Map<RetainedId, int * PictureCacheKey>
-          mutable PcClock: int
-          mutable PictureHits: int
-          mutable PictureMisses: int
-          mutable ReplaySkippedNodes: int
-          mutable ReplayNativeBytes: int
-          RepaintedBoxes: ResizeArray<FS.GG.UI.Scene.Rect> }
+        {
+            mutable Tc: TextMeasureCache
+            mutable TextHits: int
+            mutable TextMisses: int
+            mutable NextId: uint64
+            mutable Recomputed: int
+            mutable ChangedBound: int
+            mutable Shifted: int
+            mutable Memo: MemoCache
+            mutable MemoHits: int
+            mutable MemoMisses: int
+            mutable MetadataVisited: int
+            mutable VirtualMaterialized: int
+            mutable VirtualTotal: int
+            mutable PcEntries: Map<RetainedId, int * PictureCacheKey>
+            mutable PcClock: int
+            mutable PictureHits: int
+            mutable PictureMisses: int
+            mutable ReplaySkippedNodes: int
+            mutable ReplayNativeBytes: int
+            RepaintedBoxes: ResizeArray<FS.GG.UI.Scene.Rect>
+        }
 
     /// Feature 190 (Pattern B): the immutable per-frame inputs shared by the four stages (lifted out of
     /// the former `step` closure environment). Generic over 'msg exactly as the retained types are.
     type internal FrameContext<'msg> =
-        { Theme: Theme
-          Size: FS.GG.UI.Scene.Size
-          Prev: RetainedRender<'msg>
-          ThemeChanged: bool }
+        {
+            Theme: Theme
+            Size: FS.GG.UI.Scene.Size
+            Prev: RetainedRender<'msg>
+            ThemeChanged: bool
+        }
 
     /// Feature 190 (Pattern B): the value `layoutStage` produces and threads to `paintStage`/`assemblyStage`.
     type internal LayoutStageResult =
-        { Root: FS.GG.UI.Layout.LayoutNode
-          BoundsById: Map<string, FS.GG.UI.Layout.LayoutBounds>
-          LayoutResult: FS.GG.UI.Layout.LayoutResult
-          Remeasured: int
-          ThemeChanged: bool }
+        {
+            Root: FS.GG.UI.Layout.LayoutNode
+            BoundsById: Map<string, FS.GG.UI.Layout.LayoutBounds>
+            LayoutResult: FS.GG.UI.Layout.LayoutResult
+            Remeasured: int
+            ThemeChanged: bool
+        }
 
     /// Feature 190 — Stage 1 (diff). Total; never throws; duplicate keys surface a `KeyCollision`
     /// diagnostic in the result (FR-010). Produces the reconcile result, the layout dirty set, and its
     /// pre-propagation size. Preserves `retained-step-diff` + `retained-step-layout-dirty-set`.
     val internal diffStage:
-        prev: RetainedRender<'msg> ->
-        next: Control<'msg> ->
-            Reconcile.ReconcileResult<'msg> * Set<string> * int
+        prev: RetainedRender<'msg> -> next: Control<'msg> -> Reconcile.ReconcileResult<'msg> * Set<string> * int
 
     /// Feature 190 — Stage 2 (layout). Runs the INCREMENTAL evaluator over `dirty` and reports the
     /// re-measured count + theme-change flag. Measures via the orchestrator-installed text hook (R4),
     /// which mutates the threaded `st`. Preserves `retained-step-layout-incremental`.
     val internal layoutStage:
-        ctx: FrameContext<'msg> ->
-        st: FrameState ->
-        next: Control<'msg> ->
-        dirty: Set<string> ->
-            LayoutStageResult
+        ctx: FrameContext<'msg> -> st: FrameState -> next: Control<'msg> -> dirty: Set<string> -> LayoutStageResult
 
     /// Feature 190 — Stage 3 (paint). The reuse-driven reconciliation walk (Keep/Replace/Update + child
     /// ops), routing memoizable sites through the memo seam and contributing each repainted node's box to

@@ -91,61 +91,67 @@ let apiSurfaceInternalTests =
     testList
         "#585 — S-INT: the bundled api-surface ships the product-visible surface only"
         [
-          // The gate has a subject. A reader that globs an empty or moved tree reports green while
-          // checking nothing — the fail-open shape this repo keeps rediscovering — so the subject is
-          // asserted before the rule that depends on it.
-          test "the bundled api-surface tree exists and has signature files to check" {
-              Expect.isTrue (Directory.Exists apiSurfaceRoot) $"the bundled api-surface tree exists at {apiSurfaceRoot}"
+            // The gate has a subject. A reader that globs an empty or moved tree reports green while
+            // checking nothing — the fail-open shape this repo keeps rediscovering — so the subject is
+            // asserted before the rule that depends on it.
+            test "the bundled api-surface tree exists and has signature files to check" {
+                Expect.isTrue
+                    (Directory.Exists apiSurfaceRoot)
+                    $"the bundled api-surface tree exists at {apiSurfaceRoot}"
 
-              Expect.isGreaterThan
-                  (bundledSignatures ()).Length
-                  0
-                  "the bundled api-surface tree contains .fsi files (an empty glob would pass S-INT vacuously)"
-          }
+                Expect.isGreaterThan
+                    (bundledSignatures ()).Length
+                    0
+                    "the bundled api-surface tree contains .fsi files (an empty glob would pass S-INT vacuously)"
+            }
 
-          // S-INT itself. `type` as well as `val`/`module`: the issue counts only the latter two, but the
-          // mirror was also shipping `type internal RuntimeStampResult<'msg>` — the return type OF the
-          // internal functions — and a gate held to the issue's literal wording would have passed it.
-          test "no internal `val`, `module` or `type` ships in the product api-surface" {
-              let offenders = bundledSignatures () |> Array.collect internalDeclarationsIn
+            // S-INT itself. `type` as well as `val`/`module`: the issue counts only the latter two, but the
+            // mirror was also shipping `type internal RuntimeStampResult<'msg>` — the return type OF the
+            // internal functions — and a gate held to the issue's literal wording would have passed it.
+            test "no internal `val`, `module` or `type` ships in the product api-surface" {
+                let offenders = bundledSignatures () |> Array.collect internalDeclarationsIn
 
-              Expect.isEmpty
-                  offenders
-                  "the bundled api-surface declares no internal members — a product reads this tree from its own \
+                Expect.isEmpty
+                    offenders
+                    "the bundled api-surface declares no internal members — a product reads this tree from its own \
                    assembly, where an `internal` member does not exist and the keyword cannot warn it. Keep the \
                    declaration in src/ (it is a real InternalsVisibleTo seam) and leave it out of the mirror. The \
                    mirror is generated (#752), so the fix is in `scripts/api-surface-manifest.txt`: drop the line \
                    naming this member. The generator has no internal filter — it will emit whatever the manifest \
                    names, `internal` keyword and all, which is why this gate and not the generator catches it"
-          }
+            }
 
-          // The reader can fail, and fails on the right thing. Without this, S-INT is a regex nobody
-          // has ever seen go red, and its two failure modes are silent: too loose and it eats the doc
-          // comments that explain the public surface; too tight and it stops seeing the leak it exists
-          // to catch.
-          test "the reader matches declarations and not the doc comments that mention them" {
-              let declarations =
-                  [ "val internal resolvedLabel: token: Token -> LabelText option"
-                    "    val internal applyRuntimeVisualState: model: ControlRuntimeModel -> Control<'msg>"
-                    "module internal ControlInternals ="
-                    "    module internal Coalescing ="
-                    // `type` is not decoration: `type internal RuntimeStampResult<'msg>` shipped in the
-                    // mirror as the return type of three `val internal` functions. Strip only the functions
-                    // and the type is left ORPHANED — declared, unreferenced, and still uncallable — while a
-                    // gate written to the issue's literal "10 `val internal`" reports green over it.
-                    "type internal RuntimeStampResult<'msg> ="
-                    "    type internal Cache" ]
+            // The reader can fail, and fails on the right thing. Without this, S-INT is a regex nobody
+            // has ever seen go red, and its two failure modes are silent: too loose and it eats the doc
+            // comments that explain the public surface; too tight and it stops seeing the leak it exists
+            // to catch.
+            test "the reader matches declarations and not the doc comments that mention them" {
+                let declarations =
+                    [
+                        "val internal resolvedLabel: token: Token -> LabelText option"
+                        "    val internal applyRuntimeVisualState: model: ControlRuntimeModel -> Control<'msg>"
+                        "module internal ControlInternals ="
+                        "    module internal Coalescing ="
+                        // `type` is not decoration: `type internal RuntimeStampResult<'msg>` shipped in the
+                        // mirror as the return type of three `val internal` functions. Strip only the functions
+                        // and the type is left ORPHANED — declared, unreferenced, and still uncallable — while a
+                        // gate written to the issue's literal "10 `val internal`" reports green over it.
+                        "type internal RuntimeStampResult<'msg> ="
+                        "    type internal Cache"
+                    ]
 
-              for line in declarations do
-                  Expect.isTrue (internalDeclaration.IsMatch line) $"S-INT sees the declaration: {line}"
+                for line in declarations do
+                    Expect.isTrue (internalDeclaration.IsMatch line) $"S-INT sees the declaration: {line}"
 
-              let prose =
-                  [ "/// entry (mirrors `module internal Reconcile`); reached from `Controls.Tests` via"
-                    "    /// retained path (`module internal RetainedRender`) measures with the IDENTICAL function."
-                    "/// `internal` for the same reason as `resolvedLabel`: the emitters cap at this, and"
-                    "    /// the next tree against a retained previous tree (`module internal RetainedRender`). So" ]
+                let prose =
+                    [
+                        "/// entry (mirrors `module internal Reconcile`); reached from `Controls.Tests` via"
+                        "    /// retained path (`module internal RetainedRender`) measures with the IDENTICAL function."
+                        "/// `internal` for the same reason as `resolvedLabel`: the emitters cap at this, and"
+                        "    /// the next tree against a retained previous tree (`module internal RetainedRender`). So"
+                    ]
 
-              for line in prose do
-                  Expect.isFalse (internalDeclaration.IsMatch line) $"S-INT does not eat the doc comment: {line}"
-          }
+                for line in prose do
+                    Expect.isFalse (internalDeclaration.IsMatch line) $"S-INT does not eat the doc comment: {line}"
+            }
         ]

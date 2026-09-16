@@ -2,16 +2,18 @@ namespace FS.GG.UI.KeyboardInput
 
 /// <summary>Modifier identity retained for matching and display without collapsing AltGraph into Ctrl+Alt.</summary>
 type InputModifiers =
-    { /// <summary>Whether Control is active.</summary>
-      Ctrl: bool
-      /// <summary>Whether the platform Meta or Command modifier is active.</summary>
-      Meta: bool
-      /// <summary>Whether Alt is active.</summary>
-      Alt: bool
-      /// <summary>Whether Shift is active.</summary>
-      Shift: bool
-      /// <summary>Whether AltGraph is active independently of Ctrl and Alt reports.</summary>
-      AltGraph: bool }
+    {
+        /// <summary>Whether Control is active.</summary>
+        Ctrl: bool
+        /// <summary>Whether the platform Meta or Command modifier is active.</summary>
+        Meta: bool
+        /// <summary>Whether Alt is active.</summary>
+        Alt: bool
+        /// <summary>Whether Shift is active.</summary>
+        Shift: bool
+        /// <summary>Whether AltGraph is active independently of Ctrl and Alt reports.</summary>
+        AltGraph: bool
+    }
 
 /// <summary>Identifies either a produced logical key value or a layout-position physical code.</summary>
 [<RequireQualifiedAccess>]
@@ -65,40 +67,46 @@ type CommandAlternative =
 
 /// <summary>Describes one modal context and its explicit overlap relation.</summary>
 type InputContextDescriptor =
-    { /// <summary>Stable context identity.</summary>
-      Id: string
-      /// <summary>Resolution priority; equal values in overlapping contexts must remain unambiguous.</summary>
-      Priority: int
-      /// <summary>Whether the context blocks lower-priority fallthrough while active.</summary>
-      Exclusive: bool
-      /// <summary>Other contexts that may be active simultaneously.</summary>
-      Overlaps: string list }
+    {
+        /// <summary>Stable context identity.</summary>
+        Id: string
+        /// <summary>Resolution priority; equal values in overlapping contexts must remain unambiguous.</summary>
+        Priority: int
+        /// <summary>Whether the context blocks lower-priority fallthrough while active.</summary>
+        Exclusive: bool
+        /// <summary>Other contexts that may be active simultaneously.</summary>
+        Overlaps: string list
+    }
 
 /// <summary>Product-supplied metadata for one stable semantic command.</summary>
 type CommandDescriptor =
-    { /// <summary>Stable namespaced command identity.</summary>
-      Id: CommandId
-      /// <summary>Human-readable display label, distinct from identity.</summary>
-      Label: string
-      /// <summary>Contexts in which product availability may permit invocation.</summary>
-      Contexts: string list
-      /// <summary>Optional opaque key used by the product's availability projection.</summary>
-      AvailabilityKey: string option
-      /// <summary>Press, repeat, or held-action policy.</summary>
-      Trigger: CommandTriggerPolicy
-      /// <summary>Argument validation requirement.</summary>
-      Argument: CommandArgumentPolicy
-      /// <summary>Accessible alternatives used by palettes, menus and pointer controls.</summary>
-      Alternatives: CommandAlternative list }
+    {
+        /// <summary>Stable namespaced command identity.</summary>
+        Id: CommandId
+        /// <summary>Human-readable display label, distinct from identity.</summary>
+        Label: string
+        /// <summary>Contexts in which product availability may permit invocation.</summary>
+        Contexts: string list
+        /// <summary>Optional opaque key used by the product's availability projection.</summary>
+        AvailabilityKey: string option
+        /// <summary>Press, repeat, or held-action policy.</summary>
+        Trigger: CommandTriggerPolicy
+        /// <summary>Argument validation requirement.</summary>
+        Argument: CommandArgumentPolicy
+        /// <summary>Accessible alternatives used by palettes, menus and pointer controls.</summary>
+        Alternatives: CommandAlternative list
+    }
 
 /// <summary>Binds one typed gesture to a command in one context.</summary>
 type InputBinding =
-    { /// <summary>The typed gesture identity.</summary>
-      Gesture: InputGesture
-      /// <summary>The target semantic command.</summary>
-      Command: CommandId
-      /// <summary>The context in which this binding participates.</summary>
-      Context: string }
+    {
+        /// <summary>The typed gesture identity.</summary>
+        Gesture: InputGesture
+        /// <summary>The target semantic command.</summary>
+        Command: CommandId
+        /// <summary>The context in which this binding participates.</summary>
+        Context: string
+    }
 
 /// <summary>An ordered profile override that preserves replacement, alias and explicit-unbind meaning.</summary>
 [<RequireQualifiedAccess>]
@@ -112,41 +120,49 @@ type InputBindingOverride =
 
 /// <summary>An ordered, versioned input profile before validation and override application.</summary>
 type InputProfile =
-    { /// <summary>The exact profile schema identifier.</summary>
-      Schema: string
-      /// <summary>Stable profile identity.</summary>
-      Id: string
-      /// <summary>Default bindings retained in declaration order.</summary>
-      Defaults: InputBinding list
-      /// <summary>Explicit overrides applied in order.</summary>
-      Overrides: InputBindingOverride list }
+    {
+        /// <summary>The exact profile schema identifier.</summary>
+        Schema: string
+        /// <summary>Stable profile identity.</summary>
+        Id: string
+        /// <summary>Default bindings retained in declaration order.</summary>
+        Defaults: InputBinding list
+        /// <summary>Explicit overrides applied in order.</summary>
+        Overrides: InputBindingOverride list
+    }
 
 /// <summary>A validated profile after all ordered overrides have been applied.</summary>
 type EffectiveInputProfile =
-    { /// <summary>The source profile identity.</summary>
-      Id: string
-      /// <summary>The effective deterministic binding list.</summary>
-      Bindings: InputBinding list }
+    {
+        /// <summary>The source profile identity.</summary>
+        Id: string
+        /// <summary>The effective deterministic binding list.</summary>
+        Bindings: InputBinding list
+    }
 
 /// <summary>The single product catalog used to validate dispatch and discovery data.</summary>
 type InputCatalog =
-    { /// <summary>Known modal contexts.</summary>
-      Contexts: InputContextDescriptor list
-      /// <summary>Known semantic commands.</summary>
-      Commands: CommandDescriptor list
-      /// <summary>Host-reserved gestures that profiles cannot claim.</summary>
-      ReservedGestures: InputGesture list
-      /// <summary>Whether a terminal may also be a longer sequence prefix.</summary>
-      AllowTerminalPrefixes: bool }
+    {
+        /// <summary>Known modal contexts.</summary>
+        Contexts: InputContextDescriptor list
+        /// <summary>Known semantic commands.</summary>
+        Commands: CommandDescriptor list
+        /// <summary>Host-reserved gestures that profiles cannot claim.</summary>
+        ReservedGestures: InputGesture list
+        /// <summary>Whether a terminal may also be a longer sequence prefix.</summary>
+        AllowTerminalPrefixes: bool
+    }
 
 /// <summary>A located refusal produced before an invalid catalog or profile is constructed.</summary>
 type InputProfileDiagnostic =
-    { /// <summary>Stable machine-readable diagnostic code.</summary>
-      Code: string
-      /// <summary>Profile or catalog location.</summary>
-      Location: string
-      /// <summary>Human-readable explanation.</summary>
-      Message: string }
+    {
+        /// <summary>Stable machine-readable diagnostic code.</summary>
+        Code: string
+        /// <summary>Profile or catalog location.</summary>
+        Location: string
+        /// <summary>Human-readable explanation.</summary>
+        Message: string
+    }
 
 /// <summary>Validates catalogs and compiles ordered binding profiles.</summary>
 [<RequireQualifiedAccess>]
@@ -158,10 +174,13 @@ module CommandInput =
     /// <summary>Returns a stable typed identity for validation, help and codecs.</summary>
     /// <param name="gesture">The gesture to identify.</param>
     val gestureId: gesture: InputGesture -> string
+
     /// <summary>Validates raw declarations, applies ordered overrides, and validates the effective result.</summary>
     /// <param name="catalog">The product catalog and host policy.</param>
     /// <param name="profile">The untrusted ordered profile.</param>
-    val compile: catalog: InputCatalog -> profile: InputProfile -> Result<EffectiveInputProfile, InputProfileDiagnostic list>
+    val compile:
+        catalog: InputCatalog -> profile: InputProfile -> Result<EffectiveInputProfile, InputProfileDiagnostic list>
+
     /// <summary>Migrates a v1 key map as logical-key defaults without changing its reader or inventing overrides.</summary>
     /// <param name="profileId">Identity for the migrated profile.</param>
     /// <param name="contextId">Context assigned to every migrated binding.</param>

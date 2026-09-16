@@ -10,9 +10,11 @@ open SampleApps.Core.Productivity
 /// All registered samples, in stable order: the three games, then the three productivity
 /// apps. Non-generic — each entry's `Model`/`Msg` are erased behind its closures.
 let all: SampleEntry list =
-    [ Tetris.entry
-      Snake.entry
-      Pong.entry
-      Todo.entry
-      Kanban.entry
-      Calendar.entry ]
+    [
+        Tetris.entry
+        Snake.entry
+        Pong.entry
+        Todo.entry
+        Kanban.entry
+        Calendar.entry
+    ]

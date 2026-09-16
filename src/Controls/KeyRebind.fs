@@ -3,11 +3,13 @@ namespace FS.GG.UI.Controls
 open FS.GG.UI.KeyboardInput
 
 type KeyRebindAction =
-    { Command: CommandId
-      Label: string
-      Order: int
-      Binding: KeyId option
-      DefaultBinding: KeyId option }
+    {
+        Command: CommandId
+        Label: string
+        Order: int
+        Binding: KeyId option
+        DefaultBinding: KeyId option
+    }
 
 module KeyRebind =
     // The kind renders through the generic items path (a text row per entry), exactly as `menu` /
@@ -19,7 +21,8 @@ module KeyRebind =
     let commands (rows: (CommandId * KeyId) list) =
         Attr.items [ for (command, key) in rows -> rowLabel command key ]
 
-    let private ordered catalog = catalog |> List.sortBy (fun action -> action.Order, action.Command)
+    let private ordered catalog =
+        catalog |> List.sortBy (fun action -> action.Order, action.Command)
 
     let private actionLabel action =
         sprintf "%s — %s" action.Label (action.Binding |> Option.defaultValue "Unbound")
@@ -48,24 +51,29 @@ module KeyRebind =
             keymap
             |> Keymap.toBindings
             |> List.groupBy (fun binding -> binding.Command)
-            |> List.map (fun (command, bindings) -> command, (bindings |> List.map (fun binding -> binding.Key) |> List.sort |> List.tryHead))
+            |> List.map (fun (command, bindings) ->
+                command, (bindings |> List.map (fun binding -> binding.Key) |> List.sort |> List.tryHead))
             |> Map.ofList
 
         catalog
         |> List.map (fun action ->
             { action with
-                Binding = byCommand |> Map.tryFind action.Command |> Option.flatten })
+                Binding = byCommand |> Map.tryFind action.Command |> Option.flatten
+            })
 
     let restoreDefaults catalog =
         catalog
         |> ordered
-        |> List.fold (fun keymap action ->
-            match action.DefaultBinding with
-            | Some key -> Keymap.replaceCommandBinding action.Command key keymap
-            | None -> keymap) Keymap.empty
+        |> List.fold
+            (fun keymap action ->
+                match action.DefaultBinding with
+                | Some key -> Keymap.replaceCommandBinding action.Command key keymap
+                | None -> keymap)
+            Keymap.empty
 
     let ofActions catalog extra =
         let rows = catalog |> ordered |> List.map actionLabel
+
         let resetRows =
             if catalog |> List.exists (fun action -> action.DefaultBinding.IsSome) then
                 [ "Reset controls to defaults" ]
@@ -79,6 +87,8 @@ module KeyRebind =
             keymap |> Keymap.toBindings |> List.map (fun b -> rowLabel b.Command b.Key)
 
         let conflictRows =
-            keymap |> Keymap.validate |> List.map (fun d -> sprintf "conflict: %s" d.Message)
+            keymap
+            |> Keymap.validate
+            |> List.map (fun d -> sprintf "conflict: %s" d.Message)
 
         create (Attr.items (bindingRows @ conflictRows) :: extra)

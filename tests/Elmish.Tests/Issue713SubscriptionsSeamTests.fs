@@ -28,8 +28,10 @@ open FS.GG.UI.Controls.Elmish
 /// A subscription that can be told apart by WHAT IT DOES, not merely by its `Id` — so a merge that dropped a
 /// thunk, or kept an `Id` while losing the closure behind it, cannot pass by having the right names in a list.
 let private sub subId msg : AdapterSubscription<int> =
-    { Id = subId
-      Subscribe = fun () -> [ DispatchProductMessage msg ] }
+    {
+        Id = subId
+        Subscribe = fun () -> [ DispatchProductMessage msg ]
+    }
 
 /// What the program would actually get if it ran the merged list: every subscription's commands, in order.
 let private fireAll (subs: AdapterSubscription<int> list) =
@@ -37,73 +39,75 @@ let private fireAll (subs: AdapterSubscription<int> list) =
 
 [<Tests>]
 let issue713SubscriptionsSeamTests =
-    testList "Issue #713 — the subscription merge fs-gg-elmish now documents is exercised" [
+    testList
+        "Issue #713 — the subscription merge fs-gg-elmish now documents is exercised"
+        [
 
-        // The seam's whole reason to exist: `program` takes ONE subscription list, and a product with keyboard
-        // shortcuts has TWO. Everything else here is a consequence of this being an ORDERED merge.
-        test "the merge carries both lists into one, keyboard first" {
-            let keyboard = [ sub "keyboard" 1 ]
-            let controls = [ sub "controls" 2 ]
+            // The seam's whole reason to exist: `program` takes ONE subscription list, and a product with keyboard
+            // shortcuts has TWO. Everything else here is a consequence of this being an ORDERED merge.
+            test "the merge carries both lists into one, keyboard first" {
+                let keyboard = [ sub "keyboard" 1 ]
+                let controls = [ sub "controls" 2 ]
 
-            let merged = ControlsElmish.subscriptions keyboard controls
+                let merged = ControlsElmish.subscriptions keyboard controls
 
-            // No `isNonEmpty` floor here, deliberately: both halves are LITERALS, so a floor over them could
-            // never fire, and a guard that cannot fail is the false assurance FS-GG/.github#266 is about — not
-            // a defence against it. What keeps this honest is that the assertions below name both entries and
-            // both messages, so an input that lost a half could not satisfy them.
-            Expect.equal
-                (merged |> List.map (fun s -> s.Id))
-                [ "keyboard"; "controls" ]
-                "both halves survive the merge, and the ORDER is the contract fs-gg-elmish teaches: keyboard \
+                // No `isNonEmpty` floor here, deliberately: both halves are LITERALS, so a floor over them could
+                // never fire, and a guard that cannot fail is the false assurance FS-GG/.github#266 is about — not
+                // a defence against it. What keeps this honest is that the assertions below name both entries and
+                // both messages, so an input that lost a half could not satisfy them.
+                Expect.equal
+                    (merged |> List.map (fun s -> s.Id))
+                    [ "keyboard"; "controls" ]
+                    "both halves survive the merge, and the ORDER is the contract fs-gg-elmish teaches: keyboard \
                  first, controls second"
 
-            Expect.equal
-                (fireAll merged)
-                [ DispatchProductMessage 1; DispatchProductMessage 2 ]
-                "...and the subscriptions still FIRE — the merge carries each thunk, so the commands a product \
+                Expect.equal
+                    (fireAll merged)
+                    [ DispatchProductMessage 1; DispatchProductMessage 2 ]
+                    "...and the subscriptions still FIRE — the merge carries each thunk, so the commands a product \
                  receives are the ones its two halves actually raised, in the order it was promised"
-        }
+            }
 
-        // Why the order is a contract rather than an implementation detail. Nothing makes an `Id` unique across
-        // the two halves — the keyboard runtime and the control runtime name their subscriptions independently
-        // — so a collision is legal, and ORDER is the only thing that says which one a consumer folds first.
-        test "a colliding Id is resolved by order, not by dropping one of them" {
-            let keyboard = [ sub "activate" 1 ]
-            let controls = [ sub "activate" 2 ]
+            // Why the order is a contract rather than an implementation detail. Nothing makes an `Id` unique across
+            // the two halves — the keyboard runtime and the control runtime name their subscriptions independently
+            // — so a collision is legal, and ORDER is the only thing that says which one a consumer folds first.
+            test "a colliding Id is resolved by order, not by dropping one of them" {
+                let keyboard = [ sub "activate" 1 ]
+                let controls = [ sub "activate" 2 ]
 
-            let merged = ControlsElmish.subscriptions keyboard controls
+                let merged = ControlsElmish.subscriptions keyboard controls
 
-            Expect.hasLength
-                merged
-                2
-                "a shared `Id` does not deduplicate — this is a concatenation, and a product that expected one \
+                Expect.hasLength
+                    merged
+                    2
+                    "a shared `Id` does not deduplicate — this is a concatenation, and a product that expected one \
                  entry back would silently lose a subscription it registered"
 
-            Expect.equal
-                (fireAll merged)
-                [ DispatchProductMessage 1; DispatchProductMessage 2 ]
-                "the KEYBOARD's `activate` is the one that comes first — which is the whole of what the order \
+                Expect.equal
+                    (fireAll merged)
+                    [ DispatchProductMessage 1; DispatchProductMessage 2 ]
+                    "the KEYBOARD's `activate` is the one that comes first — which is the whole of what the order \
                  buys you, and the one property a careless `controls @ keyboard` would reverse in silence"
-        }
+            }
 
-        // The ordinary case, and the one the skill's example shows: a product has keyboard shortcuts and no
-        // control-runtime subscriptions of its own, so it passes `[]` for the half it does not have.
-        test "an empty half leaves the other exactly as it was" {
-            let keyboard = [ sub "keyboard" 1 ]
+            // The ordinary case, and the one the skill's example shows: a product has keyboard shortcuts and no
+            // control-runtime subscriptions of its own, so it passes `[]` for the half it does not have.
+            test "an empty half leaves the other exactly as it was" {
+                let keyboard = [ sub "keyboard" 1 ]
 
-            Expect.equal
-                (ControlsElmish.subscriptions keyboard [] |> List.map (fun s -> s.Id))
-                [ "keyboard" ]
-                "`subscriptions keyboardSubs []` is the shape fs-gg-elmish teaches — passing `[]` for the half \
+                Expect.equal
+                    (ControlsElmish.subscriptions keyboard [] |> List.map (fun s -> s.Id))
+                    [ "keyboard" ]
+                    "`subscriptions keyboardSubs []` is the shape fs-gg-elmish teaches — passing `[]` for the half \
                  you do not have must not cost you the half you do"
 
-            Expect.equal
-                (ControlsElmish.subscriptions [] keyboard |> List.map (fun s -> s.Id))
-                [ "keyboard" ]
-                "...and it holds from the other side too"
+                Expect.equal
+                    (ControlsElmish.subscriptions [] keyboard |> List.map (fun s -> s.Id))
+                    [ "keyboard" ]
+                    "...and it holds from the other side too"
 
-            Expect.isEmpty
-                (ControlsElmish.subscriptions [] ([]: AdapterSubscription<int> list))
-                "merging two nothings is `Sub.none`, not a phantom entry"
-        }
-    ]
+                Expect.isEmpty
+                    (ControlsElmish.subscriptions [] ([]: AdapterSubscription<int> list))
+                    "merging two nothings is `Sub.none`, not a phantom entry"
+            }
+        ]

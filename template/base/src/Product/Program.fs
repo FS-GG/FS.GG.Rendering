@@ -93,11 +93,10 @@ let main args =
         let args = List.ofArray args
         let windowBehavior = parseWindowBehavior args
         let windowBehaviorRequest = toViewerWindowBehavior windowBehavior
-        let capability = Viewer.runtimeCapability()
+        let capability = Viewer.runtimeCapability ()
         let desktopSessionDiagnosticApi = "Viewer.desktopSessionDiagnostic()"
 
-        let optional value =
-            value |> Option.defaultValue "none"
+        let optional value = value |> Option.defaultValue "none"
 
         let envOption name =
             match Environment.GetEnvironmentVariable name with
@@ -130,7 +129,11 @@ let main args =
         let sessionBus = envOption "DBUS_SESSION_BUS_ADDRESS"
 
         let diagnosticClass, desktopMessage =
-            if runtimeDirectory.IsNone || displayVariable.IsNone || (displaySocket.IsSome && not displaySocketExists) then
+            if
+                runtimeDirectory.IsNone
+                || displayVariable.IsNone
+                || (displaySocket.IsSome && not displaySocketExists)
+            then
                 "unsupported-host", "Desktop session prerequisites are missing before app lifecycle debugging."
             else
                 "environment-session-ready", "Desktop session prerequisites are present."
@@ -149,8 +152,7 @@ let main args =
 
         let fallbackFullDesktopSession = "fallback-is-full-desktop-session=false"
 
-        let windowOptionResults =
-            manualWindowOptionResults windowBehaviorRequest
+        let windowOptionResults = manualWindowOptionResults windowBehaviorRequest
 
         let windowOptionSummary =
             windowOptionResults
@@ -194,9 +196,17 @@ let main args =
             // request. The host therefore never selects a different implicit window behavior.
             let launchRequest = AppRoot.WindowOptions.toViewerLaunchRequest windowBehavior
 
-            ControlsElmish.runInteractiveAppWithWindowBehaviorAndAudio viewerOptions launchRequest audioSink interactiveHost
+            ControlsElmish.runInteractiveAppWithWindowBehaviorAndAudio
+                viewerOptions
+                launchRequest
+                audioSink
+                interactiveHost
             //#else
-            ControlsElmish.runInteractiveAppWithWindowBehaviorAndAudio viewerOptions (AppRoot.WindowOptions.toViewerLaunchRequest windowBehavior) audioSink interactiveHost
+            ControlsElmish.runInteractiveAppWithWindowBehaviorAndAudio
+                viewerOptions
+                (AppRoot.WindowOptions.toViewerLaunchRequest windowBehavior)
+                audioSink
+                interactiveHost
             //#endif
         //#else
         // SAMPLE-PACK family: the keyboard-only persistent host is preserved (FR-006). Flagged and
@@ -207,7 +217,11 @@ let main args =
         // sinkless `Viewer.runApp`. It had referenced all four FS.GG.Audio packages since ADR-0024 and
         // wired none of them — shipping the dependency and the silence together.
         let launchResult =
-            Viewer.runAppWithWindowBehaviorAndAudio viewerOptions (AppRoot.WindowOptions.toViewerLaunchRequest windowBehavior) audioSink generatedHost
+            Viewer.runAppWithWindowBehaviorAndAudio
+                viewerOptions
+                (AppRoot.WindowOptions.toViewerLaunchRequest windowBehavior)
+                audioSink
+                generatedHost
         //#endif
 
         match launchResult with
@@ -220,9 +234,60 @@ let main args =
                 | "false" -> "not-verified"
                 | value -> value.ToLowerInvariant()
 
-            printfn "status=%s mode=%s command=%s window-opened=%b window-visible=observed:true accessible-window=true first-frame-presented=%b user-close-observed=%b self-closed-for-evidence=%b input-dispatch=%s exit-path=%b renderer-mode=%s blocked-stage=none classification=none category=none window-options=%s missing-package-capability=%s unsupported-host-reasons=%s diagnostic-api=%s diagnostic-class=%s runtime-directory=%s runtime-directory-exists=%b display-variable=%s display-socket-exists=%b session-bus=%s %s message=%s desktop-message=%s" outcome.Status outcome.Mode defaultCommand outcome.WindowOpened outcome.FirstFramePresented outcome.UserCloseObserved outcome.SelfClosedForEvidence inputDispatchStatus outcome.ExitPath outcome.RendererMode windowOptionSummary missingPackageCapability unsupportedHostReasons desktopSessionDiagnosticApi diagnosticClass (optional runtimeDirectory) runtimeDirectoryExists (optional displayVariable) displaySocketExists (optional sessionBus) fallbackFullDesktopSession outcome.Message desktopMessage
+            printfn
+                "status=%s mode=%s command=%s window-opened=%b window-visible=observed:true accessible-window=true first-frame-presented=%b user-close-observed=%b self-closed-for-evidence=%b input-dispatch=%s exit-path=%b renderer-mode=%s blocked-stage=none classification=none category=none window-options=%s missing-package-capability=%s unsupported-host-reasons=%s diagnostic-api=%s diagnostic-class=%s runtime-directory=%s runtime-directory-exists=%b display-variable=%s display-socket-exists=%b session-bus=%s %s message=%s desktop-message=%s"
+                outcome.Status
+                outcome.Mode
+                defaultCommand
+                outcome.WindowOpened
+                outcome.FirstFramePresented
+                outcome.UserCloseObserved
+                outcome.SelfClosedForEvidence
+                inputDispatchStatus
+                outcome.ExitPath
+                outcome.RendererMode
+                windowOptionSummary
+                missingPackageCapability
+                unsupportedHostReasons
+                desktopSessionDiagnosticApi
+                diagnosticClass
+                (optional runtimeDirectory)
+                runtimeDirectoryExists
+                (optional displayVariable)
+                displaySocketExists
+                (optional sessionBus)
+                fallbackFullDesktopSession
+                outcome.Message
+                desktopMessage
+
             0
-        | Result.Error (failure: ViewerRunFailure) ->
-            printfn "status=%s mode=interactive-window command=%s window-visible=unsupported accessible-window=false blocked-stage=%A classification=%A category=%A window-options=%s missing-package-capability=%s unsupported-host-reasons=%s diagnostic-api=%s diagnostic-class=%s runtime-directory=%s runtime-directory-exists=%b display-variable=%s display-socket-exists=%b session-bus=%s %s message=%s desktop-message=%s" (if failure.Classification = UnsupportedEnvironment then "unsupported" else "failed") defaultCommand failure.BlockedStage failure.Classification failure.DiagnosticCategory windowOptionSummary missingPackageCapability unsupportedHostReasons desktopSessionDiagnosticApi diagnosticClass (optional runtimeDirectory) runtimeDirectoryExists (optional displayVariable) displaySocketExists (optional sessionBus) fallbackFullDesktopSession failure.Message desktopMessage
-            if failure.Classification = UnsupportedEnvironment then 0 else 1
+        | Result.Error(failure: ViewerRunFailure) ->
+            printfn
+                "status=%s mode=interactive-window command=%s window-visible=unsupported accessible-window=false blocked-stage=%A classification=%A category=%A window-options=%s missing-package-capability=%s unsupported-host-reasons=%s diagnostic-api=%s diagnostic-class=%s runtime-directory=%s runtime-directory-exists=%b display-variable=%s display-socket-exists=%b session-bus=%s %s message=%s desktop-message=%s"
+                (if failure.Classification = UnsupportedEnvironment then
+                     "unsupported"
+                 else
+                     "failed")
+                defaultCommand
+                failure.BlockedStage
+                failure.Classification
+                failure.DiagnosticCategory
+                windowOptionSummary
+                missingPackageCapability
+                unsupportedHostReasons
+                desktopSessionDiagnosticApi
+                diagnosticClass
+                (optional runtimeDirectory)
+                runtimeDirectoryExists
+                (optional displayVariable)
+                displaySocketExists
+                (optional sessionBus)
+                fallbackFullDesktopSession
+                failure.Message
+                desktopMessage
+
+            if failure.Classification = UnsupportedEnvironment then
+                0
+            else
+                1
 //#endif

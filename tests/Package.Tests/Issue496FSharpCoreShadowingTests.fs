@@ -93,7 +93,7 @@ let private fsharpCoreConstructors =
 ///
 /// Keep it empty. A new entry is a promise to come back, and it is only worth the paper if the second test
 /// below is the one collecting on it.
-let private knownViolations : Set<string * string> = Set.empty
+let private knownViolations: Set<string * string> = Set.empty
 
 let private repositoryRoot = RepositoryRoot.value
 
@@ -108,7 +108,8 @@ let private signatureFiles () =
 /// A leading attribute block, e.g. `[<RequireQualifiedAccess>]` or `[<NoEquality; NoComparison>]`,
 /// possibly several in a row. Stripped from the front of a line so an attribute written INLINE with
 /// its declaration (`[<Struct>] type Foo =`) is not mistaken for a bare attribute line.
-let private leadingAttributes = Regex(@"^\s*(?:\[<[^\]]*>\]\s*)+", RegexOptions.Compiled)
+let private leadingAttributes =
+    Regex(@"^\s*(?:\[<[^\]]*>\]\s*)+", RegexOptions.Compiled)
 
 /// A DU header. `and` is load-bearing: F# declares mutually recursive types with it, and this repo's
 /// public surface really does (`and ScreenshotCaptureMode`, `and ChildOp<'msg>`, `and AttrValue<'msg>`).
@@ -131,14 +132,17 @@ let private typeHeader =
 let private opensDeclaration =
     Regex(@"^(?:val|type|and|module|namespace|open)\b", RegexOptions.Compiled)
 
-let private duCase = Regex(@"^\s*\|\s*(?<case>[A-Z][A-Za-z0-9_']*)", RegexOptions.Compiled)
+let private duCase =
+    Regex(@"^\s*\|\s*(?<case>[A-Z][A-Za-z0-9_']*)", RegexOptions.Compiled)
 
 /// One public DU read out of a signature file.
 type private DuDecl =
-    { File: string
-      TypeName: string
-      Qualified: bool
-      Collisions: string list }
+    {
+        File: string
+        TypeName: string
+        Qualified: bool
+        Collisions: string list
+    }
 
 /// Reads the public DU declarations out of one `.fsi`. An attribute block may sit on its own line(s)
 /// above the header or inline on it; a DU's cases are the `|`-led lines that follow, up to the next
@@ -151,14 +155,17 @@ let private readDus (file: string) : DuDecl list =
     let flush () =
         match current with
         | Some(name, qualified, cases) when not (List.isEmpty cases) ->
-            let collisions = cases |> List.filter (fun c -> Set.contains c fsharpCoreConstructors)
+            let collisions =
+                cases |> List.filter (fun c -> Set.contains c fsharpCoreConstructors)
 
             if not (List.isEmpty collisions) then
                 results.Add
-                    { File = relativePath file
-                      TypeName = name
-                      Qualified = qualified
-                      Collisions = List.rev collisions }
+                    {
+                        File = relativePath file
+                        TypeName = name
+                        Qualified = qualified
+                        Collisions = List.rev collisions
+                    }
         | _ -> ()
 
         current <- None
@@ -173,13 +180,17 @@ let private readDus (file: string) : DuDecl list =
 
         if String.IsNullOrWhiteSpace line || trimmed.StartsWith "//" then
             () // Blank lines and doc comments sit inside DU bodies; they end nothing.
-        elif not (String.IsNullOrWhiteSpace attributes) && String.IsNullOrWhiteSpace declaration then
+        elif
+            not (String.IsNullOrWhiteSpace attributes)
+            && String.IsNullOrWhiteSpace declaration
+        then
             // A bare attribute line: it introduces the declaration BELOW, so it closes the DU above.
             flush ()
             pendingAttributes <- attributes :: pendingAttributes
         elif typeHeader.IsMatch declaration then
             flush ()
             let m = typeHeader.Match declaration
+
             let qualified =
                 String.Join(" ", attributes :: pendingAttributes).Contains "RequireQualifiedAccess"
 
@@ -189,7 +200,12 @@ let private readDus (file: string) : DuDecl list =
                 let access = m.Groups.["access"].Value
                 access = "" || access = "public"
 
-            current <- if isPublic then Some(m.Groups.["name"].Value, qualified, []) else None
+            current <-
+                if isPublic then
+                    Some(m.Groups.["name"].Value, qualified, [])
+                else
+                    None
+
             pendingAttributes <- []
         elif opensDeclaration.IsMatch declaration then
             // `val`, `module`, `namespace`, `open` -- ends the DU, and its attributes are not ours.
@@ -208,8 +224,7 @@ let private readDus (file: string) : DuDecl list =
 
 /// Every public DU in `src/**/*.fsi` that declares an FSharp.Core-colliding case, fixed or not.
 /// Read once: it is a pure function of the tree, and all three tests below ask for it.
-let private shadowingDus =
-    lazy (signatureFiles () |> List.collect readDus)
+let private shadowingDus = lazy (signatureFiles () |> List.collect readDus)
 
 let private describe (dus: DuDecl list) =
     dus
@@ -220,62 +235,66 @@ let private describe (dus: DuDecl list) =
 
 [<Tests>]
 let fsharpCoreShadowingTests =
-    testList "public DU cases never shadow FSharp.Core constructors" [
+    testList
+        "public DU cases never shadow FSharp.Core constructors"
+        [
 
-        test "no public DU shadows an FSharp.Core constructor without RequireQualifiedAccess" {
-            let offenders =
-                shadowingDus.Value
-                |> List.filter (fun du -> not du.Qualified)
-                |> List.filter (fun du -> not (Set.contains (du.File, du.TypeName) knownViolations))
+            test "no public DU shadows an FSharp.Core constructor without RequireQualifiedAccess" {
+                let offenders =
+                    shadowingDus.Value
+                    |> List.filter (fun du -> not du.Qualified)
+                    |> List.filter (fun du -> not (Set.contains (du.File, du.TypeName) knownViolations))
 
-            Expect.isEmpty
-                offenders
-                (sprintf
-                    "a public DU case colliding with an FSharp.Core constructor shadows it for every consumer who opens the namespace, and the compile error names neither Result nor the fix (#459, #496). Add [<RequireQualifiedAccess>] to:\n%s"
-                    (describe offenders))
-        }
-
-        test "no known violation has been fixed without being removed from the list" {
-            let stillShadowing =
-                shadowingDus.Value
-                |> List.filter (fun du -> not du.Qualified)
-                |> List.map (fun du -> du.File, du.TypeName)
-                |> Set.ofList
-
-            let stale = Set.difference knownViolations stillShadowing |> Set.toList
-
-            let report =
-                stale
-                |> List.map (fun (file, typeName) -> sprintf "  %s: `%s`" file typeName)
-                |> String.concat "\n"
-
-            Expect.isEmpty
-                stale
-                (sprintf
-                    "these types no longer shadow an FSharp.Core constructor, so they must be deleted from `knownViolations` -- an exemption that outlives its defect is how the next one hides (#496):\n%s"
-                    report)
-        }
-
-        // Proves the reader actually SEES the surface it claims to check. A reader that silently
-        // matched nothing would make both tests above pass vacuously, forever.
-        test "the reader sees the types #459 and #496 fixed" {
-            let qualified =
-                shadowingDus.Value
-                |> List.filter (fun du -> du.Qualified)
-                |> List.map (fun du -> du.File, du.TypeName)
-                |> Set.ofList
-
-            [ "src/Scene/Types.fsi", "DiagnosticSeverity"
-              "src/Diagnostics/Diagnostics.fsi", "DiagnosticSeverity"
-              "src/Layout/Types.fsi", "DiagnosticSeverity"
-              "src/Symbology/Legibility.fsi", "Severity"
-              "src/Controls/Types.fsi", "ControlDiagnosticSeverity" ]
-            |> List.iter (fun (file, typeName) ->
-                Expect.isTrue
-                    (Set.contains (file, typeName) qualified)
+                Expect.isEmpty
+                    offenders
                     (sprintf
-                        "%s: `%s` declares an FSharp.Core-colliding case, so this reader must see it carrying [<RequireQualifiedAccess>]"
-                        file
-                        typeName))
-        }
-    ]
+                        "a public DU case colliding with an FSharp.Core constructor shadows it for every consumer who opens the namespace, and the compile error names neither Result nor the fix (#459, #496). Add [<RequireQualifiedAccess>] to:\n%s"
+                        (describe offenders))
+            }
+
+            test "no known violation has been fixed without being removed from the list" {
+                let stillShadowing =
+                    shadowingDus.Value
+                    |> List.filter (fun du -> not du.Qualified)
+                    |> List.map (fun du -> du.File, du.TypeName)
+                    |> Set.ofList
+
+                let stale = Set.difference knownViolations stillShadowing |> Set.toList
+
+                let report =
+                    stale
+                    |> List.map (fun (file, typeName) -> sprintf "  %s: `%s`" file typeName)
+                    |> String.concat "\n"
+
+                Expect.isEmpty
+                    stale
+                    (sprintf
+                        "these types no longer shadow an FSharp.Core constructor, so they must be deleted from `knownViolations` -- an exemption that outlives its defect is how the next one hides (#496):\n%s"
+                        report)
+            }
+
+            // Proves the reader actually SEES the surface it claims to check. A reader that silently
+            // matched nothing would make both tests above pass vacuously, forever.
+            test "the reader sees the types #459 and #496 fixed" {
+                let qualified =
+                    shadowingDus.Value
+                    |> List.filter (fun du -> du.Qualified)
+                    |> List.map (fun du -> du.File, du.TypeName)
+                    |> Set.ofList
+
+                [
+                    "src/Scene/Types.fsi", "DiagnosticSeverity"
+                    "src/Diagnostics/Diagnostics.fsi", "DiagnosticSeverity"
+                    "src/Layout/Types.fsi", "DiagnosticSeverity"
+                    "src/Symbology/Legibility.fsi", "Severity"
+                    "src/Controls/Types.fsi", "ControlDiagnosticSeverity"
+                ]
+                |> List.iter (fun (file, typeName) ->
+                    Expect.isTrue
+                        (Set.contains (file, typeName) qualified)
+                        (sprintf
+                            "%s: `%s` declares an FSharp.Core-colliding case, so this reader must see it carrying [<RequireQualifiedAccess>]"
+                            file
+                            typeName))
+            }
+        ]

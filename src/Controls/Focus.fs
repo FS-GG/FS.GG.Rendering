@@ -1,14 +1,16 @@
 namespace FS.GG.UI.Controls
+
 open FS.GG.UI.DesignSystem
 
 type FocusStop =
-    { Control: ControlId
-      Role: AccessibilityRole
-      Keyboard: KeyboardOperation
-      FocusOrder: int option }
+    {
+        Control: ControlId
+        Role: AccessibilityRole
+        Keyboard: KeyboardOperation
+        FocusOrder: int option
+    }
 
-type TabOrder =
-    { Stops: FocusStop list }
+type TabOrder = { Stops: FocusStop list }
 
 type FocusMove =
     | Next
@@ -39,11 +41,13 @@ type FocusRecoveryTargetKind =
     | NoFocus
 
 type FocusRecoveryDecision =
-    { From: ControlId option
-      To: ControlId option
-      Reason: string
-      RecoveryTargetKind: FocusRecoveryTargetKind
-      Diagnostic: ControlDiagnostic option }
+    {
+        From: ControlId option
+        To: ControlId option
+        Reason: string
+        RecoveryTargetKind: FocusRecoveryTargetKind
+        Diagnostic: ControlDiagnostic option
+    }
 
 module Focus =
 
@@ -52,8 +56,7 @@ module Focus =
     // and `Focus.markFocused` use — replacing the old divergent `Key ?? Kind`. Keyed nodes are unchanged;
     // unkeyed ids shift `Kind -> path`, so unkeyed same-kind focusable siblings no longer collapse onto
     // one stop and a focused unkeyed control's id matches its bindings for keyboard dispatch.
-    let private controlId (path: string) (c: Control<'msg>) : ControlId =
-        c.Key |> Option.defaultValue path
+    let private controlId (path: string) (c: Control<'msg>) : ControlId = c.Key |> Option.defaultValue path
 
     // FR-001: pre-order walk that emits a FocusStop for each focusable control and does NOT descend
     // into a focusable control's subtree (a composite is a single tab stop, clarified). A
@@ -73,10 +76,12 @@ module Focus =
             | Some metadata when metadata.Keyboard.Focusable ->
                 stops.Add(
                     here,
-                    { Control = controlId path c
-                      Role = metadata.Role
-                      Keyboard = metadata.Keyboard
-                      FocusOrder = metadata.FocusOrder }
+                    {
+                        Control = controlId path c
+                        Role = metadata.Role
+                        Keyboard = metadata.Keyboard
+                        FocusOrder = metadata.FocusOrder
+                    }
                 )
             // Focusable -> single stop; do not descend into its subtree.
             | _ ->
@@ -252,11 +257,13 @@ module Focus =
                 | _ -> None)
 
         let decision =
-            { From = fromFocus
-              To = focus
-              Reason = "focus-target-removed"
-              RecoveryTargetKind = classifyRecovery overlay focus
-              Diagnostic = diagnostic }
+            {
+                From = fromFocus
+                To = focus
+                Reason = "focus-target-removed"
+                RecoveryTargetKind = classifyRecovery overlay focus
+                Diagnostic = diagnostic
+            }
 
         next, effects, decision
 
@@ -272,7 +279,9 @@ module Focus =
     // reads; a control already at a non-`Normal` state is returned verbatim so `Disabled` wins.
     let private stampFocused (c: Control<'msg>) : Control<'msg> =
         if ControlInternals.visualStateOf c.Attributes = Normal then
-            { c with Attributes = c.Attributes @ [ Attr.visualState Focused ] }
+            { c with
+                Attributes = c.Attributes @ [ Attr.visualState Focused ]
+            }
         else
             c
 
@@ -290,7 +299,10 @@ module Focus =
 
                 let c =
                     { c with
-                        Children = c.Children |> List.mapi (fun index child -> go (path + "." + string index) child) }
+                        Children =
+                            c.Children
+                            |> List.mapi (fun index child -> go (path + "." + string index) child)
+                    }
 
                 if id = target && isFocusable c then stampFocused c else c
 

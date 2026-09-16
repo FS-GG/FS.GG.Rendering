@@ -17,14 +17,16 @@ open FS.GG.UI.DesignSystem
 
 /// The seeded starting model: first page, Light, indigo accent, seeded demo state.
 let initModel: GalleryModel =
-    { CurrentPage = (List.head Pages.all).Id
-      Mode = Light
-      Accent = GalleryTheme.indigo
-      PageState = DemoState.seed }
+    {
+        CurrentPage = (List.head Pages.all).Id
+        Mode = Light
+        Accent = GalleryTheme.indigo
+        PageState = DemoState.seed
+    }
 
 /// Map a key press to a gallery message. Activation keys exercise the focused command
 /// (FR-012) — enough to make a seeded keyboard script produce a visible state change.
-let mapKey (key: ViewerKey) (pressed: bool): GalleryMsg option =
+let mapKey (key: ViewerKey) (pressed: bool) : GalleryMsg option =
     if not pressed then
         None
     else
@@ -34,17 +36,25 @@ let mapKey (key: ViewerKey) (pressed: bool): GalleryMsg option =
         | _ -> None
 
 /// Build the host for a given initial mode + accent.
-let create (mode: ThemeMode) (accent: Color): InteractiveAppHost<GalleryModel, GalleryMsg> =
-    { Init = fun () -> { initModel with Mode = mode; Accent = accent }, []
-      Update = fun msg model -> Model.update msg model, []
-      View = fun size model -> Shell.view size model
-      Theme = GalleryTheme.resolve mode accent
-      MapKey = mapKey
-      MapPointer = fun _ -> None
-      Tick = fun _ -> None
-      MapKeyChord = fun _ _ -> None
-      OnFrameMetrics = ignore
-      Diagnostics = Viewer.defaultDiagnostics }
+let create (mode: ThemeMode) (accent: Color) : InteractiveAppHost<GalleryModel, GalleryMsg> =
+    {
+        Init =
+            fun () ->
+                { initModel with
+                    Mode = mode
+                    Accent = accent
+                },
+                []
+        Update = fun msg model -> Model.update msg model, []
+        View = fun size model -> Shell.view size model
+        Theme = GalleryTheme.resolve mode accent
+        MapKey = mapKey
+        MapPointer = fun _ -> None
+        Tick = fun _ -> None
+        MapKeyChord = fun _ _ -> None
+        OnFrameMetrics = ignore
+        Diagnostics = Viewer.defaultDiagnostics
+    }
 
 /// The default host (Light + indigo).
 let defaultHost: InteractiveAppHost<GalleryModel, GalleryMsg> =

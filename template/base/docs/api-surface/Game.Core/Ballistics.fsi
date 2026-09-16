@@ -9,9 +9,11 @@ namespace FS.GG.Game.Core
 /// on every machine and drifts a replay apart, while an `int` decrement cannot. Structural equality
 /// makes a projectile a golden-testable value.
 type Projectile =
-    { Position: Point
-      Velocity: Point
-      TicksRemaining: int }
+    {
+        Position: Point
+        Velocity: Point
+        TicksRemaining: int
+    }
 
 /// Public contract type exposed by the FS.GG.Game.Core package.
 /// The outcome of advancing a `Projectile` by one fixed step — the three terminal states of a round,

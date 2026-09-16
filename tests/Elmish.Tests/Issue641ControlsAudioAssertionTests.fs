@@ -39,55 +39,88 @@ let private savedVolume = 0.25
 /// binding, no `MapPointer` clauses.
 let private startScreen (_: Size) (_: Model) : Control<Msg> =
     Stack.create
-        [ Stack.children
-              [ Button.create [ Button.text "Start"; Button.onClick StartPressed ] |> Control.withKey "start" ] ]
+        [
+            Stack.children
+                [
+                    Button.create [ Button.text "Start"; Button.onClick StartPressed ]
+                    |> Control.withKey "start"
+                ]
+        ]
 
 let private baseHost: InteractiveAppHost<Model, Msg> =
-    { Init = fun () -> { Started = false; Volume = savedVolume }, []
-      Update = fun _ model -> model, []
-      View = startScreen
-      Theme = Theme.light
-      // The KEY path into `update`, so the recording is proven on more than one dispatch kind.
-      MapKey = fun k _ -> (match k with | Escape -> Some MutePressed | _ -> None)
-      MapPointer = fun _ -> None
-      Tick = fun _ -> None
-      MapKeyChord = fun _ _ -> None
-      OnFrameMetrics = ignore
-      Diagnostics = Viewer.defaultDiagnostics }
+    {
+        Init =
+            fun () ->
+                {
+                    Started = false
+                    Volume = savedVolume
+                },
+                []
+        Update = fun _ model -> model, []
+        View = startScreen
+        Theme = Theme.light
+        // The KEY path into `update`, so the recording is proven on more than one dispatch kind.
+        MapKey =
+            fun k _ ->
+                (match k with
+                 | Escape -> Some MutePressed
+                 | _ -> None)
+        MapPointer = fun _ -> None
+        Tick = fun _ -> None
+        MapKeyChord = fun _ _ -> None
+        OnFrameMetrics = ignore
+        Diagnostics = Viewer.defaultDiagnostics
+    }
 
 /// The CORRECT product. Startup restores the saved volume by TELLING the mixer; a press asks for the
 /// click sfx; Escape mutes the music bus.
 let private correctHost: InteractiveAppHost<Model, Msg> =
     { baseHost with
-        Init = fun () -> { Started = false; Volume = savedVolume }, [ PlayAudio [ Audio.setBusVolume Bus.Music savedVolume ] ]
+        Init =
+            fun () ->
+                {
+                    Started = false
+                    Volume = savedVolume
+                },
+                [ PlayAudio [ Audio.setBusVolume Bus.Music savedVolume ] ]
         Update =
             fun msg model ->
                 match msg with
                 | StartPressed -> { model with Started = true }, [ PlayAudio [ Audio.playSfx click 1.0 ] ]
                 | VolumeChanged v -> { model with Volume = v }, [ PlayAudio [ Audio.setBusVolume Bus.Music v ] ]
-                | MutePressed -> { model with Volume = 0.0 }, [ PlayAudio [ Audio.setBusVolume Bus.Music 0.0 ] ] }
+                | MutePressed -> { model with Volume = 0.0 }, [ PlayAudio [ Audio.setBusVolume Bus.Music 0.0 ] ]
+    }
 
 /// The TRAPPED product — the `Started` trap, and its startup twin. Both transitions land the model in
 /// EXACTLY the state the correct host lands it in: `Started` flips, `Volume` holds the restored value.
 /// Neither ever tells the mixer. This host is silent, and its model cannot say so.
 let private trappedHost: InteractiveAppHost<Model, Msg> =
     { baseHost with
-        Init = fun () -> { Started = false; Volume = savedVolume }, []
+        Init =
+            fun () ->
+                {
+                    Started = false
+                    Volume = savedVolume
+                },
+                []
         Update =
             fun msg model ->
                 match msg with
                 | StartPressed -> { model with Started = true }, []
                 | VolumeChanged v -> { model with Volume = v }, []
-                | MutePressed -> { model with Volume = 0.0 }, [] }
+                | MutePressed -> { model with Volume = 0.0 }, []
+    }
 
 let private centreOf (host: InteractiveAppHost<Model, Msg>) (model: Model) (nodeId: ControlId) =
     let rendered = Control.renderTree host.Theme size (host.View size model)
 
     let available: FS.GG.UI.Layout.AvailableSpace =
-        { Width = float size.Width
-          WidthMode = FS.GG.UI.Layout.Exactly
-          Height = float size.Height
-          HeightMode = FS.GG.UI.Layout.Exactly }
+        {
+            Width = float size.Width
+            WidthMode = FS.GG.UI.Layout.Exactly
+            Height = float size.Height
+            HeightMode = FS.GG.UI.Layout.Exactly
+        }
 
     let result = FS.GG.UI.Layout.Layout.evaluate available rendered.Layout
     let b = result.Bounds |> List.find (fun b -> b.NodeId = nodeId)
@@ -103,123 +136,139 @@ let tests =
     testList
         "issue-641 controls headless audio assertion"
         [
-          // The capability the issue asked for: a headless dispatch whose ViewerEffect list a caller can
-          // read, narrowed to AudioEffect list — no window, no GL, no device.
-          test "a click on an authored Button surfaces the sound it requested, headlessly" {
-            let _, effects, _ = ControlsElmish.Perf.runScriptToEffects correctHost size (pressStart correctHost)
+            // The capability the issue asked for: a headless dispatch whose ViewerEffect list a caller can
+            // read, narrowed to AudioEffect list — no window, no GL, no device.
+            test "a click on an authored Button surfaces the sound it requested, headlessly" {
+                let _, effects, _ =
+                    ControlsElmish.Perf.runScriptToEffects correctHost size (pressStart correctHost)
 
-            let audio = effects |> ControlsElmish.audioRequests
+                let audio = effects |> ControlsElmish.audioRequests
 
-            Expect.equal
-                audio
-                [ Audio.setBusVolume Bus.Music savedVolume; Audio.playSfx click 1.0 ]
-                "the restored volume at startup, then the click the press asked for — in dispatch order"
-          }
+                Expect.equal
+                    audio
+                    [ Audio.setBusVolume Bus.Music savedVolume; Audio.playSfx click 1.0 ]
+                    "the restored volume at startup, then the click the press asked for — in dispatch order"
+            }
 
-          // THE test. The issue's central claim, made executable: the model cannot catch the `Started`
-          // trap, and the effect stream can. If this test ever fails, the capability has regressed.
-          test "the Started trap is invisible in the model and visible at the sink" {
-            let correctModel, correctEffects, _ =
-                ControlsElmish.Perf.runScriptToEffects correctHost size (pressStart correctHost)
+            // THE test. The issue's central claim, made executable: the model cannot catch the `Started`
+            // trap, and the effect stream can. If this test ever fails, the capability has regressed.
+            test "the Started trap is invisible in the model and visible at the sink" {
+                let correctModel, correctEffects, _ =
+                    ControlsElmish.Perf.runScriptToEffects correctHost size (pressStart correctHost)
 
-            let trappedModel, trappedEffects, _ =
-                ControlsElmish.Perf.runScriptToEffects trappedHost size (pressStart trappedHost)
+                let trappedModel, trappedEffects, _ =
+                    ControlsElmish.Perf.runScriptToEffects trappedHost size (pressStart trappedHost)
 
-            // 1. A model-level assertion CANNOT tell the silent product from the sounding one. Every
-            //    test written against the model passes on BOTH — which is precisely why the trap
-            //    survives code review and ships.
-            Expect.equal trappedModel correctModel "the two products are indistinguishable from inside the model"
-            Expect.isTrue trappedModel.Started "the trapped product did flip Started — the flag is not the bug"
+                // 1. A model-level assertion CANNOT tell the silent product from the sounding one. Every
+                //    test written against the model passes on BOTH — which is precisely why the trap
+                //    survives code review and ships.
+                Expect.equal trappedModel correctModel "the two products are indistinguishable from inside the model"
+                Expect.isTrue trappedModel.Started "the trapped product did flip Started — the flag is not the bug"
 
-            // 2. Asking what the MIXER WAS TOLD separates them instantly.
-            Expect.equal
-                (correctEffects |> ControlsElmish.audioRequests)
-                [ Audio.setBusVolume Bus.Music savedVolume; Audio.playSfx click 1.0 ]
-                "the correct product told the mixer twice"
+                // 2. Asking what the MIXER WAS TOLD separates them instantly.
+                Expect.equal
+                    (correctEffects |> ControlsElmish.audioRequests)
+                    [ Audio.setBusVolume Bus.Music savedVolume; Audio.playSfx click 1.0 ]
+                    "the correct product told the mixer twice"
 
-            Expect.equal
-                (trappedEffects |> ControlsElmish.audioRequests)
-                []
-                "the trapped product is SILENT — it restored the volume into its model and played nothing"
-          }
+                Expect.equal
+                    (trappedEffects |> ControlsElmish.audioRequests)
+                    []
+                    "the trapped product is SILENT — it restored the volume into its model and played nothing"
+            }
 
-          // `Init` seeds the stream, and it is not a detail: the restored-volume-at-startup case IS an
-          // Init effect, and the live loop interprets `initEffects` into its sink before frame 0
-          // (Viewer.runInteractiveViewerWithWindowBehaviorCore). A recorder that started at frame 0
-          // would report the trapped and correct hosts as identical at startup.
-          test "Init's requests are recorded, before any frame's" {
-            let _, effects, _ = ControlsElmish.Perf.runScriptToEffects correctHost size []
+            // `Init` seeds the stream, and it is not a detail: the restored-volume-at-startup case IS an
+            // Init effect, and the live loop interprets `initEffects` into its sink before frame 0
+            // (Viewer.runInteractiveViewerWithWindowBehaviorCore). A recorder that started at frame 0
+            // would report the trapped and correct hosts as identical at startup.
+            test "Init's requests are recorded, before any frame's" {
+                let _, effects, _ = ControlsElmish.Perf.runScriptToEffects correctHost size []
 
-            Expect.equal
-                (effects |> ControlsElmish.audioRequests)
-                [ Audio.setBusVolume Bus.Music savedVolume ]
-                "an empty script still records what startup asked for"
-          }
+                Expect.equal
+                    (effects |> ControlsElmish.audioRequests)
+                    [ Audio.setBusVolume Bus.Music savedVolume ]
+                    "an empty script still records what startup asked for"
+            }
 
-          // Parity with the game family — the issue's actual acceptance criterion: the same effect list
-          // must narrow to the same AudioEffect list on both families, so a product that changes host
-          // family does not change its audio assertions. One implementation, two names.
-          test "audioRequests agrees with the generated-app family, effect for effect" {
-            let _, effects, _ = ControlsElmish.Perf.runScriptToEffects correctHost size (pressStart correctHost)
+            // Parity with the game family — the issue's actual acceptance criterion: the same effect list
+            // must narrow to the same AudioEffect list on both families, so a product that changes host
+            // family does not change its audio assertions. One implementation, two names.
+            test "audioRequests agrees with the generated-app family, effect for effect" {
+                let _, effects, _ =
+                    ControlsElmish.Perf.runScriptToEffects correctHost size (pressStart correctHost)
 
-            Expect.equal
-                (effects |> ControlsElmish.audioRequests)
-                (effects |> GeneratedAppHost.audioRequests)
-                "the Controls narrowing IS the generated-app narrowing — a second copy is drift waiting to happen"
-          }
+                Expect.equal
+                    (effects |> ControlsElmish.audioRequests)
+                    (effects |> GeneratedAppHost.audioRequests)
+                    "the Controls narrowing IS the generated-app narrowing — a second copy is drift waiting to happen"
+            }
 
-          // The narrowing is a narrowing: non-audio effects are dropped, not smuggled through.
-          test "non-audio effects are dropped by the narrowing but kept in the raw stream" {
-            let noisyHost =
-                { correctHost with
-                    Update =
-                        fun msg model ->
-                            match msg with
-                            | StartPressed ->
-                                { model with Started = true },
-                                [ CaptureScreenshot "shot.png"
-                                  PlayAudio [ Audio.playSfx click 1.0 ]
-                                  CloseWindow ]
-                            | VolumeChanged v -> { model with Volume = v }, []
-                            | MutePressed -> { model with Volume = 0.0 }, [] }
+            // The narrowing is a narrowing: non-audio effects are dropped, not smuggled through.
+            test "non-audio effects are dropped by the narrowing but kept in the raw stream" {
+                let noisyHost =
+                    { correctHost with
+                        Update =
+                            fun msg model ->
+                                match msg with
+                                | StartPressed ->
+                                    { model with Started = true },
+                                    [
+                                        CaptureScreenshot "shot.png"
+                                        PlayAudio [ Audio.playSfx click 1.0 ]
+                                        CloseWindow
+                                    ]
+                                | VolumeChanged v -> { model with Volume = v }, []
+                                | MutePressed -> { model with Volume = 0.0 }, []
+                    }
 
-            let _, effects, _ = ControlsElmish.Perf.runScriptToEffects noisyHost size (pressStart noisyHost)
+                let _, effects, _ =
+                    ControlsElmish.Perf.runScriptToEffects noisyHost size (pressStart noisyHost)
 
-            // `ViewerEffect` carries a case with no equality, so match the case rather than compare values.
-            Expect.isTrue
-                (effects |> List.exists (function CloseWindow -> true | _ -> false))
-                "the raw stream keeps every effect the product emitted, not just the audio ones"
+                // `ViewerEffect` carries a case with no equality, so match the case rather than compare values.
+                Expect.isTrue
+                    (effects
+                     |> List.exists (function
+                         | CloseWindow -> true
+                         | _ -> false))
+                    "the raw stream keeps every effect the product emitted, not just the audio ones"
 
-            Expect.equal
-                (effects |> ControlsElmish.audioRequests)
-                [ Audio.setBusVolume Bus.Music savedVolume; Audio.playSfx click 1.0 ]
-                "…and the narrowing yields the sound requests alone"
-          }
+                Expect.equal
+                    (effects |> ControlsElmish.audioRequests)
+                    [ Audio.setBusVolume Bus.Music savedVolume; Audio.playSfx click 1.0 ]
+                    "…and the narrowing yields the sound requests alone"
+            }
 
-          // The recording lives at `applyMessages`, the ONE place the fold calls `host.Update` — so it
-          // must catch a KEY-driven request as surely as a pointer-driven one. Without this, all the
-          // coverage sits on the pointer branch, and a regression that recorded only there would pass:
-          // the silent-discard class #429/#438 keep having to re-fix.
-          test "a key-driven request is recorded too, not just a pointer-driven one" {
-            let _, effects, _ =
-                ControlsElmish.Perf.runScriptToEffects correctHost size [ FrameInput.Key(Escape, ViewerKeyboard.noModifiers) ]
+            // The recording lives at `applyMessages`, the ONE place the fold calls `host.Update` — so it
+            // must catch a KEY-driven request as surely as a pointer-driven one. Without this, all the
+            // coverage sits on the pointer branch, and a regression that recorded only there would pass:
+            // the silent-discard class #429/#438 keep having to re-fix.
+            test "a key-driven request is recorded too, not just a pointer-driven one" {
+                let _, effects, _ =
+                    ControlsElmish.Perf.runScriptToEffects
+                        correctHost
+                        size
+                        [ FrameInput.Key(Escape, ViewerKeyboard.noModifiers) ]
 
-            Expect.equal
-                (effects |> ControlsElmish.audioRequests)
-                [ Audio.setBusVolume Bus.Music savedVolume; Audio.setBusVolume Bus.Music 0.0 ]
-                "startup's restore, then the mute the Escape key asked for"
-          }
+                Expect.equal
+                    (effects |> ControlsElmish.audioRequests)
+                    [ Audio.setBusVolume Bus.Music savedVolume; Audio.setBusVolume Bus.Music 0.0 ]
+                    "startup's restore, then the mute the Escape key asked for"
+            }
 
-          // The recorder is an addition, not a change: threading the sink through `runScriptCore`
-          // must leave the two existing entry points folding exactly as they did.
-          test "runScript and runScriptToModel are unchanged by the recording" {
-            let script = pressStart correctHost
-            let metrics = ControlsElmish.Perf.runScript correctHost size script
-            let model, modelMetrics = ControlsElmish.Perf.runScriptToModel correctHost size script
-            let effectModel, _, effectMetrics = ControlsElmish.Perf.runScriptToEffects correctHost size script
+            // The recorder is an addition, not a change: threading the sink through `runScriptCore`
+            // must leave the two existing entry points folding exactly as they did.
+            test "runScript and runScriptToModel are unchanged by the recording" {
+                let script = pressStart correctHost
+                let metrics = ControlsElmish.Perf.runScript correctHost size script
 
-            Expect.equal modelMetrics metrics "runScriptToModel still returns runScript's metrics"
-            Expect.equal effectMetrics metrics "the recording fold returns the same metrics as the fold it extends"
-            Expect.equal effectModel model "…and the same final model"
-          }
+                let model, modelMetrics =
+                    ControlsElmish.Perf.runScriptToModel correctHost size script
+
+                let effectModel, _, effectMetrics =
+                    ControlsElmish.Perf.runScriptToEffects correctHost size script
+
+                Expect.equal modelMetrics metrics "runScriptToModel still returns runScript's metrics"
+                Expect.equal effectMetrics metrics "the recording fold returns the same metrics as the fold it extends"
+                Expect.equal effectModel model "…and the same final model"
+            }
         ]

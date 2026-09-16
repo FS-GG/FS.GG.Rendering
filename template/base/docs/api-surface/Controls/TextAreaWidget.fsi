@@ -7,11 +7,13 @@ open FS.GG.UI.Controls
 /// is required identity for a stateful control. Reuses the existing `TextInput`
 /// model — no parallel state type (FR-004/SC-003). `OnChanged = None` lowers to no binding.
 type TextAreaProps<'msg> =
-    { Id: ControlId
-      Value: string
-      ReadOnly: bool
-      Validation: ValidationState
-      OnChanged: (string -> 'msg) option }
+    {
+        Id: ControlId
+        Value: string
+        ReadOnly: bool
+        Validation: ValidationState
+        OnChanged: (string -> 'msg) option
+    }
 
 /// Typed Props front door for the `TextArea` control.
 module TextArea =

@@ -20,56 +20,66 @@ let private scenePackage = [ "FS.GG.UI.Scene", pin ]
 
 /// A fake origin so a diagnostic has a doc+line to map back to.
 let private origin doc line body : FenceBlock =
-    { Kind = ProductSkill; Doc = doc; StartLine = line; Body = body; Skip = None; ExtraOpens = [] }
+    {
+        Kind = ProductSkill
+        Doc = doc
+        StartLine = line
+        Body = body
+        Skip = None
+        ExtraOpens = []
+    }
 
 [<Tests>]
 let tests =
     testSequenced
     <| testList
         "DocFences.Harness (live proof)"
-        [ test "GREEN: a fence that binds a real pinned symbol compiles" {
-              let body = [ "let p : Point = { X = 1.0; Y = 2.0 }"; "ignore p" ]
+        [
+            test "GREEN: a fence that binds a real pinned symbol compiles" {
+                let body = [ "let p : Point = { X = 1.0; Y = 2.0 }"; "ignore p" ]
 
-              let unit =
-                  { Harness.ModuleName = "Fence_green"
-                    Harness.Origin = origin "template/product-skills/fixture/SKILL.md" 10 body
-                    Harness.Opens = [ "FS.GG.UI.Scene" ]
-                    Harness.Body = body }
+                let unit =
+                    {
+                        Harness.ModuleName = "Fence_green"
+                        Harness.Origin = origin "template/product-skills/fixture/SKILL.md" 10 body
+                        Harness.Opens = [ "FS.GG.UI.Scene" ]
+                        Harness.Body = body
+                    }
 
-              let outcome = Harness.compile scenePackage [ unit ]
+                let outcome = Harness.compile scenePackage [ unit ]
 
-              if Harness.pinUnpublished outcome then
-                  skiptestf "pin %s not yet published to nuget.org (release window) — waiver applies" pin
+                if Harness.pinUnpublished outcome then
+                    skiptestf "pin %s not yet published to nuget.org (release window) — waiver applies" pin
 
-              Expect.isTrue
-                  outcome.Succeeded
-                  (sprintf "a fence using the real Point record must compile against the pin.\n%s" outcome.RawOutput)
-          }
+                Expect.isTrue
+                    outcome.Succeeded
+                    (sprintf "a fence using the real Point record must compile against the pin.\n%s" outcome.RawOutput)
+            }
 
-          test "RED: a fence naming an unreleased symbol fails, mapped to its doc+line" {
-              let body = [ "Point.thisMemberDoesNotExistInThePin () |> ignore" ]
+            test "RED: a fence naming an unreleased symbol fails, mapped to its doc+line" {
+                let body = [ "Point.thisMemberDoesNotExistInThePin () |> ignore" ]
 
-              let unit =
-                  { Harness.ModuleName = "Fence_red"
-                    Harness.Origin = origin "template/product-skills/fixture/SKILL.md" 42 body
-                    Harness.Opens = [ "FS.GG.UI.Scene" ]
-                    Harness.Body = body }
+                let unit =
+                    {
+                        Harness.ModuleName = "Fence_red"
+                        Harness.Origin = origin "template/product-skills/fixture/SKILL.md" 42 body
+                        Harness.Opens = [ "FS.GG.UI.Scene" ]
+                        Harness.Body = body
+                    }
 
-              let outcome = Harness.compile scenePackage [ unit ]
+                let outcome = Harness.compile scenePackage [ unit ]
 
-              if Harness.pinUnpublished outcome then
-                  skiptestf "pin %s not yet published to nuget.org (release window) — waiver applies" pin
+                if Harness.pinUnpublished outcome then
+                    skiptestf "pin %s not yet published to nuget.org (release window) — waiver applies" pin
 
-              Expect.isFalse
-                  outcome.Succeeded
-                  "a fence naming a symbol the pin does not export MUST fail to compile"
+                Expect.isFalse outcome.Succeeded "a fence naming a symbol the pin does not export MUST fail to compile"
 
-              let mapped =
-                  outcome.Diagnostics
-                  |> List.exists (fun d ->
-                      d.Doc = "template/product-skills/fixture/SKILL.md" && d.Line = 42)
+                let mapped =
+                    outcome.Diagnostics
+                    |> List.exists (fun d -> d.Doc = "template/product-skills/fixture/SKILL.md" && d.Line = 42)
 
-              Expect.isTrue
-                  mapped
-                  (sprintf "the failure must map back to the fixture doc at line 42; got %A" outcome.Diagnostics)
-          } ]
+                Expect.isTrue
+                    mapped
+                    (sprintf "the failure must map back to the fixture doc at line 42; got %A" outcome.Diagnostics)
+            }
+        ]

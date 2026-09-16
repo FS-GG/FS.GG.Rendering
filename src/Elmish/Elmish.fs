@@ -4,9 +4,11 @@ open FS.GG.UI.Scene
 open FS.GG.UI.SkiaViewer
 
 type ElmishAdapterModel<'model> =
-    { UserModel: 'model
-      Scene: SceneNode
-      Viewer: ViewerModel }
+    {
+        UserModel: 'model
+        Scene: SceneNode
+        Viewer: ViewerModel
+    }
 
 type ElmishAdapterMsg<'msg> =
     | UserMsg of 'msg
@@ -20,9 +22,11 @@ module ElmishAdapter =
     let init viewerOptions userModel scene =
         let viewer, effects = Viewer.init viewerOptions
 
-        { UserModel = userModel
-          Scene = scene
-          Viewer = viewer },
+        {
+            UserModel = userModel
+            Scene = scene
+            Viewer = viewer
+        },
         (effects |> List.map DispatchViewer)
 
     let update render msg model =
@@ -30,5 +34,11 @@ module ElmishAdapter =
         | UserMsg userMsg -> model, [ DispatchUser userMsg ]
         | ViewerMsg viewerMsg ->
             let viewer, effects = Viewer.update viewerMsg model.Viewer
-            let next = { model with Viewer = viewer; Scene = render model.UserModel }
+
+            let next =
+                { model with
+                    Viewer = viewer
+                    Scene = render model.UserModel
+                }
+
             next, (effects |> List.map DispatchViewer)

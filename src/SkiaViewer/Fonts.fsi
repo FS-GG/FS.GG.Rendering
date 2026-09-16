@@ -27,21 +27,27 @@ module Fonts =
     /// Per-character resolution: the source character, the glyph actually drawn, the `SKFont` that
     /// covers it (its advance is the draw advance), and the disclosure.
     type ResolvedChar =
-        { Original: char
-          Rendered: char
-          Font: SKFont
-          Resolution: FallbackResolution }
+        {
+            Original: char
+            Rendered: char
+            Font: SKFont
+            Resolution: FallbackResolution
+        }
 
     /// Disclosure aggregate for a rendered string or page (FR-001 evidence record).
     type FallbackReport =
-        { SubstitutedCount: int
-          TofuCount: int
-          AffectedCodePoints: int list }
+        {
+            SubstitutedCount: int
+            TofuCount: int
+            AffectedCodePoints: int list
+        }
 
     /// Rendering-edge text shaping provider status.
     type TextShapingProviderStatus =
-        { Evidence: ShapingProviderEvidence
-          Diagnostics: string list }
+        {
+            Evidence: ShapingProviderEvidence
+            Diagnostics: string list
+        }
 
     /// The default proportional family used when a request carries no family (`Noto Sans`).
     val defaultSansFamily: string

@@ -119,7 +119,8 @@ let private codeOnly (source: string) : string =
 
     let blank (start: int) (finish: int) =
         for k in start .. finish - 1 do
-            if out[k] <> '\n' then out[k] <- ' '
+            if out[k] <> '\n' then
+                out[k] <- ' '
 
     let endOf (needle: string) (from: int) =
         match source.IndexOf(needle, from, StringComparison.Ordinal) with
@@ -166,8 +167,10 @@ let private codeOnly (source: string) : string =
             let mutable closed = false
 
             while not closed && j < source.Length do
-                if source[j] <> '"' then j <- j + 1
-                elif startsAt source j "\"\"" then j <- j + 2
+                if source[j] <> '"' then
+                    j <- j + 1
+                elif startsAt source j "\"\"" then
+                    j <- j + 2
                 else
                     j <- j + 1
                     closed <- true
@@ -179,8 +182,10 @@ let private codeOnly (source: string) : string =
             let mutable closed = false
 
             while not closed && j < source.Length do
-                if source[j] = '\\' then j <- min source.Length (j + 2)
-                elif source[j] = '\n' then closed <- true
+                if source[j] = '\\' then
+                    j <- min source.Length (j + 2)
+                elif source[j] = '\n' then
+                    closed <- true
                 elif source[j] = '"' then
                     j <- j + 1
                     closed <- true
@@ -208,10 +213,12 @@ let private codeOnly (source: string) : string =
 /// The step upward, in every spelling. NOT evidence on its own — every one of these has an honest
 /// single-step use somewhere in the corpus, which is exactly why #700's token match could not be
 /// completed without turning honest lines red. A token only convicts inside one of the shapes below.
-let private ascentTokens = [ "Directory.GetParent"; "Path.GetDirectoryName"; ".Parent" ]
+let private ascentTokens =
+    [ "Directory.GetParent"; "Path.GetDirectoryName"; ".Parent" ]
 
 let private namesAnAscent (code: string) =
-    ascentTokens |> List.exists (fun token -> code.Contains(token, StringComparison.Ordinal))
+    ascentTokens
+    |> List.exists (fun token -> code.Contains(token, StringComparison.Ordinal))
 
 let private indentOf (line: string) = line.Length - line.TrimStart().Length
 
@@ -231,12 +238,18 @@ let private recBinding =
 
 let private whileLoop = Regex(@"\bwhile\b", RegexOptions.Compiled)
 
-let private assignment = Regex(@"([A-Za-z_][A-Za-z0-9_']*)\s*<-(.*)$", RegexOptions.Compiled)
+let private assignment =
+    Regex(@"([A-Za-z_][A-Za-z0-9_']*)\s*<-(.*)$", RegexOptions.Compiled)
 
 let private mentions (name: string) (code: string) =
     Regex.IsMatch(code, @"\b" + Regex.Escape name + @"\b")
 
-type private WalkShape = { Shape: string; Line: int; Text: string }
+type private WalkShape =
+    {
+        Shape: string
+        Line: int
+        Text: string
+    }
 
 /// Every repeated ascent in a source: an ascent applied to its OWN RESULT, which is what makes a walk a
 /// walk and a dirname merely a dirname. Three shapes, because F# has three ways to close that loop:
@@ -257,47 +270,60 @@ let private walkShapes (source: string) : WalkShape list =
     // bug in the report rather than in the walk.
     let asWritten = normalized.Split('\n')
 
-    [ for index in 0 .. lines.Length - 1 do
-          let line = lines[index]
-          let written = asWritten[index].Trim()
-          let recursive = recBinding.Match line
+    [
+        for index in 0 .. lines.Length - 1 do
+            let line = lines[index]
+            let written = asWritten[index].Trim()
+            let recursive = recBinding.Match line
 
-          if recursive.Success then
-              let name = recursive.Groups[1].Value
-              let block = blockAt lines index
-              // Drop the binding's own header, so `let rec walk` is not itself read as a call to `walk`.
-              let body =
-                  block.Substring(block.IndexOf(recursive.Value, StringComparison.Ordinal) + recursive.Value.Length)
+            if recursive.Success then
+                let name = recursive.Groups[1].Value
+                let block = blockAt lines index
+                // Drop the binding's own header, so `let rec walk` is not itself read as a call to `walk`.
+                let body =
+                    block.Substring(
+                        block.IndexOf(recursive.Value, StringComparison.Ordinal)
+                        + recursive.Value.Length
+                    )
 
-              if namesAnAscent body && mentions name body then
-                  { Shape = "recursive ascent"
+                if namesAnAscent body && mentions name body then
+                    {
+                        Shape = "recursive ascent"
+                        Line = index + 1
+                        Text = written
+                    }
+
+            if whileLoop.IsMatch line && namesAnAscent (blockAt lines index) then
+                {
+                    Shape = "looping ascent"
                     Line = index + 1
-                    Text = written }
+                    Text = written
+                }
 
-          if whileLoop.IsMatch line && namesAnAscent (blockAt lines index) then
-              { Shape = "looping ascent"
-                Line = index + 1
-                Text = written }
+            let assigned = assignment.Match line
 
-          let assigned = assignment.Match line
+            if assigned.Success then
+                let target = assigned.Groups[1].Value
+                let value = assigned.Groups[2].Value
 
-          if assigned.Success then
-              let target = assigned.Groups[1].Value
-              let value = assigned.Groups[2].Value
+                if namesAnAscent value && mentions target value then
+                    {
+                        Shape = "mutating ascent"
+                        Line = index + 1
+                        Text = written
+                    }
+    ]
 
-              if namesAnAscent value && mentions target value then
-                  { Shape = "mutating ascent"
-                    Line = index + 1
-                    Text = written } ]
-
-let private walksTheTree (source: string) = walkShapes source |> List.isEmpty |> not
+let private walksTheTree (source: string) =
+    walkShapes source |> List.isEmpty |> not
 
 // ─── the corpus ───────────────────────────────────────────────────────────────────────────────────
 
 let private relativeTo (path: string) =
     Path.GetRelativePath(repoRoot, path).Replace('\\', '/')
 
-let private isBuildOutput (rel: string) = rel.Contains "/obj/" || rel.Contains "/bin/"
+let private isBuildOutput (rel: string) =
+    rel.Contains "/obj/" || rel.Contains "/bin/"
 
 /// The sample TEST suites, discovered from disk rather than listed here by hand, so a suite that is
 /// added or renamed joins the corpus without anybody having to remember this file exists.
@@ -342,17 +368,18 @@ let private readSource (rel: string) =
 /// The sources sit at column 0 inside their quotes on purpose: the shapes are offside-sensitive, and
 /// what the detector sees should be what the reader sees, with no enclosing indentation to discount.
 let private probeSubjects: (bool * string * string) list =
-    [ true,
-      "#734's evasion — a let rec walk on Path.GetDirectoryName, invisible to #700's token list",
-      """
+    [
+        true,
+        "#734's evasion — a let rec walk on Path.GetDirectoryName, invisible to #700's token list",
+        """
 let rec private up (d: string) =
     if File.Exists(Path.Combine(d, "FS.GG.Rendering.slnx")) then d
     else up (Path.GetDirectoryName d)
 """
 
-      true,
-      "the shared finder's own shape — a let rec walk on Directory.GetParent",
-      """
+        true,
+        "the shared finder's own shape — a let rec walk on Directory.GetParent",
+        """
 let find (start: string) =
     let rec walk (directory: string) =
         if Directory.GetFiles(directory, "*.slnx").Length > 0 then directory
@@ -363,9 +390,9 @@ let find (start: string) =
     walk start
 """
 
-      true,
-      "a while loop rebinding a DirectoryInfo to its own .Parent",
-      """
+        true,
+        "a while loop rebinding a DirectoryInfo to its own .Parent",
+        """
 let root () =
     let mutable current = DirectoryInfo(AppContext.BaseDirectory)
     while current <> null && not (File.Exists(Path.Combine(current.FullName, "x.slnx"))) do
@@ -373,9 +400,9 @@ let root () =
     current.FullName
 """
 
-      true,
-      "a while loop whose assignment does NOT name the ascent — only the loop shape catches this one",
-      """
+        true,
+        "a while loop whose assignment does NOT name the ascent — only the loop shape catches this one",
+        """
 let root () =
     let mutable dir = AppContext.BaseDirectory
     while not (File.Exists(Path.Combine(dir, "x.slnx"))) do
@@ -384,40 +411,40 @@ let root () =
     dir
 """
 
-      true,
-      "a .Parent chain that never names DirectoryInfo — the conjunction #700 needed would have let this through",
-      """
+        true,
+        "a .Parent chain that never names DirectoryInfo — the conjunction #700 needed would have let this through",
+        """
 let rec climb (f: FileInfo) =
     if File.Exists(Path.Combine(f.Directory.FullName, "x.slnx")) then f.Directory.FullName
     else climb (FileInfo(f.Directory.Parent.FullName))
 """
 
-      false,
-      "an honest single-step dirname — the 19 lines under tests/ that made the token unaddable",
-      """
+        false,
+        "an honest single-step dirname — the 19 lines under tests/ that made the token unaddable",
+        """
 let dirOf (p: string) = match Path.GetDirectoryName p with | null -> "" | d -> d
 """
 
-      false,
-      "an honest single-step Directory.GetParent — the four lines in SecondAntShowcase.Tests that blocked the widening",
-      """
+        false,
+        "an honest single-step Directory.GetParent — the four lines in SecondAntShowcase.Tests that blocked the widening",
+        """
 let runRoot outDir =
     match Directory.GetParent(summaryFile outDir) with
     | null -> failwith "no run dir"
     | parent -> parent.FullName
 """
 
-      false,
-      "an honest dirname inside a for loop — repeated, but never fed back, which is why `for` is not a shape",
-      """
+        false,
+        "an honest dirname inside a for loop — repeated, but never fed back, which is why `for` is not a shape",
+        """
 let check files =
     for file in files do
         printfn "%s" (Path.GetDirectoryName file)
 """
 
-      false,
-      "an honest while loop that does not ascend at all",
-      """
+        false,
+        "an honest while loop that does not ascend at all",
+        """
 let scan (lines: string[]) =
     let mutable i = 0
     while i < lines.Length do
@@ -425,9 +452,9 @@ let scan (lines: string[]) =
     i
 """
 
-      true,
-      "a walk BELOW a `(*)` operator — the lexer must not read `(*)` as an unterminated block comment and blank the rest of the file",
-      """
+        true,
+        "a walk BELOW a `(*)` operator — the lexer must not read `(*)` as an unterminated block comment and blank the rest of the file",
+        """
 let product = List.reduce (*) [ 1; 2; 3 ]
 
 let rec private up (d: string) =
@@ -435,115 +462,120 @@ let rec private up (d: string) =
     else up (Path.GetDirectoryName d)
 """
 
-      false,
-      "a walk quoted in a COMMENT is not a walk — this file's own header depends on that",
-      """
+        false,
+        "a walk quoted in a COMMENT is not a walk — this file's own header depends on that",
+        """
 // let rec up (d: string) =
 //     if File.Exists(Path.Combine(d, "x.slnx")) then d else up (Path.GetDirectoryName d)
 let harmless () = 1
 """
 
-      false,
-      "a walk quoted in a STRING is not a walk — this list itself depends on that",
-      "let sample = \"\"\"\nlet rec up d = if File.Exists(Path.Combine(d, \"x.slnx\")) then d else up (Path.GetDirectoryName d)\n\"\"\"\n" ]
+        false,
+        "a walk quoted in a STRING is not a walk — this list itself depends on that",
+        "let sample = \"\"\"\nlet rec up d = if File.Exists(Path.Combine(d, \"x.slnx\")) then d else up (Path.GetDirectoryName d)\n\"\"\"\n"
+    ]
 
 [<Tests>]
 let tests =
     testList
         "#700/#734 — RepositoryRoot is the single root finder"
         [
-          // Half one of the claim: the finder lands where it says it does. Everything under `tests/`
-          // resolves its repo-relative paths through this one value, so if it were ever to stop at a
-          // nearer marker — a `*.sln`/`*.slnx`/`build.fsx` materialized between a test binary and the
-          // root — every one of those tests would silently judge the wrong tree. That is the exact quiet
-          // failure the consolidation was for, and only an assertion makes it loud.
-          test "the shared finder is the root it claims to be" {
-              Expect.isTrue
-                  (File.Exists(Path.Combine(repoRoot, "FS.GG.Rendering.slnx")))
-                  (sprintf
-                      "RepositoryRoot.value resolved to %s, which holds no FS.GG.Rendering.slnx. The shared finder stops at the NEAREST ancestor holding any *.sln/*.slnx/build.fsx, so a solution or build script materialized below the real root will silently capture it — and every test in the repo would then resolve its repo-relative paths against the wrong tree."
-                      repoRoot)
-          }
+            // Half one of the claim: the finder lands where it says it does. Everything under `tests/`
+            // resolves its repo-relative paths through this one value, so if it were ever to stop at a
+            // nearer marker — a `*.sln`/`*.slnx`/`build.fsx` materialized between a test binary and the
+            // root — every one of those tests would silently judge the wrong tree. That is the exact quiet
+            // failure the consolidation was for, and only an assertion makes it loud.
+            test "the shared finder is the root it claims to be" {
+                Expect.isTrue
+                    (File.Exists(Path.Combine(repoRoot, "FS.GG.Rendering.slnx")))
+                    (sprintf
+                        "RepositoryRoot.value resolved to %s, which holds no FS.GG.Rendering.slnx. The shared finder stops at the NEAREST ancestor holding any *.sln/*.slnx/build.fsx, so a solution or build script materialized below the real root will silently capture it — and every test in the repo would then resolve its repo-relative paths against the wrong tree."
+                        repoRoot)
+            }
 
-          // The next three are the anti-fails-open scaffolding (FS-GG/.github#266): an oracle that
-          // cannot see its own subject reports green having verified nothing. They prove the corpus
-          // reaches both trees and that the probe judges both ways, BEFORE the rule below trusts the
-          // probe's silence about everybody else.
-          test "the corpus reaches the finder itself" {
-              Expect.contains
-                  policedSources
-                  theFinder
-                  (sprintf
-                      "enumerating the policed trees did not reach %s (found %d file(s)). The probe is broken, so its silence about every other file means nothing."
-                      theFinder
-                      policedSources.Length)
-          }
+            // The next three are the anti-fails-open scaffolding (FS-GG/.github#266): an oracle that
+            // cannot see its own subject reports green having verified nothing. They prove the corpus
+            // reaches both trees and that the probe judges both ways, BEFORE the rule below trusts the
+            // probe's silence about everybody else.
+            test "the corpus reaches the finder itself" {
+                Expect.contains
+                    policedSources
+                    theFinder
+                    (sprintf
+                        "enumerating the policed trees did not reach %s (found %d file(s)). The probe is broken, so its silence about every other file means nothing."
+                        theFinder
+                        policedSources.Length)
+            }
 
-          test "the corpus reaches every sample test suite" {
-              Expect.isNonEmpty
-                  sampleTestSuites
-                  "no samples/**/*.Tests.fsproj was found. #734 widened this gate to the sample suites BECAUSE no tests/-scoped hygiene gate reaches them; if they have moved or been renamed, this gate silently went back to policing only tests/ while staying green."
+            test "the corpus reaches every sample test suite" {
+                Expect.isNonEmpty
+                    sampleTestSuites
+                    "no samples/**/*.Tests.fsproj was found. #734 widened this gate to the sample suites BECAUSE no tests/-scoped hygiene gate reaches them; if they have moved or been renamed, this gate silently went back to policing only tests/ while staying green."
 
-              let unreached =
-                  sampleTestSuites
-                  |> List.filter (fun suite ->
-                      policedSources
-                      |> List.exists (fun rel -> rel.StartsWith(suite + "/", StringComparison.Ordinal))
-                      |> not)
+                let unreached =
+                    sampleTestSuites
+                    |> List.filter (fun suite ->
+                        policedSources
+                        |> List.exists (fun rel -> rel.StartsWith(suite + "/", StringComparison.Ordinal))
+                        |> not)
 
-              Expect.isEmpty
-                  unreached
-                  (sprintf
-                      "these sample test suite(s) contributed NO source to the corpus:%s%sThe gate reports green over them having read nothing."
-                      Environment.NewLine
-                      (unreached
-                       |> List.map (sprintf "  - %s")
-                       |> String.concat Environment.NewLine
-                       |> fun listing -> listing + Environment.NewLine))
-          }
+                Expect.isEmpty
+                    unreached
+                    (sprintf
+                        "these sample test suite(s) contributed NO source to the corpus:%s%sThe gate reports green over them having read nothing."
+                        Environment.NewLine
+                        (unreached
+                         |> List.map (sprintf "  - %s")
+                         |> String.concat Environment.NewLine
+                         |> fun listing -> listing + Environment.NewLine))
+            }
 
-          test "the probe tells a repeated ascent from an honest single step" {
-              let misjudged =
-                  probeSubjects
-                  |> List.filter (fun (isWalk, _, source) -> walksTheTree source <> isWalk)
-                  |> List.map (fun (isWalk, name, _) ->
-                      sprintf
-                          "  - expected %s, read it as %s — %s"
-                          (if isWalk then "WALK" else "clean")
-                          (if isWalk then "clean" else "WALK")
-                          name)
+            test "the probe tells a repeated ascent from an honest single step" {
+                let misjudged =
+                    probeSubjects
+                    |> List.filter (fun (isWalk, _, source) -> walksTheTree source <> isWalk)
+                    |> List.map (fun (isWalk, name, _) ->
+                        sprintf
+                            "  - expected %s, read it as %s — %s"
+                            (if isWalk then "WALK" else "clean")
+                            (if isWalk then "clean" else "WALK")
+                            name)
 
-              Expect.isEmpty
-                  misjudged
-                  (sprintf
-                      "the probe misjudged these subject(s):%s%s%s"
-                      Environment.NewLine
-                      (misjudged |> String.concat Environment.NewLine |> fun listing -> listing + Environment.NewLine)
-                      "A subject it reads as clean when it is a WALK is #734's hole, reopened: the rule below would report green over a second finder. A subject it reads as a WALK when it is clean is a gate nobody can keep green. Fix `walkShapes`, not the subject — these rows are the shapes this repo actually writes.")
-          }
+                Expect.isEmpty
+                    misjudged
+                    (sprintf
+                        "the probe misjudged these subject(s):%s%s%s"
+                        Environment.NewLine
+                        (misjudged
+                         |> String.concat Environment.NewLine
+                         |> fun listing -> listing + Environment.NewLine)
+                        "A subject it reads as clean when it is a WALK is #734's hole, reopened: the rule below would report green over a second finder. A subject it reads as a WALK when it is clean is a gate nobody can keep green. Fix `walkShapes`, not the subject — these rows are the shapes this repo actually writes.")
+            }
 
-          test "the finder still walks the tree" {
-              Expect.isTrue
-                  (walksTheTree (readSource theFinder))
-                  (sprintf
-                      "%s no longer reads as a repeated ascent. This guard detects a hand-rolled walk BY the ascent that feeds itself, so if the shared finder has stopped walking that way, the guard is now watching for a shape nobody writes — it guards nothing and stays green forever. Re-derive the signal in `walkShapes` before changing how the finder walks."
-                      theFinder)
-          }
+            test "the finder still walks the tree" {
+                Expect.isTrue
+                    (walksTheTree (readSource theFinder))
+                    (sprintf
+                        "%s no longer reads as a repeated ascent. This guard detects a hand-rolled walk BY the ascent that feeds itself, so if the shared finder has stopped walking that way, the guard is now watching for a shape nobody writes — it guards nothing and stays green forever. Re-derive the signal in `walkShapes` before changing how the finder walks."
+                        theFinder)
+            }
 
-          test "no other source walks to the repo root by itself" {
-              let offenders =
-                  policedSources
-                  |> List.filter (fun rel -> rel <> theFinder)
-                  |> List.collect (fun rel -> walkShapes (readSource rel) |> List.map (fun shape -> rel, shape))
+            test "no other source walks to the repo root by itself" {
+                let offenders =
+                    policedSources
+                    |> List.filter (fun rel -> rel <> theFinder)
+                    |> List.collect (fun rel -> walkShapes (readSource rel) |> List.map (fun shape -> rel, shape))
 
-              Expect.isEmpty
-                  offenders
-                  (sprintf
-                      "these source(s) ascend the directory tree REPEATEDLY — they walk to a root themselves instead of consuming the shared finder:%s%s%s"
-                      Environment.NewLine
-                      (offenders
-                       |> List.map (fun (rel, shape) -> sprintf "  - %s:%d — %s: %s" rel shape.Line shape.Shape shape.Text)
-                       |> String.concat Environment.NewLine
-                       |> fun listing -> listing + Environment.NewLine)
-                      "A second finder is a second marker set that can disagree with the first, and the disagreement is SILENT: it resolves repo-relative paths against the wrong tree rather than failing.\n\nUnder tests/: use `RepositoryRoot.value` (or `RepositoryRoot.find <seed>`), with a ProjectReference to tests/TestSupport and `open FS.GG.TestSupport`.\n\nUnder samples/: you CANNOT — the sample suites reference the published packages, not this repo's projects, and a ProjectReference to TestSupport would puncture the shadowing isolation they exist to prove (see the header of tests/TestSupport/RepositoryRoot.fs). Do what #725 did instead: make the file locate itself. Have MSBuild copy what the test needs next to the test binary, so the sample needs no finder at all rather than needing a second one.")
-          } ]
+                Expect.isEmpty
+                    offenders
+                    (sprintf
+                        "these source(s) ascend the directory tree REPEATEDLY — they walk to a root themselves instead of consuming the shared finder:%s%s%s"
+                        Environment.NewLine
+                        (offenders
+                         |> List.map (fun (rel, shape) ->
+                             sprintf "  - %s:%d — %s: %s" rel shape.Line shape.Shape shape.Text)
+                         |> String.concat Environment.NewLine
+                         |> fun listing -> listing + Environment.NewLine)
+                        "A second finder is a second marker set that can disagree with the first, and the disagreement is SILENT: it resolves repo-relative paths against the wrong tree rather than failing.\n\nUnder tests/: use `RepositoryRoot.value` (or `RepositoryRoot.find <seed>`), with a ProjectReference to tests/TestSupport and `open FS.GG.TestSupport`.\n\nUnder samples/: you CANNOT — the sample suites reference the published packages, not this repo's projects, and a ProjectReference to TestSupport would puncture the shadowing isolation they exist to prove (see the header of tests/TestSupport/RepositoryRoot.fs). Do what #725 did instead: make the file locate itself. Have MSBuild copy what the test needs next to the test binary, so the sample needs no finder at all rather than needing a second one.")
+            }
+        ]

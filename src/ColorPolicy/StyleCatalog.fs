@@ -22,10 +22,12 @@ module internal StyleCatalog =
     // `open FS.GG.UI.Scene` brings SceneNode.Text into scope, which shadows Role.Text; the Role
     // cases are therefore qualified throughout this file (same hazard ColorPolicy.fs documents).
     let private pairing name fg bg role : ColorPolicy.Pairing =
-        { Name = name
-          Foreground = fg
-          Background = bg
-          Role = role }
+        {
+            Name = name
+            Foreground = fg
+            Background = bg
+            Role = role
+        }
 
     // ---- catalog 1: design-system token pairings -------------------------------------------
 
@@ -40,48 +42,58 @@ module internal StyleCatalog =
     /// `emittedPairings` for the latter. Both are needed: a token can be sound and still be
     /// composed into an unreadable style.
     let designSystemTokens: ColorPolicy.Pairing list =
-        [ pairing "text-on-canvas" DesignTokensExt.Alias.Light.textDefault DesignTokensExt.Alias.Light.surfaceCanvas Role.Text
-          pairing "text-on-surface" DesignTokensExt.Alias.Light.textDefault DesignTokensExt.Map.Light.colorBgContainer Role.Text
-          pairing
-              "muted-text-on-surface"
-              DesignTokensExt.Alias.Light.textSecondary
-              DesignTokensExt.Map.Light.colorBgContainer
-              Role.Text
-          pairing
-              "primary-fg-on-surface"
-              DesignTokensExt.Seed.colorPrimary
-              DesignTokensExt.Map.Light.colorBgContainer
-              Role.GraphicOrUi
-          pairing
-              "success-fg-on-surface"
-              DesignTokensExt.Seed.colorSuccess
-              DesignTokensExt.Map.Light.colorBgContainer
-              Role.GraphicOrUi
-          pairing
-              "warning-fg-on-surface"
-              DesignTokensExt.Seed.colorWarning
-              DesignTokensExt.Map.Light.colorBgContainer
-              Role.GraphicOrUi
-          pairing
-              "error-fg-on-surface"
-              DesignTokensExt.Seed.colorError
-              DesignTokensExt.Map.Light.colorBgContainer
-              Role.GraphicOrUi
-          pairing
-              "info-fg-on-surface"
-              DesignTokensExt.Seed.colorInfo
-              DesignTokensExt.Map.Light.colorBgContainer
-              Role.GraphicOrUi
-          pairing
-              "primary-hover-fg-on-surface"
-              DesignTokensExt.Map.Light.colorPrimaryHover
-              DesignTokensExt.Map.Light.colorBgContainer
-              Role.GraphicOrUi
-          pairing
-              "decorative-hairline-on-surface"
-              DesignTokensExt.Map.Light.colorBorder
-              DesignTokensExt.Map.Light.colorBgContainer
-              Role.Decorative ]
+        [
+            pairing
+                "text-on-canvas"
+                DesignTokensExt.Alias.Light.textDefault
+                DesignTokensExt.Alias.Light.surfaceCanvas
+                Role.Text
+            pairing
+                "text-on-surface"
+                DesignTokensExt.Alias.Light.textDefault
+                DesignTokensExt.Map.Light.colorBgContainer
+                Role.Text
+            pairing
+                "muted-text-on-surface"
+                DesignTokensExt.Alias.Light.textSecondary
+                DesignTokensExt.Map.Light.colorBgContainer
+                Role.Text
+            pairing
+                "primary-fg-on-surface"
+                DesignTokensExt.Seed.colorPrimary
+                DesignTokensExt.Map.Light.colorBgContainer
+                Role.GraphicOrUi
+            pairing
+                "success-fg-on-surface"
+                DesignTokensExt.Seed.colorSuccess
+                DesignTokensExt.Map.Light.colorBgContainer
+                Role.GraphicOrUi
+            pairing
+                "warning-fg-on-surface"
+                DesignTokensExt.Seed.colorWarning
+                DesignTokensExt.Map.Light.colorBgContainer
+                Role.GraphicOrUi
+            pairing
+                "error-fg-on-surface"
+                DesignTokensExt.Seed.colorError
+                DesignTokensExt.Map.Light.colorBgContainer
+                Role.GraphicOrUi
+            pairing
+                "info-fg-on-surface"
+                DesignTokensExt.Seed.colorInfo
+                DesignTokensExt.Map.Light.colorBgContainer
+                Role.GraphicOrUi
+            pairing
+                "primary-hover-fg-on-surface"
+                DesignTokensExt.Map.Light.colorPrimaryHover
+                DesignTokensExt.Map.Light.colorBgContainer
+                Role.GraphicOrUi
+            pairing
+                "decorative-hairline-on-surface"
+                DesignTokensExt.Map.Light.colorBorder
+                DesignTokensExt.Map.Light.colorBgContainer
+                Role.Decorative
+        ]
 
     // ---- catalog 2: the styles the resolver actually emits -----------------------------------
 
@@ -92,12 +104,14 @@ module internal StyleCatalog =
     /// The closed `StyleVariant` set, plus the no-class baseline. Enumerating the closed set means
     /// a new variant cannot be added without a row appearing here.
     let variants =
-        [ "neutral", StyleVariant.Neutral
-          "primary", StyleVariant.Primary
-          "danger", StyleVariant.Danger
-          "success", StyleVariant.Success
-          "warning", StyleVariant.Warning
-          "ghost", StyleVariant.Ghost ]
+        [
+            "neutral", StyleVariant.Neutral
+            "primary", StyleVariant.Primary
+            "danger", StyleVariant.Danger
+            "success", StyleVariant.Success
+            "warning", StyleVariant.Warning
+            "ghost", StyleVariant.Ghost
+        ]
 
     /// The semantic-intent vocabulary a theme's `IntentPolicy` recognises — the Ant control types
     /// (Features 132/173). `""` is the identity/no-intent base (already covered by the `neutral`
@@ -116,23 +130,27 @@ module internal StyleCatalog =
     /// scenarios are prefixed `@` so a row's provenance stays legible and the two families never
     /// collide on a name.
     let scenarios: (string * StyleClass list * string) list =
-        [ for name, variant in variants -> name, [ Variant variant ], ""
-          for intent in intents -> "@" + intent, [], intent ]
+        [
+            for name, variant in variants -> name, [ Variant variant ], ""
+            for intent in intents -> "@" + intent, [], intent
+        ]
 
     /// Every `VisualState` case. The `Invalid`/`Pending` payloads are messages, not colours, so an
     /// empty string is representative.
     let states =
-        [ "normal", Normal
-          "hover", Hover
-          "pressed", Pressed
-          "focused", Focused
-          "focused-hover", FocusedHover
-          "selected", Selected
-          "loading", Loading
-          "disabled", Disabled
-          "valid", VisualState.Validation Valid
-          "invalid", VisualState.Validation(Invalid "")
-          "pending", VisualState.Validation(Pending "") ]
+        [
+            "normal", Normal
+            "hover", Hover
+            "pressed", Pressed
+            "focused", Focused
+            "focused-hover", FocusedHover
+            "selected", Selected
+            "loading", Loading
+            "disabled", Disabled
+            "valid", VisualState.Validation Valid
+            "invalid", VisualState.Validation(Invalid "")
+            "pending", VisualState.Validation(Pending "")
+        ]
 
     /// The contrast pairings one `ResolvedStyle` puts on screen, measured against `canvas` (the
     /// surface the control is painted onto):
@@ -151,7 +169,12 @@ module internal StyleCatalog =
     /// `inactive` marks a disabled control: WCAG 1.4.3 and 1.4.11 both exempt inactive components,
     /// so its pairings are `Decorative`. Without this the resolver's `Disabled` delta (which paints
     /// foreground, fill and stroke all `theme.Muted`) would report a 1.00 ratio as a failure.
-    let pairingsOfStyle (canvas: Color) (label: string) (inactive: bool) (style: ResolvedStyle) : ColorPolicy.Pairing list =
+    let pairingsOfStyle
+        (canvas: Color)
+        (label: string)
+        (inactive: bool)
+        (style: ResolvedStyle)
+        : ColorPolicy.Pairing list =
         let surface = Contrast.compositeOver canvas style.Fill
         let textRole = if inactive then Role.Decorative else Role.Text
         let edgeRole = if inactive then Role.Decorative else Role.GraphicOrUi
@@ -183,12 +206,14 @@ module internal StyleCatalog =
     /// order above) that emits it, so the row is a stable, reproducible witness.
     let emittedPairings (theme: Theme) : ColorPolicy.Pairing list =
         let all =
-            [ for kind in kinds do
-                  for scenarioName, classes, intent in scenarios do
-                      for stateName, state in states do
-                          let style = StyleResolver.resolve theme kind intent classes state
-                          let label = sprintf "%s/%s/%s" kind scenarioName stateName
-                          yield! pairingsOfStyle theme.Background label (state = Disabled) style ]
+            [
+                for kind in kinds do
+                    for scenarioName, classes, intent in scenarios do
+                        for stateName, state in states do
+                            let style = StyleResolver.resolve theme kind intent classes state
+                            let label = sprintf "%s/%s/%s" kind scenarioName stateName
+                            yield! pairingsOfStyle theme.Background label (state = Disabled) style
+            ]
 
         let seen = HashSet<Color * Color * Role>()
         all |> List.filter (fun p -> seen.Add((p.Foreground, p.Background, p.Role)))

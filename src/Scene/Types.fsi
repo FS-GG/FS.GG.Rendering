@@ -1,28 +1,28 @@
 namespace FS.GG.UI.Scene
 
 /// Public contract type exposed by this FS.GG.UI package.
-type Size =
-    { Width: int
-      Height: int }
+type Size = { Width: int; Height: int }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type Color =
-    { Red: byte
-      Green: byte
-      Blue: byte
-      Alpha: byte }
+    {
+        Red: byte
+        Green: byte
+        Blue: byte
+        Alpha: byte
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
-type Point =
-    { X: float
-      Y: float }
+type Point = { X: float; Y: float }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type Rect =
-    { X: float
-      Y: float
-      Width: float
-      Height: float }
+    {
+        X: float
+        Y: float
+        Width: float
+        Height: float
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type StrokeCap =
@@ -54,10 +54,12 @@ type BlendMode =
 /// Geometry only — `Stroke` carries no colour. A stroked paint's colour lives in `Paint.Fill`
 /// (see `Paint` and `Paint.stroke`).
 type Stroke =
-    { Width: float
-      Cap: StrokeCap
-      Join: StrokeJoin
-      Miter: float }
+    {
+        Width: float
+        Cap: StrokeCap
+        Join: StrokeJoin
+        Miter: float
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type Shader =
@@ -95,16 +97,18 @@ type PathEffect =
 /// So a stroke built by `Paint.stroke` stores its stroke colour in `Fill` — read it back from
 /// `Fill`, not `Stroke`.
 type Paint =
-    { Fill: Color option
-      Stroke: Stroke option
-      Opacity: float
-      Antialias: bool
-      BlendMode: BlendMode
-      Shader: Shader option
-      ColorFilter: ColorFilter
-      MaskFilter: MaskFilter
-      ImageFilter: ImageFilter
-      PathEffect: PathEffect }
+    {
+        Fill: Color option
+        Stroke: Stroke option
+        Opacity: float
+        Antialias: bool
+        BlendMode: BlendMode
+        Shader: Shader option
+        ColorFilter: ColorFilter
+        MaskFilter: MaskFilter
+        ImageFilter: ImageFilter
+        PathEffect: PathEffect
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type PathFillType =
@@ -122,8 +126,10 @@ type PathCommand =
 
 /// Public contract type exposed by this FS.GG.UI package.
 type PathSpec =
-    { Commands: PathCommand list
-      FillType: PathFillType }
+    {
+        Commands: PathCommand list
+        FillType: PathFillType
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type Clip =
@@ -139,8 +145,10 @@ type RegionOperation =
 
 /// Public contract type exposed by this FS.GG.UI package.
 type Region =
-    { Bounds: Rect list
-      Operation: RegionOperation }
+    {
+        Bounds: Rect list
+        Operation: RegionOperation
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type ColorSpace =
@@ -150,15 +158,17 @@ type ColorSpace =
 
 /// Public contract type exposed by this FS.GG.UI package.
 type PerspectiveTransform =
-    { M11: float
-      M12: float
-      M13: float
-      M21: float
-      M22: float
-      M23: float
-      M31: float
-      M32: float
-      M33: float }
+    {
+        M11: float
+        M12: float
+        M13: float
+        M21: float
+        M22: float
+        M23: float
+        M31: float
+        M32: float
+        M33: float
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type PathOperation =
@@ -171,31 +181,39 @@ type PathOperation =
 /// Why `Path.combine` could not honestly produce a result: the Skia-free `Scene` layer has no
 /// boolean-geometry kernel, so `Intersect`/`Difference` fail loud with this rather than returning
 /// wrong-but-success-shaped geometry (P6 / R2).
-type PathCombineError = { Operation: PathOperation; Message: string }
+type PathCombineError =
+    {
+        Operation: PathOperation
+        Message: string
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
-type PathMeasure =
-    { Length: float
-      IsClosed: bool }
+type PathMeasure = { Length: float; IsClosed: bool }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type FontSpec =
-    { Family: string option
-      Size: float
-      Weight: int option }
+    {
+        Family: string option
+        Size: float
+        Weight: int option
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type TextRun =
-    { Text: string
-      Position: Point
-      Font: FontSpec
-      Paint: Paint }
+    {
+        Text: string
+        Position: Point
+        Font: FontSpec
+        Paint: Paint
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type TextMetrics =
-    { Width: float
-      Height: float
-      Baseline: float }
+    {
+        Width: float
+        Height: float
+        Baseline: float
+    }
 
 /// Direction evidence associated with a shaped text run.
 type TextDirection =
@@ -225,10 +243,12 @@ type ShapingProviderAvailability =
 
 /// Dependency-light provider evidence stored with shaped text results.
 type ShapingProviderEvidence =
-    { Availability: ShapingProviderAvailability
-      ProviderId: string
-      VersionBucket: string
-      Failure: string option }
+    {
+        Availability: ShapingProviderAvailability
+        ProviderId: string
+        VersionBucket: string
+        Failure: string option
+    }
 
 /// Fallback decision for one shaped run or glyph range.
 type TextFallbackDecision =
@@ -240,26 +260,30 @@ type TextFallbackDecision =
 
 /// One stable, drawable glyph emitted by a shaped text result.
 type ShapedGlyph =
-    { GlyphId: int
-      SourceCluster: int
-      SourceText: string
-      ResolvedFace: string option
-      Advance: float
-      Offset: Point
-      Position: Point
-      Missing: bool }
+    {
+        GlyphId: int
+        SourceCluster: int
+        SourceText: string
+        ResolvedFace: string option
+        Advance: float
+        Offset: Point
+        Position: Point
+        Missing: bool
+    }
 
 /// One homogeneous text run and its shaping/fallback evidence.
 type TextShapeRun =
-    { TextRange: int * int
-      SourceText: string
-      ResolvedFont: string option
-      Direction: TextDirection
-      Script: TextScript
-      FallbackDecision: TextFallbackDecision
-      Glyphs: ShapedGlyph list
-      Advance: float
-      Diagnostics: string list }
+    {
+        TextRange: int * int
+        SourceText: string
+        ResolvedFont: string option
+        Direction: TextDirection
+        Script: TextScript
+        FallbackDecision: TextFallbackDecision
+        Glyphs: ShapedGlyph list
+        Advance: float
+        Diagnostics: string list
+    }
 
 /// Indicates whether a shaped text result came from shaping or explicit fallback.
 type ShapedTextFallbackMode =
@@ -270,65 +294,76 @@ type ShapedTextFallbackMode =
 
 /// Aggregate metrics derived from a shaped text result.
 type ShapedTextMetrics =
-    { Advance: float
-      Width: float
-      Height: float
-      Baseline: float
-      Bounds: Rect option }
+    {
+        Advance: float
+        Width: float
+        Height: float
+        Baseline: float
+        Bounds: Rect option
+    }
 
 /// Dependency-light authoritative text payload for measurement, drawing, cache evidence, and diagnostics.
 type ShapedTextResult =
-    { Text: string
-      Font: FontSpec
-      Provider: ShapingProviderEvidence
-      Runs: TextShapeRun list
-      Glyphs: ShapedGlyph list
-      Metrics: ShapedTextMetrics
-      Diagnostics: string list
-      Fingerprint: string
-      FallbackMode: ShapedTextFallbackMode }
+    {
+        Text: string
+        Font: FontSpec
+        Provider: ShapingProviderEvidence
+        Runs: TextShapeRun list
+        Glyphs: ShapedGlyph list
+        Metrics: ShapedTextMetrics
+        Diagnostics: string list
+        Fingerprint: string
+        FallbackMode: ShapedTextFallbackMode
+    }
 
 /// One glyph in the Feature 140 proof data shape. This is a deterministic
 /// package-owned representation for measurement, drawing, diagnostics, and
 /// future cache/protocol work; it is not a full shaping engine.
 type GlyphRunGlyph =
-    { GlyphId: int
-      SourceText: string
-      Advance: float
-      Offset: Point
-      Cluster: int
-      Position: Point
-      ResolvedFace: string option
-      Missing: bool }
+    {
+        GlyphId: int
+        SourceText: string
+        Advance: float
+        Offset: Point
+        Cluster: int
+        Position: Point
+        ResolvedFace: string option
+        Missing: bool
+    }
 
 /// Aggregate metrics for a glyph-run proof.
 type GlyphRunMetrics =
-    { Advance: float
-      Height: float
-      Baseline: float }
+    {
+        Advance: float
+        Height: float
+        Baseline: float
+    }
 
 /// Stable glyph-run proof payload.
 type GlyphRunData =
-    { Text: string
-      Font: FontSpec
-      Provider: ShapingProviderEvidence
-      Runs: TextShapeRun list
-      Glyphs: GlyphRunGlyph list
-      Metrics: GlyphRunMetrics
-      Fingerprint: string
-      FallbackMode: ShapedTextFallbackMode
-      FallbackDiagnostics: string list }
+    {
+        Text: string
+        Font: FontSpec
+        Provider: ShapingProviderEvidence
+        Runs: TextShapeRun list
+        Glyphs: GlyphRunGlyph list
+        Metrics: GlyphRunMetrics
+        Fingerprint: string
+        FallbackMode: ShapedTextFallbackMode
+        FallbackDiagnostics: string list
+    }
 
 /// Drawable glyph-run proof node payload.
 type GlyphRun =
-    { Data: GlyphRunData
-      Position: Point
-      Paint: Paint }
+    {
+        Data: GlyphRunData
+        Position: Point
+        Paint: Paint
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type Vertex =
-    { Position: Point
-      Color: Color option }
+    { Position: Point; Color: Color option }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type VertexMode =
@@ -388,20 +423,24 @@ type SceneViewportRelation =
 
 /// One deterministic authored-hierarchy row from `SceneInspection.inspect`.
 type SceneInspectionNode =
-    { Path: string
-      ParentPath: string option
-      Kind: SceneElementKind
-      Bounds: SceneDrawableBounds
-      ViewportRelation: SceneViewportRelation
-      Contributes: bool
-      Children: string list }
+    {
+        Path: string
+        ParentPath: string option
+        Kind: SceneElementKind
+        Bounds: SceneDrawableBounds
+        ViewportRelation: SceneViewportRelation
+        Contributes: bool
+        Children: string list
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type RenderReadbackEvidence =
-    { Size: Size
-      CapabilityCount: int
-      Capabilities: string list
-      DeterministicHash: string }
+    {
+        Size: Size
+        CapabilityCount: int
+        Capabilities: string list
+        DeterministicHash: string
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type ShapePlacement =
@@ -411,17 +450,21 @@ type ShapePlacement =
 
 /// Public contract type exposed by this FS.GG.UI package.
 type CircleShapeEvidence =
-    { Center: Point
-      Radius: float
-      Bounds: Rect
-      Fill: Color
-      Placement: ShapePlacement }
+    {
+        Center: Point
+        Radius: float
+        Bounds: Rect
+        Fill: Color
+        Placement: ShapePlacement
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type EllipseShapeEvidence =
-    { Bounds: Rect
-      Fill: Color
-      Placement: ShapePlacement }
+    {
+        Bounds: Rect
+        Fill: Color
+        Placement: ShapePlacement
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type LayoutProofLevel =
@@ -443,11 +486,13 @@ type LayoutOverlapKind =
 
 /// Public contract type exposed by this FS.GG.UI package.
 type LayoutOverlapDiagnostic =
-    { Kind: LayoutOverlapKind
-      FirstName: string
-      SecondName: string option
-      Bounds: Rect
-      Message: string }
+    {
+        Kind: LayoutOverlapKind
+        FirstName: string
+        SecondName: string option
+        Bounds: Rect
+        Message: string
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type LayoutOverlapStatus =
@@ -455,27 +500,27 @@ type LayoutOverlapStatus =
     | LayoutOverlaps of LayoutOverlapDiagnostic list
 
 /// Public contract type exposed by this FS.GG.UI package.
-type LayoutRegionEvidence =
-    { Name: string
-      Bounds: Rect }
+type LayoutRegionEvidence = { Name: string; Bounds: Rect }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type LayoutTextBounds =
-    { Name: string
-      Text: string
-      Bounds: Rect
-      MeasurementMode: LayoutMeasurementMode }
+    {
+        Name: string
+        Text: string
+        Bounds: Rect
+        MeasurementMode: LayoutMeasurementMode
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
-type LayoutGameplayBounds =
-    { Name: string
-      Bounds: Rect }
+type LayoutGameplayBounds = { Name: string; Bounds: Rect }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type LayoutUnsupportedReason =
-    { Fact: string
-      Reason: string
-      Diagnostic: string }
+    {
+        Fact: string
+        Reason: string
+        Diagnostic: string
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 ///
@@ -490,15 +535,16 @@ type DiagnosticSeverity =
     | Fatal
 
 /// Public contract type exposed by this FS.GG.UI package.
-type DiagnosticStage =
-    | FrameRender
+type DiagnosticStage = | FrameRender
 
 /// Public contract type exposed by this FS.GG.UI package.
 type RenderDiagnostic =
-    { Severity: DiagnosticSeverity
-      Stage: DiagnosticStage
-      Message: string
-      Cause: string option }
+    {
+        Severity: DiagnosticSeverity
+        Stage: DiagnosticStage
+        Message: string
+        Cause: string option
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type SceneNode =
@@ -534,39 +580,40 @@ type SceneNode =
     /// `Scene` identically to the direct walk (the parity oracle).
     | CachedSubtree of CacheBoundary
 
-and Scene =
-    { Nodes: SceneNode list }
+and Scene = { Nodes: SceneNode list }
 
-and Picture =
-    { Name: string
-      Scene: Scene }
+and Picture = { Name: string; Scene: Scene }
 
 /// Feature 120 (FR-007): the payload of `SceneNode.CachedSubtree` — a stable subtree identity, a
 /// collision-resistant structural fingerprint of its render-affecting inputs, and the wrapped
 /// subtree itself (both the record source and the transparent fallback).
 and CacheBoundary =
-    { /// Stable subtree identity (from `RetainedId`) — the replay cache slot.
-      CacheId: uint64
-      /// Collision-resistant structural fingerprint of the wrapped subtree's render-affecting
-      /// inputs; replay is valid iff a cached picture's fingerprint matches this.
-      Fingerprint: uint64
-      /// The wrapped subtree — record source and transparent fallback.
-      Scene: Scene }
+    {
+        /// Stable subtree identity (from `RetainedId`) — the replay cache slot.
+        CacheId: uint64
+        /// Collision-resistant structural fingerprint of the wrapped subtree's render-affecting
+        /// inputs; replay is valid iff a cached picture's fingerprint matches this.
+        Fingerprint: uint64
+        /// The wrapped subtree — record source and transparent fallback.
+        Scene: Scene
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type LayoutEvidenceReport =
-    { Scene: Scene
-      OutputSize: Size
-      ProofLevel: LayoutProofLevel
-      HudRegion: LayoutRegionEvidence option
-      GameplayRegion: LayoutRegionEvidence option
-      TextBounds: LayoutTextBounds list
-      GameplayBounds: LayoutGameplayBounds list
-      OverlapStatus: LayoutOverlapStatus
-      MeasurementMode: LayoutMeasurementMode
-      UnsupportedReasons: LayoutUnsupportedReason list
-      Diagnostics: string list
-      RenderEvidence: RenderReadbackEvidence option }
+    {
+        Scene: Scene
+        OutputSize: Size
+        ProofLevel: LayoutProofLevel
+        HudRegion: LayoutRegionEvidence option
+        GameplayRegion: LayoutRegionEvidence option
+        TextBounds: LayoutTextBounds list
+        GameplayBounds: LayoutGameplayBounds list
+        OverlapStatus: LayoutOverlapStatus
+        MeasurementMode: LayoutMeasurementMode
+        UnsupportedReasons: LayoutUnsupportedReason list
+        Diagnostics: string list
+        RenderEvidence: RenderReadbackEvidence option
+    }
 
 /// Readiness result for one structured visual inspection scope.
 [<RequireQualifiedAccess>]
@@ -728,123 +775,143 @@ type VisualInspectionCoverageStatus =
 
 /// Scope identity for one inspected page, screen, or control tree.
 type VisualInspectionScope =
-    { ScopeId: string
-      Title: string
-      Required: bool }
+    {
+        ScopeId: string
+        Title: string
+        Required: bool
+    }
 
 /// Explicit unsupported or unavailable fact recorded by an inspector.
 type VisualInspectionUnsupportedFact =
-    { Fact: string
-      OwnerId: string option
-      Required: bool
-      Reason: string
-      Diagnostic: string
-      EnvironmentLimited: bool }
+    {
+        Fact: string
+        OwnerId: string option
+        Required: bool
+        Reason: string
+        Diagnostic: string
+        EnvironmentLimited: bool
+    }
 
 /// One inspected visual node with final bounds and relationship metadata.
 type VisualInspectionNode =
-    { NodeId: string
-      ParentId: string option
-      Kind: VisualInspectionNodeKind
-      OwnerId: string option
-      Bounds: Rect option
-      Clip: VisualInspectionClipStatus
-      ZOrder: int
-      PaintRole: VisualInspectionPaintRole
-      SurfaceRole: VisualInspectionSurfaceRole
-      TextRunIds: string list
-      Children: string list
-      Dynamic: bool
-      UnsupportedFacts: VisualInspectionUnsupportedFact list }
+    {
+        NodeId: string
+        ParentId: string option
+        Kind: VisualInspectionNodeKind
+        OwnerId: string option
+        Bounds: Rect option
+        Clip: VisualInspectionClipStatus
+        ZOrder: int
+        PaintRole: VisualInspectionPaintRole
+        SurfaceRole: VisualInspectionSurfaceRole
+        TextRunIds: string list
+        Children: string list
+        Dynamic: bool
+        UnsupportedFacts: VisualInspectionUnsupportedFact list
+    }
 
 /// Measured text facts for one rendered text run.
 type VisualTextInspection =
-    { TextId: string
-      OwnerNodeId: string
-      Text: string
-      TextBounds: Rect option
-      OwnerBounds: Rect option
-      Baseline: float option
-      MeasurementMode: VisualInspectionMeasurementMode
-      FitStatus: VisualInspectionFitStatus
-      Required: bool
-      Diagnostics: string list }
+    {
+        TextId: string
+        OwnerNodeId: string
+        Text: string
+        TextBounds: Rect option
+        OwnerBounds: Rect option
+        Baseline: float option
+        MeasurementMode: VisualInspectionMeasurementMode
+        FitStatus: VisualInspectionFitStatus
+        Required: bool
+        Diagnostics: string list
+    }
 
 /// Named visual region used for containment, overlap, and paint checks.
 type VisualRegionBoundary =
-    { RegionId: string
-      Name: string
-      Role: VisualInspectionSurfaceRole
-      Bounds: Rect option
-      Required: bool
-      OwnerNodeIds: string list
-      AllowedOverlapRoles: VisualInspectionSurfaceRole list }
+    {
+        RegionId: string
+        Name: string
+        Role: VisualInspectionSurfaceRole
+        Bounds: Rect option
+        Required: bool
+        OwnerNodeIds: string list
+        AllowedOverlapRoles: VisualInspectionSurfaceRole list
+    }
 
 /// Evidence that a region or node has intentional paint coverage.
 type VisualPaintCoverage =
-    { CoverageId: string
-      TargetId: string
-      PaintRole: VisualInspectionPaintRole
-      CoverageBounds: Rect option
-      CoverageStatus: VisualInspectionCoverageStatus
-      Reason: string option }
+    {
+        CoverageId: string
+        TargetId: string
+        PaintRole: VisualInspectionPaintRole
+        CoverageBounds: Rect option
+        CoverageStatus: VisualInspectionCoverageStatus
+        Reason: string option
+    }
 
 /// Effective clipping evidence for one node or region.
 type VisualClipFact =
-    { ClipId: string
-      NodeId: string
-      ClipBounds: Rect option
-      ClipStatus: VisualInspectionClipStatus
-      Reason: string option
-      AffectedTextRunIds: string list }
+    {
+        ClipId: string
+        NodeId: string
+        ClipBounds: Rect option
+        ClipStatus: VisualInspectionClipStatus
+        Reason: string option
+        AffectedTextRunIds: string list
+    }
 
 /// One deterministic validation finding tied to a rule and affected visual ids.
 type VisualInspectionFinding =
-    { FindingId: string
-      RuleId: string
-      Severity: VisualInspectionSeverity
-      AffectedNodeIds: string list
-      AffectedRegionIds: string list
-      Message: string
-      Expected: string
-      Actual: string
-      ExceptionId: string option
-      Diagnostics: string list }
+    {
+        FindingId: string
+        RuleId: string
+        Severity: VisualInspectionSeverity
+        AffectedNodeIds: string list
+        AffectedRegionIds: string list
+        Message: string
+        Expected: string
+        Actual: string
+        ExceptionId: string option
+        Diagnostics: string list
+    }
 
 /// Machine-checkable inspection evidence for one scope.
 type VisualInspectionArtifact =
-    { ArtifactId: string
-      Scope: VisualInspectionScope
-      OutputSize: Size
-      Presentation: string
-      ReadinessStatus: VisualInspectionStatus
-      Nodes: VisualInspectionNode list
-      Regions: VisualRegionBoundary list
-      TextRuns: VisualTextInspection list
-      PaintCoverage: VisualPaintCoverage list
-      ClipFacts: VisualClipFact list
-      Findings: VisualInspectionFinding list
-      UnsupportedFacts: VisualInspectionUnsupportedFact list
-      Diagnostics: string list
-      GeneratedAtUtc: string }
+    {
+        ArtifactId: string
+        Scope: VisualInspectionScope
+        OutputSize: Size
+        Presentation: string
+        ReadinessStatus: VisualInspectionStatus
+        Nodes: VisualInspectionNode list
+        Regions: VisualRegionBoundary list
+        TextRuns: VisualTextInspection list
+        PaintCoverage: VisualPaintCoverage list
+        ClipFacts: VisualClipFact list
+        Findings: VisualInspectionFinding list
+        UnsupportedFacts: VisualInspectionUnsupportedFact list
+        Diagnostics: string list
+        GeneratedAtUtc: string
+    }
 
 /// Aggregate summary over one or more inspection artifacts and validation results.
 type VisualInspectionSummary =
-    { RunId: string
-      OverallStatus: VisualInspectionStatus
-      ArtifactCount: int
-      InspectedScopes: string list
-      NotInspectedScopes: string list
-      NotRunScopes: string list
-      StatusCounts: (string * int) list
-      FindingCounts: (string * int) list
-      BlockingFindings: VisualInspectionFinding list
-      UnsupportedFacts: VisualInspectionUnsupportedFact list
-      AcceptedExceptions: string list
-      InvalidExceptions: string list
-      RelatedVisualEvidence: string list
-      Caveats: string list
-      Diagnostics: string list }
+    {
+        RunId: string
+        OverallStatus: VisualInspectionStatus
+        ArtifactCount: int
+        InspectedScopes: string list
+        NotInspectedScopes: string list
+        NotRunScopes: string list
+        StatusCounts: (string * int) list
+        FindingCounts: (string * int) list
+        BlockingFindings: VisualInspectionFinding list
+        UnsupportedFacts: VisualInspectionUnsupportedFact list
+        AcceptedExceptions: string list
+        InvalidExceptions: string list
+        RelatedVisualEvidence: string list
+        Caveats: string list
+        Diagnostics: string list
+    }
 
 /// Readiness result for retained-render inspection evidence.
 [<RequireQualifiedAccess>]
@@ -907,42 +974,48 @@ type DamageInspectionStatus =
 /// Use exceptions to keep deliberate broad damage visible in evidence instead of
 /// silently downgrading a validation finding.
 type IntentionalDamageException =
-    { ExceptionId: string
-      RuleId: string
-      ScopeId: string
-      TransitionId: string
-      AffectedIds: string list
-      Reason: string
-      ExpiresWith: string option }
+    {
+        ExceptionId: string
+        RuleId: string
+        ScopeId: string
+        TransitionId: string
+        AffectedIds: string list
+        Reason: string
+        ExpiresWith: string option
+    }
 
 /// Before/after frame identity and scenario expectations for retained inspection.
 ///
 /// The transition connects retained node facts to the interaction and expected
 /// affected visual regions that validators use for damage-locality checks.
 type RetainedFrameTransition =
-    { TransitionId: string
-      PriorFrameId: string option
-      CurrentFrameId: string
-      InteractionId: string option
-      ExpectedAffectedRegionIds: string list
-      MaximumDirtyPercentage: float option
-      IntentionalExceptions: IntentionalDamageException list }
+    {
+        TransitionId: string
+        PriorFrameId: string option
+        CurrentFrameId: string
+        InteractionId: string option
+        ExpectedAffectedRegionIds: string list
+        MaximumDirtyPercentage: float option
+        IntentionalExceptions: IntentionalDamageException list
+    }
 
 /// Stable fact about one retained visual node.
 type RetainedNodeInspection =
-    { NodeId: string
-      ParentId: string option
-      RetainedIdentity: string option
-      Kind: string
-      OwnerId: string option
-      Status: RetainedNodeStatus
-      PriorBounds: Rect option
-      CurrentBounds: Rect option
-      AffectedRegionIds: string list
-      Repainted: bool
-      Shifted: bool
-      UnsupportedFacts: VisualInspectionUnsupportedFact list
-      Diagnostics: string list }
+    {
+        NodeId: string
+        ParentId: string option
+        RetainedIdentity: string option
+        Kind: string
+        OwnerId: string option
+        Status: RetainedNodeStatus
+        PriorBounds: Rect option
+        CurrentBounds: Rect option
+        AffectedRegionIds: string list
+        Repainted: bool
+        Shifted: bool
+        UnsupportedFacts: VisualInspectionUnsupportedFact list
+        Diagnostics: string list
+    }
 
 /// Visible retained-render damage facts for one transition.
 ///
@@ -954,61 +1027,69 @@ type RetainedNodeInspection =
 /// named so a caller cannot silently swap repainted/shifted/unaffected (a transposition is now a
 /// compile error). Values and results are unchanged.
 type DamageNodeCounts =
-    { Repainted: int
-      Shifted: int
-      Unaffected: int }
+    {
+        Repainted: int
+        Shifted: int
+        Unaffected: int
+    }
 
 type DamageRegionInspection =
-    { TransitionId: string
-      DamageStatus: DamageInspectionStatus
-      FrameBounds: Rect
-      DirtyRectangles: Rect list
-      UnionBounds: Rect option
-      UnionArea: int
-      VisibleDirtyArea: int
-      DirtyPercentage: float
-      AffectedRegionIds: string list
-      AffectedNodeIds: string list
-      RepaintedNodeCount: int
-      ShiftedNodeCount: int
-      UnaffectedNodeCount: int
-      Cause: string option
-      Diagnostics: string list }
+    {
+        TransitionId: string
+        DamageStatus: DamageInspectionStatus
+        FrameBounds: Rect
+        DirtyRectangles: Rect list
+        UnionBounds: Rect option
+        UnionArea: int
+        VisibleDirtyArea: int
+        DirtyPercentage: float
+        AffectedRegionIds: string list
+        AffectedNodeIds: string list
+        RepaintedNodeCount: int
+        ShiftedNodeCount: int
+        UnaffectedNodeCount: int
+        Cause: string option
+        Diagnostics: string list
+    }
 
 /// Validation finding for retained node and damage locality evidence.
 type DamageLocalityFinding =
-    { FindingId: string
-      RuleId: string
-      Severity: VisualInspectionSeverity
-      TransitionId: string
-      AffectedNodeIds: string list
-      AffectedRegionIds: string list
-      Message: string
-      Expected: string
-      Actual: string
-      ExceptionId: string option
-      Diagnostics: string list }
+    {
+        FindingId: string
+        RuleId: string
+        Severity: VisualInspectionSeverity
+        TransitionId: string
+        AffectedNodeIds: string list
+        AffectedRegionIds: string list
+        Message: string
+        Expected: string
+        Actual: string
+        ExceptionId: string option
+        Diagnostics: string list
+    }
 
 /// Machine-checkable retained-render evidence for one inspected scope or transition.
 ///
 /// The artifact can embed the final visual inspection artifact so retained
 /// facts, damage facts, and screenshot/readback evidence stay correlated.
 type RetainedInspectionArtifact =
-    { ArtifactId: string
-      RunId: string
-      Scope: VisualInspectionScope
-      OutputSize: Size
-      Presentation: string
-      Transition: RetainedFrameTransition option
-      FinalVisualArtifact: VisualInspectionArtifact option
-      RetainedNodes: RetainedNodeInspection list
-      Damage: DamageRegionInspection option
-      Findings: DamageLocalityFinding list
-      UnsupportedFacts: VisualInspectionUnsupportedFact list
-      RelatedVisualEvidence: string list
-      ReadinessStatus: RetainedInspectionStatus
-      Diagnostics: string list
-      GeneratedAtUtc: string }
+    {
+        ArtifactId: string
+        RunId: string
+        Scope: VisualInspectionScope
+        OutputSize: Size
+        Presentation: string
+        Transition: RetainedFrameTransition option
+        FinalVisualArtifact: VisualInspectionArtifact option
+        RetainedNodes: RetainedNodeInspection list
+        Damage: DamageRegionInspection option
+        Findings: DamageLocalityFinding list
+        UnsupportedFacts: VisualInspectionUnsupportedFact list
+        RelatedVisualEvidence: string list
+        ReadinessStatus: RetainedInspectionStatus
+        Diagnostics: string list
+        GeneratedAtUtc: string
+    }
 
 /// Reviewer- and machine-readable retained inspection rollup.
 ///
@@ -1016,20 +1097,22 @@ type RetainedInspectionArtifact =
 /// findings, unsupported facts, accepted exceptions, related visual evidence,
 /// command evidence, caveats, and diagnostics.
 type RetainedInspectionSummary =
-    { RunId: string
-      OverallStatus: RetainedInspectionStatus
-      ArtifactCount: int
-      InspectedScopes: string list
-      NotInspectedScopes: string list
-      StatusCounts: (string * int) list
-      DamageStatusCounts: (string * int) list
-      NodeStatusCounts: (string * int) list
-      DirtyAreaSummaries: (string * float * string list) list
-      BlockingFindings: DamageLocalityFinding list
-      UnsupportedFacts: VisualInspectionUnsupportedFact list
-      AcceptedExceptions: string list
-      InvalidExceptions: string list
-      RelatedVisualEvidence: string list
-      CommandEvidence: (string * string) list
-      Caveats: string list
-      Diagnostics: string list }
+    {
+        RunId: string
+        OverallStatus: RetainedInspectionStatus
+        ArtifactCount: int
+        InspectedScopes: string list
+        NotInspectedScopes: string list
+        StatusCounts: (string * int) list
+        DamageStatusCounts: (string * int) list
+        NodeStatusCounts: (string * int) list
+        DirtyAreaSummaries: (string * float * string list) list
+        BlockingFindings: DamageLocalityFinding list
+        UnsupportedFacts: VisualInspectionUnsupportedFact list
+        AcceptedExceptions: string list
+        InvalidExceptions: string list
+        RelatedVisualEvidence: string list
+        CommandEvidence: (string * string) list
+        Caveats: string list
+        Diagnostics: string list
+    }

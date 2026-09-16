@@ -13,10 +13,12 @@ module TestAssertions =
     /// A text occurrence extracted from a rendered scene: the drawn string, its anchor in absolute
     /// coordinates (after `Translate` accumulation) and its font size where the node carries one.
     type RenderedText =
-        { Text: string
-          X: float
-          Y: float
-          Size: float }
+        {
+            Text: string
+            X: float
+            Y: float
+            Size: float
+        }
 
     /// Do two axis-aligned rects overlap with strictly positive area? Edges that merely touch
     /// (shared boundary, zero overlap area) do NOT count as an overlap.
@@ -31,13 +33,16 @@ module TestAssertions =
     let overlappingPairs (rects: Rect list) : (Rect * Rect) list =
         let arr = List.toArray rects
 
-        [ for i in 0 .. arr.Length - 1 do
-              for j in i + 1 .. arr.Length - 1 do
-                  if rectsOverlap arr.[i] arr.[j] then
-                      yield arr.[i], arr.[j] ]
+        [
+            for i in 0 .. arr.Length - 1 do
+                for j in i + 1 .. arr.Length - 1 do
+                    if rectsOverlap arr.[i] arr.[j] then
+                        yield arr.[i], arr.[j]
+        ]
 
     /// Does any pair in the list overlap?
-    let anyOverlap (rects: Rect list) : bool = overlappingPairs rects |> List.isEmpty |> not
+    let anyOverlap (rects: Rect list) : bool =
+        overlappingPairs rects |> List.isEmpty |> not
 
     /// Is `inner` fully contained within `outer` (with a small slack tolerance)?
     let containedIn (tol: float) (outer: Rect) (inner: Rect) : bool =
@@ -52,18 +57,42 @@ module TestAssertions =
 
     and private collectTextNode dx dy node : RenderedText list =
         match node with
-        | Text((x, y), text, _) -> [ { Text = text; X = x + dx; Y = y + dy; Size = 24.0 } ]
-        | SizedText((x, y), text, size, _) -> [ { Text = text; X = x + dx; Y = y + dy; Size = size } ]
+        | Text((x, y), text, _) ->
+            [
+                {
+                    Text = text
+                    X = x + dx
+                    Y = y + dy
+                    Size = 24.0
+                }
+            ]
+        | SizedText((x, y), text, size, _) ->
+            [
+                {
+                    Text = text
+                    X = x + dx
+                    Y = y + dy
+                    Size = size
+                }
+            ]
         | TextRun run ->
-            [ { Text = run.Text
-                X = run.Position.X + dx
-                Y = run.Position.Y + dy
-                Size = run.Font.Size } ]
+            [
+                {
+                    Text = run.Text
+                    X = run.Position.X + dx
+                    Y = run.Position.Y + dy
+                    Size = run.Font.Size
+                }
+            ]
         | GlyphRun run ->
-            [ { Text = run.Data.Text
-                X = run.Position.X + dx
-                Y = run.Position.Y + dy
-                Size = run.Data.Font.Size } ]
+            [
+                {
+                    Text = run.Data.Text
+                    X = run.Position.X + dx
+                    Y = run.Position.Y + dy
+                    Size = run.Data.Font.Size
+                }
+            ]
         | Group scenes -> scenes |> List.collect (collectText dx dy)
         | Translate((tx, ty), s) -> collectText (dx + tx) (dy + ty) s
         | ClipNode(_, s) -> collectText dx dy s
@@ -77,7 +106,8 @@ module TestAssertions =
     let renderedText (scene: Scene) : RenderedText list = collectText 0.0 0.0 scene
 
     /// Just the drawn strings, in document order.
-    let renderedGlyphs (scene: Scene) : string list = renderedText scene |> List.map (fun t -> t.Text)
+    let renderedGlyphs (scene: Scene) : string list =
+        renderedText scene |> List.map (fun t -> t.Text)
 
     // Walk a scene accumulating Translate offsets, collecting the absolute bounds of every node that
     // paints a filled region (rects, ellipses, images, regions). Text/line/path bounds are excluded —
@@ -134,15 +164,15 @@ module TestAssertions =
     /// Feature 146 helper: compact artifact metadata check for readiness outputs.
     let artifactMetadataComplete (path: string option) (identity: string option) : bool =
         match path, identity with
-        | Some value, Some hash ->
-            not (System.String.IsNullOrWhiteSpace value)
-            && packageIdentityLooksSha256 hash
+        | Some value, Some hash -> not (System.String.IsNullOrWhiteSpace value) && packageIdentityLooksSha256 hash
         | _ -> false
 
     /// Feature 147 helper: all readiness paths for the compositor package must stay under the feature
     /// readiness directory so generated artifacts cannot masquerade as unrelated evidence.
     let feature147ReadinessPath (path: string) : bool =
-        path.Replace('\\', '/').StartsWith("specs/147-compositor-damage-redraw/readiness/", System.StringComparison.Ordinal)
+        path
+            .Replace('\\', '/')
+            .StartsWith("specs/147-compositor-damage-redraw/readiness/", System.StringComparison.Ordinal)
 
     /// Feature 147 helper: an accepted parity verdict must be the explicit passed token.
     let feature147ParityPassed (token: string) : bool =
@@ -154,7 +184,9 @@ module TestAssertions =
 
     /// Feature 148 helper: readiness paths must stay under the live-integration feature package.
     let feature148ReadinessPath (path: string) : bool =
-        path.Replace('\\', '/').StartsWith("specs/148-compositor-live-integration/readiness/", System.StringComparison.Ordinal)
+        path
+            .Replace('\\', '/')
+            .StartsWith("specs/148-compositor-live-integration/readiness/", System.StringComparison.Ordinal)
 
     /// Feature 148 helper: live-host acceptance requires the explicit passed proof token.
     let feature148ProofPassed (token: string) : bool =
@@ -166,7 +198,9 @@ module TestAssertions =
 
     /// Feature 149 helper: readiness paths must stay under the final P7 compositor feature package.
     let feature149ReadinessPath (path: string) : bool =
-        path.Replace('\\', '/').StartsWith("specs/149-complete-compositor-p7/readiness/", System.StringComparison.Ordinal)
+        path
+            .Replace('\\', '/')
+            .StartsWith("specs/149-complete-compositor-p7/readiness/", System.StringComparison.Ordinal)
 
     /// Feature 149 helper: live-host acceptance requires the explicit passed proof token.
     let feature149ProofPassed (token: string) : bool =

@@ -37,12 +37,14 @@ type SvgWorkspaceEffect =
 
 /// <summary>A versioned workspace layout suitable for persistence.</summary>
 type SvgWorkspaceLayout =
-    { /// <summary>Exact layout schema identity.</summary>
-      Schema: string
-      /// <summary>Monotonic accepted-preference revision.</summary>
-      Revision: int
-      /// <summary>At most 32 uniquely identified panels.</summary>
-      Panels: SvgWorkspacePanel list }
+    {
+        /// <summary>Exact layout schema identity.</summary>
+        Schema: string
+        /// <summary>Monotonic accepted-preference revision.</summary>
+        Revision: int
+        /// <summary>At most 32 uniquely identified panels.</summary>
+        Panels: SvgWorkspacePanel list
+    }
 
 /// <summary>Pure workspace observations.</summary>
 [<RequireQualifiedAccess>]
@@ -88,25 +90,29 @@ type SvgWorkspaceOverlay =
 
 /// <summary>One stable panel identity with preferred and responsive placement.</summary>
 type SvgWorkspacePanel =
-    { /// <summary>Stable panel identity.</summary>
-      Id: string
-      /// <summary>User-accepted placement retained across responsive changes.</summary>
-      Preferred: SvgPanelPlacement
-      /// <summary>Placement currently projected for the viewport.</summary>
-      Effective: SvgPanelPlacement }
+    {
+        /// <summary>Stable panel identity.</summary>
+        Id: string
+        /// <summary>User-accepted placement retained across responsive changes.</summary>
+        Preferred: SvgPanelPlacement
+        /// <summary>Placement currently projected for the viewport.</summary>
+        Effective: SvgPanelPlacement
+    }
 
 /// <summary>Portable workspace state; scene, history, camera and selection remain owner state.</summary>
 type SvgWorkspaceState =
-    { /// <summary>Owner-selected workspace mode projected into input contexts.</summary>
-      Mode: SvgWorkspaceMode
-      /// <summary>Accepted and responsive panel layout.</summary>
-      Layout: SvgWorkspaceLayout
-      /// <summary>Last accepted finite non-negative viewport width.</summary>
-      ViewportWidth: float
-      /// <summary>Stable control or scene identity that currently owns focus.</summary>
-      FocusTarget: string
-      /// <summary>The sole innermost overlay, when present.</summary>
-      Overlay: SvgWorkspaceOverlay option }
+    {
+        /// <summary>Owner-selected workspace mode projected into input contexts.</summary>
+        Mode: SvgWorkspaceMode
+        /// <summary>Accepted and responsive panel layout.</summary>
+        Layout: SvgWorkspaceLayout
+        /// <summary>Last accepted finite non-negative viewport width.</summary>
+        ViewportWidth: float
+        /// <summary>Stable control or scene identity that currently owns focus.</summary>
+        FocusTarget: string
+        /// <summary>The sole innermost overlay, when present.</summary>
+        Overlay: SvgWorkspaceOverlay option
+    }
 
 /// <summary>Deterministic workspace state, responsive placement and layout interchange.</summary>
 [<RequireQualifiedAccess>]

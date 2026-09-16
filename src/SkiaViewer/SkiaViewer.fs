@@ -22,95 +22,300 @@ open FS.GG.UI.SkiaViewer
 
 module Viewer =
     let timingPathToken path = ViewerRuntime.timingPathToken path
-    let timingPathCanSupportClaim path proofReadbackIncluded validationReadbackIncluded = ViewerRuntime.timingPathCanSupportClaim path proofReadbackIncluded validationReadbackIncluded
-    let damageDecisionToken decision = ViewerRuntime.damageDecisionToken decision
+
+    let timingPathCanSupportClaim path proofReadbackIncluded validationReadbackIncluded =
+        ViewerRuntime.timingPathCanSupportClaim path proofReadbackIncluded validationReadbackIncluded
+
+    let damageDecisionToken decision =
+        ViewerRuntime.damageDecisionToken decision
+
     let init options = ViewerRuntime.init options
-    let initWithWindowBehavior options behavior = ViewerRuntime.initWithWindowBehavior options behavior
+
+    let initWithWindowBehavior options behavior =
+        ViewerRuntime.initWithWindowBehavior options behavior
+
     let update msg model = ViewerRuntime.update msg model
     let initRun request = ViewerRuntime.initRun request
     let updateRun msg model = ViewerRuntime.updateRun msg model
     let defaultDiagnostics = ViewerRuntime.defaultDiagnostics
-    let internal runtimeStateRepaint producedMessages current deriveScene = ViewerRuntime.runtimeStateRepaint producedMessages current deriveScene
-    let internal dispatchPersistenceBatch sink mapOutcome dispatch batch = ViewerRuntime.dispatchPersistenceBatch sink mapOutcome dispatch batch
-    let internal interpretViewerEffects audioSink persistenceSink onScene onInputDispatch onDiagnostic evidenceSink effects =
-        ViewerRuntime.interpretViewerEffects audioSink persistenceSink onScene onInputDispatch onDiagnostic evidenceSink ignore ignore effects
 
-    let internal interpretViewerEffectsWithLogicalCanvas audioSink persistenceSink onScene onInputDispatch onDiagnostic evidenceSink logicalCanvasSink effects =
-        ViewerRuntime.interpretViewerEffects audioSink persistenceSink onScene onInputDispatch onDiagnostic evidenceSink ignore logicalCanvasSink effects
+    let internal runtimeStateRepaint producedMessages current deriveScene =
+        ViewerRuntime.runtimeStateRepaint producedMessages current deriveScene
 
-    let internal interpretViewerEffectsWithRuntimeWindow audioSink persistenceSink onScene onInputDispatch onDiagnostic evidenceSink windowBehaviorSink logicalCanvasSink effects =
-        ViewerRuntime.interpretViewerEffects audioSink persistenceSink onScene onInputDispatch onDiagnostic evidenceSink windowBehaviorSink logicalCanvasSink effects
+    let internal dispatchPersistenceBatch sink mapOutcome dispatch batch =
+        ViewerRuntime.dispatchPersistenceBatch sink mapOutcome dispatch batch
 
-    let internal planRuntimeWindowBehavior behavior = ViewerRuntime.planRuntimeWindowBehavior behavior
+    let internal interpretViewerEffects
+        audioSink
+        persistenceSink
+        onScene
+        onInputDispatch
+        onDiagnostic
+        evidenceSink
+        effects
+        =
+        ViewerRuntime.interpretViewerEffects
+            audioSink
+            persistenceSink
+            onScene
+            onInputDispatch
+            onDiagnostic
+            evidenceSink
+            ignore
+            ignore
+            effects
+
+    let internal interpretViewerEffectsWithLogicalCanvas
+        audioSink
+        persistenceSink
+        onScene
+        onInputDispatch
+        onDiagnostic
+        evidenceSink
+        logicalCanvasSink
+        effects
+        =
+        ViewerRuntime.interpretViewerEffects
+            audioSink
+            persistenceSink
+            onScene
+            onInputDispatch
+            onDiagnostic
+            evidenceSink
+            ignore
+            logicalCanvasSink
+            effects
+
+    let internal interpretViewerEffectsWithRuntimeWindow
+        audioSink
+        persistenceSink
+        onScene
+        onInputDispatch
+        onDiagnostic
+        evidenceSink
+        windowBehaviorSink
+        logicalCanvasSink
+        effects
+        =
+        ViewerRuntime.interpretViewerEffects
+            audioSink
+            persistenceSink
+            onScene
+            onInputDispatch
+            onDiagnostic
+            evidenceSink
+            windowBehaviorSink
+            logicalCanvasSink
+            effects
+
+    let internal planRuntimeWindowBehavior behavior =
+        ViewerRuntime.planRuntimeWindowBehavior behavior
 
     let internal pointerInProductSpace logicalSize windowSize surfaceSize input =
         ViewerRuntime.pointerInProductSpace logicalSize windowSize surfaceSize input
-    let internal productEvidenceSink onDiagnostic sceneSize currentScene effect = ViewerRuntime.productEvidenceSink onDiagnostic sceneSize currentScene effect
+
+    let internal productEvidenceSink onDiagnostic sceneSize currentScene effect =
+        ViewerRuntime.productEvidenceSink onDiagnostic sceneSize currentScene effect
+
     let internal traceStartCapture a0 = ViewerRuntime.traceStartCapture a0
     let internal traceDrainCapture a0 = ViewerRuntime.traceDrainCapture a0
-    let internal traceEmit eventName fields = ViewerRuntime.traceEmit eventName fields
-    let defaultResponsivenessBudget = ViewerResponsivenessReport.defaultResponsivenessBudget
-    let defaultResponsivenessOptions = ViewerResponsivenessReport.defaultResponsivenessOptions
-    let responsivenessInputKindToken kind = ViewerResponsivenessReport.responsivenessInputKindToken kind
-    let responsivenessVisibleResponseToken response = ViewerResponsivenessReport.responsivenessVisibleResponseToken response
-    let responsivenessEnvironmentStatusToken status = ViewerResponsivenessReport.responsivenessEnvironmentStatusToken status
-    let responsivenessReadinessToken readiness = ViewerResponsivenessReport.responsivenessReadinessToken readiness
+
+    let internal traceEmit eventName fields =
+        ViewerRuntime.traceEmit eventName fields
+
+    let defaultResponsivenessBudget =
+        ViewerResponsivenessReport.defaultResponsivenessBudget
+
+    let defaultResponsivenessOptions =
+        ViewerResponsivenessReport.defaultResponsivenessOptions
+
+    let responsivenessInputKindToken kind =
+        ViewerResponsivenessReport.responsivenessInputKindToken kind
+
+    let responsivenessVisibleResponseToken response =
+        ViewerResponsivenessReport.responsivenessVisibleResponseToken response
+
+    let responsivenessEnvironmentStatusToken status =
+        ViewerResponsivenessReport.responsivenessEnvironmentStatusToken status
+
+    let responsivenessReadinessToken readiness =
+        ViewerResponsivenessReport.responsivenessReadinessToken readiness
+
     let emptyInputQueue = ViewerRuntime.emptyInputQueue
     let inputQueueDepth queue = ViewerRuntime.inputQueueDepth queue
-    let enqueueInput receivedAt inputKind payload queue = ViewerRuntime.enqueueInput receivedAt inputKind payload queue
-    let enqueueInputWithPointerPolicy policy receivedAt inputKind payload queue = ViewerRuntime.enqueueInputWithPointerPolicy policy receivedAt inputKind payload queue
-    let drainInputQueue batchId drainReason queue = ViewerRuntime.drainInputQueue batchId drainReason queue
-    let runDeterministicPacing policy receivedAt (frames: (ViewerResponsivenessInputKind * string) list list) = ViewerRuntime.runDeterministicPacing policy receivedAt frames
-    let dirtyState productModelChanged runtimeStateChanged sizeChanged themeChanged dirtyRegion reason = ViewerRuntime.dirtyState productModelChanged runtimeStateChanged sizeChanged themeChanged dirtyRegion reason
-    let dirtyStateRequiresRecompose dirty = ViewerRuntime.dirtyStateRequiresRecompose dirty
-    let createResponsivenessRunId a0 = ViewerResponsivenessReport.createResponsivenessRunId a0
-    let latencyRecordToJsonLine latency = ViewerResponsivenessReport.latencyRecordToJsonLine latency
-    let summarizeResponsivenessRecords runId scope recordsPath startedUtc completedUtc budget records = ViewerResponsivenessReport.summarizeResponsivenessRecords runId scope recordsPath startedUtc completedUtc budget records
-    let responsivenessSummaryToJson summary = ViewerResponsivenessReport.responsivenessSummaryToJson summary
-    let responsivenessSummaryToMarkdown summary = ViewerResponsivenessReport.responsivenessSummaryToMarkdown summary
-    let writeResponsivenessRun outputRoot summary records = ViewerResponsivenessReport.writeResponsivenessRun outputRoot summary records
+
+    let enqueueInput receivedAt inputKind payload queue =
+        ViewerRuntime.enqueueInput receivedAt inputKind payload queue
+
+    let enqueueInputWithPointerPolicy policy receivedAt inputKind payload queue =
+        ViewerRuntime.enqueueInputWithPointerPolicy policy receivedAt inputKind payload queue
+
+    let drainInputQueue batchId drainReason queue =
+        ViewerRuntime.drainInputQueue batchId drainReason queue
+
+    let runDeterministicPacing policy receivedAt (frames: (ViewerResponsivenessInputKind * string) list list) =
+        ViewerRuntime.runDeterministicPacing policy receivedAt frames
+
+    let dirtyState productModelChanged runtimeStateChanged sizeChanged themeChanged dirtyRegion reason =
+        ViewerRuntime.dirtyState productModelChanged runtimeStateChanged sizeChanged themeChanged dirtyRegion reason
+
+    let dirtyStateRequiresRecompose dirty =
+        ViewerRuntime.dirtyStateRequiresRecompose dirty
+
+    let createResponsivenessRunId a0 =
+        ViewerResponsivenessReport.createResponsivenessRunId a0
+
+    let latencyRecordToJsonLine latency =
+        ViewerResponsivenessReport.latencyRecordToJsonLine latency
+
+    let summarizeResponsivenessRecords runId scope recordsPath startedUtc completedUtc budget records =
+        ViewerResponsivenessReport.summarizeResponsivenessRecords
+            runId
+            scope
+            recordsPath
+            startedUtc
+            completedUtc
+            budget
+            records
+
+    let responsivenessSummaryToJson summary =
+        ViewerResponsivenessReport.responsivenessSummaryToJson summary
+
+    let responsivenessSummaryToMarkdown summary =
+        ViewerResponsivenessReport.responsivenessSummaryToMarkdown summary
+
+    let writeResponsivenessRun outputRoot summary records =
+        ViewerResponsivenessReport.writeResponsivenessRun outputRoot summary records
+
     let defaultWindowBehavior = ViewerWindowClassify.defaultWindowBehavior
-    let validateWindowBehavior request = ViewerWindowClassify.validateWindowBehavior request
-    let validateWindowLaunchBehavior initialSize request = ViewerWindowClassify.validateWindowLaunchBehavior initialSize request
-    let classifyWindowState diagnostic = ViewerWindowClassify.classifyWindowState diagnostic
-    let shouldCaptureDiagnostic options diagnostic = ViewerRuntime.shouldCaptureDiagnostic options diagnostic
-    let captureDiagnostic options diagnostic = ViewerRuntime.captureDiagnostic options diagnostic
-    let productDefectDiagnostic phase message = ViewerWindowClassify.productDefectDiagnostic phase message
-    let tryProductStep report phase step = ViewerRuntime.tryProductStep report phase step
-    let failureFromDiagnostic diagnostic = ViewerWindowClassify.failureFromDiagnostic diagnostic
-    let classifyWindowObservation outcome inputs = ViewerWindowClassify.classifyWindowObservation outcome inputs
-    let desktopSessionDiagnostic a0 = ViewerRuntime.desktopSessionDiagnostic a0
+
+    let validateWindowBehavior request =
+        ViewerWindowClassify.validateWindowBehavior request
+
+    let validateWindowLaunchBehavior initialSize request =
+        ViewerWindowClassify.validateWindowLaunchBehavior initialSize request
+
+    let classifyWindowState diagnostic =
+        ViewerWindowClassify.classifyWindowState diagnostic
+
+    let shouldCaptureDiagnostic options diagnostic =
+        ViewerRuntime.shouldCaptureDiagnostic options diagnostic
+
+    let captureDiagnostic options diagnostic =
+        ViewerRuntime.captureDiagnostic options diagnostic
+
+    let productDefectDiagnostic phase message =
+        ViewerWindowClassify.productDefectDiagnostic phase message
+
+    let tryProductStep report phase step =
+        ViewerRuntime.tryProductStep report phase step
+
+    let failureFromDiagnostic diagnostic =
+        ViewerWindowClassify.failureFromDiagnostic diagnostic
+
+    let classifyWindowObservation outcome inputs =
+        ViewerWindowClassify.classifyWindowObservation outcome inputs
+
+    let desktopSessionDiagnostic a0 =
+        ViewerRuntime.desktopSessionDiagnostic a0
+
     let runtimeCapability a0 = ViewerRuntime.runtimeCapability a0
     let run options scene = ViewerRuntime.run options scene
     let runApp options host = ViewerRuntime.runApp options host
-    let runAppWithWindowBehavior options behavior host = ViewerRuntime.runAppWithWindowBehavior options behavior host
-    let runAppWithAudio options audioSink host = ViewerRuntime.runAppWithAudio options audioSink host
-    let runAppWithWindowBehaviorAndAudio options behavior audioSink host = ViewerRuntime.runAppWithWindowBehaviorAndAudio options behavior audioSink host
-    let runAppWithPersistence options persistenceSink mapOutcome host = ViewerRuntime.runAppWithPersistence options persistenceSink mapOutcome host
-    let runAppWithAudioAndPersistence options audioSink persistenceSink mapOutcome host = ViewerRuntime.runAppWithAudioAndPersistence options audioSink persistenceSink mapOutcome host
-    let runAppWithWindowBehaviorAndAudioAndPersistence options behavior audioSink persistenceSink mapOutcome host = ViewerRuntime.runAppWithWindowBehaviorAndAudioAndPersistence options behavior audioSink persistenceSink mapOutcome host
-    let runInteractiveViewer options host = ViewerRuntime.runInteractiveViewer options host
-    let runInteractiveViewerWithGamepad options gamepadHost = ViewerRuntime.runInteractiveViewerWithGamepad options gamepadHost
-    let runInteractiveViewerWithWindowBehavior options behavior host = ViewerRuntime.runInteractiveViewerWithWindowBehavior options behavior host
+
+    let runAppWithWindowBehavior options behavior host =
+        ViewerRuntime.runAppWithWindowBehavior options behavior host
+
+    let runAppWithAudio options audioSink host =
+        ViewerRuntime.runAppWithAudio options audioSink host
+
+    let runAppWithWindowBehaviorAndAudio options behavior audioSink host =
+        ViewerRuntime.runAppWithWindowBehaviorAndAudio options behavior audioSink host
+
+    let runAppWithPersistence options persistenceSink mapOutcome host =
+        ViewerRuntime.runAppWithPersistence options persistenceSink mapOutcome host
+
+    let runAppWithAudioAndPersistence options audioSink persistenceSink mapOutcome host =
+        ViewerRuntime.runAppWithAudioAndPersistence options audioSink persistenceSink mapOutcome host
+
+    let runAppWithWindowBehaviorAndAudioAndPersistence options behavior audioSink persistenceSink mapOutcome host =
+        ViewerRuntime.runAppWithWindowBehaviorAndAudioAndPersistence
+            options
+            behavior
+            audioSink
+            persistenceSink
+            mapOutcome
+            host
+
+    let runInteractiveViewer options host =
+        ViewerRuntime.runInteractiveViewer options host
+
+    let runInteractiveViewerWithGamepad options gamepadHost =
+        ViewerRuntime.runInteractiveViewerWithGamepad options gamepadHost
+
+    let runInteractiveViewerWithWindowBehavior options behavior host =
+        ViewerRuntime.runInteractiveViewerWithWindowBehavior options behavior host
+
     let defaultPointerPacingOptions = ViewerRuntime.defaultPointerPacingOptions
-    let runInteractiveViewerWithPointerPacing options pointerPacing host = ViewerRuntime.runInteractiveViewerWithPointerPacing options pointerPacing host
-    let runInteractiveViewerWithWindowBehaviorAndPointerPacing options behavior pointerPacing host = ViewerRuntime.runInteractiveViewerWithWindowBehaviorAndPointerPacing options behavior pointerPacing host
-    let runInteractiveViewerScript options script host = ViewerRuntime.runInteractiveViewerScript options script host
-    let runInteractiveViewerScriptWithWindowBehavior options behavior script host = ViewerRuntime.runInteractiveViewerScriptWithWindowBehavior options behavior script host
-    let runInteractiveViewerScriptWithPointerPacing options pointerPacing script host = ViewerRuntime.runInteractiveViewerScriptWithPointerPacing options pointerPacing script host
-    let runInteractiveViewerWithAudio options audioSink host = ViewerRuntime.runInteractiveViewerWithAudio options audioSink host
-    let runInteractiveViewerWithWindowBehaviorAndAudio options behavior audioSink host = ViewerRuntime.runInteractiveViewerWithWindowBehaviorAndAudio options behavior audioSink host
-    let runInteractiveViewerWithPointerPacingAndAudio options pointerPacing audioSink host = ViewerRuntime.runInteractiveViewerWithPointerPacingAndAudio options pointerPacing audioSink host
-    let runInteractiveViewerWithWindowBehaviorAndPointerPacingAndAudio options behavior pointerPacing audioSink host = ViewerRuntime.runInteractiveViewerWithWindowBehaviorAndPointerPacingAndAudio options behavior pointerPacing audioSink host
-    let runInteractiveViewerScriptWithAudio options script audioSink host = ViewerRuntime.runInteractiveViewerScriptWithAudio options script audioSink host
-    let runInteractiveViewerScriptWithWindowBehaviorAndAudio options behavior script audioSink host = ViewerRuntime.runInteractiveViewerScriptWithWindowBehaviorAndAudio options behavior script audioSink host
-    let runAppEvidence request options host = ViewerRuntime.runAppEvidence request options host
-    let runBounded request options scene = ViewerRuntime.runBounded request options scene
-    let runUntilFirstFrame options scene = ViewerRuntime.runUntilFirstFrame options scene
-    let runForFrames frameCount options scene = ViewerRuntime.runForFrames frameCount options scene
-    let captureScreenshotEvidence request options scene = ViewerRuntime.captureScreenshotEvidence request options scene
-    let initEvidenceWorkflow request = ViewerRuntime.initEvidenceWorkflow request
-    let updateEvidenceWorkflow msg model = ViewerRuntime.updateEvidenceWorkflow msg model
+
+    let runInteractiveViewerWithPointerPacing options pointerPacing host =
+        ViewerRuntime.runInteractiveViewerWithPointerPacing options pointerPacing host
+
+    let runInteractiveViewerWithWindowBehaviorAndPointerPacing options behavior pointerPacing host =
+        ViewerRuntime.runInteractiveViewerWithWindowBehaviorAndPointerPacing options behavior pointerPacing host
+
+    let runInteractiveViewerScript options script host =
+        ViewerRuntime.runInteractiveViewerScript options script host
+
+    let runInteractiveViewerScriptWithWindowBehavior options behavior script host =
+        ViewerRuntime.runInteractiveViewerScriptWithWindowBehavior options behavior script host
+
+    let runInteractiveViewerScriptWithPointerPacing options pointerPacing script host =
+        ViewerRuntime.runInteractiveViewerScriptWithPointerPacing options pointerPacing script host
+
+    let runInteractiveViewerWithAudio options audioSink host =
+        ViewerRuntime.runInteractiveViewerWithAudio options audioSink host
+
+    let runInteractiveViewerWithWindowBehaviorAndAudio options behavior audioSink host =
+        ViewerRuntime.runInteractiveViewerWithWindowBehaviorAndAudio options behavior audioSink host
+
+    let runInteractiveViewerWithPointerPacingAndAudio options pointerPacing audioSink host =
+        ViewerRuntime.runInteractiveViewerWithPointerPacingAndAudio options pointerPacing audioSink host
+
+    let runInteractiveViewerWithWindowBehaviorAndPointerPacingAndAudio options behavior pointerPacing audioSink host =
+        ViewerRuntime.runInteractiveViewerWithWindowBehaviorAndPointerPacingAndAudio
+            options
+            behavior
+            pointerPacing
+            audioSink
+            host
+
+    let runInteractiveViewerScriptWithAudio options script audioSink host =
+        ViewerRuntime.runInteractiveViewerScriptWithAudio options script audioSink host
+
+    let runInteractiveViewerScriptWithWindowBehaviorAndAudio options behavior script audioSink host =
+        ViewerRuntime.runInteractiveViewerScriptWithWindowBehaviorAndAudio options behavior script audioSink host
+
+    let runAppEvidence request options host =
+        ViewerRuntime.runAppEvidence request options host
+
+    let runBounded request options scene =
+        ViewerRuntime.runBounded request options scene
+
+    let runUntilFirstFrame options scene =
+        ViewerRuntime.runUntilFirstFrame options scene
+
+    let runForFrames frameCount options scene =
+        ViewerRuntime.runForFrames frameCount options scene
+
+    let captureScreenshotEvidence request options scene =
+        ViewerRuntime.captureScreenshotEvidence request options scene
+
+    let initEvidenceWorkflow request =
+        ViewerRuntime.initEvidenceWorkflow request
+
+    let updateEvidenceWorkflow msg model =
+        ViewerRuntime.updateEvidenceWorkflow msg model
 
 module GeneratedAppHost =
     let dispatchKey (host: GeneratedAppHost<'model, 'msg>) raw model =
@@ -143,7 +348,10 @@ module GeneratedAppHost =
     /// does NOT contributes a single `DispatchInput(key, isDown)` marker (dispatchKey's "seen but
     /// unhandled" record — the live loop instead flips runtime state and repaints). Filtering paths like
     /// `audioRequests` ignore the marker; only an effect-list-EQUALITY assertion need account for it.
-    let runKeyScriptToModel (host: GeneratedAppHost<'model, 'msg>) (script: ViewerKeyEvent list) : 'model * ViewerEffect list =
+    let runKeyScriptToModel
+        (host: GeneratedAppHost<'model, 'msg>)
+        (script: ViewerKeyEvent list)
+        : 'model * ViewerEffect list =
         let initModel, initEffects = host.Init()
         let mutable model = initModel
         let effects = ResizeArray<ViewerEffect>(initEffects)
@@ -173,8 +381,10 @@ module GeneratedAppHost =
                     | None -> wired, raw :: dead)
                 ([], [])
 
-        { Wired = List.rev wired
-          Dead = List.rev dead }
+        {
+            Wired = List.rev wired
+            Dead = List.rev dead
+        }
 
     /// Issue #911: every product message this host's runtime SOURCES can produce over `probe`, in probe
     /// order — the raw material for the stronger "handled-but-unwired" check. A `game`-family product
@@ -221,7 +431,8 @@ module GeneratedAppHost =
                          Message =
                              sprintf
                                  "Product View raised an exception (%s) producing its first frame; the run cannot start (App-stage product defect, not a render failure)."
-                                 ex.Message }
+                                 ex.Message
+                     }
 
                  Viewer.captureDiagnostic host.Diagnostics diagnostic |> ignore
                  Result.Error(Viewer.failureFromDiagnostic diagnostic))
@@ -247,7 +458,16 @@ module GeneratedAppHost =
                 | FrameCount _ -> { Width = 1; Height = 1 }
                 | Duration _ -> { Width = 1; Height = 1 }
 
-            Viewer.runBounded request { Title = "Generated App"; InitialSize = size; PresentMode = ViewerPresentMode.OffscreenReadback; FrameRateCap = None; LogicalSize = None } scene
+            Viewer.runBounded
+                request
+                {
+                    Title = "Generated App"
+                    InitialSize = size
+                    PresentMode = ViewerPresentMode.OffscreenReadback
+                    FrameRateCap = None
+                    LogicalSize = None
+                }
+                scene
 
 /// Feature 136 (R2/FR-001/FR-002): the rendering-edge text seam. Hosts install the bundled-font
 /// real-metrics measurer once before building/laying out control scenes so box sizing equals draw
@@ -265,8 +485,7 @@ module Text =
 
     /// Clear the headless PNG rasterizer seam, restoring the typed `UnsupportedEnvironment` failure of
     /// the uninjected path (never a success-shaped stub). Used to assert honest failure (US3).
-    let clearPngRasterizer () =
-        SceneEvidence.setRealPngRasterizer None
+    let clearPngRasterizer () = SceneEvidence.setRealPngRasterizer None
 
     /// Install the bundled-font real-metrics measurer into the `Scene` measurement seam so control
     /// box sizing uses true advances. Idempotent; call once at host startup before layout.

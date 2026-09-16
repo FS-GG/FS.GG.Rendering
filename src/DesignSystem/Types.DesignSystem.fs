@@ -40,8 +40,10 @@ type StyleVariant =
 // options: `Some` overrides the folded-in value, `None` leaves it — the same last-writer-wins,
 // only-the-fields-it-owns overlay the colour classes already use.
 type FontDelta =
-    { Size: float option
-      Weight: int option }
+    {
+        Size: float option
+        Weight: int option
+    }
 
 type StyleClass =
     | Variant of StyleVariant
@@ -67,8 +69,10 @@ type StyleClass =
 // equality structural and its hash stable across processes.
 [<CustomEquality; NoComparison>]
 type IntentPolicy =
-    { Name: string
-      ApplyIntent: Theme -> string -> string -> ResolvedStyle -> ResolvedStyle }
+    {
+        Name: string
+        ApplyIntent: Theme -> string -> string -> ResolvedStyle -> ResolvedStyle
+    }
 
     override this.Equals(other) =
         match other with
@@ -78,47 +82,53 @@ type IntentPolicy =
     override this.GetHashCode() = hash this.Name
 
 and ResolvedStyle =
-    { Foreground: Color
-      Fill: Color
-      Stroke: Color
-      StrokeWidth: float
-      // Empty ⇒ a solid stroke. A non-empty on/off interval list is a real dash pattern, handed to
-      // `PathEffect.Dash` by the geometry — so `dashed` is rendered, not faked with a thicker border.
-      StrokeDash: float list
-      FontFamily: string option
-      FontSize: float
-      FontWeight: int option }
+    {
+        Foreground: Color
+        Fill: Color
+        Stroke: Color
+        StrokeWidth: float
+        // Empty ⇒ a solid stroke. A non-empty on/off interval list is a real dash pattern, handed to
+        // `PathEffect.Dash` by the geometry — so `dashed` is rendered, not faked with a thicker border.
+        StrokeDash: float list
+        FontFamily: string option
+        FontSize: float
+        FontWeight: int option
+    }
 
 and Theme =
-    { Name: string
-      Foreground: Color
-      Background: Color
-      Accent: Color
-      Danger: Color
-      // Feature 125 (FR-004): additive success/warning role colours, sourced from DesignTokens.
-      Success: Color
-      Warning: Color
-      Muted: Color
-      FontFamily: string option
-      FontSize: float
-      Density: float
-      CornerRadius: float
-      // #385: token-sourced dimension/spacing metrics (Ant control-size + Space scale). Geometry
-      // reads these instead of frozen literals, so a theme restyles control sizing the way palette
-      // roles restyle colour. Sourced from DesignTokens.{Light,Dark}.
-      ControlHeight: float
-      ControlHeightSm: float
-      ControlHeightLg: float
-      SpaceXs: float
-      SpaceSm: float
-      SpaceMd: float
-      SpaceLg: float
-      IntentPolicy: IntentPolicy }
+    {
+        Name: string
+        Foreground: Color
+        Background: Color
+        Accent: Color
+        Danger: Color
+        // Feature 125 (FR-004): additive success/warning role colours, sourced from DesignTokens.
+        Success: Color
+        Warning: Color
+        Muted: Color
+        FontFamily: string option
+        FontSize: float
+        Density: float
+        CornerRadius: float
+        // #385: token-sourced dimension/spacing metrics (Ant control-size + Space scale). Geometry
+        // reads these instead of frozen literals, so a theme restyles control sizing the way palette
+        // roles restyle colour. Sourced from DesignTokens.{Light,Dark}.
+        ControlHeight: float
+        ControlHeightSm: float
+        ControlHeightLg: float
+        SpaceXs: float
+        SpaceSm: float
+        SpaceMd: float
+        SpaceLg: float
+        IntentPolicy: IntentPolicy
+    }
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module IntentPolicy =
     /// The intent-agnostic policy: every intent (including `""` and unknown) returns the kind's
     /// structural base unchanged. The Default theme's policy, so its output is unchanged.
     let neutral: IntentPolicy =
-        { Name = "neutral"
-          ApplyIntent = fun _ _ _ style -> style }
+        {
+            Name = "neutral"
+            ApplyIntent = fun _ _ _ style -> style
+        }

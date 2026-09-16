@@ -54,11 +54,7 @@ let private templateConfig = ".template.config/template.json"
 let private declaredProfiles () : Set<string> =
     use document = JsonDocument.Parse(File.ReadAllText(repositoryPath templateConfig))
 
-    document.RootElement
-        .GetProperty("symbols")
-        .GetProperty("profile")
-        .GetProperty("choices")
-        .EnumerateArray()
+    document.RootElement.GetProperty("symbols").GetProperty("profile").GetProperty("choices").EnumerateArray()
     |> Seq.choose (fun choice ->
         match choice.TryGetProperty "choice" with
         | true, value -> Option.ofObj (value.GetString())
@@ -107,50 +103,50 @@ let generatedProductGateCoverageTests =
     testList
         "#719 — generated-product-gate instantiates every profile (the premise the surviving twin rests on)"
         [
-          // G-JOB — the job exists, and it does the two things the twin's header credits it with.
-          test "gate.yml declares a generated-product-gate job that scaffolds the template and runs its tests" {
-              let body = requireGateJobBody ()
+            // G-JOB — the job exists, and it does the two things the twin's header credits it with.
+            test "gate.yml declares a generated-product-gate job that scaffolds the template and runs its tests" {
+                let body = requireGateJobBody ()
 
-              Expect.stringContains
-                  body
-                  "dotnet new fs-gg-ui"
-                  "the generated-product-gate job must INSTANTIATE the template — without `dotnet new fs-gg-ui` it is not the job the twin's header describes, whatever it is named"
+                Expect.stringContains
+                    body
+                    "dotnet new fs-gg-ui"
+                    "the generated-product-gate job must INSTANTIATE the template — without `dotnet new fs-gg-ui` it is not the job the twin's header describes, whatever it is named"
 
-              Expect.stringContains
-                  body
-                  "dotnet test"
-                  "the generated-product-gate job must RUN the emitted product's tests — scaffolding a product without testing it leaves template/base/tests/Product.Tests unexercised on the PR, which is precisely the pre-#680 state the twin's header used to describe"
-          }
+                Expect.stringContains
+                    body
+                    "dotnet test"
+                    "the generated-product-gate job must RUN the emitted product's tests — scaffolding a product without testing it leaves template/base/tests/Product.Tests unexercised on the PR, which is precisely the pre-#680 state the twin's header used to describe"
+            }
 
-          // G-PROFILES — every declared profile is actually scaffolded. The narrowing hole, closed.
-          test "the gate scaffolds exactly the profiles the template declares" {
-              let body = requireGateJobBody ()
-              let declared = declaredProfiles ()
-              let gated = gatedProfiles body
+            // G-PROFILES — every declared profile is actually scaffolded. The narrowing hole, closed.
+            test "the gate scaffolds exactly the profiles the template declares" {
+                let body = requireGateJobBody ()
+                let declared = declaredProfiles ()
+                let gated = gatedProfiles body
 
-              // Fail loud, never vacuous: either set coming back empty would satisfy the equality below
-              // trivially, and this guard would report green having compared nothing.
-              Expect.isNonEmpty
-                  (Set.toList declared)
-                  "no `profile` choices parsed out of .template.config/template.json — this guard is not reading the template it thinks it is"
+                // Fail loud, never vacuous: either set coming back empty would satisfy the equality below
+                // trivially, and this guard would report green having compared nothing.
+                Expect.isNonEmpty
+                    (Set.toList declared)
+                    "no `profile` choices parsed out of .template.config/template.json — this guard is not reading the template it thinks it is"
 
-              Expect.isNonEmpty
-                  (Set.toList gated)
-                  "no profiles parsed out of the generated-product-gate job's `for profile in …; do` loop — either the loop was rewritten into a form this guard cannot read (fix the guard, in this PR) or the job no longer loops over profiles at all (fix the job)"
+                Expect.isNonEmpty
+                    (Set.toList gated)
+                    "no profiles parsed out of the generated-product-gate job's `for profile in …; do` loop — either the loop was rewritten into a form this guard cannot read (fix the guard, in this PR) or the job no longer loops over profiles at all (fix the job)"
 
-              let unscaffolded = Set.difference declared gated |> Set.toList
-              let unknown = Set.difference gated declared |> Set.toList
+                let unscaffolded = Set.difference declared gated |> Set.toList
+                let unknown = Set.difference gated declared |> Set.toList
 
-              Expect.isEmpty
-                  unscaffolded
-                  (sprintf
-                      "these profiles are declared by the template but NEVER SCAFFOLDED by the gate — their Product.Tests run in no PR cadence at all, and the gate still exits 0 saying so: %A. Add them to the `for profile in …` loop in .github/workflows/gate.yml."
-                      unscaffolded)
+                Expect.isEmpty
+                    unscaffolded
+                    (sprintf
+                        "these profiles are declared by the template but NEVER SCAFFOLDED by the gate — their Product.Tests run in no PR cadence at all, and the gate still exits 0 saying so: %A. Add them to the `for profile in …` loop in .github/workflows/gate.yml."
+                        unscaffolded)
 
-              Expect.isEmpty
-                  unknown
-                  (sprintf
-                      "the gate scaffolds profiles the template does not declare — `dotnet new fs-gg-ui --profile` will reject these, so the job is red for a reason that has nothing to do with the tree under review: %A"
-                      unknown)
-          }
+                Expect.isEmpty
+                    unknown
+                    (sprintf
+                        "the gate scaffolds profiles the template does not declare — `dotnet new fs-gg-ui --profile` will reject these, so the job is red for a reason that has nothing to do with the tree under review: %A"
+                        unknown)
+            }
         ]

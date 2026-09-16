@@ -18,7 +18,14 @@ open FS.GG.UI.Themes.Default
 open FS.GG.UI.DesignSystem
 
 let private theme = Theme.light
-let private box: Rect = { X = 0.0; Y = 0.0; Width = 160.0; Height = 28.0 }
+
+let private box: Rect =
+    {
+        X = 0.0
+        Y = 0.0
+        Width = 160.0
+        Height = 28.0
+    }
 
 /// Recursively gather every emitted text run from a rendered `Scene list`, recursing through the
 /// transparent wrapper nodes (the cell text is nested inside a `Clip → Group`).
@@ -47,27 +54,34 @@ let private labelFont (scenes: Scene list) (text: string) : FontSpec =
 let fCtl2DataGridFontTests =
     testList
         "F-CTL-2 · DataGrid cell typography flows through the resolver"
-        [ test "a plain body cell still paints the 11.0 base size (byte-identity anchor)" {
-              let font = labelFont (DataGridGeometry.cellGeom theme box [] Normal "42") "42"
-              Expect.equal font.Size 11.0 "an unthemed cell keeps the former raw literal size"
-              Expect.equal font.Weight None "an unthemed cell weight stays None"
-          }
+        [
+            test "a plain body cell still paints the 11.0 base size (byte-identity anchor)" {
+                let font = labelFont (DataGridGeometry.cellGeom theme box [] Normal "42") "42"
+                Expect.equal font.Size 11.0 "an unthemed cell keeps the former raw literal size"
+                Expect.equal font.Weight None "an unthemed cell weight stays None"
+            }
 
-          test "a plain header cell still paints the 11.0 base size (byte-identity anchor)" {
-              let font = labelFont (DataGridGeometry.headerCellGeom theme box [] Normal "Name") "Name"
-              Expect.equal font.Size 11.0 "an unthemed header cell keeps the former raw literal size"
-          }
+            test "a plain header cell still paints the 11.0 base size (byte-identity anchor)" {
+                let font =
+                    labelFont (DataGridGeometry.headerCellGeom theme box [] Normal "Name") "Name"
 
-          test "a Font class rescales the body-cell label — the seam is live, not a raw literal" {
-              // REDs against the pre-fix raw `cellFontSize`: the resolved size never reached paint.
-              let classes = [ StyleClass.Font { Size = Some 22.0; Weight = Some 700 } ]
-              let font = labelFont (DataGridGeometry.cellGeom theme box classes Normal "42") "42"
-              Expect.equal font.Size 22.0 "the Font class Size reaches the cell label"
-              Expect.equal font.Weight (Some 700) "the Font class Weight reaches the cell label"
-          }
+                Expect.equal font.Size 11.0 "an unthemed header cell keeps the former raw literal size"
+            }
 
-          test "a Font class rescales the header-cell label too" {
-              let classes = [ StyleClass.Font { Size = Some 18.0; Weight = None } ]
-              let font = labelFont (DataGridGeometry.headerCellGeom theme box classes Normal "Name") "Name"
-              Expect.equal font.Size 18.0 "the Font class Size reaches the header-cell label"
-          } ]
+            test "a Font class rescales the body-cell label — the seam is live, not a raw literal" {
+                // REDs against the pre-fix raw `cellFontSize`: the resolved size never reached paint.
+                let classes = [ StyleClass.Font { Size = Some 22.0; Weight = Some 700 } ]
+                let font = labelFont (DataGridGeometry.cellGeom theme box classes Normal "42") "42"
+                Expect.equal font.Size 22.0 "the Font class Size reaches the cell label"
+                Expect.equal font.Weight (Some 700) "the Font class Weight reaches the cell label"
+            }
+
+            test "a Font class rescales the header-cell label too" {
+                let classes = [ StyleClass.Font { Size = Some 18.0; Weight = None } ]
+
+                let font =
+                    labelFont (DataGridGeometry.headerCellGeom theme box classes Normal "Name") "Name"
+
+                Expect.equal font.Size 18.0 "the Font class Size reaches the header-cell label"
+            }
+        ]

@@ -14,10 +14,12 @@ type Point = { X: float; Y: float }
 /// `Height`). BCL-only, the sim counterpart of the render `FS.GG.UI.Scene.Rect`. Consumed by
 /// `Geometry` (collision/containment) and `SpatialGrid` (range queries).
 type Rect =
-    { X: float
-      Y: float
-      Width: float
-      Height: float }
+    {
+        X: float
+        Y: float
+        Width: float
+        Height: float
+    }
 
 /// Public contract type exposed by the FS.GG.Game.Core package.
 /// An integer grid coordinate — the atom over which walkability, neighbours, and paths are expressed.
@@ -51,7 +53,12 @@ type Circle = { Center: Point; Radius: float }
 /// in `[0,1]`) at the first forward surface crossing, `Point` is that hit position, and `Normal` is
 /// the outward unit surface normal there. A *query value*, not a penetration manifold; produced by
 /// `Geometry.segmentAabbHit` / `segmentCircleHit`. Structural equality makes it golden-testable.
-type RayHit = { T: float; Point: Point; Normal: Point }
+type RayHit =
+    {
+        T: float
+        Point: Point
+        Normal: Point
+    }
 
 /// Public contract type exposed by the FS.GG.Game.Core package.
 /// A convex polygon in continuous simulation space — a ring of `Vertices`. Convention (an input
@@ -85,10 +92,12 @@ type ConvexPolygon = { Vertices: Point[] }
 /// A *detection-only value*, as `Contact` is: structural equality (element-wise over `Points`) makes
 /// it a deterministic golden-testable value.
 type Manifold =
-    { A: int
-      B: int
-      Normal: Point
-      Depth: float
-      Points: Point[]
-      PointCount: int
-      FeatureId: int }
+    {
+        A: int
+        B: int
+        Normal: Point
+        Depth: float
+        Points: Point[]
+        PointCount: int
+        FeatureId: int
+    }

@@ -12,26 +12,38 @@ let private usage () =
     printfn "  SecondAntShowcase list"
     printfn "  SecondAntShowcase interactive [<page-id>] [--theme light|dark]"
     printfn "  SecondAntShowcase evidence --seed <int> [--out <dir>] [--page <page-id>]"
-    printfn "  SecondAntShowcase visual-readiness --seed <int> --size <width>x<height> --themes <list> [--pages <list>] [--out <dir>]"
+
+    printfn
+        "  SecondAntShowcase visual-readiness --seed <int> --size <width>x<height> --themes <list> [--pages <list>] [--out <dir>]"
+
     printfn "  SecondAntShowcase visual-readiness --summarize <dir> [--minimum-size <dir>] [--out <dir>]"
     printfn "  SecondAntShowcase review-findings [--out <dir>] [--fail-on-unresolved]"
-    printfn "  SecondAntShowcase responsiveness --script representative --theme light [--page <page-id> | --all-interactive] [--out <dir>] [--require-live] [--json]"
-    printfn "  SecondAntShowcase render-lag-probe [--scenario button-click|page-change|page-cycle] [--theme light|dark] [--duration-seconds <n>] [--page-interval-frames <n>]"
+
+    printfn
+        "  SecondAntShowcase responsiveness --script representative --theme light [--page <page-id> | --all-interactive] [--out <dir>] [--require-live] [--json]"
+
+    printfn
+        "  SecondAntShowcase render-lag-probe [--scenario button-click|page-change|page-cycle] [--theme light|dark] [--duration-seconds <n>] [--page-interval-frames <n>]"
+
     printfn "  SecondAntShowcase diagnostics [--out <dir>] [--json] [--verbose]"
-    printfn "  SecondAntShowcase control-pass [--seed <int>] [--themes light,dark] [--sizes preferred,minimum] [--backend pure|x11xtest|uinput] [--require-live] [--page <id> | --all] [--out <dir>] [--json]"
+
+    printfn
+        "  SecondAntShowcase control-pass [--seed <int>] [--themes light,dark] [--sizes preferred,minimum] [--backend pure|x11xtest|uinput] [--require-live] [--page <id> | --all] [--out <dir>] [--json]"
+
     printfn "  SecondAntShowcase coverage"
     printfn "  SecondAntShowcase feedback [--clear]"
 
 /// Tiny flag reader: value following `--name`, if present.
-let private flag (name: string) (args: string list): string option =
+let private flag (name: string) (args: string list) : string option =
     let rec loop =
         function
         | k :: v :: _ when k = name -> Some v
         | _ :: rest -> loop rest
         | [] -> None
+
     loop args
 
-let private parseMode (args: string list): Result<ThemeMode, string> =
+let private parseMode (args: string list) : Result<ThemeMode, string> =
     match flag "--theme" args with
     | Some theme ->
         match VisualConfig.resolveThemeAlias theme with
@@ -40,19 +52,27 @@ let private parseMode (args: string list): Result<ThemeMode, string> =
     | None -> Ok Light
 
 /// First non-flag positional argument (the optional page id), if any.
-let private firstPositional (args: string list): string option =
+let private firstPositional (args: string list) : string option =
     args |> List.tryFind (fun a -> not (a.StartsWith "--"))
 
-let private runReviewFindings (args: string list): int =
-    let outDir = flag "--out" args |> Option.defaultValue "specs/171-second-antshowcase-sample/readiness"
+let private runReviewFindings (args: string list) : int =
+    let outDir =
+        flag "--out" args
+        |> Option.defaultValue "specs/171-second-antshowcase-sample/readiness"
+
     Directory.CreateDirectory(outDir) |> ignore
     let path = Path.Combine(outDir, "visual-findings.md")
+
     if not (File.Exists path) then
         File.WriteAllText(path, ReviewFindings.emptyLedger + System.Environment.NewLine)
 
     let unresolved = 0
     printfn "second-ant-showcase: visual findings ledger %s (unresolved=%d)" path unresolved
-    if List.contains "--fail-on-unresolved" args && unresolved > 0 then 1 else 0
+
+    if List.contains "--fail-on-unresolved" args && unresolved > 0 then
+        1
+    else
+        0
 
 [<EntryPoint>]
 let main argv =
@@ -68,12 +88,15 @@ let main argv =
                 match p.Kind with
                 | Catalog -> "catalog"
                 | Template -> "template"
+
             printfn "  %-22s %-9s %s" p.Id kind p.Title
+
         printfn
             "second-ant-showcase: %d catalog controls across %d catalog + %d template pages."
             (List.length (CoverageMap.catalogIds ()))
             (List.length PageRegistry.catalogPages)
             (List.length PageRegistry.templatePages)
+
         0
 
     | "feedback" :: rest ->
@@ -83,16 +106,24 @@ let main argv =
             0
         else
             let entries = FeedbackStore.load ()
+
             if List.isEmpty entries then
                 printfn "second-ant-showcase: no feedback saved yet (%s)." FeedbackStore.path
             else
-                printfn "second-ant-showcase: %d saved feedback item(s) from %s" (List.length entries) FeedbackStore.path
+                printfn
+                    "second-ant-showcase: %d saved feedback item(s) from %s"
+                    (List.length entries)
+                    FeedbackStore.path
+
                 entries
                 |> List.iteri (fun i e -> printfn "  %2d. [%-22s] %s" (i + 1) e.PageId e.Text)
+
             0
 
     | "interactive" :: rest ->
-        let startPage = firstPositional rest |> Option.defaultValue (List.head PageRegistry.all).Id
+        let startPage =
+            firstPositional rest |> Option.defaultValue (List.head PageRegistry.all).Id
+
         match parseMode rest with
         | Ok mode -> Interactive.run mode startPage
         | Error error ->
@@ -104,7 +135,9 @@ let main argv =
         | Some seedStr ->
             match System.Int32.TryParse seedStr with
             | true, seed ->
-                let outDir = flag "--out" rest |> Option.defaultValue "artifacts/second-ant-showcase"
+                let outDir =
+                    flag "--out" rest |> Option.defaultValue "artifacts/second-ant-showcase"
+
                 let pageFilter = flag "--page" rest
                 Evidence.run seed outDir pageFilter
             | _ ->
@@ -114,23 +147,17 @@ let main argv =
             eprintfn "second-ant-showcase: evidence requires --seed <int>."
             2
 
-    | "visual-readiness" :: rest ->
-        VisualReadiness.run rest
+    | "visual-readiness" :: rest -> VisualReadiness.run rest
 
-    | "review-findings" :: rest ->
-        runReviewFindings rest
+    | "review-findings" :: rest -> runReviewFindings rest
 
-    | "responsiveness" :: rest ->
-        Responsiveness.run rest
+    | "responsiveness" :: rest -> Responsiveness.run rest
 
-    | "render-lag-probe" :: rest ->
-        RenderLagProbe.run rest
+    | "render-lag-probe" :: rest -> RenderLagProbe.run rest
 
-    | "diagnostics" :: rest ->
-        Diagnostics.run rest
+    | "diagnostics" :: rest -> Diagnostics.run rest
 
-    | "control-pass" :: rest ->
-        ControlPassRunner.run rest
+    | "control-pass" :: rest -> ControlPassRunner.run rest
 
     | [] ->
         usage ()

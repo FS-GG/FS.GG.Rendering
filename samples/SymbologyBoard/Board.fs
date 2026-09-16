@@ -26,12 +26,14 @@ let BoardHeight = 600.0
 
 /// One symbol's live placement on the board.
 type BoardUnit =
-    { Token: Token
-      Motion: Motion
-      X: float
-      Y: float
-      Vx: float
-      Vy: float }
+    {
+        Token: Token
+        Motion: Motion
+        X: float
+        Y: float
+        Vx: float
+        Vy: float
+    }
 
 /// The deterministic simulation state. `T` is the accumulated step phase fed to `Symbology.animate`
 /// (never a wall clock).
@@ -56,17 +58,23 @@ let private seedWorld (seed: int) : World =
         |> List.mapi (fun i u ->
             let token = mapUnit u
             let radius = token.R
-            { Token = token
-              Motion = motionOf u token
-              X = radius + jitter seed i 1 * (BoardWidth - 2.0 * radius)
-              Y = radius + jitter seed i 2 * (BoardHeight - 2.0 * radius)
-              Vx = (jitter seed i 3 - 0.5) * 2.0 * 90.0
-              Vy = (jitter seed i 4 - 0.5) * 2.0 * 90.0 })
+
+            {
+                Token = token
+                Motion = motionOf u token
+                X = radius + jitter seed i 1 * (BoardWidth - 2.0 * radius)
+                Y = radius + jitter seed i 2 * (BoardHeight - 2.0 * radius)
+                Vx = (jitter seed i 3 - 0.5) * 2.0 * 90.0
+                Vy = (jitter seed i 4 - 0.5) * 2.0 * 90.0
+            })
 
     { Units = units; T = 0.0 }
 
 let init (seed: int) : Model =
-    { Step = Loop.init (seedWorld seed); Seed = seed }
+    {
+        Step = Loop.init (seedWorld seed)
+        Seed = seed
+    }
 
 // Pure fixed-step transition: advance each unit, reflect velocity at the board edges, and clamp the centre
 // to [radius, extent-radius] so the symbol stays fully on-board for any dt/velocity (FR-011). Reads only
@@ -93,13 +101,20 @@ let private integrate (w: World) (dt: float) : World =
             X = min maxX (max minX bx)
             Y = min maxY (max minY by)
             Vx = vx
-            Vy = vy }
+            Vy = vy
+        }
 
-    { Units = w.Units |> List.map stepUnit; T = w.T + dt }
+    {
+        Units = w.Units |> List.map stepUnit
+        T = w.T + dt
+    }
 
 let update (msg: Msg) (model: Model) : Model =
     match msg with
-    | Tick elapsed -> { model with Step = Loop.advance dt integrate elapsed model.Step }
+    | Tick elapsed ->
+        { model with
+            Step = Loop.advance dt integrate elapsed model.Step
+        }
 
 // The sample's OWN position interpolation (Loop.alpha supplies only the [0,1) factor): blend each unit's
 // Previous→Current centre so motion is smooth between fixed steps, then place its approved animated symbol

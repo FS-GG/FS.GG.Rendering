@@ -31,27 +31,33 @@ module internal ColorPolicy =
 
     /// A named, selectable rule set.
     type ColorPolicy =
-        { Name: string
-          Label: string
-          Authority: Authority
-          Threshold: Role -> float
-          Classify: Role -> float -> Verdict }
+        {
+            Name: string
+            Label: string
+            Authority: Authority
+            Threshold: Role -> float
+            Classify: Role -> float -> Verdict
+        }
 
     /// One validated pairing (catalog entry).
     type Pairing =
-        { Name: string
-          Foreground: Color
-          Background: Color
-          Role: Role }
+        {
+            Name: string
+            Foreground: Color
+            Background: Color
+            Role: Role
+        }
 
     /// Result of evaluating one pairing under one policy.
     type PairingResult =
-        { Pairing: string
-          Measured: float
-          Threshold: float option
-          Outcome: PolicyOutcome
-          Verdict: Verdict
-          AuthorityNote: string option }
+        {
+            Pairing: string
+            Measured: float
+            Threshold: float option
+            Outcome: PolicyOutcome
+            Verdict: Verdict
+            AuthorityNote: string option
+        }
 
     // ---- shared evaluation machinery -------------------------------------------------------
 
@@ -91,29 +97,33 @@ module internal ColorPolicy =
     /// `wcag` — Authority = WcagCertified; Classify delegates directly to `Contrast.verdict`
     /// (not a re-implemented copy) so default behavior is byte-identical to today (FR-002).
     let wcag =
-        { Name = "wcag"
-          Label = "WCAG 2.x contrast"
-          Authority = WcagCertified
-          Threshold =
-            (fun role ->
-                match role with
-                | Role.Text -> 4.5
-                | Role.GraphicOrUi -> 3.0
-                | Role.Decorative -> nan)
-          Classify = Contrast.verdict }
+        {
+            Name = "wcag"
+            Label = "WCAG 2.x contrast"
+            Authority = WcagCertified
+            Threshold =
+                (fun role ->
+                    match role with
+                    | Role.Text -> 4.5
+                    | Role.GraphicOrUi -> 3.0
+                    | Role.Decorative -> nan)
+            Classify = Contrast.verdict
+        }
 
     /// `ant` — Authority = AntExpectation; its own threshold table (FR-004). Classify maps the
     /// measured ratio against the Ant threshold to a verdict; Decorative is exempt.
     let ant =
-        { Name = "ant"
-          Label = "Ant Design contrast expectations"
-          Authority = AntExpectation
-          Threshold = antThreshold
-          Classify =
-            (fun role ratio ->
-                match role with
-                | Role.Decorative -> Exempt
-                | _ -> if ratio >= antThreshold role then Aa else Fail) }
+        {
+            Name = "ant"
+            Label = "Ant Design contrast expectations"
+            Authority = AntExpectation
+            Threshold = antThreshold
+            Classify =
+                (fun role ratio ->
+                    match role with
+                    | Role.Decorative -> Exempt
+                    | _ -> if ratio >= antThreshold role then Aa else Fail)
+        }
 
     /// Default applied when no policy is chosen (FR-003).
     let defaultPolicy = wcag
@@ -146,24 +156,28 @@ module internal ColorPolicy =
             | role -> Some(policy.Threshold role)
 
         if pairing.Foreground.Alpha = 0uy then
-            { Pairing = pairing.Name
-              Measured = nan
-              Threshold = thresholdOpt
-              Outcome = PolicyOutcome.Indeterminate
-              Verdict = Verdict.Indeterminate
-              AuthorityNote = None }
+            {
+                Pairing = pairing.Name
+                Measured = nan
+                Threshold = thresholdOpt
+                Outcome = PolicyOutcome.Indeterminate
+                Verdict = Verdict.Indeterminate
+                AuthorityNote = None
+            }
         else
             let resolved = Contrast.compositeOver pairing.Background pairing.Foreground
             let measured = Contrast.ratio resolved pairing.Background
             let verdict = policy.Classify pairing.Role measured
 
             if not (inScope policy pairing) then
-                { Pairing = pairing.Name
-                  Measured = measured
-                  Threshold = thresholdOpt
-                  Outcome = OutOfScope
-                  Verdict = verdict
-                  AuthorityNote = None }
+                {
+                    Pairing = pairing.Name
+                    Measured = measured
+                    Threshold = thresholdOpt
+                    Outcome = OutOfScope
+                    Verdict = verdict
+                    AuthorityNote = None
+                }
             else
                 let outcome = outcomeOfVerdict verdict
 
@@ -177,12 +191,14 @@ module internal ColorPolicy =
                     else
                         None
 
-                { Pairing = pairing.Name
-                  Measured = measured
-                  Threshold = thresholdOpt
-                  Outcome = outcome
-                  Verdict = verdict
-                  AuthorityNote = note }
+                {
+                    Pairing = pairing.Name
+                    Measured = measured
+                    Threshold = thresholdOpt
+                    Outcome = outcome
+                    Verdict = verdict
+                    AuthorityNote = note
+                }
 
     /// Evaluate a whole catalog → per-pairing results (catalog order preserved).
     let evaluate (policy: ColorPolicy) (catalog: Pairing list) =
@@ -262,13 +278,15 @@ module internal ColorPolicy =
             | None -> sprintf "# Color Policy Report — %s (`%s`)" policy.Label policy.Name
 
         let header =
-            [ title
-              ""
-              "> GENERATED — do not edit. Regenerate via: UPDATE_POLICY_REPORTS=1 dotnet test tests/Controls.Tests/Controls.Tests.fsproj --filter Feature127"
-              sprintf "> Authority: %s" (authorityText policy.Authority)
-              ""
-              "| Pairing | Foreground | Background | Role | Measured | Threshold | Verdict | Note |"
-              "|---------|-----------|-----------|------|----------|-----------|---------|------|" ]
+            [
+                title
+                ""
+                "> GENERATED — do not edit. Regenerate via: UPDATE_POLICY_REPORTS=1 dotnet test tests/Controls.Tests/Controls.Tests.fsproj --filter Feature127"
+                sprintf "> Authority: %s" (authorityText policy.Authority)
+                ""
+                "| Pairing | Foreground | Background | Role | Measured | Threshold | Verdict | Note |"
+                "|---------|-----------|-----------|------|----------|-----------|---------|------|"
+            ]
 
         let rows =
             List.zip catalog results
@@ -285,14 +303,16 @@ module internal ColorPolicy =
                     (defaultArg r.AuthorityNote ""))
 
         let summary =
-            [ ""
-              sprintf
-                  "**Overall: %s** (%d failing of %d validated; %d out-of-scope; %d indeterminate)"
-                  (if pass then "PASS" else "FAIL")
-                  failing
-                  validated
-                  outOfScope
-                  indeterminate ]
+            [
+                ""
+                sprintf
+                    "**Overall: %s** (%d failing of %d validated; %d out-of-scope; %d indeterminate)"
+                    (if pass then "PASS" else "FAIL")
+                    failing
+                    validated
+                    outOfScope
+                    indeterminate
+            ]
 
         (header @ rows @ summary |> String.concat "\n") + "\n"
 

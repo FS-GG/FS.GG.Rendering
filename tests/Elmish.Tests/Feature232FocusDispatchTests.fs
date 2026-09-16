@@ -19,7 +19,9 @@ type private Msg = Activated
 let private theme = Theme.light
 let private size: Size = { Width = 320; Height = 200 }
 
-let private rinit (c: Control<'msg>) : RetainedRender<'msg> = (RetainedRender.init theme size c).Retained
+let private rinit (c: Control<'msg>) : RetainedRender<'msg> =
+    (RetainedRender.init theme size c).Retained
+
 let private order (r: RetainedRender<'msg>) : TabOrder = Focus.order r.Root.Control
 
 // A focusable, Enter/Space-activated control (no authored Key — the regressed case).
@@ -32,72 +34,116 @@ let private focusable: Attr<Msg> =
             None
             (Accessibility.keyboard true [ "Enter"; "Space" ] [])
             None
-            None)
+            None
+    )
 
 // The RetainedId of the first focusable node in the tree (found without relying on a Key).
 let rec private firstFocusableId (n: RetainedNode<Msg>) : RetainedId option =
     let isFocusable =
-        n.Control.Accessibility |> Option.map (fun m -> m.Keyboard.Focusable) |> Option.defaultValue false
-    if isFocusable then Some n.Identity else n.Children |> List.tryPick firstFocusableId
+        n.Control.Accessibility
+        |> Option.map (fun m -> m.Keyboard.Focusable)
+        |> Option.defaultValue false
+
+    if isFocusable then
+        Some n.Identity
+    else
+        n.Children |> List.tryPick firstFocusableId
 
 let private routeEnter (r: RetainedRender<Msg>) (focused: RetainedId option) =
-    let _, _, msgs = ControlsElmish.routeFocusedKey r focused (order r) ViewerKey.Enter false
+    let _, _, msgs =
+        ControlsElmish.routeFocusedKey r focused (order r) ViewerKey.Enter false
+
     msgs
 
 [<Tests>]
 let feature232FocusDispatchTests =
-    testList "Feature232 focus dispatch via routeFocusedKey" [
+    testList
+        "Feature232 focus dispatch via routeFocusedKey"
+        [
 
-        // ---- US1 (T008 / SC-001) — an UNKEYED focused control dispatches on Enter ----
-        test "US1 T008: an unkeyed focused control dispatches its activation binding on Enter" {
-            let tree: Control<Msg> =
-                Stack.create [ Stack.children [ Button.create [ Button.text "go"; Button.onClick Activated; focusable ] ] ]
+            // ---- US1 (T008 / SC-001) — an UNKEYED focused control dispatches on Enter ----
+            test "US1 T008: an unkeyed focused control dispatches its activation binding on Enter" {
+                let tree: Control<Msg> =
+                    Stack.create
+                        [
+                            Stack.children [ Button.create [ Button.text "go"; Button.onClick Activated; focusable ] ]
+                        ]
 
-            let r = rinit tree
-            let focused = firstFocusableId r.Root
-            Expect.isSome focused "the unkeyed button is focusable"
-            let msgs = routeEnter r focused
-            Expect.contains msgs Activated "Enter on the unkeyed focused control fired its activation binding (was silently dropped pre-232)"
-        }
+                let r = rinit tree
+                let focused = firstFocusableId r.Root
+                Expect.isSome focused "the unkeyed button is focusable"
+                let msgs = routeEnter r focused
 
-        test "US1 T008: a KEYED focused control still dispatches (regression guard)" {
-            let tree: Control<Msg> =
-                Stack.create
-                    [ Stack.children
-                          [ Button.create [ Button.text "go"; Button.onClick Activated; focusable ] |> Control.withKey "btn" ] ]
+                Expect.contains
+                    msgs
+                    Activated
+                    "Enter on the unkeyed focused control fired its activation binding (was silently dropped pre-232)"
+            }
 
-            let r = rinit tree
-            let focused = firstFocusableId r.Root
-            let msgs = routeEnter r focused
-            Expect.contains msgs Activated "the keyed focused control dispatches unchanged"
-        }
+            test "US1 T008: a KEYED focused control still dispatches (regression guard)" {
+                let tree: Control<Msg> =
+                    Stack.create
+                        [
+                            Stack.children
+                                [
+                                    Button.create [ Button.text "go"; Button.onClick Activated; focusable ]
+                                    |> Control.withKey "btn"
+                                ]
+                        ]
 
-        // ---- T006 — the retained-id -> Key ?? path resolver ----
-        test "T006: retainedCanonicalId resolves an unkeyed node to its path and a keyed node to its key" {
-            let tree: Control<Msg> =
-                Stack.create
-                    [ Stack.children
-                          [ Button.create [ Button.text "a" ] |> Control.withKey "keyed"
-                            Button.create [ Button.text "b" ] ] ] // unkeyed -> path "0.1"
+                let r = rinit tree
+                let focused = firstFocusableId r.Root
+                let msgs = routeEnter r focused
+                Expect.contains msgs Activated "the keyed focused control dispatches unchanged"
+            }
 
-            let r = rinit tree
+            // ---- T006 — the retained-id -> Key ?? path resolver ----
+            test "T006: retainedCanonicalId resolves an unkeyed node to its path and a keyed node to its key" {
+                let tree: Control<Msg> =
+                    Stack.create
+                        [
+                            Stack.children
+                                [
+                                    Button.create [ Button.text "a" ] |> Control.withKey "keyed"
+                                    Button.create [ Button.text "b" ]
+                                ]
+                        ] // unkeyed -> path "0.1"
 
-            let idOfKind kind =
-                let rec find (path: string) (n: RetainedNode<Msg>) =
-                    if n.Control.Kind = kind && n.Control.Key = None then Some(n.Identity, path)
-                    else n.Children |> List.mapi (fun i c -> i, c) |> List.tryPick (fun (i, c) -> find (path + "." + string i) c)
-                find "0" r.Root
+                let r = rinit tree
 
-            // the unkeyed button resolves to its structural path
-            match idOfKind "button" with
-            | Some(rid, path) -> Expect.equal (RetainedRender.retainedCanonicalId rid r) (Some path) "unkeyed node -> Key ?? path (its path)"
-            | None -> failtest "expected an unkeyed button node"
+                let idOfKind kind =
+                    let rec find (path: string) (n: RetainedNode<Msg>) =
+                        if n.Control.Kind = kind && n.Control.Key = None then
+                            Some(n.Identity, path)
+                        else
+                            n.Children
+                            |> List.mapi (fun i c -> i, c)
+                            |> List.tryPick (fun (i, c) -> find (path + "." + string i) c)
 
-            // a keyed node resolves to its Key
-            let keyedId =
-                let rec find (n: RetainedNode<Msg>) =
-                    if n.Control.Key = Some "keyed" then Some n.Identity else n.Children |> List.tryPick find
-                find r.Root
-            Expect.equal (RetainedRender.retainedCanonicalId (Option.get keyedId) r) (Some "keyed") "keyed node -> its Key"
-        }
-    ]
+                    find "0" r.Root
+
+                // the unkeyed button resolves to its structural path
+                match idOfKind "button" with
+                | Some(rid, path) ->
+                    Expect.equal
+                        (RetainedRender.retainedCanonicalId rid r)
+                        (Some path)
+                        "unkeyed node -> Key ?? path (its path)"
+                | None -> failtest "expected an unkeyed button node"
+
+                // a keyed node resolves to its Key
+                let keyedId =
+                    let rec find (n: RetainedNode<Msg>) =
+                        if n.Control.Key = Some "keyed" then
+                            Some n.Identity
+                        else
+                            n.Children |> List.tryPick find
+
+                    find r.Root
+
+                Expect.equal
+                    (RetainedRender.retainedCanonicalId (Option.get keyedId) r)
+                    (Some "keyed")
+                    "keyed node -> its Key"
+            }
+        ]

@@ -52,41 +52,59 @@ let private describeFinding finding =
 let formatDrift (findings: DriftFinding list) : string =
     match findings with
     | [] -> "no drift: the layout dirty-set classifier exactly covers the attribute names toLayout reads"
-    | _ -> "layout dirty-set drift:\n" + (findings |> List.map describeFinding |> String.concat "\n")
+    | _ ->
+        "layout dirty-set drift:\n"
+        + (findings |> List.map describeFinding |> String.concat "\n")
 
 // ---------------------------------------------------------------------------------------------------
 // C2 — the behavioral probe (the load-bearing equality gate against the REAL evaluateLayout)
 // ---------------------------------------------------------------------------------------------------
 
 /// A representative control used to observe whether toggling an attribute name changes the lowering.
-type ProbeFixture = { Label: string; Control: Control<unit> }
+type ProbeFixture =
+    {
+        Label: string
+        Control: Control<unit>
+    }
 
 let private probeSize: Size = { Width = 400; Height = 300 }
 
 /// A leaf content control (no children) — exercises the leaf branch of `toLayout` where `width`/
 /// `height` always take effect.
 let private leafFixtureControl: Control<unit> =
-    { Kind = "text-block"
-      Key = None
-      Attributes = []
-      Children = []
-      Content = Some "probe"
-      Accessibility = None }
+    {
+        Kind = "text-block"
+        Key = None
+        Attributes = []
+        Children = []
+        Content = Some "probe"
+        Accessibility = None
+    }
 
 /// A plain container (non-grid/toolbar/dock kind, so `orientation` actually drives `Direction`) with
 /// one child — exercises the container branch where `width`/`height` apply only when present and where
 /// `orientation` flips the layout `Direction`.
 let private containerFixtureControl: Control<unit> =
-    { Kind = "stack"
-      Key = None
-      Attributes = []
-      Children = [ leafFixtureControl ]
-      Content = None
-      Accessibility = None }
+    {
+        Kind = "stack"
+        Key = None
+        Attributes = []
+        Children = [ leafFixtureControl ]
+        Content = None
+        Accessibility = None
+    }
 
 let private probeFixtures: ProbeFixture list =
-    [ { Label = "plain orientation-sensitive container with one child"; Control = containerFixtureControl }
-      { Label = "leaf content control"; Control = leafFixtureControl } ]
+    [
+        {
+            Label = "plain orientation-sensitive container with one child"
+            Control = containerFixtureControl
+        }
+        {
+            Label = "leaf content control"
+            Control = leafFixtureControl
+        }
+    ]
 
 /// Distinct attribute names to test. Built from CONCRETE, TRACEABLE sources (research D2), NOT a
 /// hand-curated free list, so the under-coverage guarantee tracks the real control vocabulary:
@@ -99,11 +117,39 @@ let probeCorpus: string list =
     // (1) the classifier's own covered set
     Set.toList ControlInternals.layoutAffectingAttrNames
     // (2) the controls-layer attribute vocabulary (Attr builders + Control.fs reads)
-    @ [ "width"; "height"; "orientation"; "padding"; "margin"; "gap"; "spacing"
-        "alignItems"; "alignSelf"; "justifyContent"; "flexGrow"; "flexShrink"; "flexBasis"
-        "minWidth"; "minHeight"; "maxWidth"; "maxHeight"
-        "value"; "text"; "selected"; "enabled"; "readOnly"; "visible"; "loading"
-        "items"; "nodes"; "styleClasses"; "visualState"; "accessibility"; "style"; "theme" ]
+    @ [
+        "width"
+        "height"
+        "orientation"
+        "padding"
+        "margin"
+        "gap"
+        "spacing"
+        "alignItems"
+        "alignSelf"
+        "justifyContent"
+        "flexGrow"
+        "flexShrink"
+        "flexBasis"
+        "minWidth"
+        "minHeight"
+        "maxWidth"
+        "maxHeight"
+        "value"
+        "text"
+        "selected"
+        "enabled"
+        "readOnly"
+        "visible"
+        "loading"
+        "items"
+        "nodes"
+        "styleClasses"
+        "visualState"
+        "accessibility"
+        "style"
+        "theme"
+    ]
     // (3) explicit non-layout names — the over-coverage probes
     @ [ "background"; "foreground"; "state-hover" ]
     |> List.distinct
@@ -121,18 +167,22 @@ let private probeValue (name: string) : AttrValue<unit> =
     | _ -> FloatValue 173.0
 
 let private probeAttr (name: string) : Attr<unit> =
-    { Name = name
-      // Category is irrelevant to `toLayout`/`evaluateLayout` (they read NAMES, never `attr.Category`);
-      // the probe deliberately measures the NAME channel, so a neutral non-Layout category is used.
-      Category = AttrCategory.Style
-      Value = probeValue name }
+    {
+        Name = name
+        // Category is irrelevant to `toLayout`/`evaluateLayout` (they read NAMES, never `attr.Category`);
+        // the probe deliberately measures the NAME channel, so a neutral non-Layout category is used.
+        Category = AttrCategory.Style
+        Value = probeValue name
+    }
 
 /// True iff attaching an attribute named `name` to `fixture` changes the root `LayoutNode` produced by
 /// the REAL `ControlInternals.evaluateLayout` (structural inequality). `evaluateLayout` returns the
 /// `toLayout` output as its first element, so this observes exactly the names `toLayout` reads.
 let nameDrivesLayout (size: Size) (fixture: ProbeFixture) (name: string) : bool =
     let withAttr =
-        { fixture.Control with Attributes = probeAttr name :: fixture.Control.Attributes }
+        { fixture.Control with
+            Attributes = probeAttr name :: fixture.Control.Attributes
+        }
 
     let baseNode, _, _ = ControlInternals.evaluateLayout size fixture.Control
     let withNode, _, _ = ControlInternals.evaluateLayout size withAttr
@@ -150,10 +200,12 @@ let nameDrivesLayout (size: Size) (fixture: ProbeFixture) (name: string) : bool 
 /// reported non-driving (acceptable — it is genuinely not a current layout input). This is the same
 /// "representative" discipline feature 097 used for its >=1000-case property.
 let discoverLayoutDrivingNames (size: Size) : Set<string> =
-    [ for name in probeCorpus do
-          for fixture in probeFixtures do
-              if nameDrivesLayout size fixture name then
-                  yield name ]
+    [
+        for name in probeCorpus do
+            for fixture in probeFixtures do
+                if nameDrivesLayout size fixture name then
+                    yield name
+    ]
     |> Set.ofList
 
 // ---------------------------------------------------------------------------------------------------
@@ -161,7 +213,11 @@ let discoverLayoutDrivingNames (size: Size) : Set<string> =
 // ---------------------------------------------------------------------------------------------------
 
 let private catAttr (name: string) (category: AttrCategory) (v: float) : Attr<unit> =
-    { Name = name; Category = category; Value = FloatValue v }
+    {
+        Name = name
+        Category = category
+        Value = FloatValue v
+    }
 
 let private geometryAttr (name: string) (variant: int) : Attr<unit> =
     let value =
@@ -170,15 +226,41 @@ let private geometryAttr (name: string) (variant: int) : Attr<unit> =
         | "alignItems"
         | "alignSelf"
         | "justifyContent" ->
-            UntypedValue((if variant = 0 then LayoutAlign.Start else LayoutAlign.Center) :> obj)
+            UntypedValue(
+                (if variant = 0 then
+                     LayoutAlign.Start
+                 else
+                     LayoutAlign.Center)
+                :> obj
+            )
         | _ -> FloatValue(if variant = 0 then 1.0 else 2.0)
 
-    { Name = name; Category = AttrCategory.Style; Value = value }
+    {
+        Name = name
+        Category = AttrCategory.Style
+        Value = value
+    }
 
 let private feature138GeometryNames =
-    [ "width"; "height"; "orientation"; "padding"; "margin"; "gap"; "spacing"
-      "alignItems"; "alignSelf"; "justifyContent"; "flexGrow"; "flexShrink"; "flexBasis"
-      "minWidth"; "minHeight"; "maxWidth"; "maxHeight" ]
+    [
+        "width"
+        "height"
+        "orientation"
+        "padding"
+        "margin"
+        "gap"
+        "spacing"
+        "alignItems"
+        "alignSelf"
+        "justifyContent"
+        "flexGrow"
+        "flexShrink"
+        "flexBasis"
+        "minWidth"
+        "minHeight"
+        "maxWidth"
+        "maxHeight"
+    ]
 
 let private catTheme = Theme.light
 
@@ -190,19 +272,34 @@ let private catTheme = Theme.light
 /// keeps `RetainedRender.fsi` untouched (Tier-2, zero surface delta, SC-005) while still exercising the
 /// real classifier — strictly more end-to-end than a direct internal call.
 let private panelTree (panelAttrs: Attr<unit> list) : Control<unit> =
-    { Kind = "stack"
-      Key = Some "root"
-      Attributes = []
-      Children =
-        [ { Kind = "panel"
-            Key = Some "p"
-            Attributes = panelAttrs
-            Children =
-              [ { Kind = "text-block"; Key = Some "leaf"; Attributes = []; Children = []; Content = Some "x"; Accessibility = None } ]
-            Content = None
-            Accessibility = None } ]
-      Content = None
-      Accessibility = None }
+    {
+        Kind = "stack"
+        Key = Some "root"
+        Attributes = []
+        Children =
+            [
+                {
+                    Kind = "panel"
+                    Key = Some "p"
+                    Attributes = panelAttrs
+                    Children =
+                        [
+                            {
+                                Kind = "text-block"
+                                Key = Some "leaf"
+                                Attributes = []
+                                Children = []
+                                Content = Some "x"
+                                Accessibility = None
+                            }
+                        ]
+                    Content = None
+                    Accessibility = None
+                }
+            ]
+        Content = None
+        Accessibility = None
+    }
 
 /// Nodes the REAL `layoutDirtySet`-driven incremental evaluator re-measured stepping `prev -> next`.
 let private remeasuredFor (prev: Control<unit>) (next: Control<unit>) : int =
@@ -211,131 +308,184 @@ let private remeasuredFor (prev: Control<unit>) (next: Control<unit>) : int =
 
 [<Tests>]
 let tests =
-    testList "Feature101LayoutDriftGuard" [
+    testList
+        "Feature101LayoutDriftGuard"
+        [
 
-        // -------- C1: pure drift report, both directions, sorted (FR-002/FR-003) --------
+            // -------- C1: pure drift report, both directions, sorted (FR-002/FR-003) --------
 
-        test "shipping state passes — discovered == covered yields no findings (US1 scenario 4)" {
-            let s = Set.ofList [ "width"; "height"; "orientation" ]
-            Expect.equal (layoutDriftReport s s) [] "equal sets => no drift"
-        }
+            test "shipping state passes — discovered == covered yields no findings (US1 scenario 4)" {
+                let s = Set.ofList [ "width"; "height"; "orientation" ]
+                Expect.equal (layoutDriftReport s s) [] "equal sets => no drift"
+            }
 
-        test "under-coverage: an un-covered layout input is named Uncovered (US1 scenario 1, FR-002)" {
-            let discovered = Set.ofList [ "width"; "height"; "padding" ]
-            let covered = Set.ofList [ "width"; "height" ]
-            Expect.equal (layoutDriftReport discovered covered) [ Uncovered "padding" ] "padding is under-covered"
-        }
+            test "under-coverage: an un-covered layout input is named Uncovered (US1 scenario 1, FR-002)" {
+                let discovered = Set.ofList [ "width"; "height"; "padding" ]
+                let covered = Set.ofList [ "width"; "height" ]
+                Expect.equal (layoutDriftReport discovered covered) [ Uncovered "padding" ] "padding is under-covered"
+            }
 
-        test "over-coverage: a name toLayout ignores is named OverBroad (US1 scenario 2, FR-003)" {
-            let discovered = Set.ofList [ "width" ]
-            let covered = Set.ofList [ "width"; "orientation" ]
-            Expect.equal (layoutDriftReport discovered covered) [ OverBroad "orientation" ] "orientation is over-broad"
-        }
+            test "over-coverage: a name toLayout ignores is named OverBroad (US1 scenario 2, FR-003)" {
+                let discovered = Set.ofList [ "width" ]
+                let covered = Set.ofList [ "width"; "orientation" ]
 
-        test "both directions reported, sorted/order-stable" {
-            let discovered = Set.ofList [ "a"; "b" ]
-            let covered = Set.ofList [ "b"; "c" ]
-            Expect.equal
-                (layoutDriftReport discovered covered)
-                [ Uncovered "a"; OverBroad "c" ]
-                "under-coverage findings first (sorted), then over-coverage (sorted)"
-        }
+                Expect.equal
+                    (layoutDriftReport discovered covered)
+                    [ OverBroad "orientation" ]
+                    "orientation is over-broad"
+            }
 
-        test "formatDrift names each attribute AND its direction; empty -> explicit no-drift (FR-007)" {
-            let under = formatDrift [ Uncovered "padding" ]
-            Expect.stringContains under "padding" "names the under-covered attribute"
-            Expect.stringContains under "un-covered" "names the under-coverage direction"
+            test "both directions reported, sorted/order-stable" {
+                let discovered = Set.ofList [ "a"; "b" ]
+                let covered = Set.ofList [ "b"; "c" ]
 
-            let over = formatDrift [ OverBroad "orientation" ]
-            Expect.stringContains over "orientation" "names the over-broad attribute"
-            Expect.stringContains over "over-broad" "names the over-coverage direction"
+                Expect.equal
+                    (layoutDriftReport discovered covered)
+                    [ Uncovered "a"; OverBroad "c" ]
+                    "under-coverage findings first (sorted), then over-coverage (sorted)"
+            }
 
-            let both = formatDrift [ Uncovered "a"; OverBroad "c" ]
-            Expect.stringContains both "a" "names every finding (a)"
-            Expect.stringContains both "c" "names every finding (c)"
+            test "formatDrift names each attribute AND its direction; empty -> explicit no-drift (FR-007)" {
+                let under = formatDrift [ Uncovered "padding" ]
+                Expect.stringContains under "padding" "names the under-covered attribute"
+                Expect.stringContains under "un-covered" "names the under-coverage direction"
 
-            Expect.stringContains (formatDrift []) "no drift" "empty list yields an explicit no-drift string"
-        }
+                let over = formatDrift [ OverBroad "orientation" ]
+                Expect.stringContains over "orientation" "names the over-broad attribute"
+                Expect.stringContains over "over-broad" "names the over-coverage direction"
 
-        // -------- C2: the load-bearing behavioral-probe equality gate (FR-001, SC-001/SC-002) --------
+                let both = formatDrift [ Uncovered "a"; OverBroad "c" ]
+                Expect.stringContains both "a" "names every finding (a)"
+                Expect.stringContains both "c" "names every finding (c)"
 
-        test "the behavioral probe discovers EXACTLY the geometry names read by toLayout" {
-            let discovered = discoverLayoutDrivingNames probeSize
-            Expect.equal
-                discovered
-                (Set.ofList
-                    [ "width"; "height"; "orientation"; "padding"; "margin"; "gap"; "spacing"
-                      "alignItems"; "alignSelf"; "justifyContent"; "flexGrow"; "flexShrink"; "flexBasis"
-                      "minWidth"; "minHeight"; "maxWidth"; "maxHeight" ])
-                "probe discovers the real layout inputs"
-        }
+                Expect.stringContains (formatDrift []) "no drift" "empty list yields an explicit no-drift string"
+            }
 
-        test "LOAD-BEARING GATE: probe-discovered names == layoutAffectingAttrNames, no drift (FR-001/FR-002/FR-003)" {
-            let discovered = discoverLayoutDrivingNames probeSize
-            let report = layoutDriftReport discovered ControlInternals.layoutAffectingAttrNames
-            // The gate: the classifier's covered set is EXACTLY what `toLayout` reads. Fails (with a named
-            // attribute) the instant `toLayout` starts reading a corpus name absent from the literal, or
-            // the literal lists a name `toLayout` ignores.
-            Expect.equal report [] (formatDrift report)
-        }
+            // -------- C2: the load-bearing behavioral-probe equality gate (FR-001, SC-001/SC-002) --------
 
-        test "non-layout names are NOT discovered (over-coverage direction is real)" {
-            // Sanity: the corpus DOES include non-layout names; none of them is discovered, so an over-broad
-            // literal entry would be caught by the gate above.
-            let discovered = discoverLayoutDrivingNames probeSize
-            for name in [ "background"; "foreground"; "text"; "value"; "selected"; "enabled"; "styleClasses"; "visualState" ] do
-                Expect.isFalse (Set.contains name discovered) (sprintf "'%s' is not a layout-driving name" name)
-        }
+            test "the behavioral probe discovers EXACTLY the geometry names read by toLayout" {
+                let discovered = discoverLayoutDrivingNames probeSize
 
-        // -------- C3: category honoring is an INDEPENDENT channel (FR-004) --------
+                Expect.equal
+                    discovered
+                    (Set.ofList
+                        [
+                            "width"
+                            "height"
+                            "orientation"
+                            "padding"
+                            "margin"
+                            "gap"
+                            "spacing"
+                            "alignItems"
+                            "alignSelf"
+                            "justifyContent"
+                            "flexGrow"
+                            "flexShrink"
+                            "flexBasis"
+                            "minWidth"
+                            "minHeight"
+                            "maxWidth"
+                            "maxHeight"
+                        ])
+                    "probe discovers the real layout inputs"
+            }
 
-        test "AttrSet with Category=Layout dirties even when its NAME is absent from the name set (FR-004a)" {
-            // 'elevation' is NOT in layoutAffectingAttrNames, but a Layout-category change must still dirty.
-            Expect.isFalse
-                (Set.contains "elevation" ControlInternals.layoutAffectingAttrNames)
-                "'elevation' is deliberately not a name-covered attribute"
+            test
+                "LOAD-BEARING GATE: probe-discovered names == layoutAffectingAttrNames, no drift (FR-001/FR-002/FR-003)" {
+                let discovered = discoverLayoutDrivingNames probeSize
+                let report = layoutDriftReport discovered ControlInternals.layoutAffectingAttrNames
+                // The gate: the classifier's covered set is EXACTLY what `toLayout` reads. Fails (with a named
+                // attribute) the instant `toLayout` starts reading a corpus name absent from the literal, or
+                // the literal lists a name `toLayout` ignores.
+                Expect.equal report [] (formatDrift report)
+            }
 
-            let prev = panelTree [ catAttr "elevation" AttrCategory.Layout 1.0 ]
-            let next = panelTree [ catAttr "elevation" AttrCategory.Layout 2.0 ]
-            Expect.isGreaterThan (remeasuredFor prev next) 0 "a Layout-category attr change re-measures (category channel)"
-        }
+            test "non-layout names are NOT discovered (over-coverage direction is real)" {
+                // Sanity: the corpus DOES include non-layout names; none of them is discovered, so an over-broad
+                // literal entry would be caught by the gate above.
+                let discovered = discoverLayoutDrivingNames probeSize
 
-        test "AttrRemoved of a prev Layout-category attr dirties (category recovered from prev, FR-004b)" {
-            let prev = panelTree [ catAttr "elevation" AttrCategory.Layout 1.0 ]
-            let next = panelTree []
-            Expect.isGreaterThan (remeasuredFor prev next) 0 "removing a prev Layout-category attr re-measures"
-        }
+                for name in
+                    [
+                        "background"
+                        "foreground"
+                        "text"
+                        "value"
+                        "selected"
+                        "enabled"
+                        "styleClasses"
+                        "visualState"
+                    ] do
+                    Expect.isFalse (Set.contains name discovered) (sprintf "'%s' is not a layout-driving name" name)
+            }
 
-        test "a content/style change (non-Layout category, non-geometry name) does NOT dirty (SC-004)" {
-            let prev = panelTree [ catAttr "background" AttrCategory.Style 1.0 ]
-            let next = panelTree [ catAttr "background" AttrCategory.Style 2.0 ]
-            Expect.equal (remeasuredFor prev next) 0 "a style/content change re-measures nothing"
-        }
+            // -------- C3: category honoring is an INDEPENDENT channel (FR-004) --------
 
-        test "changed geometry names dirty layout even without Layout category (Feature138)" {
-            for name in feature138GeometryNames do
-                let prev = panelTree [ geometryAttr name 0 ]
-                let next = panelTree [ geometryAttr name 1 ]
-                Expect.isGreaterThan (remeasuredFor prev next) 0 (sprintf "%s change re-measures through the name set" name)
+            test "AttrSet with Category=Layout dirties even when its NAME is absent from the name set (FR-004a)" {
+                // 'elevation' is NOT in layoutAffectingAttrNames, but a Layout-category change must still dirty.
+                Expect.isFalse
+                    (Set.contains "elevation" ControlInternals.layoutAffectingAttrNames)
+                    "'elevation' is deliberately not a name-covered attribute"
 
-        }
+                let prev = panelTree [ catAttr "elevation" AttrCategory.Layout 1.0 ]
+                let next = panelTree [ catAttr "elevation" AttrCategory.Layout 2.0 ]
 
-        test "removed geometry names dirty layout even without Layout category (Feature138)" {
-            for name in feature138GeometryNames do
-                let prev = panelTree [ geometryAttr name 0 ]
+                Expect.isGreaterThan
+                    (remeasuredFor prev next)
+                    0
+                    "a Layout-category attr change re-measures (category channel)"
+            }
+
+            test "AttrRemoved of a prev Layout-category attr dirties (category recovered from prev, FR-004b)" {
+                let prev = panelTree [ catAttr "elevation" AttrCategory.Layout 1.0 ]
                 let next = panelTree []
-                Expect.isGreaterThan (remeasuredFor prev next) 0 (sprintf "%s removal re-measures through the name set" name)
-        }
+                Expect.isGreaterThan (remeasuredFor prev next) 0 "removing a prev Layout-category attr re-measures"
+            }
 
-        test "the name-set gate does NOT demand a category-only attribute appear (channels independent, FR-003<->FR-004)" {
-            // 'elevation' dirties via the category channel (asserted above) yet is NOT a name the probe
-            // discovers, and the gate operates on names only — so it does not demand 'elevation' appear in
-            // layoutAffectingAttrNames. The two channels are independent.
-            let elevationDrivesByName =
-                probeFixtures |> List.exists (fun f -> nameDrivesLayout probeSize f "elevation")
-            Expect.isFalse elevationDrivesByName "'elevation' is not name-driving (it is a category-only layout signal)"
-            Expect.isFalse
-                (Set.contains "elevation" (discoverLayoutDrivingNames probeSize))
-                "so the name-set gate does not demand 'elevation' appear in the literal"
-        }
-    ]
+            test "a content/style change (non-Layout category, non-geometry name) does NOT dirty (SC-004)" {
+                let prev = panelTree [ catAttr "background" AttrCategory.Style 1.0 ]
+                let next = panelTree [ catAttr "background" AttrCategory.Style 2.0 ]
+                Expect.equal (remeasuredFor prev next) 0 "a style/content change re-measures nothing"
+            }
+
+            test "changed geometry names dirty layout even without Layout category (Feature138)" {
+                for name in feature138GeometryNames do
+                    let prev = panelTree [ geometryAttr name 0 ]
+                    let next = panelTree [ geometryAttr name 1 ]
+
+                    Expect.isGreaterThan
+                        (remeasuredFor prev next)
+                        0
+                        (sprintf "%s change re-measures through the name set" name)
+
+            }
+
+            test "removed geometry names dirty layout even without Layout category (Feature138)" {
+                for name in feature138GeometryNames do
+                    let prev = panelTree [ geometryAttr name 0 ]
+                    let next = panelTree []
+
+                    Expect.isGreaterThan
+                        (remeasuredFor prev next)
+                        0
+                        (sprintf "%s removal re-measures through the name set" name)
+            }
+
+            test
+                "the name-set gate does NOT demand a category-only attribute appear (channels independent, FR-003<->FR-004)" {
+                // 'elevation' dirties via the category channel (asserted above) yet is NOT a name the probe
+                // discovers, and the gate operates on names only — so it does not demand 'elevation' appear in
+                // layoutAffectingAttrNames. The two channels are independent.
+                let elevationDrivesByName =
+                    probeFixtures |> List.exists (fun f -> nameDrivesLayout probeSize f "elevation")
+
+                Expect.isFalse
+                    elevationDrivesByName
+                    "'elevation' is not name-driving (it is a category-only layout signal)"
+
+                Expect.isFalse
+                    (Set.contains "elevation" (discoverLayoutDrivingNames probeSize))
+                    "so the name-set gate does not demand 'elevation' appear in the literal"
+            }
+        ]

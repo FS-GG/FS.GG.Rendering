@@ -8,7 +8,7 @@
 
 namespace FS.GG.UI.Symbology.Render
 
-open FS.GG.UI.Scene   // Scene, Size
+open FS.GG.UI.Scene // Scene, Size
 
 /// Headless Scene → PNG bridge for the design loop.
 [<RequireQualifiedAccess>]

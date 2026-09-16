@@ -18,56 +18,60 @@ module AntTheme =
     // per-mode Alias layer; the 8-unit grid and Ant control radius/density/type from the Seed/Density/
     // Type layers.
     let antLight: Theme =
-        { Name = "AntDesign"
-          Foreground = DesignTokensExt.Alias.Light.textDefault
-          Background = DesignTokensExt.Alias.Light.surfaceCanvas
-          // #379: the seed primary (#1677ff) is mid-luminance — as the resting accent it is not
-          // WCAG-AA (4.5 Text) on the light canvas (#f5f5f5), failing both as the filled button's
-          // near-white label and as the outline icon-button's glyph (3.76 < 4.5). The light accent
-          // therefore resolves to Ant's own darker `colorPrimaryActive` (#0958d9 ⇒ 5.65) — a map
-          // stop already carried for the pressed state, sourced from a token not inline hex (C2).
-          // Dark mode keeps the seed (`antDark` below): #1677ff is AA on the near-black canvas.
-          Accent = DesignTokensExt.Map.Light.colorPrimaryActive
-          Danger = DesignTokensExt.Map.Light.colorError
-          Success = DesignTokensExt.Map.Light.colorSuccess
-          Warning = DesignTokensExt.Map.Light.colorWarning
-          Muted = DesignTokensExt.Alias.Light.borderDefault
-          FontFamily = DesignTokens.Light.fontFamily
-          FontSize = DesignTokensExt.Type.Body.fontSize
-          Density = DesignTokensExt.Density.middle
-          CornerRadius = DesignTokensExt.Seed.borderRadius
-          // #385: Ant control-size + Space scale. SM/LG follow Ant's size-step ratios (×3/4, ×5/4).
-          ControlHeight = DesignTokensExt.Seed.controlHeight
-          ControlHeightSm = DesignTokensExt.Seed.controlHeight * 0.75
-          ControlHeightLg = DesignTokensExt.Seed.controlHeight * 1.25
-          SpaceXs = DesignTokensExt.Space.xs
-          SpaceSm = DesignTokensExt.Space.sm
-          SpaceMd = DesignTokensExt.Space.md
-          SpaceLg = DesignTokensExt.Space.lg
-          IntentPolicy = AntIntentPolicy.light }
+        {
+            Name = "AntDesign"
+            Foreground = DesignTokensExt.Alias.Light.textDefault
+            Background = DesignTokensExt.Alias.Light.surfaceCanvas
+            // #379: the seed primary (#1677ff) is mid-luminance — as the resting accent it is not
+            // WCAG-AA (4.5 Text) on the light canvas (#f5f5f5), failing both as the filled button's
+            // near-white label and as the outline icon-button's glyph (3.76 < 4.5). The light accent
+            // therefore resolves to Ant's own darker `colorPrimaryActive` (#0958d9 ⇒ 5.65) — a map
+            // stop already carried for the pressed state, sourced from a token not inline hex (C2).
+            // Dark mode keeps the seed (`antDark` below): #1677ff is AA on the near-black canvas.
+            Accent = DesignTokensExt.Map.Light.colorPrimaryActive
+            Danger = DesignTokensExt.Map.Light.colorError
+            Success = DesignTokensExt.Map.Light.colorSuccess
+            Warning = DesignTokensExt.Map.Light.colorWarning
+            Muted = DesignTokensExt.Alias.Light.borderDefault
+            FontFamily = DesignTokens.Light.fontFamily
+            FontSize = DesignTokensExt.Type.Body.fontSize
+            Density = DesignTokensExt.Density.middle
+            CornerRadius = DesignTokensExt.Seed.borderRadius
+            // #385: Ant control-size + Space scale. SM/LG follow Ant's size-step ratios (×3/4, ×5/4).
+            ControlHeight = DesignTokensExt.Seed.controlHeight
+            ControlHeightSm = DesignTokensExt.Seed.controlHeight * 0.75
+            ControlHeightLg = DesignTokensExt.Seed.controlHeight * 1.25
+            SpaceXs = DesignTokensExt.Space.xs
+            SpaceSm = DesignTokensExt.Space.sm
+            SpaceMd = DesignTokensExt.Space.md
+            SpaceLg = DesignTokensExt.Space.lg
+            IntentPolicy = AntIntentPolicy.light
+        }
 
     let antDark: Theme =
-        { Name = "AntDesign Dark"
-          Foreground = DesignTokensExt.Alias.Dark.textDefault
-          Background = DesignTokensExt.Alias.Dark.surfaceCanvas
-          Accent = DesignTokensExt.Seed.colorPrimary
-          Danger = DesignTokensExt.Map.Dark.colorError
-          Success = DesignTokensExt.Map.Dark.colorSuccess
-          Warning = DesignTokensExt.Map.Dark.colorWarning
-          Muted = DesignTokensExt.Alias.Dark.borderDefault
-          FontFamily = DesignTokens.Dark.fontFamily
-          FontSize = DesignTokensExt.Type.Body.fontSize
-          Density = DesignTokensExt.Density.middle
-          CornerRadius = DesignTokensExt.Seed.borderRadius
-          // #385: Ant control-size + Space scale. SM/LG follow Ant's size-step ratios (×3/4, ×5/4).
-          ControlHeight = DesignTokensExt.Seed.controlHeight
-          ControlHeightSm = DesignTokensExt.Seed.controlHeight * 0.75
-          ControlHeightLg = DesignTokensExt.Seed.controlHeight * 1.25
-          SpaceXs = DesignTokensExt.Space.xs
-          SpaceSm = DesignTokensExt.Space.sm
-          SpaceMd = DesignTokensExt.Space.md
-          SpaceLg = DesignTokensExt.Space.lg
-          IntentPolicy = AntIntentPolicy.dark }
+        {
+            Name = "AntDesign Dark"
+            Foreground = DesignTokensExt.Alias.Dark.textDefault
+            Background = DesignTokensExt.Alias.Dark.surfaceCanvas
+            Accent = DesignTokensExt.Seed.colorPrimary
+            Danger = DesignTokensExt.Map.Dark.colorError
+            Success = DesignTokensExt.Map.Dark.colorSuccess
+            Warning = DesignTokensExt.Map.Dark.colorWarning
+            Muted = DesignTokensExt.Alias.Dark.borderDefault
+            FontFamily = DesignTokens.Dark.fontFamily
+            FontSize = DesignTokensExt.Type.Body.fontSize
+            Density = DesignTokensExt.Density.middle
+            CornerRadius = DesignTokensExt.Seed.borderRadius
+            // #385: Ant control-size + Space scale. SM/LG follow Ant's size-step ratios (×3/4, ×5/4).
+            ControlHeight = DesignTokensExt.Seed.controlHeight
+            ControlHeightSm = DesignTokensExt.Seed.controlHeight * 0.75
+            ControlHeightLg = DesignTokensExt.Seed.controlHeight * 1.25
+            SpaceXs = DesignTokensExt.Space.xs
+            SpaceSm = DesignTokensExt.Space.sm
+            SpaceMd = DesignTokensExt.Space.md
+            SpaceLg = DesignTokensExt.Space.lg
+            IntentPolicy = AntIntentPolicy.dark
+        }
 
     let resolve (overrides: Theme option) =
         overrides |> Option.defaultValue antLight

@@ -39,13 +39,26 @@ let private staticScene: Scene =
 // giving the discriminating check resolution at both the value and render levels.
 let private settledAnim: Animation =
     { Animation.empty with
-        Opacity = Some { Start = 0.0; End = 1.0; Duration = ms 100.0; Easing = Linear }
+        Opacity =
+            Some
+                {
+                    Start = 0.0
+                    End = 1.0
+                    Duration = ms 100.0
+                    Easing = Linear
+                }
         Transform =
             Some
-                { Start = { Transform.identity with TranslateX = 40.0 }
-                  End = Transform.identity
-                  Duration = ms 100.0
-                  Easing = Linear } }
+                {
+                    Start =
+                        { Transform.identity with
+                            TranslateX = 40.0
+                        }
+                    End = Transform.identity
+                    Duration = ms 100.0
+                    Easing = Linear
+                }
+    }
 
 let private settledTime = ms 100.0
 let private afterTime = ms 250.0
@@ -68,107 +81,150 @@ let private fingerprint (node: SceneNode) : string =
 
 [<Tests>]
 let auditScaffoldSanity =
-    testList "Audit: AnimationSampling scaffold" [
-        test "Audit: scaffold reaches the real Animation sampling seam (T006)" {
-            // Trivial reachability: the shipped functions are callable and typed.
-            let node = Animation.applyAt settledTime settledAnim staticScene
-            let frames = Animation.sampleFrames [ settledTime ] settledAnim staticScene
-            Expect.isTrue (node = node) "applyAt is reachable and returns a SceneNode"
-            Expect.equal (List.length frames) 1 "sampleFrames is reachable and maps one time to one Scene"
-        }
-    ]
+    testList
+        "Audit: AnimationSampling scaffold"
+        [
+            test "Audit: scaffold reaches the real Animation sampling seam (T006)" {
+                // Trivial reachability: the shipped functions are callable and typed.
+                let node = Animation.applyAt settledTime settledAnim staticScene
+                let frames = Animation.sampleFrames [ settledTime ] settledAnim staticScene
+                Expect.isTrue (node = node) "applyAt is reachable and returns a SceneNode"
+                Expect.equal (List.length frames) 1 "sampleFrames is reachable and maps one time to one Scene"
+            }
+        ]
 
 [<Tests>]
 let auditDeterminism =
-    testList "Audit: AnimationSampling determinism (US2, T025, FR-007)" [
-        test "Audit: applyAt is byte-identical across repeated invocations at fixed times" {
-            // In-flight, settled, and post-duration samples must each be a pure
-            // function of their inputs — re-invoking yields the SAME value.
-            for t in [ inFlightTime; settledTime; afterTime; TimeSpan.Zero ] do
-                let a = Animation.applyAt t settledAnim staticScene
-                let b = Animation.applyAt t settledAnim staticScene
-                Expect.equal a b (sprintf "applyAt at %A is deterministic (structural)" t)
-                Expect.equal (fingerprint a) (fingerprint b) (sprintf "applyAt at %A is deterministic (render-hash)" t)
-        }
+    testList
+        "Audit: AnimationSampling determinism (US2, T025, FR-007)"
+        [
+            test "Audit: applyAt is byte-identical across repeated invocations at fixed times" {
+                // In-flight, settled, and post-duration samples must each be a pure
+                // function of their inputs — re-invoking yields the SAME value.
+                for t in [ inFlightTime; settledTime; afterTime; TimeSpan.Zero ] do
+                    let a = Animation.applyAt t settledAnim staticScene
+                    let b = Animation.applyAt t settledAnim staticScene
+                    Expect.equal a b (sprintf "applyAt at %A is deterministic (structural)" t)
 
-        test "Audit: sampleFrames is byte-identical across repeated invocations" {
-            let times = [ TimeSpan.Zero; inFlightTime; settledTime; afterTime ]
-            let first = Animation.sampleFrames times settledAnim staticScene
-            let second = Animation.sampleFrames times settledAnim staticScene
-            Expect.equal first second "sampleFrames over fixed time points is deterministic"
-        }
-    ]
+                    Expect.equal
+                        (fingerprint a)
+                        (fingerprint b)
+                        (sprintf "applyAt at %A is deterministic (render-hash)" t)
+            }
+
+            test "Audit: sampleFrames is byte-identical across repeated invocations" {
+                let times = [ TimeSpan.Zero; inFlightTime; settledTime; afterTime ]
+                let first = Animation.sampleFrames times settledAnim staticScene
+                let second = Animation.sampleFrames times settledAnim staticScene
+                Expect.equal first second "sampleFrames over fixed time points is deterministic"
+            }
+        ]
 
 [<Tests>]
 let auditSettledIdentity =
-    testList "Audit: AnimationSampling settled identity-at-rest (US2 AS4, T025, FR-007)" [
-        test "Audit: settled animation sampled at/after duration is byte-identical to the static scene" {
-            // Identity-at-rest: opacity pinned to 1.0 + identity transform ⇒ the
-            // target unwrapped, byte-identical to the static render.
-            let atDuration = Animation.applyAt settledTime settledAnim staticScene
-            let afterDuration = Animation.applyAt afterTime settledAnim staticScene
+    testList
+        "Audit: AnimationSampling settled identity-at-rest (US2 AS4, T025, FR-007)"
+        [
+            test "Audit: settled animation sampled at/after duration is byte-identical to the static scene" {
+                // Identity-at-rest: opacity pinned to 1.0 + identity transform ⇒ the
+                // target unwrapped, byte-identical to the static render.
+                let atDuration = Animation.applyAt settledTime settledAnim staticScene
+                let afterDuration = Animation.applyAt afterTime settledAnim staticScene
 
-            Expect.equal atDuration staticUnwrapped "at duration ⇒ target unwrapped (structural)"
-            Expect.equal afterDuration staticUnwrapped "after duration ⇒ target unwrapped (structural)"
-            Expect.equal (fingerprint atDuration) (fingerprint staticUnwrapped) "at duration ⇒ byte-identical render hash"
-            Expect.equal (fingerprint afterDuration) (fingerprint staticUnwrapped) "after duration ⇒ byte-identical render hash"
+                Expect.equal atDuration staticUnwrapped "at duration ⇒ target unwrapped (structural)"
+                Expect.equal afterDuration staticUnwrapped "after duration ⇒ target unwrapped (structural)"
 
-            // isSettled must agree that this sample is at rest (redraw gating).
-            Expect.isTrue (Animation.isSettled settledTime settledAnim) "isSettled true at duration"
-            Expect.isTrue (Animation.isSettled afterTime settledAnim) "isSettled true after duration"
-        }
+                Expect.equal
+                    (fingerprint atDuration)
+                    (fingerprint staticUnwrapped)
+                    "at duration ⇒ byte-identical render hash"
 
-        test "Audit: DISCRIMINATING — an in-flight sample (opacity < 1) DIFFERS from the static scene" {
-            // If this did NOT differ, the identity-at-rest test above would be
-            // vacuous. Mid-tween opacity (0.5) scales the fill alpha, so the
-            // sample must diverge from the static render both structurally and
-            // by render-hash.
-            let midFlight = Animation.applyAt inFlightTime settledAnim staticScene
+                Expect.equal
+                    (fingerprint afterDuration)
+                    (fingerprint staticUnwrapped)
+                    "after duration ⇒ byte-identical render hash"
 
-            Expect.notEqual midFlight staticUnwrapped "in-flight sample must differ from static (structural)"
-            Expect.notEqual (fingerprint midFlight) (fingerprint staticUnwrapped) "in-flight sample must differ from static (render-hash)"
-            Expect.isFalse (Animation.isSettled inFlightTime settledAnim) "isSettled false while in flight"
-        }
-    ]
+                // isSettled must agree that this sample is at rest (redraw gating).
+                Expect.isTrue (Animation.isSettled settledTime settledAnim) "isSettled true at duration"
+                Expect.isTrue (Animation.isSettled afterTime settledAnim) "isSettled true after duration"
+            }
+
+            test "Audit: DISCRIMINATING — an in-flight sample (opacity < 1) DIFFERS from the static scene" {
+                // If this did NOT differ, the identity-at-rest test above would be
+                // vacuous. Mid-tween opacity (0.5) scales the fill alpha, so the
+                // sample must diverge from the static render both structurally and
+                // by render-hash.
+                let midFlight = Animation.applyAt inFlightTime settledAnim staticScene
+
+                Expect.notEqual midFlight staticUnwrapped "in-flight sample must differ from static (structural)"
+
+                Expect.notEqual
+                    (fingerprint midFlight)
+                    (fingerprint staticUnwrapped)
+                    "in-flight sample must differ from static (render-hash)"
+
+                Expect.isFalse (Animation.isSettled inFlightTime settledAnim) "isSettled false while in flight"
+            }
+        ]
 
 // P6/R5: the `Color` tween used to be dead weight (it fed only `isSettled`). `sampleColor` now makes
 // it a real, consumable value, and `applyAt` HONESTLY does not composite it (the wire format has no
 // scene-wide tint node) — the disclosure in Animation.fsi. These audits prove both halves.
 [<Tests>]
 let auditColorSampling =
-    testList "Audit: AnimationSampling colour tween (P6/R5)" [
-        let colorAnim: Animation =
-            { Animation.empty with
-                Color =
-                    Some
-                        { Start = Colors.rgb 0uy 0uy 0uy
-                          End = Colors.rgb 200uy 100uy 50uy
-                          Duration = ms 100.0
-                          Easing = Linear } }
+    testList
+        "Audit: AnimationSampling colour tween (P6/R5)"
+        [
+            let colorAnim: Animation =
+                { Animation.empty with
+                    Color =
+                        Some
+                            {
+                                Start = Colors.rgb 0uy 0uy 0uy
+                                End = Colors.rgb 200uy 100uy 50uy
+                                Duration = ms 100.0
+                                Easing = Linear
+                            }
+                }
 
-        test "Audit: sampleColor interpolates the colour tween and pins its endpoints" {
-            Expect.equal (Animation.sampleColor TimeSpan.Zero colorAnim) (Some(Colors.rgb 0uy 0uy 0uy)) "start pinned at t=0"
-            Expect.equal (Animation.sampleColor settledTime colorAnim) (Some(Colors.rgb 200uy 100uy 50uy)) "end pinned at duration"
+            test "Audit: sampleColor interpolates the colour tween and pins its endpoints" {
+                Expect.equal
+                    (Animation.sampleColor TimeSpan.Zero colorAnim)
+                    (Some(Colors.rgb 0uy 0uy 0uy))
+                    "start pinned at t=0"
 
-            match Animation.sampleColor inFlightTime colorAnim with
-            | Some mid ->
-                // Linear midpoint of 0->200 / 0->100 / 0->50 ⇒ (100,50,25).
-                Expect.equal mid (Colors.rgb 100uy 50uy 25uy) "mid-flight colour is the linear midpoint"
-            | None -> failtest "a colour tween is present, so sampleColor must return Some"
-        }
+                Expect.equal
+                    (Animation.sampleColor settledTime colorAnim)
+                    (Some(Colors.rgb 200uy 100uy 50uy))
+                    "end pinned at duration"
 
-        test "Audit: sampleColor is None when no colour tween is set" {
-            Expect.equal (Animation.sampleColor settledTime Animation.empty) None "no colour tween ⇒ None"
-        }
+                match Animation.sampleColor inFlightTime colorAnim with
+                | Some mid ->
+                    // Linear midpoint of 0->200 / 0->100 / 0->50 ⇒ (100,50,25).
+                    Expect.equal mid (Colors.rgb 100uy 50uy 25uy) "mid-flight colour is the linear midpoint"
+                | None -> failtest "a colour tween is present, so sampleColor must return Some"
+            }
 
-        test "Audit: DISCRIMINATING — applyAt does NOT composite the colour tween" {
-            // A colour-only animation has opacity 1.0 + identity transform at every time, so applyAt
-            // must be byte-identical to the static scene — the colour tween is surfaced via
-            // `sampleColor`, never folded into the rendered node. If applyAt DID composite colour this
-            // would differ, exposing an undisclosed side effect.
-            for t in [ TimeSpan.Zero; inFlightTime; settledTime; afterTime ] do
-                let sample = Animation.applyAt t colorAnim staticScene
-                Expect.equal sample staticUnwrapped (sprintf "colour-only applyAt at %A is the static scene unwrapped (structural)" t)
-                Expect.equal (fingerprint sample) (fingerprint staticUnwrapped) (sprintf "colour-only applyAt at %A is byte-identical to static (render-hash)" t)
-        }
-    ]
+            test "Audit: sampleColor is None when no colour tween is set" {
+                Expect.equal (Animation.sampleColor settledTime Animation.empty) None "no colour tween ⇒ None"
+            }
+
+            test "Audit: DISCRIMINATING — applyAt does NOT composite the colour tween" {
+                // A colour-only animation has opacity 1.0 + identity transform at every time, so applyAt
+                // must be byte-identical to the static scene — the colour tween is surfaced via
+                // `sampleColor`, never folded into the rendered node. If applyAt DID composite colour this
+                // would differ, exposing an undisclosed side effect.
+                for t in [ TimeSpan.Zero; inFlightTime; settledTime; afterTime ] do
+                    let sample = Animation.applyAt t colorAnim staticScene
+
+                    Expect.equal
+                        sample
+                        staticUnwrapped
+                        (sprintf "colour-only applyAt at %A is the static scene unwrapped (structural)" t)
+
+                    Expect.equal
+                        (fingerprint sample)
+                        (fingerprint staticUnwrapped)
+                        (sprintf "colour-only applyAt at %A is byte-identical to static (render-hash)" t)
+            }
+        ]

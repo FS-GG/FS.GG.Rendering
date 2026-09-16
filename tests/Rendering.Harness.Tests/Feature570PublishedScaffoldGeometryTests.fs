@@ -86,7 +86,9 @@ let private packedEntry = "content/" + fragmentRelative
 /// mutation this comment has always been about.
 let private packedFragmentBytes =
     lazy
-        (let scratch = Path.Combine(Path.GetTempPath(), "fs-gg-570-" + System.Guid.NewGuid().ToString("N"))
+        (let scratch =
+            Path.Combine(Path.GetTempPath(), "fs-gg-570-" + System.Guid.NewGuid().ToString("N"))
+
          Directory.CreateDirectory scratch |> ignore
 
          let psi = ProcessStartInfo "dotnet"
@@ -95,14 +97,16 @@ let private packedFragmentBytes =
          psi.RedirectStandardOutput <- true
          psi.RedirectStandardError <- true
 
-         [ "pack"
-           ".template.package/FS.GG.UI.Template.fsproj"
-           "-o"
-           scratch
-           "-m:1"
-           "--nologo"
-           $"-p:BaseIntermediateOutputPath={scratch}/obj/"
-           "-p:RestoreLockedMode=true" ]
+         [
+             "pack"
+             ".template.package/FS.GG.UI.Template.fsproj"
+             "-o"
+             scratch
+             "-m:1"
+             "--nologo"
+             $"-p:BaseIntermediateOutputPath={scratch}/obj/"
+             "-p:RestoreLockedMode=true"
+         ]
          |> List.iter psi.ArgumentList.Add
 
          match Process.Start psi with
@@ -115,7 +119,11 @@ let private packedFragmentBytes =
              proc.WaitForExit()
 
              if proc.ExitCode <> 0 then
-                 failwithf "dotnet pack of the template package failed (exit %d) — this guard cannot verify what the package publishes:\n%s\n%s" proc.ExitCode out err
+                 failwithf
+                     "dotnet pack of the template package failed (exit %d) — this guard cannot verify what the package publishes:\n%s\n%s"
+                     proc.ExitCode
+                     out
+                     err
 
              let nupkg =
                  match Directory.GetFiles(scratch, "*.nupkg") with
@@ -143,63 +151,82 @@ let private packedFragmentBytes =
 let tests =
     testList
         "Feature570 published scaffold geometry"
-        [ test "the canonical Vec2 fragment exists at the path FS.GG.Game consumes" {
-              Expect.isTrue
-                  (File.Exists(repositoryPath fragmentRelative))
-                  $"`{fragmentRelative}` is the file FS.GG.Game generates its skill-block scaffold FROM (FS-GG/FS.GG.Game#189). Moving it is a cross-repo break: update their generator in the same change."
-          }
+        [
+            test "the canonical Vec2 fragment exists at the path FS.GG.Game consumes" {
+                Expect.isTrue
+                    (File.Exists(repositoryPath fragmentRelative))
+                    $"`{fragmentRelative}` is the file FS.GG.Game generates its skill-block scaffold FROM (FS-GG/FS.GG.Game#189). Moving it is a cross-repo break: update their generator in the same change."
+            }
 
-          // THE CONTRACT. Not "the .fsproj looks right" — "the artifact contains the file".
-          test "the FS.GG.UI.Template package really publishes it — asserted against the packed nupkg" {
-              let bytes, names = packedFragmentBytes.Force()
+            // THE CONTRACT. Not "the .fsproj looks right" — "the artifact contains the file".
+            test "the FS.GG.UI.Template package really publishes it — asserted against the packed nupkg" {
+                let bytes, names = packedFragmentBytes.Force()
 
-              Expect.isGreaterThan
-                  (List.length names)
-                  10
-                  "the packed nupkg has entries at all (if this fails the assertion below is vacuous)"
+                Expect.isGreaterThan
+                    (List.length names)
+                    10
+                    "the packed nupkg has entries at all (if this fails the assertion below is vacuous)"
 
-              match bytes with
-              | Some _ -> ()
-              | None ->
-                  failtestf
-                      "the FS.GG.UI.Template package does NOT contain `%s`. FS.GG.Game restores this package and GENERATES its skill-block scaffold from that file (#570, FS-GG/FS.GG.Game#189); without it their gate compiles a stale hand-written twin — or nothing — and reports green either way. Whatever dropped it (an Exclude, a Content Remove, a narrowed Include, a changed PackagePath) is a silent cross-repo break: re-home the fragment and update their generator in the SAME change. The package DOES contain %d entries, e.g. %A"
-                      packedEntry
-                      (List.length names)
-                      (names |> List.truncate 5)
-          }
+                match bytes with
+                | Some _ -> ()
+                | None ->
+                    failtestf
+                        "the FS.GG.UI.Template package does NOT contain `%s`. FS.GG.Game restores this package and GENERATES its skill-block scaffold from that file (#570, FS-GG/FS.GG.Game#189); without it their gate compiles a stale hand-written twin — or nothing — and reports green either way. Whatever dropped it (an Exclude, a Content Remove, a narrowed Include, a changed PackagePath) is a silent cross-repo break: re-home the fragment and update their generator in the SAME change. The package DOES contain %d entries, e.g. %A"
+                        packedEntry
+                        (List.length names)
+                        (names |> List.truncate 5)
+            }
 
-          // The published bytes must be the canonical bytes. `dotnet new`'s `sourceName` / `replaces`
-          // transforms happen at INSTANTIATION, not at pack — so a consumer who unzips gets this file
-          // verbatim. If that ever stopped being true, "generate from the published source" would quietly
-          // become "generate from a transformed copy of it", which is a twin again.
-          test "the published bytes are the canonical source, unmodified" {
-              let bytes, _ = packedFragmentBytes.Force()
-              let onDisk = File.ReadAllBytes(repositoryPath fragmentRelative)
+            // The published bytes must be the canonical bytes. `dotnet new`'s `sourceName` / `replaces`
+            // transforms happen at INSTANTIATION, not at pack — so a consumer who unzips gets this file
+            // verbatim. If that ever stopped being true, "generate from the published source" would quietly
+            // become "generate from a transformed copy of it", which is a twin again.
+            test "the published bytes are the canonical source, unmodified" {
+                let bytes, _ = packedFragmentBytes.Force()
+                let onDisk = File.ReadAllBytes(repositoryPath fragmentRelative)
 
-              match bytes with
-              | None -> failtest "the fragment is not in the package (see the previous test)"
-              | Some packed ->
-                  Expect.equal
-                      (packed.Length)
-                      (onDisk.Length)
-                      "the packed fragment must be byte-identical to the working-tree source — a consumer generating from the package must get exactly what this repo reviews"
+                match bytes with
+                | None -> failtest "the fragment is not in the package (see the previous test)"
+                | Some packed ->
+                    Expect.equal
+                        (packed.Length)
+                        (onDisk.Length)
+                        "the packed fragment must be byte-identical to the working-tree source — a consumer generating from the package must get exactly what this repo reviews"
 
-                  Expect.isTrue (packed = onDisk) "the packed fragment must be byte-identical to the working-tree source"
-          }
+                    Expect.isTrue
+                        (packed = onDisk)
+                        "the packed fragment must be byte-identical to the working-tree source"
+            }
 
-          // The consumption contract is the SHAPE too: FS.GG.Game compiles this file OUTSIDE a generated
-          // product, so it must stay self-contained and free of `dotnet new` conditionals.
-          test "the published fragment is compilable by a consumer that is not a generated product" {
-              let source = File.ReadAllText(repositoryPath fragmentRelative)
+            // The consumption contract is the SHAPE too: FS.GG.Game compiles this file OUTSIDE a generated
+            // product, so it must stay self-contained and free of `dotnet new` conditionals.
+            test "the published fragment is compilable by a consumer that is not a generated product" {
+                let source = File.ReadAllText(repositoryPath fragmentRelative)
 
-              Expect.stringContains source "module Geometry" "FS.GG.Game's skills say `Geometry.Vec2`; the module name is half the contract (#519)"
-              Expect.stringContains source "open FS.GG.UI.Scene" "the scene edge (toPoint/toRect) resolves from the PUBLISHED FS.GG.UI.Scene package — which is what lets a consumer compile the helpers their own gate cannot fake"
-              Expect.stringContains source "FS.GG.Game.Core" "the sim edge (toSimPoint/toSimRect) resolves from FS.GG.Game.Core — also a package, so a consumer needs no scaffolded product to compile this file"
+                Expect.stringContains
+                    source
+                    "module Geometry"
+                    "FS.GG.Game's skills say `Geometry.Vec2`; the module name is half the contract (#519)"
 
-              // `//#if`, NOT `<!--#if`. The F# template sources use the slash form (template/base/src/Product/
-              // Model.fs:4); the first version of this guard checked the XML form and so was decorative
-              // against the only conditional syntax that can actually appear here.
-              Expect.isFalse
-                  (System.Text.RegularExpressions.Regex.IsMatch(source, @"^\s*//#(if|else|endif)", System.Text.RegularExpressions.RegexOptions.Multiline))
-                  "the fragment must carry no `dotnet new` conditional (`//#if`), or the published text is not compilable verbatim and the consumer needs a hand-maintained transform to strip it — which is the twin, back again"
-          } ]
+                Expect.stringContains
+                    source
+                    "open FS.GG.UI.Scene"
+                    "the scene edge (toPoint/toRect) resolves from the PUBLISHED FS.GG.UI.Scene package — which is what lets a consumer compile the helpers their own gate cannot fake"
+
+                Expect.stringContains
+                    source
+                    "FS.GG.Game.Core"
+                    "the sim edge (toSimPoint/toSimRect) resolves from FS.GG.Game.Core — also a package, so a consumer needs no scaffolded product to compile this file"
+
+                // `//#if`, NOT `<!--#if`. The F# template sources use the slash form (template/base/src/Product/
+                // Model.fs:4); the first version of this guard checked the XML form and so was decorative
+                // against the only conditional syntax that can actually appear here.
+                Expect.isFalse
+                    (System.Text.RegularExpressions.Regex.IsMatch(
+                        source,
+                        @"^\s*//#(if|else|endif)",
+                        System.Text.RegularExpressions.RegexOptions.Multiline
+                    ))
+                    "the fragment must carry no `dotnet new` conditional (`//#if`), or the published text is not compilable verbatim and the consumer needs a hand-maintained transform to strip it — which is the twin, back again"
+            }
+        ]

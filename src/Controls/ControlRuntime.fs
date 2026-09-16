@@ -1,25 +1,26 @@
 namespace FS.GG.UI.Controls
+
 open FS.GG.UI.DesignSystem
 
-type ControlCaret =
-    { ControlId: ControlId
-      Index: int }
+type ControlCaret = { ControlId: ControlId; Index: int }
 
 type ControlSelection =
-    { ControlId: ControlId
-      Start: int
-      End: int }
+    {
+        ControlId: ControlId
+        Start: int
+        End: int
+    }
 
-type ControlComposition =
-    { ControlId: ControlId
-      Text: string }
+type ControlComposition = { ControlId: ControlId; Text: string }
 
 type ControlDrag =
-    { ControlId: ControlId
-      StartX: float
-      StartY: float
-      CurrentX: float
-      CurrentY: float }
+    {
+        ControlId: ControlId
+        StartX: float
+        StartY: float
+        CurrentX: float
+        CurrentY: float
+    }
 
 type ControlRuntimeEffect =
     | FocusChanged of ControlId option
@@ -35,26 +36,32 @@ type ControlRuntimeEffect =
     | ReportControlRuntimeDiagnostic of ControlDiagnostic
 
 type ControlRuntimeModel =
-    { FocusedControl: ControlId option
-      HoveredControl: ControlId option
-      PressedControls: Set<ControlId>
-      Caret: ControlCaret option
-      Selection: ControlSelection option
-      Composition: ControlComposition option
-      ActiveDrag: ControlDrag option
-      ScrollOffsets: Map<ControlId, ScrollState>
-      Diagnostics: ControlDiagnostic list
-      RecentEffects: ControlRuntimeEffect list }
+    {
+        FocusedControl: ControlId option
+        HoveredControl: ControlId option
+        PressedControls: Set<ControlId>
+        Caret: ControlCaret option
+        Selection: ControlSelection option
+        Composition: ControlComposition option
+        ActiveDrag: ControlDrag option
+        ScrollOffsets: Map<ControlId, ScrollState>
+        Diagnostics: ControlDiagnostic list
+        RecentEffects: ControlRuntimeEffect list
+    }
 
 type OverlayRuntimeBridge =
-    { Overlay: OverlayState
-      Effects: OverlayEffect list }
+    {
+        Overlay: OverlayState
+        Effects: OverlayEffect list
+    }
 
 type OverlayRuntimeDispatchRecord =
-    { SurfaceId: ControlId option
-      Kind: string
-      Payload: string option
-      ProductVisible: bool }
+    {
+        SurfaceId: ControlId option
+        Kind: string
+        Payload: string option
+        ProductVisible: bool
+    }
 
 type ControlRuntimeMsg =
     | FocusControl of ControlId option
@@ -78,28 +85,33 @@ type ControlRuntimeMsg =
 
 /// Feature 112 (FR-007): the targeted runtime-stamp result (see ControlRuntime.fsi).
 type internal RuntimeStampResult<'msg> =
-    { Stamped: Control<'msg>
-      RuntimeStateTouchedNodeCount: int }
+    {
+        Stamped: Control<'msg>
+        RuntimeStateTouchedNodeCount: int
+    }
 
 module ControlRuntime =
     let empty =
-        { FocusedControl = None
-          HoveredControl = None
-          PressedControls = Set.empty
-          Caret = None
-          Selection = None
-          Composition = None
-          ActiveDrag = None
-          ScrollOffsets = Map.empty
-          Diagnostics = []
-          RecentEffects = [] }
+        {
+            FocusedControl = None
+            HoveredControl = None
+            PressedControls = Set.empty
+            Caret = None
+            Selection = None
+            Composition = None
+            ActiveDrag = None
+            ScrollOffsets = Map.empty
+            Diagnostics = []
+            RecentEffects = []
+        }
 
-    let init () =
-        empty, ([]: ControlRuntimeEffect list)
+    let init () = empty, ([]: ControlRuntimeEffect list)
 
     /// Feature 175: the scroll model currently owned for `controlId` (`ScrollState.empty` if none).
     let scrollState (controlId: ControlId) (model: ControlRuntimeModel) =
-        model.ScrollOffsets |> Map.tryFind controlId |> Option.defaultValue ScrollState.empty
+        model.ScrollOffsets
+        |> Map.tryFind controlId
+        |> Option.defaultValue ScrollState.empty
 
     let withEffects effects model =
         { model with RecentEffects = effects }, effects
@@ -126,35 +138,45 @@ module ControlRuntime =
             HoveredControl = model.HoveredControl |> Option.filter ((<>) controlId)
             PressedControls = model.PressedControls.Remove controlId
             Caret = model.Caret |> Option.filter (fun caret -> caret.ControlId <> controlId)
-            Selection = model.Selection |> Option.filter (fun selection -> selection.ControlId <> controlId)
-            Composition = model.Composition |> Option.filter (fun composition -> composition.ControlId <> controlId)
+            Selection =
+                model.Selection
+                |> Option.filter (fun selection -> selection.ControlId <> controlId)
+            Composition =
+                model.Composition
+                |> Option.filter (fun composition -> composition.ControlId <> controlId)
             ActiveDrag = model.ActiveDrag |> Option.filter (fun drag -> drag.ControlId <> controlId)
-            ScrollOffsets = model.ScrollOffsets |> Map.remove controlId }
+            ScrollOffsets = model.ScrollOffsets |> Map.remove controlId
+        }
 
     let update (msg: ControlRuntimeMsg) (model: ControlRuntimeModel) =
         match msg with
         | FocusControl controlId ->
-            { model with FocusedControl = controlId }
+            { model with
+                FocusedControl = controlId
+            }
             |> withEffects [ FocusChanged controlId ]
         | HoverControl controlId ->
-            { model with HoveredControl = controlId }
+            { model with
+                HoveredControl = controlId
+            }
             |> withEffects [ HoverChanged controlId ]
         | PressControl controlId ->
             let pressed = model.PressedControls.Add controlId
+
             { model with PressedControls = pressed }
             |> withEffects [ PressedControlsChanged(Set.toList pressed) ]
         | ReleaseControl controlId ->
             let pressed = model.PressedControls.Remove controlId
+
             { model with PressedControls = pressed }
             |> withEffects [ PressedControlsChanged(Set.toList pressed) ]
-        | SetCaret caret ->
-            { model with Caret = caret }
-            |> withEffects [ CaretChanged caret ]
+        | SetCaret caret -> { model with Caret = caret } |> withEffects [ CaretChanged caret ]
         | SetSelection selection ->
             { model with Selection = selection }
             |> withEffects [ SelectionChanged selection ]
         | StartComposition(controlId, text) ->
             let composition = Some { ControlId = controlId; Text = text }
+
             { model with Composition = composition }
             |> withEffects [ CompositionChanged composition ]
         | CommitComposition controlId ->
@@ -167,41 +189,54 @@ module ControlRuntime =
         | StartDrag(controlId, x, y) ->
             let drag =
                 Some
-                    { ControlId = controlId
-                      StartX = x
-                      StartY = y
-                      CurrentX = x
-                      CurrentY = y }
+                    {
+                        ControlId = controlId
+                        StartX = x
+                        StartY = y
+                        CurrentX = x
+                        CurrentY = y
+                    }
 
-            { model with ActiveDrag = drag }
-            |> withEffects [ DragChanged drag ]
+            { model with ActiveDrag = drag } |> withEffects [ DragChanged drag ]
         | MoveDrag(x, y) ->
             let drag =
                 model.ActiveDrag
-                |> Option.map (fun current -> { current with CurrentX = x; CurrentY = y })
+                |> Option.map (fun current ->
+                    { current with
+                        CurrentX = x
+                        CurrentY = y
+                    })
 
-            { model with ActiveDrag = drag }
-            |> withEffects [ DragChanged drag ]
-        | EndDrag ->
-            { model with ActiveDrag = None }
-            |> withEffects [ DragChanged None ]
+            { model with ActiveDrag = drag } |> withEffects [ DragChanged drag ]
+        | EndDrag -> { model with ActiveDrag = None } |> withEffects [ DragChanged None ]
         | FocusLost ->
             { model with
                 FocusedControl = None
                 HoveredControl = None
                 PressedControls = Set.empty
-                ActiveDrag = None }
-            |> withEffects [ FocusChanged None; HoverChanged None; PressedControlsChanged []; DragChanged None ]
+                ActiveDrag = None
+            }
+            |> withEffects
+                [
+                    FocusChanged None
+                    HoverChanged None
+                    PressedControlsChanged []
+                    DragChanged None
+                ]
         | RemoveControl controlId ->
             let next = clearTarget controlId model
             let diagnostic = staleDiagnostic controlId
 
-            { next with Diagnostics = diagnostic :: next.Diagnostics }
+            { next with
+                Diagnostics = diagnostic :: next.Diagnostics
+            }
             |> withEffects [ StaleTarget controlId; ReportControlRuntimeDiagnostic diagnostic ]
         | RecoverStaleTarget controlId ->
             let diagnostic = staleDiagnostic controlId
 
-            { model with Diagnostics = diagnostic :: model.Diagnostics }
+            { model with
+                Diagnostics = diagnostic :: model.Diagnostics
+            }
             |> withEffects [ StaleTarget controlId; ReportControlRuntimeDiagnostic diagnostic ]
         | CancelInteraction controlId ->
             let diagnostic = cancelledDiagnostic controlId
@@ -212,21 +247,33 @@ module ControlRuntime =
                 Selection = None
                 Composition = None
                 ActiveDrag = None
-                Diagnostics = diagnostic :: model.Diagnostics }
-            |> withEffects [ CancelledInteraction controlId; DragChanged None; ReportControlRuntimeDiagnostic diagnostic ]
+                Diagnostics = diagnostic :: model.Diagnostics
+            }
+            |> withEffects
+                [
+                    CancelledInteraction controlId
+                    DragChanged None
+                    ReportControlRuntimeDiagnostic diagnostic
+                ]
         | SetScrollExtent(controlId, contentHeight, viewportHeight) ->
-            let next = scrollState controlId model |> ScrollState.withExtent contentHeight viewportHeight
-            { model with ScrollOffsets = Map.add controlId next model.ScrollOffsets }
+            let next =
+                scrollState controlId model
+                |> ScrollState.withExtent contentHeight viewportHeight
+
+            { model with
+                ScrollOffsets = Map.add controlId next model.ScrollOffsets
+            }
             |> withEffects [ ScrollChanged(controlId, next.Offset) ]
         | ScrollControl(controlId, delta) ->
             let next = scrollState controlId model |> ScrollState.applyScrollDelta delta
-            { model with ScrollOffsets = Map.add controlId next model.ScrollOffsets }
-            |> withEffects [ ScrollChanged(controlId, next.Offset) ]
-        | Reset ->
-            empty |> withEffects []
 
-    let diagnostics model =
-        model.Diagnostics
+            { model with
+                ScrollOffsets = Map.add controlId next model.ScrollOffsets
+            }
+            |> withEffects [ ScrollChanged(controlId, next.Offset) ]
+        | Reset -> empty |> withEffects []
+
+    let diagnostics model = model.Diagnostics
 
     // Feature 096 (R1): the pure, total, deterministic projection from live interaction state to a
     // single VisualState. The runtime-derivable precedence is the tail of FR-002's full closed order
@@ -260,7 +307,8 @@ module ControlRuntime =
         { control with
             Attributes =
                 (control.Attributes |> List.filter (fun a -> a.Name <> "visualState"))
-                @ [ Attr.visualState state ] }
+                @ [ Attr.visualState state ]
+        }
 
     // Feature 096 (R1): internal host bridge. Stamps each control's derived VisualState onto the
     // lowered Control<'msg> tree in the ControlId domain (pre-reconcile), preserving a consumer-set
@@ -276,7 +324,10 @@ module ControlRuntime =
             // Recurse the structural Children channel first; the bridge is a pure tree walk.
             let withChildren =
                 { control with
-                    Children = control.Children |> List.mapi (fun index child -> go (path + "." + string index) child) }
+                    Children =
+                        control.Children
+                        |> List.mapi (fun index child -> go (path + "." + string index) child)
+                }
 
             // Consumer-set non-Normal state wins and is returned unchanged (FR-003). A consumer Normal /
             // absent attribute lets the derived interaction state fill the slot; a derived Normal emits
@@ -342,7 +393,11 @@ module ControlRuntime =
                 // Rebuild from the FRESH node (a clean base) with `finalCur` stamped; a `Normal` final
                 // state emits NO `visualState` attribute, matching the oracle's byte-identity at rest.
                 let rebuiltChildren = childResults |> List.map (fun (c, _, _) -> c)
-                let baseNode = { fresh with Children = rebuiltChildren }
+
+                let baseNode =
+                    { fresh with
+                        Children = rebuiltChildren
+                    }
 
                 let stamped =
                     match finalCur with
@@ -359,8 +414,10 @@ module ControlRuntime =
         : RuntimeStampResult<'msg> =
         let stamped, touched, _ = targetedWalk prev cur "0" prevStamped fresh
 
-        { Stamped = stamped
-          RuntimeStateTouchedNodeCount = touched }
+        {
+            Stamped = stamped
+            RuntimeStateTouchedNodeCount = touched
+        }
 
     // Feature 112 (FR-002/FR-006): the live route choice. Targeted when a prior stamped frame + model
     // are supplied (a model-unchanged repaint); else the full-tree oracle over the fresh tree.
@@ -372,8 +429,10 @@ module ControlRuntime =
         match prior with
         | Some(prevModel, prevStamped) -> applyRuntimeVisualStateTargeted prevModel cur prevStamped fresh
         | None ->
-            { Stamped = applyRuntimeVisualState cur fresh
-              RuntimeStateTouchedNodeCount = Control.count fresh }
+            {
+                Stamped = applyRuntimeVisualState cur fresh
+                RuntimeStateTouchedNodeCount = Control.count fresh
+            }
 
     // Feature 175 (FR-001): host bridge mirroring `applyRuntimeVisualState` — stamp the live scroll
     // offset onto each `scroll-viewer` node whose id holds a positive offset, so `evaluateLayout`'s
@@ -381,67 +440,91 @@ module ControlRuntime =
     // at rest). Keyed by the unified `Key ?? path` (feature 232) to match the visual-state bridge.
     // `internal`; the host applies it in `renderRetained` and tests reach it via InternalsVisibleTo.
     let applyScrollOffsets (model: ControlRuntimeModel) (control: Control<'msg>) : Control<'msg> =
-      // Feature 232 (#44): key by the unified `Key ?? path` — `model.ScrollOffsets` is already
-      // path-keyed by the host (`collectScrollViewerIds "0"`), so unkeyed `scroll-viewer`s now match.
-      let rec go (path: string) (control: Control<'msg>) : Control<'msg> =
-        let id = control.Key |> Option.defaultValue path
-        let withChildren =
-            { control with
-                Children = control.Children |> List.mapi (fun index child -> go (path + "." + string index) child) }
+        // Feature 232 (#44): key by the unified `Key ?? path` — `model.ScrollOffsets` is already
+        // path-keyed by the host (`collectScrollViewerIds "0"`), so unkeyed `scroll-viewer`s now match.
+        let rec go (path: string) (control: Control<'msg>) : Control<'msg> =
+            let id = control.Key |> Option.defaultValue path
 
-        // Feature 183 (US1): the scroll-affordance kind test reads the single ControlKindRegistry SSOT
-        // (byte-identical — only `scroll-viewer` carries it).
-        match (if ControlKindRegistry.hasScrollAffordance control.Kind then Some() else None),
-              model.ScrollOffsets |> Map.tryFind id with
-        | Some(), Some scroll when scroll.Offset > 0.0 ->
-            { withChildren with
-                Attributes =
-                    (withChildren.Attributes |> List.filter (fun a -> a.Name <> AttrKeys.ScrollOffset))
-                    @ [ Attr.create AttrKeys.ScrollOffset Layout (FloatValue scroll.Offset) ] }
-        | _ -> withChildren
+            let withChildren =
+                { control with
+                    Children =
+                        control.Children
+                        |> List.mapi (fun index child -> go (path + "." + string index) child)
+                }
 
-      go "0" control
+            // Feature 183 (US1): the scroll-affordance kind test reads the single ControlKindRegistry SSOT
+            // (byte-identical — only `scroll-viewer` carries it).
+            match
+                (if ControlKindRegistry.hasScrollAffordance control.Kind then
+                     Some()
+                 else
+                     None),
+                model.ScrollOffsets |> Map.tryFind id
+            with
+            | Some(), Some scroll when scroll.Offset > 0.0 ->
+                { withChildren with
+                    Attributes =
+                        (withChildren.Attributes
+                         |> List.filter (fun a -> a.Name <> AttrKeys.ScrollOffset))
+                        @ [ Attr.create AttrKeys.ScrollOffset Layout (FloatValue scroll.Offset) ]
+                }
+            | _ -> withChildren
+
+        go "0" control
 
     let attachOverlayEffects (overlay: OverlayState) (effects: OverlayEffect list) =
-        { Overlay = overlay
-          Effects = effects }
+        { Overlay = overlay; Effects = effects }
 
     let overlayDispatchRecords (bridge: OverlayRuntimeBridge) : OverlayRuntimeDispatchRecord list =
         bridge.Effects
         |> List.map (fun effect ->
             match effect with
             | DispatchProductMessage(surface, payload) ->
-                { SurfaceId = Some surface
-                  Kind = "dispatch-product-message"
-                  Payload = payload
-                  ProductVisible = true }
+                {
+                    SurfaceId = Some surface
+                    Kind = "dispatch-product-message"
+                    Payload = payload
+                    ProductVisible = true
+                }
             | RequestOpenStateChange(surface, isOpen) ->
-                { SurfaceId = Some surface
-                  Kind = "request-open-state-change"
-                  Payload = Some(string isOpen)
-                  ProductVisible = true }
+                {
+                    SurfaceId = Some surface
+                    Kind = "request-open-state-change"
+                    Payload = Some(string isOpen)
+                    ProductVisible = true
+                }
             | RequestFocus focus ->
-                { SurfaceId = focus
-                  Kind = "request-focus"
-                  Payload = focus
-                  ProductVisible = true }
+                {
+                    SurfaceId = focus
+                    Kind = "request-focus"
+                    Payload = focus
+                    ProductVisible = true
+                }
             | ReportOverlayDiagnostic diagnostic ->
-                { SurfaceId = diagnostic.ControlId
-                  Kind = "report-overlay-diagnostic"
-                  Payload = Some diagnostic.Message
-                  ProductVisible = false }
+                {
+                    SurfaceId = diagnostic.ControlId
+                    Kind = "report-overlay-diagnostic"
+                    Payload = Some diagnostic.Message
+                    ProductVisible = false
+                }
             | ConsumeInput ->
-                { SurfaceId = bridge.Overlay.ActiveSurface
-                  Kind = "consume-input"
-                  Payload = None
-                  ProductVisible = false }
+                {
+                    SurfaceId = bridge.Overlay.ActiveSurface
+                    Kind = "consume-input"
+                    Payload = None
+                    ProductVisible = false
+                }
             | AllowPassThrough ->
-                { SurfaceId = bridge.Overlay.ActiveSurface
-                  Kind = "allow-pass-through"
-                  Payload = None
-                  ProductVisible = false }
+                {
+                    SurfaceId = bridge.Overlay.ActiveSurface
+                    Kind = "allow-pass-through"
+                    Payload = None
+                    ProductVisible = false
+                }
             | RecordTopmostHit decision ->
-                { SurfaceId = decision.ChosenTarget
-                  Kind = "record-topmost-hit"
-                  Payload = Some decision.Input
-                  ProductVisible = false })
+                {
+                    SurfaceId = decision.ChosenTarget
+                    Kind = "record-topmost-hit"
+                    Payload = Some decision.Input
+                    ProductVisible = false
+                })

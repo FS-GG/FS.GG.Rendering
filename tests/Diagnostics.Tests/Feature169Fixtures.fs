@@ -6,18 +6,10 @@ open FS.GG.UI.Diagnostics
 let runId = "feature169-synthetic-fixture"
 
 let source subsystem =
-    RuntimeDiagnostics.source
-        (Some "FS.GG.UI.Diagnostics.Tests")
-        subsystem
-        (Some "diagnostics")
-        (Some "feature169")
+    RuntimeDiagnostics.source (Some "FS.GG.UI.Diagnostics.Tests") subsystem (Some "diagnostics") (Some "feature169")
 
 let contextWith details =
-    RuntimeDiagnostics.context
-        (Some runId)
-        (Some(DateTime(2026, 6, 19, 12, 0, 0, DateTimeKind.Utc)))
-        None
-        details
+    RuntimeDiagnostics.context (Some runId) (Some(DateTime(2026, 6, 19, 12, 0, 0, DateTimeKind.Utc))) None details
 
 let environmentWarning =
     // SYNTHETIC: representative headless host warning without requiring a real GL host.
@@ -122,11 +114,13 @@ let environmentLimit =
         (contextWith [ "stream", "stderr" ])
 
 let mixedDiagnostics =
-    [ environmentWarning
-      backendCostAt 1
-      renderingLimitation
-      developerAction
-      blocker ]
+    [
+        environmentWarning
+        backendCostAt 1
+        renderingLimitation
+        developerAction
+        blocker
+    ]
 
 let repeatedBackendCost count =
     [ for frame in 1..count -> backendCostAt frame ]

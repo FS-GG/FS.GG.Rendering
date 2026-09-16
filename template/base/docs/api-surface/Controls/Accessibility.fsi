@@ -5,8 +5,15 @@ namespace FS.GG.UI.Controls
 module Accessibility =
     /// Describe a control's keyboard contract: whether it is `focusable` and its activation/navigation keys.
     val keyboard: focusable: bool -> activationKeys: string list -> navigationKeys: string list -> KeyboardOperation
+
     /// Record `ContrastEvidence` for a foreground/background pair against the `requiredRatio`.
-    val contrast: foreground: FS.GG.UI.Scene.Color -> background: FS.GG.UI.Scene.Color -> ratio: float -> requiredRatio: float -> ContrastEvidence
+    val contrast:
+        foreground: FS.GG.UI.Scene.Color ->
+        background: FS.GG.UI.Scene.Color ->
+        ratio: float ->
+        requiredRatio: float ->
+            ContrastEvidence
+
     /// Assemble full `AccessibilityMetadata` from role, name source, state, focus order, keyboard, contrast, and nav range.
     val metadata:
         role: AccessibilityRole ->

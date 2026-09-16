@@ -11,7 +11,6 @@ open System
 /// samples always produce byte-identical output. A deliberate identity-at-rest
 /// lowering makes a settled animation byte-identical to the static render of the
 /// same widget.
-
 /// The named easing curves. Endpoints are pinned for every case
 /// (`Easing.apply e 0.0 = 0.0`, `Easing.apply e 1.0 = 1.0`).
 type Easing =
@@ -25,27 +24,33 @@ type Easing =
 /// collisions). Identity is `TranslateX/Y = 0`, `ScaleX/Y = 1`,
 /// `RotationDegrees = 0`.
 type Transform =
-    { TranslateX: float
-      TranslateY: float
-      ScaleX: float
-      ScaleY: float
-      RotationDegrees: float }
+    {
+        TranslateX: float
+        TranslateY: float
+        ScaleX: float
+        ScaleY: float
+        RotationDegrees: float
+    }
 
 /// One declared property motion from `Start` to `End` over `Duration`, shaped by
 /// `Easing`. `Easing` and `Duration` are mandatory fields (no omitted-field
 /// defaulting).
 type Tween<'a> =
-    { Start: 'a
-      End: 'a
-      Duration: TimeSpan
-      Easing: Easing }
+    {
+        Start: 'a
+        End: 'a
+        Duration: TimeSpan
+        Easing: Easing
+    }
 
 /// The author-declared, sample-as-data motion applied to a target `Scene`. Each
 /// property is optional; an absent property is treated as its identity.
 type Animation =
-    { Opacity: Tween<float> option
-      Transform: Tween<Transform> option
-      Color: Tween<Color> option }
+    {
+        Opacity: Tween<float> option
+        Transform: Tween<Transform> option
+        Color: Tween<Color> option
+    }
 
 /// Stateful retargeting value held by the author in their own model. All
 /// transitions are pure (Principle IV); the framework owns no hidden mutable
@@ -57,13 +62,15 @@ type Animation =
 /// inconsistency between `create` taking `interp` and the 6-field record having
 /// nowhere to store it — see `readiness/package-surface-expectations.md`.)
 type AnimationState<'a> =
-    { Current: 'a
-      Start: 'a
-      Target: 'a
-      Elapsed: TimeSpan
-      Duration: TimeSpan
-      Easing: Easing
-      Interp: 'a -> 'a -> float -> 'a }
+    {
+        Current: 'a
+        Start: 'a
+        Target: 'a
+        Elapsed: TimeSpan
+        Duration: TimeSpan
+        Easing: Easing
+        Interp: 'a -> 'a -> float -> 'a
+    }
 
 /// Public contract module exposed by this FS.GG.UI package.
 module Easing =
@@ -132,7 +139,9 @@ module AnimationState =
     /// Initial state: `Current = Start = Target = initial`, `Elapsed = 0`. The
     /// `interp` argument is the per-`'a` interpolant (`lerpFloat` / `Color.lerp`
     /// / `Transform.lerp`).
-    val create: interp: ('a -> 'a -> float -> 'a) -> initial: 'a -> duration: TimeSpan -> easing: Easing -> AnimationState<'a>
+    val create:
+        interp: ('a -> 'a -> float -> 'a) -> initial: 'a -> duration: TimeSpan -> easing: Easing -> AnimationState<'a>
+
     /// Adds the delta to `Elapsed` (capped at `Duration`) and recomputes
     /// `Current` via easing `Start`→`Target`.
     val advance: delta: TimeSpan -> state: AnimationState<'a> -> AnimationState<'a>
@@ -148,26 +157,32 @@ module AnimationState =
 
 /// An untrusted animation clip accepted only through `AnimationClip.validate`.
 type AnimationClip =
-    { Id: string
-      Duration: TimeSpan
-      Tracks: (ClipProperty * ClipKeyframe list) list
-      Cues: AnimationCue list
-      Loop: ClipLoop }
+    {
+        Id: string
+        Duration: TimeSpan
+        Tracks: (ClipProperty * ClipKeyframe list) list
+        Cues: AnimationCue list
+        Loop: ClipLoop
+    }
 
 /// A pure clip sample at an explicit elapsed time.
 type AnimationClipSample =
-    { LocalTime: TimeSpan
-      Iteration: int
-      Direction: ClipDirection
-      Values: Map<ClipProperty, ClipValue>
-      Cues: CueOccurrence list
-      IsComplete: bool }
+    {
+        LocalTime: TimeSpan
+        Iteration: int
+        Direction: ClipDirection
+        Values: Map<ClipProperty, ClipValue>
+        Cues: CueOccurrence list
+        IsComplete: bool
+    }
 
 /// A presentation cue identified independently from its payload so live playback can deduplicate it.
 type AnimationCue =
-    { Id: string
-      Time: TimeSpan
-      Payload: string }
+    {
+        Id: string
+        Time: TimeSpan
+        Payload: string
+    }
 
 /// Controls event-cue delivery independently from visual sampling. Seek and pause never emit historical cues.
 type ClipCueMode =
@@ -201,9 +216,11 @@ type ClipIssue =
 
 /// One keyframe at an absolute clip-local time. `EasingToNext` shapes the following segment.
 type ClipKeyframe =
-    { Time: TimeSpan
-      Value: ClipValue
-      EasingToNext: Easing }
+    {
+        Time: TimeSpan
+        Value: ClipValue
+        EasingToNext: Easing
+    }
 
 /// Bounded playback behavior. Iterations count complete forward or reverse passes and must be 1–10,000.
 type ClipLoop =
@@ -232,9 +249,11 @@ type ClipValue =
 
 /// One cue occurrence, including the loop iteration needed for stable deduplication.
 type CueOccurrence =
-    { Cue: AnimationCue
-      Iteration: int
-      Direction: ClipDirection }
+    {
+        Cue: AnimationCue
+        Iteration: int
+        Direction: ClipDirection
+    }
 
 /// A clip that passed structural, numeric, topology and playback-bound validation.
 type ValidatedAnimationClip = private ValidatedAnimationClip of AnimationClip

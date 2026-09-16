@@ -23,18 +23,35 @@ module Collision =
     /// path `Bounds → Bounds + Velocity` and cannot tunnel it clean through a thin target in one step.
     /// `Tag` is generic (like `SpatialGrid<'T>`) so you never define a look-alike record just to
     /// carry an id — avoiding the consumer-vs-consumer `.Pos`/`.Id` inference footgun.
-    type Body<'T> = { Bounds: Rect; Velocity: Point; Tag: 'T }
+    type Body<'T> =
+        {
+            Bounds: Rect
+            Velocity: Point
+            Tag: 'T
+        }
 
     /// A detected overlap between two bodies and how to separate them (pure detection result).
     /// `A` is always the lower-index body of the pair, `B` the higher — a stable, total order.
     /// `Penetration` is the minimum-translation vector that pushes `A` off `B` (push `B` off `A`
     /// with its negation). `Depth` is the overlap along the MTV axis (>= 0).
-    type Contact<'T> = { A: Body<'T>; B: Body<'T>; Penetration: Point; Depth: float }
+    type Contact<'T> =
+        {
+            A: Body<'T>
+            B: Body<'T>
+            Penetration: Point
+            Depth: float
+        }
 
     /// Post-response state for a contact. `Applied` is the displacement given to `A` (for the
     /// consumer's own velocity/response bookkeeping). `Restitution` is a normalized bounce factor
     /// (0.0..1.0) the consumer can fold into its velocity step — the helper itself only separates.
-    type Resolution<'T> = { A: Body<'T>; B: Body<'T>; Applied: Point; Restitution: float }
+    type Resolution<'T> =
+        {
+            A: Body<'T>
+            B: Body<'T>
+            Applied: Point
+            Restitution: float
+        }
 
     /// How overlapping bodies separate. THIS is the policy to edit per game.
     type ResponseRule =
@@ -51,7 +68,8 @@ module Collision =
         /// bounces can never tie-break through floating-point equality.
         | Bounce of restitutionPercent: int
 
-    let private finiteDim (v: float) = if System.Double.IsFinite v then v else 0.0
+    let private finiteDim (v: float) =
+        if System.Double.IsFinite v then v else 0.0
 
     /// Narrow-phase: the minimum-translation contact between two bodies, or `None` when they do not
     /// overlap on positive area. Edge-/corner-touching is NOT a contact (strict edges — this defers
@@ -63,6 +81,7 @@ module Collision =
             let overlapX =
                 (min (a.Bounds.X + a.Bounds.Width) (b.Bounds.X + b.Bounds.Width))
                 - (max a.Bounds.X b.Bounds.X)
+
             let overlapY =
                 (min (a.Bounds.Y + a.Bounds.Height) (b.Bounds.Y + b.Bounds.Height))
                 - (max a.Bounds.Y b.Bounds.Y)
@@ -74,17 +93,24 @@ module Collision =
                 None
             else
 
-            let ca = Geometry.center a.Bounds
-            let cb = Geometry.center b.Bounds
-            // Separate along the axis of LEAST penetration; ties resolve to X (deterministic).
-            let penetration, depth =
-                if overlapX <= overlapY then
-                    let sign = if ca.X <= cb.X then -1.0 else 1.0   // push A off B
-                    { X = sign * overlapX; Y = 0.0 }, overlapX
-                else
-                    let sign = if ca.Y <= cb.Y then -1.0 else 1.0
-                    { X = 0.0; Y = sign * overlapY }, overlapY
-            Some { A = a; B = b; Penetration = penetration; Depth = depth }
+                let ca = Geometry.center a.Bounds
+                let cb = Geometry.center b.Bounds
+                // Separate along the axis of LEAST penetration; ties resolve to X (deterministic).
+                let penetration, depth =
+                    if overlapX <= overlapY then
+                        let sign = if ca.X <= cb.X then -1.0 else 1.0 // push A off B
+                        { X = sign * overlapX; Y = 0.0 }, overlapX
+                    else
+                        let sign = if ca.Y <= cb.Y then -1.0 else 1.0
+                        { X = 0.0; Y = sign * overlapY }, overlapY
+
+                Some
+                    {
+                        A = a
+                        B = b
+                        Penetration = penetration
+                        Depth = depth
+                    }
 
     /// The moving narrow-phase: a `Contact` when `a` and `b` overlap at the start of the step OR when
     /// `a`'s swept path — `Bounds → Bounds + Velocity`, taken relative to `b`'s own motion — crosses `b`
@@ -100,7 +126,12 @@ module Collision =
         | None ->
             // Collapse `b`'s motion into `a`'s frame so a single swept test suffices; for the common
             // projectile-vs-wall case `b` is at rest and this is just `a`'s own displacement.
-            let d = { X = a.Velocity.X - b.Velocity.X; Y = a.Velocity.Y - b.Velocity.Y }
+            let d =
+                {
+                    X = a.Velocity.X - b.Velocity.X
+                    Y = a.Velocity.Y - b.Velocity.Y
+                }
+
             if not (Geometry.sweptIntersects a.Bounds d b.Bounds) then
                 None
             else
@@ -109,20 +140,32 @@ module Collision =
                 // segment meets the expanded box. `T ∈ [0, 1]` is the fraction of the step at first touch.
                 let halfW = finiteDim a.Bounds.Width / 2.0
                 let halfH = finiteDim a.Bounds.Height / 2.0
+
                 let expanded =
-                    { X = b.Bounds.X - halfW
-                      Y = b.Bounds.Y - halfH
-                      Width = b.Bounds.Width + finiteDim a.Bounds.Width
-                      Height = b.Bounds.Height + finiteDim a.Bounds.Height }
+                    {
+                        X = b.Bounds.X - halfW
+                        Y = b.Bounds.Y - halfH
+                        Width = b.Bounds.Width + finiteDim a.Bounds.Width
+                        Height = b.Bounds.Height + finiteDim a.Bounds.Height
+                    }
+
                 let c0 = Geometry.center a.Bounds
                 let c1 = { X = c0.X + d.X; Y = c0.Y + d.Y }
+
                 match Geometry.segmentAabbHit c0 c1 expanded with
                 | Some hit ->
                     // Advance `a` from its start to first contact: the minimum translation that leaves it
                     // touching `b`'s near face instead of tunnelled past it.
                     let penetration = { X = d.X * hit.T; Y = d.Y * hit.T }
                     let depth = sqrt (penetration.X * penetration.X + penetration.Y * penetration.Y)
-                    Some { A = a; B = b; Penetration = penetration; Depth = depth }
+
+                    Some
+                        {
+                            A = a
+                            B = b
+                            Penetration = penetration
+                            Depth = depth
+                        }
                 | None ->
                     // `sweptIntersects` was true but the centre segment never crosses INTO the expanded
                     // box from outside — only a zero-area edge/corner graze at an endpoint reaches here,
@@ -140,6 +183,7 @@ module Collision =
         | [ _ ] -> []
         | _ ->
             let arr = List.toArray bodies
+
             let maxHalf =
                 (0.0, arr)
                 ||> Array.fold (fun acc b -> max acc (max (finiteDim b.Bounds.Width) (finiteDim b.Bounds.Height)))
@@ -153,38 +197,79 @@ module Collision =
                 (0.0, arr)
                 ||> Array.fold (fun acc b ->
                     max acc (max (abs (finiteDim b.Velocity.X)) (abs (finiteDim b.Velocity.Y))))
+
             let pad = maxHalf + 2.0 * maxDisp
+
             let grid =
                 SpatialGrid.build cellSize [ for i in 0 .. arr.Length - 1 -> Geometry.center arr.[i].Bounds, i ]
-            [ for i in 0 .. arr.Length - 1 do
-                  let bi = arr.[i].Bounds
-                  let region =
-                      { X = bi.X - pad
-                        Y = bi.Y - pad
-                        Width = bi.Width + 2.0 * pad
-                        Height = bi.Height + 2.0 * pad }
-                  for j in SpatialGrid.query region grid do
-                      if j > i then
-                          match sweptContact arr.[i] arr.[j] with
-                          | Some c -> yield c
-                          | None -> () ]
+
+            [
+                for i in 0 .. arr.Length - 1 do
+                    let bi = arr.[i].Bounds
+
+                    let region =
+                        {
+                            X = bi.X - pad
+                            Y = bi.Y - pad
+                            Width = bi.Width + 2.0 * pad
+                            Height = bi.Height + 2.0 * pad
+                        }
+
+                    for j in SpatialGrid.query region grid do
+                        if j > i then
+                            match sweptContact arr.[i] arr.[j] with
+                            | Some c -> yield c
+                            | None -> ()
+            ]
 
     /// Apply the response rule to a contact, returning the separated bodies. Pure and deterministic.
     /// EDIT THIS to change how your game resolves overlaps.
     let resolve (rule: ResponseRule) (c: Contact<'T>) : Resolution<'T> =
         let move (b: Body<'T>) (d: Point) =
-            { b with Bounds = { b.Bounds with X = b.Bounds.X + d.X; Y = b.Bounds.Y + d.Y } }
+            { b with
+                Bounds =
+                    { b.Bounds with
+                        X = b.Bounds.X + d.X
+                        Y = b.Bounds.Y + d.Y
+                    }
+            }
+
         let p = c.Penetration
         let half = { X = p.X / 2.0; Y = p.Y / 2.0 }
         let negate (v: Point) = { X = -v.X; Y = -v.Y }
+
         match rule with
         | SeparateEqually
-        | Slide -> { A = move c.A half; B = move c.B (negate half); Applied = half; Restitution = 0.0 }
+        | Slide ->
+            {
+                A = move c.A half
+                B = move c.B (negate half)
+                Applied = half
+                Restitution = 0.0
+            }
         | Bounce pct ->
             let restitution = float (max 0 (min 100 pct)) / 100.0
-            { A = move c.A half; B = move c.B (negate half); Applied = half; Restitution = restitution }
-        | PushFirst -> { A = move c.A p; B = c.B; Applied = p; Restitution = 0.0 }
-        | PushSecond -> { A = c.A; B = move c.B (negate p); Applied = { X = 0.0; Y = 0.0 }; Restitution = 0.0 }
+
+            {
+                A = move c.A half
+                B = move c.B (negate half)
+                Applied = half
+                Restitution = restitution
+            }
+        | PushFirst ->
+            {
+                A = move c.A p
+                B = c.B
+                Applied = p
+                Restitution = 0.0
+            }
+        | PushSecond ->
+            {
+                A = c.A
+                B = move c.B (negate p)
+                Applied = { X = 0.0; Y = 0.0 }
+                Restitution = 0.0
+            }
 
     /// One per-frame pass: detect every collision over each body's swept step (so a fast mover cannot
     /// tunnel a thin target) and resolve it under `rule`, in deterministic pair order. This is the
@@ -208,10 +293,14 @@ module Collision =
     let clampCircleInside (bounds: Rect) (c: Circle) : Circle =
         let r = finiteDim c.Radius
         let clamp lo hi v = min hi (max lo (finiteDim v))
+
         { c with
             Center =
-                { X = clamp (bounds.X + r) (bounds.X + finiteDim bounds.Width - r) c.Center.X
-                  Y = clamp (bounds.Y + r) (bounds.Y + finiteDim bounds.Height - r) c.Center.Y } }
+                {
+                    X = clamp (bounds.X + r) (bounds.X + finiteDim bounds.Width - r) c.Center.X
+                    Y = clamp (bounds.Y + r) (bounds.Y + finiteDim bounds.Height - r) c.Center.Y
+                }
+        }
 
     /// Move circle `c` by `displacement` (velocity × dt) against STATIC `walls`, resolving the X move
     /// and the Y move INDEPENDENTLY so a wall that stops one axis does not cancel motion on the other —
@@ -242,18 +331,42 @@ module Collision =
                 match Geometry.circleAabbContact cur wall with
                 | Some contact ->
                     let sep =
-                        axisOf { X = -contact.Normal.X * contact.Depth
-                                 Y = -contact.Normal.Y * contact.Depth }
-                    { cur with Center = { X = cur.Center.X + sep.X; Y = cur.Center.Y + sep.Y } }
+                        axisOf
+                            {
+                                X = -contact.Normal.X * contact.Depth
+                                Y = -contact.Normal.Y * contact.Depth
+                            }
+
+                    { cur with
+                        Center =
+                            {
+                                X = cur.Center.X + sep.X
+                                Y = cur.Center.Y + sep.Y
+                            }
+                    }
                 | None -> cur)
+
         let onlyX (p: Point) = { X = p.X; Y = 0.0 }
         let onlyY (p: Point) = { X = 0.0; Y = p.Y }
+
         let afterX =
-            { c with Center = { c.Center with X = c.Center.X + finiteDim displacement.X } }
+            { c with
+                Center =
+                    { c.Center with
+                        X = c.Center.X + finiteDim displacement.X
+                    }
+            }
             |> resolveAxis onlyX
+
         let afterY =
-            { afterX with Center = { afterX.Center with Y = afterX.Center.Y + finiteDim displacement.Y } }
+            { afterX with
+                Center =
+                    { afterX.Center with
+                        Y = afterX.Center.Y + finiteDim displacement.Y
+                    }
+            }
             |> resolveAxis onlyY
+
         match bounds with
         | Some b -> clampCircleInside b afterY
         | None -> afterY

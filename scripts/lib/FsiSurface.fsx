@@ -45,21 +45,23 @@ open System.Text.RegularExpressions
 /// mirror's 3,286 doc lines are mirror-only teaching prose the pin does not carry, and they attach to
 /// members. Splicing them in means replacing a member's lead, not patching its text by offset.
 type Node =
-    { Kind: string // "type" | "val" | "module" | "and"
-      Name: string // the dotted path WITHIN the file: "Paint", "Paint.fill"
-      Lead: string list
-      Decl: string list
-      Children: Node list
-      /// Was this declaration separated from the one above it by a blank line in the source?
-      ///
-      /// Emitting one blank between every member looks like harmless normalisation and is not: `src/`
-      /// writes runs of related `val`s ADJACENT, and `ApiSurfaceMirrorTests`' in-repo exact-copy rule
-      /// compares two mirrors byte-for-byte against their `src/` original. A generator that re-spaces
-      /// them fails that rule while changing nothing anyone can see. The pin's own spacing is the
-      /// answer, so it is carried rather than invented.
-      Spaced: bool
-      /// Every line the node owns, lead included, exactly as the pin wrote it.
-      Text: string list }
+    {
+        Kind: string // "type" | "val" | "module" | "and"
+        Name: string // the dotted path WITHIN the file: "Paint", "Paint.fill"
+        Lead: string list
+        Decl: string list
+        Children: Node list
+        /// Was this declaration separated from the one above it by a blank line in the source?
+        ///
+        /// Emitting one blank between every member looks like harmless normalisation and is not: `src/`
+        /// writes runs of related `val`s ADJACENT, and `ApiSurfaceMirrorTests`' in-repo exact-copy rule
+        /// compares two mirrors byte-for-byte against their `src/` original. A generator that re-spaces
+        /// them fails that rule while changing nothing anyone can see. The pin's own spacing is the
+        /// answer, so it is carried rather than invented.
+        Spaced: bool
+        /// Every line the node owns, lead included, exactly as the pin wrote it.
+        Text: string list
+    }
 
 let private declRx =
     Regex(@"^(?<ind>\s*)(?<kw>type|module|val|and)\s+(?<rest>.*)$", RegexOptions.Compiled)
@@ -86,7 +88,9 @@ let private nameOf (rest: string) =
     // remains verbatim in `Node.Decl`; this normalization is only for the lookup key.
     let rest = Regex.Replace(rest, @"^\s*(?:\[<[^\]]*>\]\s*)+", "")
     let rest = Regex.Replace(rest, @"^\s*(internal|private|public)\s+", "")
-    let m = Regex.Match(rest, @"^\(?\s*(?<n>[A-Za-z_][A-Za-z0-9_']*|\([^)]*\))(?<g><[^>]*>)?")
+
+    let m =
+        Regex.Match(rest, @"^\(?\s*(?<n>[A-Za-z_][A-Za-z0-9_']*|\([^)]*\))(?<g><[^>]*>)?")
 
     if not m.Success then
         ""
@@ -158,8 +162,7 @@ let parseFsi (lines: string list) : Node list * string list =
                     // members inside one.
                     let mutable j = idx + 1
 
-                    while j < stop
-                          && (arr.[j].Trim() = "" || indentOf arr.[j] > minIndent) do
+                    while j < stop && (arr.[j].Trim() = "" || indentOf arr.[j] > minIndent) do
                         j <- j + 1
 
                     // Trailing blanks belong to the SEPARATOR, not to the block.
@@ -202,8 +205,11 @@ let parseFsi (lines: string list) : Node list * string list =
                     let children, _ =
                         if kw = "module" && declEnd < e then
                             let childIndent =
-                                [ for k in declEnd .. e - 1 do
-                                    if arr.[k].Trim() <> "" then yield indentOf arr.[k] ]
+                                [
+                                    for k in declEnd .. e - 1 do
+                                        if arr.[k].Trim() <> "" then
+                                            yield indentOf arr.[k]
+                                ]
                                 |> function
                                     | [] -> minIndent + 4
                                     | xs -> List.min xs
@@ -216,13 +222,15 @@ let parseFsi (lines: string list) : Node list * string list =
                     let ownLead = lead |> List.skipWhile (fun l -> l.Trim() = "")
 
                     nodes.Add
-                        { Kind = kw
-                          Name = path
-                          Lead = ownLead
-                          Decl = [ for k in idx .. declEnd - 1 -> arr.[k] ]
-                          Children = children
-                          Spaced = lead.Length > ownLead.Length
-                          Text = ownLead @ [ for k in idx .. e - 1 -> arr.[k] ] }
+                        {
+                            Kind = kw
+                            Name = path
+                            Lead = ownLead
+                            Decl = [ for k in idx .. declEnd - 1 -> arr.[k] ]
+                            Children = children
+                            Spaced = lead.Length > ownLead.Length
+                            Text = ownLead @ [ for k in idx .. e - 1 -> arr.[k] ]
+                        }
 
                     lead <- []
                     // `e`, not `j`: `j` is past the block's TRAILING BLANKS, and those blanks are the
@@ -232,9 +240,11 @@ let parseFsi (lines: string list) : Node list * string list =
                     // the file solid.
                     idx <- e
                 else
-                    if s <> ""
-                       && not (s.StartsWith("namespace", StringComparison.Ordinal))
-                       && not (s.StartsWith("open ", StringComparison.Ordinal)) then
+                    if
+                        s <> ""
+                        && not (s.StartsWith("namespace", StringComparison.Ordinal))
+                        && not (s.StartsWith("open ", StringComparison.Ordinal))
+                    then
                         unparsed.Add raw
 
                     lead <- []
@@ -248,8 +258,7 @@ let parseFsi (lines: string list) : Node list * string list =
 
 /// Flatten to (path, node) for every declaration at any depth.
 let rec flatten (nodes: Node list) : (string * Node) list =
-    nodes
-    |> List.collect (fun n -> (n.Name, n) :: flatten n.Children)
+    nodes |> List.collect (fun n -> (n.Name, n) :: flatten n.Children)
 
 /// Re-indent a verbatim block from the indent it was written at to the one it is emitted at.
 let reindent (delta: int) (lines: string list) =
@@ -258,8 +267,10 @@ let reindent (delta: int) (lines: string list) =
     else
         lines
         |> List.map (fun l ->
-            if l.Trim() = "" then ""
-            elif delta > 0 then String(' ', delta) + l
+            if l.Trim() = "" then
+                ""
+            elif delta > 0 then
+                String(' ', delta) + l
             else
                 let strip = min -delta (l.Length - l.TrimStart().Length)
                 l.Substring strip)

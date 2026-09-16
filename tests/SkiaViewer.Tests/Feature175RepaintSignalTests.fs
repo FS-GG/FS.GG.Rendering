@@ -17,18 +17,34 @@ open FS.GG.UI.SkiaViewer
 [<Tests>]
 let tests =
     testSequenced
-    <| testList "Feature175RepaintSignal" [
-        test "no product message → the scene is re-derived from host.View (renders THIS input)" {
-            let derivations = ref 0
-            let result = Viewer.runtimeStateRepaint false "stale" (fun () -> incr derivations; "fresh")
-            Expect.equal !derivations 1 "a no-message input re-derives the scene exactly once (not left stale)"
-            Expect.equal result "fresh" "the re-derived scene is presented"
-        }
+    <| testList
+        "Feature175RepaintSignal"
+        [
+            test "no product message → the scene is re-derived from host.View (renders THIS input)" {
+                let derivations = ref 0
 
-        test "product messages present → no extra re-derive (dispatch already refreshed)" {
-            let derivations = ref 0
-            let result = Viewer.runtimeStateRepaint true "already-derived" (fun () -> incr derivations; "fresh")
-            Expect.equal !derivations 0 "when messages ran, dispatchHostMsg already re-derived — no redundant View call"
-            Expect.equal result "already-derived" "the already-derived scene is kept"
-        }
-    ]
+                let result =
+                    Viewer.runtimeStateRepaint false "stale" (fun () ->
+                        incr derivations
+                        "fresh")
+
+                Expect.equal !derivations 1 "a no-message input re-derives the scene exactly once (not left stale)"
+                Expect.equal result "fresh" "the re-derived scene is presented"
+            }
+
+            test "product messages present → no extra re-derive (dispatch already refreshed)" {
+                let derivations = ref 0
+
+                let result =
+                    Viewer.runtimeStateRepaint true "already-derived" (fun () ->
+                        incr derivations
+                        "fresh")
+
+                Expect.equal
+                    !derivations
+                    0
+                    "when messages ran, dispatchHostMsg already re-derived — no redundant View call"
+
+                Expect.equal result "already-derived" "the already-derived scene is kept"
+            }
+        ]

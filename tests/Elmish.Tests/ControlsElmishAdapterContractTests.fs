@@ -20,81 +20,109 @@ let readIfExists path =
 
 [<Tests>]
 let controlsElmishAdapterContractTests =
-    testList "Controls Elmish adapter contract" [
-        test "dedicated Controls.Elmish package owns command and subscription integration" {
-            Expect.isTrue (File.Exists adapterProject) "src/Controls.Elmish/Controls.Elmish.fsproj exists"
-            Expect.isTrue (File.Exists adapterContract) "src/Controls.Elmish/ControlsElmish.fsi exists"
+    testList
+        "Controls Elmish adapter contract"
+        [
+            test "dedicated Controls.Elmish package owns command and subscription integration" {
+                Expect.isTrue (File.Exists adapterProject) "src/Controls.Elmish/Controls.Elmish.fsproj exists"
+                Expect.isTrue (File.Exists adapterContract) "src/Controls.Elmish/ControlsElmish.fsi exists"
 
-            let project = readIfExists adapterProject
-            Expect.stringContains project "FS.GG.UI.Controls.Elmish" "adapter package id is Controls-specific"
-            Expect.stringContains project "Fable.Elmish" "adapter owns Fable.Elmish dependency"
-            Expect.stringContains project @"..\Controls\Controls.fsproj" "adapter references Controls"
-            Expect.stringContains project @"..\KeyboardInput\KeyboardInput.fsproj" "adapter references KeyboardInput"
-        }
+                let project = readIfExists adapterProject
+                Expect.stringContains project "FS.GG.UI.Controls.Elmish" "adapter package id is Controls-specific"
+                Expect.stringContains project "Fable.Elmish" "adapter owns Fable.Elmish dependency"
+                Expect.stringContains project @"..\Controls\Controls.fsproj" "adapter references Controls"
 
-        test "adapter contract interprets keyboard and control effects without moving Cmd into base Controls" {
-            let contract = readIfExists adapterContract
-            let controlsContracts =
-                [ Path.Combine(repositoryRoot, "src", "Controls", "Types.fsi")
-                  Path.Combine(repositoryRoot, "src", "Controls", "Control.fsi")
-                  Path.Combine(repositoryRoot, "src", "Controls", "TextInput.fsi") ]
-                |> List.map readIfExists
-                |> String.concat Environment.NewLine
+                Expect.stringContains
+                    project
+                    @"..\KeyboardInput\KeyboardInput.fsproj"
+                    "adapter references KeyboardInput"
+            }
 
-            [ "interpretKeyboardEffect"
-              "interpretControlEffect"
-              "subscriptions"
-              "program"
-              "AdapterDiagnostic"
-              "ControlRuntimeMsg"
-              "KeyboardMsg" ]
-            |> List.iter (fun required ->
-                Expect.stringContains contract required $"ControlsElmish contract contains {required}")
+            test "adapter contract interprets keyboard and control effects without moving Cmd into base Controls" {
+                let contract = readIfExists adapterContract
 
-            Expect.isFalse (controlsContracts.Contains("Cmd<", StringComparison.Ordinal)) "base Controls contracts do not expose Elmish Cmd"
-        }
+                let controlsContracts =
+                    [
+                        Path.Combine(repositoryRoot, "src", "Controls", "Types.fsi")
+                        Path.Combine(repositoryRoot, "src", "Controls", "Control.fsi")
+                        Path.Combine(repositoryRoot, "src", "Controls", "TextInput.fsi")
+                    ]
+                    |> List.map readIfExists
+                    |> String.concat Environment.NewLine
 
-        test "adapter reports stale control targets as diagnostics" {
-            let command =
-                ControlsElmish.interpretControlEffect id (StaleTarget "missing-button")
+                [
+                    "interpretKeyboardEffect"
+                    "interpretControlEffect"
+                    "subscriptions"
+                    "program"
+                    "AdapterDiagnostic"
+                    "ControlRuntimeMsg"
+                    "KeyboardMsg"
+                ]
+                |> List.iter (fun required ->
+                    Expect.stringContains contract required $"ControlsElmish contract contains {required}")
 
-            Expect.exists command (function ReportAdapterDiagnostic diagnostic when diagnostic.Code.Contains "StaleTarget" && diagnostic.Message.Contains "missing-button" -> true | _ -> false) "stale target maps to adapter diagnostic"
-        }
+                Expect.isFalse
+                    (controlsContracts.Contains("Cmd<", StringComparison.Ordinal))
+                    "base Controls contracts do not expose Elmish Cmd"
+            }
 
-        test "068 additive surface present; existing signatures unchanged (US3, FR-002/FR-009/SC-004)" {
-            let contract = readIfExists adapterContract
+            test "adapter reports stale control targets as diagnostics" {
+                let command =
+                    ControlsElmish.interpretControlEffect id (StaleTarget "missing-button")
 
-            // Existing contract retained, byte-for-byte (the View field stays Control<'msg>).
-            [ "View: 'model -> Control<'msg>"
-              "val program:"
-              "val interpretKeyboardEffect:"
-              "val interpretControlEffect:"
-              "val subscriptions:"
-              "val diagnostic:"
-              "AdapterCommand<'msg> = AdapterEffect<'msg> list" ]
-            |> List.iter (fun required ->
-                Expect.stringContains contract required $"existing signature retained: {required}")
+                Expect.exists
+                    command
+                    (function
+                    | ReportAdapterDiagnostic diagnostic when
+                        diagnostic.Code.Contains "StaleTarget"
+                        && diagnostic.Message.Contains "missing-button"
+                        ->
+                        true
+                    | _ -> false)
+                    "stale target maps to adapter diagnostic"
+            }
 
-            // New additive 068 surface declared in the .fsi.
-            [ "module AdapterCmd"
-              "val widgetView:"
-              "val programOfWidget:"
-              "val toCmd:"
-              "val productMessages:" ]
-            |> List.iter (fun added ->
-                Expect.stringContains contract added $"additive 068 surface declared: {added}")
-        }
+            test "068 additive surface present; existing signatures unchanged (US3, FR-002/FR-009/SC-004)" {
+                let contract = readIfExists adapterContract
 
-        test "base Controls package declares no Fable.Elmish reference — dependency split preserved (US3, FR-006/SC-005)" {
-            let controlsProject =
-                Path.Combine(repositoryRoot, "src", "Controls", "Controls.fsproj")
-            let text = readIfExists controlsProject
+                // Existing contract retained, byte-for-byte (the View field stays Control<'msg>).
+                [
+                    "View: 'model -> Control<'msg>"
+                    "val program:"
+                    "val interpretKeyboardEffect:"
+                    "val interpretControlEffect:"
+                    "val subscriptions:"
+                    "val diagnostic:"
+                    "AdapterCommand<'msg> = AdapterEffect<'msg> list"
+                ]
+                |> List.iter (fun required ->
+                    Expect.stringContains contract required $"existing signature retained: {required}")
 
-            Expect.isTrue (File.Exists controlsProject) "src/Controls/Controls.fsproj exists"
-            Expect.isFalse (text.Contains "Fable.Elmish") "base Controls.fsproj does not reference Fable.Elmish"
+                // New additive 068 surface declared in the .fsi.
+                [
+                    "module AdapterCmd"
+                    "val widgetView:"
+                    "val programOfWidget:"
+                    "val toCmd:"
+                    "val productMessages:"
+                ]
+                |> List.iter (fun added ->
+                    Expect.stringContains contract added $"additive 068 surface declared: {added}")
+            }
 
-            // The adapter package, by contrast, owns the Fable.Elmish dependency that supplies Cmd<'msg>.
-            let adapter = readIfExists adapterProject
-            Expect.stringContains adapter "Fable.Elmish" "adapter package owns the Fable.Elmish dependency"
-        }
-    ]
+            test
+                "base Controls package declares no Fable.Elmish reference — dependency split preserved (US3, FR-006/SC-005)" {
+                let controlsProject =
+                    Path.Combine(repositoryRoot, "src", "Controls", "Controls.fsproj")
+
+                let text = readIfExists controlsProject
+
+                Expect.isTrue (File.Exists controlsProject) "src/Controls/Controls.fsproj exists"
+                Expect.isFalse (text.Contains "Fable.Elmish") "base Controls.fsproj does not reference Fable.Elmish"
+
+                // The adapter package, by contrast, owns the Fable.Elmish dependency that supplies Cmd<'msg>.
+                let adapter = readIfExists adapterProject
+                Expect.stringContains adapter "Fable.Elmish" "adapter package owns the Fable.Elmish dependency"
+            }
+        ]

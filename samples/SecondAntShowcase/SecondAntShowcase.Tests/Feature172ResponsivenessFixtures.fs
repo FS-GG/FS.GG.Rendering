@@ -8,7 +8,8 @@ let tempDir () =
     Path.Combine(Path.GetTempPath(), "antshowcase-feature172-" + Guid.NewGuid().ToString("N"))
 
 let withForcedSubstitute action =
-    let previous = Environment.GetEnvironmentVariable "FS_GG_RESPONSIVENESS_FORCE_SUBSTITUTE"
+    let previous =
+        Environment.GetEnvironmentVariable "FS_GG_RESPONSIVENESS_FORCE_SUBSTITUTE"
 
     try
         Environment.SetEnvironmentVariable("FS_GG_RESPONSIVENESS_FORCE_SUBSTITUTE", "1")
@@ -25,14 +26,9 @@ let recordsFile outDir =
     |> Array.exactlyOne
 
 let summaryJson outDir =
-    summaryFile outDir
-    |> File.ReadAllText
-    |> JsonDocument.Parse
+    summaryFile outDir |> File.ReadAllText |> JsonDocument.Parse
 
 let records outDir =
-    recordsFile outDir
-    |> File.ReadAllLines
-    |> Array.toList
+    recordsFile outDir |> File.ReadAllLines |> Array.toList
 
-let getString (name: string) (element: JsonElement) =
-    element.GetProperty(name).GetString()
+let getString (name: string) (element: JsonElement) = element.GetProperty(name).GetString()

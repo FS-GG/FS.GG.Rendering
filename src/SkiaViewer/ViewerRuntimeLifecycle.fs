@@ -8,12 +8,14 @@ open Silk.NET.Windowing
 /// startup and live-transition decisions can be characterized without creating a native window.
 module internal ViewerRuntimeLifecycle =
     let private windowBehaviorDiagnostic level message =
-        { Level = level
-          Category = ViewerDiagnosticCategory.Window
-          Message = message
-          FrameIndex = None
-          Stage = Some ViewerRunBlockedStage.Window
-          Elapsed = None }
+        {
+            Level = level
+            Category = ViewerDiagnosticCategory.Window
+            Message = message
+            FrameIndex = None
+            Stage = Some ViewerRunBlockedStage.Window
+            Elapsed = None
+        }
 
     let applyWindowBehaviorToOptions
         (resolveWorkArea: unit -> (Vector2D<int> * Vector2D<int>) option)
@@ -66,7 +68,8 @@ module internal ViewerRuntimeLifecycle =
             unsupported.Add(
                 windowBehaviorDiagnostic
                     ViewerDiagnosticLevel.Error
-                    "Runtime ApplyWindowOptions rejected minimized mode: a persistent visible host cannot apply it as a live display mode.")
+                    "Runtime ApplyWindowOptions rejected minimized mode: a persistent visible host cannot apply it as a live display mode."
+            )
         | _ -> ()
 
         match behavior.BackendPreference with
@@ -75,7 +78,8 @@ module internal ViewerRuntimeLifecycle =
             unsupported.Add(
                 windowBehaviorDiagnostic
                     ViewerDiagnosticLevel.Error
-                    $"Runtime ApplyWindowOptions rejected backend '{behavior.BackendPreference.Value}': an initialized OpenGL context cannot switch backend in place.")
+                    $"Runtime ApplyWindowOptions rejected backend '{behavior.BackendPreference.Value}': an initialized OpenGL context cannot switch backend in place."
+            )
         | _ -> ()
 
         match behavior.StartupPosition with
@@ -83,7 +87,8 @@ module internal ViewerRuntimeLifecycle =
             unsupported.Add(
                 windowBehaviorDiagnostic
                     ViewerDiagnosticLevel.Error
-                    $"Runtime ApplyWindowOptions rejected negative window coordinates {x},{y}.")
+                    $"Runtime ApplyWindowOptions rejected negative window coordinates {x},{y}."
+            )
         | _ -> ()
 
         match behavior.MaximizePolicy with
@@ -91,7 +96,8 @@ module internal ViewerRuntimeLifecycle =
             unsupported.Add(
                 windowBehaviorDiagnostic
                     ViewerDiagnosticLevel.Error
-                    "Runtime ApplyWindowOptions rejected NotMaximizable: the active Silk.NET host exposes no live maximize-capability mutation.")
+                    "Runtime ApplyWindowOptions rejected NotMaximizable: the active Silk.NET host exposes no live maximize-capability mutation."
+            )
         | Maximizable -> ()
 
         if unsupported.Count > 0 then
@@ -113,7 +119,10 @@ module internal ViewerRuntimeLifecycle =
                 | _, FixedSize -> WindowBorder.Fixed
 
             let workArea =
-                if mode = Host.RuntimeWindowMode.WindowedFullscreen then resolveWorkArea () else None
+                if mode = Host.RuntimeWindowMode.WindowedFullscreen then
+                    resolveWorkArea ()
+                else
+                    None
 
             let position =
                 match behavior.StartupPosition, workArea with
@@ -128,13 +137,16 @@ module internal ViewerRuntimeLifecycle =
                 diagnostics.Add(
                     windowBehaviorDiagnostic
                         ViewerDiagnosticLevel.Warning
-                        "Runtime borderless mode could not resolve a monitor work area; chrome is hidden, but work-area geometry is unchanged.")
+                        "Runtime borderless mode could not resolve a monitor work area; chrome is hidden, but work-area geometry is unchanged."
+                )
 
             let plan: Host.RuntimeWindowBehavior =
-                { Mode = mode
-                  Border = border
-                  Position = position
-                  Size = size
-                  Token = token }
+                {
+                    Mode = mode
+                    Border = border
+                    Position = position
+                    Size = size
+                    Token = token
+                }
 
             Some plan, List.ofSeq diagnostics

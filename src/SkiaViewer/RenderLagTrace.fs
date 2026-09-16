@@ -7,7 +7,11 @@ open System.Globalization
 module internal RenderLagTrace =
     /// S3 (Feature 175): one structured live-trace event — the event name plus its key/value fields
     /// (e.g. focus/hover/scroll resolution, binding dispatch, model-update/view timing).
-    type TraceEvent = { Event: string; Fields: (string * string) list }
+    type TraceEvent =
+        {
+            Event: string
+            Fields: (string * string) list
+        }
 
     let private stderrEnabled =
         String.Equals(Environment.GetEnvironmentVariable("FS_GG_RENDER_LAG_TRACE"), "1", StringComparison.Ordinal)
@@ -38,11 +42,14 @@ module internal RenderLagTrace =
 
         if stderrEnabled then
             let fieldsText =
-                fields
-                |> List.map (fun (name, value) -> $"{name}={value}")
-                |> String.concat " "
+                fields |> List.map (fun (name, value) -> $"{name}={value}") |> String.concat " "
 
-            let suffix = if String.IsNullOrWhiteSpace fieldsText then "" else " " + fieldsText
+            let suffix =
+                if String.IsNullOrWhiteSpace fieldsText then
+                    ""
+                else
+                    " " + fieldsText
+
             let ts = DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture)
             let ticks = Stopwatch.GetTimestamp()
             Console.Error.WriteLine($"FS_GG_RENDER_LAG_TRACE ts={ts} ticks={ticks} event={eventName}{suffix}")

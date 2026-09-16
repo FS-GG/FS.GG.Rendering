@@ -56,6 +56,7 @@ let private selfProvisionReport () =
         psi.RedirectStandardOutput <- true
         psi.RedirectStandardError <- true
         [ "fsi"; "scripts/validate-bom-consumer.fsx" ] |> List.iter psi.ArgumentList.Add
+
         match Process.Start psi with
         | null -> ()
         | started ->
@@ -72,62 +73,78 @@ let private readReport () =
         (sprintf
             "BOM consumer validation report missing at %s — regenerate via FS_GG_RUN_BOM_CONSUMER_SMOKE=1 dotnet fsi scripts/validate-bom-consumer.fsx"
             reportPath)
+
     File.ReadAllText reportPath
 
 [<Tests>]
 let feature207BomConsumerTests =
-    testList "Feature207 BOM consumer validation" [
+    testList
+        "Feature207 BOM consumer validation"
+        [
 
-        // Structural tokens present in BOTH provenance modes (env-free verdict core re-derives them).
-        test "report records the BOM identity, parity, and dependencies-only shape" {
-            let report = readReport ()
-            [ "feature: 207-ui-bom-metapackage"
-              "bom-package-id: FS.GG.UI"
-              "members-expected: 16"
-              "parity: pass"
-              "single-version-token: true"
-              "exact-bracket-form: true"
-              "ships-no-lib: true"
-              "single-reference: true"
-              "result: pass" ]
-            |> List.iter (fun token -> Expect.stringContains report token (sprintf "report includes %s" token))
-        }
+            // Structural tokens present in BOTH provenance modes (env-free verdict core re-derives them).
+            test "report records the BOM identity, parity, and dependencies-only shape" {
+                let report = readReport ()
 
-        // The corrected-mechanism disclosure (constitution V: disclose; no synthetic green). The report
-        // must carry the observed codes + consumer-policy condition, not R1's unconditional NU1107 claim.
-        test "report discloses the observed loud-deviation mechanism (NU1605/NU1608 + warnings-as-errors)" {
-            let report = readReport ()
-            [ "NU1605"; "NU1608"; "WarningsAsErrors"; "mechanism-note:" ]
-            |> List.iter (fun token -> Expect.stringContains report token (sprintf "mechanism disclosure includes %s" token))
-        }
+                [
+                    "feature: 207-ui-bom-metapackage"
+                    "bom-package-id: FS.GG.UI"
+                    "members-expected: 16"
+                    "parity: pass"
+                    "single-version-token: true"
+                    "exact-bracket-form: true"
+                    "ships-no-lib: true"
+                    "single-reference: true"
+                    "result: pass"
+                ]
+                |> List.iter (fun token -> Expect.stringContains report token (sprintf "report includes %s" token))
+            }
 
-        // Provenance is disclosed (live committed evidence OR env-free verdict-core self-provision).
-        test "report discloses provenance" {
-            let report = readReport ()
-            Expect.isTrue
-                (report.Contains "provenance: live" || report.Contains "provenance: verdict-core")
-                "report discloses whether it was self-provisioned env-free or written from the live run"
-        }
+            // The corrected-mechanism disclosure (constitution V: disclose; no synthetic green). The report
+            // must carry the observed codes + consumer-policy condition, not R1's unconditional NU1107 claim.
+            test "report discloses the observed loud-deviation mechanism (NU1605/NU1608 + warnings-as-errors)" {
+                let report = readReport ()
 
-        // Live-only evidence (US1 N->1 collapse, US3 reproducibility/channel, US2 forced-mismatch both
-        // directions). Asserted only when the committed report is the live run — a verdict-core fresh
-        // checkout is exempt so it stays honest rather than asserting numbers it never measured.
-        test "live report evidences one-reference coherence, reproducibility, and forced mismatch (both directions)" {
-            let report = readReport ()
-            if report.Contains "provenance: live" then
-                [ "bom-version: 0.1.51-preview.1"
-                  "members-resolved: 16"
-                  "resolved-members-at-version: 16/16 at 0.1.51-preview.1"
-                  "clean-consumer-build: pass"
-                  "channel: preview"
-                  "reproducibility: identical"
-                  "forced-mismatch: pass"
-                  "downgrade Y<V"
-                  "code=NU1605 loud-under-warnaserror-exit=1"
-                  "upgrade   Y>V"
-                  "code=NU1608 loud-under-warnaserror-exit=1" ]
-                |> List.iter (fun token -> Expect.stringContains report token (sprintf "live report includes %s" token))
-            else
-                Expect.stringContains report "provenance: verdict-core" "non-live report must disclose verdict-core provenance"
-        }
-    ]
+                [ "NU1605"; "NU1608"; "WarningsAsErrors"; "mechanism-note:" ]
+                |> List.iter (fun token ->
+                    Expect.stringContains report token (sprintf "mechanism disclosure includes %s" token))
+            }
+
+            // Provenance is disclosed (live committed evidence OR env-free verdict-core self-provision).
+            test "report discloses provenance" {
+                let report = readReport ()
+
+                Expect.isTrue
+                    (report.Contains "provenance: live" || report.Contains "provenance: verdict-core")
+                    "report discloses whether it was self-provisioned env-free or written from the live run"
+            }
+
+            // Live-only evidence (US1 N->1 collapse, US3 reproducibility/channel, US2 forced-mismatch both
+            // directions). Asserted only when the committed report is the live run — a verdict-core fresh
+            // checkout is exempt so it stays honest rather than asserting numbers it never measured.
+            test "live report evidences one-reference coherence, reproducibility, and forced mismatch (both directions)" {
+                let report = readReport ()
+
+                if report.Contains "provenance: live" then
+                    [
+                        "bom-version: 0.1.51-preview.1"
+                        "members-resolved: 16"
+                        "resolved-members-at-version: 16/16 at 0.1.51-preview.1"
+                        "clean-consumer-build: pass"
+                        "channel: preview"
+                        "reproducibility: identical"
+                        "forced-mismatch: pass"
+                        "downgrade Y<V"
+                        "code=NU1605 loud-under-warnaserror-exit=1"
+                        "upgrade   Y>V"
+                        "code=NU1608 loud-under-warnaserror-exit=1"
+                    ]
+                    |> List.iter (fun token ->
+                        Expect.stringContains report token (sprintf "live report includes %s" token))
+                else
+                    Expect.stringContains
+                        report
+                        "provenance: verdict-core"
+                        "non-live report must disclose verdict-core provenance"
+            }
+        ]

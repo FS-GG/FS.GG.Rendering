@@ -104,7 +104,10 @@ let private isAccessor (m: MethodInfo) =
        |> List.exists (fun prefix -> m.Name.StartsWith(prefix, StringComparison.Ordinal))
 
 let private memberFlags =
-    BindingFlags.Public ||| BindingFlags.Instance ||| BindingFlags.Static ||| BindingFlags.DeclaredOnly
+    BindingFlags.Public
+    ||| BindingFlags.Instance
+    ||| BindingFlags.Static
+    ||| BindingFlags.DeclaredOnly
 
 // Deliberately NOT `GetMembers`: that also populates nested types, which forces the runtime to
 // resolve every assembly a nested type mentions. A library project's bin/ holds no third-party
@@ -113,11 +116,13 @@ let private memberFlags =
 // signature actually names — and nested types are exported types in their own right anyway, so
 // they already get their own lines.
 let private membersOf (ty: Type) : MemberInfo array =
-    [| yield! ty.GetConstructors(memberFlags) |> Array.map (fun m -> m :> MemberInfo)
-       yield! ty.GetMethods(memberFlags) |> Array.map (fun m -> m :> MemberInfo)
-       yield! ty.GetProperties(memberFlags) |> Array.map (fun m -> m :> MemberInfo)
-       yield! ty.GetFields(memberFlags) |> Array.map (fun m -> m :> MemberInfo)
-       yield! ty.GetEvents(memberFlags) |> Array.map (fun m -> m :> MemberInfo) |]
+    [|
+        yield! ty.GetConstructors(memberFlags) |> Array.map (fun m -> m :> MemberInfo)
+        yield! ty.GetMethods(memberFlags) |> Array.map (fun m -> m :> MemberInfo)
+        yield! ty.GetProperties(memberFlags) |> Array.map (fun m -> m :> MemberInfo)
+        yield! ty.GetFields(memberFlags) |> Array.map (fun m -> m :> MemberInfo)
+        yield! ty.GetEvents(memberFlags) |> Array.map (fun m -> m :> MemberInfo)
+    |]
 
 let private signature (owner: string) (m: MemberInfo) =
     match m with
@@ -134,8 +139,12 @@ let private signature (owner: string) (m: MemberInfo) =
         Some $"{owner}.{method'.Name}{generics}({parameters (method'.GetParameters())}) : {typeRef method'.ReturnType}"
     | :? PropertyInfo as property ->
         let accessors =
-            [ if property.CanRead then "get"
-              if property.CanWrite then "set" ]
+            [
+                if property.CanRead then
+                    "get"
+                if property.CanWrite then
+                    "set"
+            ]
             |> String.concat ", "
 
         Some $"{owner}.{property.Name} : {typeRef property.PropertyType} [{accessors}]"
@@ -147,7 +156,8 @@ let private signature (owner: string) (m: MemberInfo) =
     | _ -> None
 
 let private exportedTypes (assembly: Assembly) =
-    assembly.GetExportedTypes() |> Array.filter (fun ty -> not (isCompilerGenerated ty))
+    assembly.GetExportedTypes()
+    |> Array.filter (fun ty -> not (isCompilerGenerated ty))
 
 /// One line per exported TYPE — the contents of `readiness/surface-baselines/<pkg>.txt`.
 let typeNames (assembly: Assembly) =

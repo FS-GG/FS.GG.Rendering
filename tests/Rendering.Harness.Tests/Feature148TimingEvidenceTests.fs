@@ -5,21 +5,26 @@ open Rendering.Harness
 
 [<Tests>]
 let tests =
-    testList "Feature148 timing evidence" [
-        test "timing tiers include damage, placement, replay, and snapshot" {
-            Expect.equal Compositor.Config.feature148TimingTiers [ "damage"; "placement"; "replay"; "snapshot" ] "tier order"
-        }
+    testList
+        "Feature148 timing evidence"
+        [
+            test "timing tiers include damage, placement, replay, and snapshot" {
+                Expect.equal
+                    Compositor.Config.feature148TimingTiers
+                    [ "damage"; "placement"; "replay"; "snapshot" ]
+                    "tier order"
+            }
 
-        test "timing report includes lower-tier baseline and warmup disclosure" {
-            let rendered = Compositor.Render.emitFeature148TimingReport "snapshot"
-            Expect.stringContains rendered "Tier: `snapshot`" "tier"
-            Expect.stringContains rendered "replay/lower tier" "baseline"
-            Expect.stringContains rendered "Warmup frames" "warmup"
-            Expect.stringContains rendered "Verdict: limited" "non-overclaim verdict"
-        }
+            test "timing report includes lower-tier baseline and warmup disclosure" {
+                let rendered = Compositor.Render.emitFeature148TimingReport "snapshot"
+                Expect.stringContains rendered "Tier: `snapshot`" "tier"
+                Expect.stringContains rendered "replay/lower tier" "baseline"
+                Expect.stringContains rendered "Warmup frames" "warmup"
+                Expect.stringContains rendered "Verdict: limited" "non-overclaim verdict"
+            }
 
-        test "replay timing tier is accepted by the formatter" {
-            let rendered = Compositor.Render.emitFeature148TimingReport "replay"
-            Expect.stringContains rendered "Tier: `replay`" "replay tier"
-        }
-    ]
+            test "replay timing tier is accepted by the formatter" {
+                let rendered = Compositor.Render.emitFeature148TimingReport "replay"
+                Expect.stringContains rendered "Tier: `replay`" "replay tier"
+            }
+        ]

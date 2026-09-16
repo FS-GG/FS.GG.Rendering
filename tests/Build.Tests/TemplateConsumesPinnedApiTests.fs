@@ -110,16 +110,18 @@ let private packagesPropsPath = repoPath packagesPropsRel
 // ---------------------------------------------------------------------------------------------
 
 type FrameworkModule =
-    { /// The package id AND the namespace to `open` — they are the same string.
-      Namespace: string
-      /// Dotted module path WITHIN the namespace (`ControlsElmish`, `ControlsElmish.Perf`). This is
-      /// the spelling a `nameof` needs under `open <Namespace>`, and `Name` is not: a nested module
-      /// cannot be named bare.
-      Path: string
-      /// INNERMOST module name, as a call site spells it (`Viewer`, `ControlsElmish`, `Perf`).
-      Name: string
-      /// `val` members declared DIRECTLY by that module — not by its children.
-      Members: Set<string> }
+    {
+        /// The package id AND the namespace to `open` — they are the same string.
+        Namespace: string
+        /// Dotted module path WITHIN the namespace (`ControlsElmish`, `ControlsElmish.Perf`). This is
+        /// the spelling a `nameof` needs under `open <Namespace>`, and `Name` is not: a nested module
+        /// cannot be named bare.
+        Path: string
+        /// INNERMOST module name, as a call site spells it (`Viewer`, `ControlsElmish`, `Perf`).
+        Name: string
+        /// `val` members declared DIRECTLY by that module — not by its children.
+        Members: Set<string>
+    }
 
 let private namespaceRegex = Regex(@"^namespace\s+([\w.]+)", RegexOptions.Compiled)
 
@@ -184,8 +186,11 @@ let private parseMirrorFile (path: string) =
     let closeTo (indent: int) =
         stack <- stack |> List.skipWhile (fun (i, _, _) -> i >= indent)
 
-    let underInternal () = stack |> List.exists (fun (_, _, isInternal) -> isInternal)
-    let currentPath () = stack |> List.rev |> List.map (fun (_, name, _) -> name) |> String.concat "."
+    let underInternal () =
+        stack |> List.exists (fun (_, _, isInternal) -> isInternal)
+
+    let currentPath () =
+        stack |> List.rev |> List.map (fun (_, name, _) -> name) |> String.concat "."
 
     for line in File.ReadAllLines path do
         let nsMatch = namespaceRegex.Match line
@@ -222,10 +227,12 @@ let private parseMirrorFile (path: string) =
 
     declared
     |> Seq.map (fun (moduleNs, modulePath) ->
-        { Namespace = moduleNs
-          Path = modulePath
-          Name = modulePath.Substring(modulePath.LastIndexOf '.' + 1)
-          Members = Set.ofSeq members.[(moduleNs, modulePath)] })
+        {
+            Namespace = moduleNs
+            Path = modulePath
+            Name = modulePath.Substring(modulePath.LastIndexOf '.' + 1)
+            Members = Set.ofSeq members.[(moduleNs, modulePath)]
+        })
     |> List.ofSeq
 
 /// EVERY public module the mirror declares, INCLUDING the ones that declare no `val` of their own.
@@ -246,9 +253,7 @@ let private frameworkModules =
 /// extractor from mistaking the product's OWN modules (`AppRoot.WindowOptions.parseWindowBehavior`)
 /// or FSharp.Core's (`List.ofArray`, `Option.defaultValue`) for framework calls.
 let private frameworkModulesByName =
-    frameworkModules
-    |> List.groupBy (fun m -> m.Name)
-    |> Map.ofList
+    frameworkModules |> List.groupBy (fun m -> m.Name) |> Map.ofList
 
 // ---------------------------------------------------------------------------------------------
 // The call sites, as the TEMPLATE'S Program.fs actually writes them.
@@ -259,9 +264,11 @@ let private frameworkModulesByName =
 // ---------------------------------------------------------------------------------------------
 
 type CallSite =
-    { Module: string
-      Member: string
-      Line: int }
+    {
+        Module: string
+        Member: string
+        Line: int
+    }
 
 let private stringLiteral = Regex("\"(\\\\.|[^\"\\\\])*\"", RegexOptions.Compiled)
 
@@ -273,9 +280,7 @@ let private blockForms =
     Regex(@"\(\*.*?\*\)|"""""".*?""""""", RegexOptions.Compiled ||| RegexOptions.Singleline)
 
 let private eraseKeepingLines (text: string) =
-    blockForms.Replace(
-        text,
-        fun m -> String(m.Value |> Seq.filter (fun c -> c = '\n') |> Seq.toArray))
+    blockForms.Replace(text, fun m -> String(m.Value |> Seq.filter (fun c -> c = '\n') |> Seq.toArray))
 
 /// Strings BEFORE comments: a `//` inside a string literal is not a comment. Both must go, because
 /// `Program.fs` NAMES framework API in prose and in string literals without calling it —
@@ -368,7 +373,9 @@ let private admittedCandidates (qualifier: string) (moduleName: string) =
             candidates
             |> List.filter (fun m ->
                 let enclosing = enclosingPath m
-                enclosing = qualified || enclosing.EndsWith($".{qualified}", StringComparison.Ordinal))
+
+                enclosing = qualified
+                || enclosing.EndsWith($".{qualified}", StringComparison.Ordinal))
 
 /// A match is a framework call only if the mirror declares the module AND the qualifier agrees.
 let private isFrameworkCall (qualifier: string) (moduleName: string) =
@@ -386,9 +393,11 @@ let private callSites =
         callRegex.Matches line
         |> Seq.map (fun m ->
             m.Groups.[1].Value,
-            { Module = m.Groups.[2].Value
-              Member = m.Groups.[3].Value
-              Line = lineNo })
+            {
+                Module = m.Groups.[2].Value
+                Member = m.Groups.[3].Value
+                Line = lineNo
+            })
         |> Array.ofSeq)
     |> Array.filter (fun (qualifier, c) -> isFrameworkCall qualifier c.Module)
     |> Array.map snd
@@ -460,17 +469,26 @@ let private probeSpelling (call: CallSite) =
 let private readAxis (axis: string) =
     let props = File.ReadAllText packagesPropsPath
     let m = Regex.Match(props, $"<{axis}>([^<]+)</{axis}>")
-    if m.Success then m.Groups.[1].Value else failwith $"<{axis}> not found in {packagesPropsPath}"
+
+    if m.Success then
+        m.Groups.[1].Value
+    else
+        failwith $"<{axis}> not found in {packagesPropsPath}"
 
 /// A package id derives its version from the axis its family is released on — the same four axes
 /// `Directory.Packages.props` declares. Getting this wrong would restore a version the template
 /// never pins, and the probe would then prove nothing about the real product.
 let private pinFor (packageId: string) =
-    if packageId.StartsWith("FS.GG.UI.", StringComparison.Ordinal) then readAxis "FsGgUiVersion"
-    elif packageId.StartsWith("FS.GG.Audio.", StringComparison.Ordinal) then readAxis "FsGgAudioVersion"
-    elif packageId.StartsWith("FS.GG.Game.", StringComparison.Ordinal) then readAxis "FsGgGameVersion"
-    elif packageId = "FS.GG.Contracts" then readAxis "FsGgContractsVersion"
-    else failwith $"no version axis covers package '{packageId}'"
+    if packageId.StartsWith("FS.GG.UI.", StringComparison.Ordinal) then
+        readAxis "FsGgUiVersion"
+    elif packageId.StartsWith("FS.GG.Audio.", StringComparison.Ordinal) then
+        readAxis "FsGgAudioVersion"
+    elif packageId.StartsWith("FS.GG.Game.", StringComparison.Ordinal) then
+        readAxis "FsGgGameVersion"
+    elif packageId = "FS.GG.Contracts" then
+        readAxis "FsGgContractsVersion"
+    else
+        failwith $"no version axis covers package '{packageId}'"
 
 // ---------------------------------------------------------------------------------------------
 // RELEASE-PENDING (#543): is this the release window, in which the pin CANNOT resolve yet?
@@ -629,7 +647,8 @@ let private scaffoldModules =
     [ repoPath "template/base/src"; repoPath "template/fragments" ]
     |> List.filter Directory.Exists
     |> List.collect (fun root ->
-        Directory.EnumerateFiles(root, "*.fs", SearchOption.AllDirectories) |> List.ofSeq)
+        Directory.EnumerateFiles(root, "*.fs", SearchOption.AllDirectories)
+        |> List.ofSeq)
     |> List.collect (fun path -> File.ReadAllLines path |> List.ofArray)
     |> List.choose (fun line ->
         let m = scaffoldModuleRegex.Match line
@@ -638,10 +657,12 @@ let private scaffoldModules =
 
 /// One `Module.member` a SHIPPED template doc names, and where it says it.
 type DocSymbol =
-    { Doc: string // repo-relative, so a failure is clickable
-      Line: int
-      Module: string
-      Member: string }
+    {
+        Doc: string // repo-relative, so a failure is clickable
+        Line: int
+        Module: string
+        Member: string
+    }
 
 let private docKey (s: DocSymbol) = $"{s.Doc}::{s.Module}.{s.Member}"
 
@@ -649,7 +670,8 @@ let private docKey (s: DocSymbol) = $"{s.Doc}::{s.Module}.{s.Member}"
 /// scaffold does not materialize one of that name. A module NOBODY declares is product-local or
 /// pseudo-code in an example, and is not this rule's business — the same closed world SkillParity uses.
 let private isJudgedDocModule (qualifier: string) (moduleName: string) =
-    isFrameworkCall qualifier moduleName && not (scaffoldModules.Contains moduleName)
+    isFrameworkCall qualifier moduleName
+    && not (scaffoldModules.Contains moduleName)
 
 /// `Module.member` inside the F# fences of a product skill — the block a reader COPIES, which is what
 /// makes it the sharpest subject. The PROSE around it is judged too, by `skillProseSymbols` below (#597);
@@ -682,10 +704,12 @@ let private skillFenceSymbols =
             callRegex.Matches(stripCommentsAndStrings source)
             |> Seq.map (fun m ->
                 m.Groups.[1].Value,
-                { Doc = rel
-                  Line = line.Number
-                  Module = m.Groups.[2].Value
-                  Member = m.Groups.[3].Value })
+                {
+                    Doc = rel
+                    Line = line.Number
+                    Module = m.Groups.[2].Value
+                    Member = m.Groups.[3].Value
+                })
             |> List.ofSeq))
     |> List.ofSeq
 
@@ -747,10 +771,12 @@ let private mirrorValSymbols =
                 | (_, owner, _) :: _ ->
                     Some(
                         "",
-                        { Doc = rel
-                          Line = lineNo
-                          Module = owner
-                          Member = valMatch.Groups.["name"].Value }
+                        {
+                            Doc = rel
+                            Line = lineNo
+                            Module = owner
+                            Member = valMatch.Groups.["name"].Value
+                        }
                     )
                 | [] -> None
             else
@@ -814,10 +840,12 @@ let private mirrorDocCommentSymbols =
                     not precededBySlash && not (sourceFileExtensions.Contains m.Groups.[3].Value))
                 |> Seq.map (fun m ->
                     m.Groups.[1].Value,
-                    { Doc = rel
-                      Line = lineNo
-                      Module = m.Groups.[2].Value
-                      Member = m.Groups.[3].Value })
+                    {
+                        Doc = rel
+                        Line = lineNo
+                        Module = m.Groups.[2].Value
+                        Member = m.Groups.[3].Value
+                    })
                 |> Array.ofSeq))
     |> List.ofSeq
 
@@ -876,10 +904,12 @@ let private scaffoldSourceDocCommentSymbols =
                     not precededBySlash && not (sourceFileExtensions.Contains m.Groups.[3].Value))
                 |> Seq.map (fun m ->
                     m.Groups.[1].Value,
-                    { Doc = rel
-                      Line = lineNo
-                      Module = m.Groups.[2].Value
-                      Member = m.Groups.[3].Value })
+                    {
+                        Doc = rel
+                        Line = lineNo
+                        Module = m.Groups.[2].Value
+                        Member = m.Groups.[3].Value
+                    })
                 |> Array.ofSeq))
     |> List.ofSeq
 
@@ -914,16 +944,19 @@ type MemberKind =
     | RecordField
 
 type TypeMember =
-    { Doc: string
-      Line: int
-      Namespace: string
-      Type: string
-      Member: string
-      Kind: MemberKind }
+    {
+        Doc: string
+        Line: int
+        Namespace: string
+        Type: string
+        Member: string
+        Kind: MemberKind
+    }
 
 /// `| Case`, at the DU's indent, under a `type X =`. `of …` is dropped: the pin is asked about the case's
 /// NAME, which is what a reader writes.
-let private duCaseRegex = Regex(@"^\s*\|\s*(?<case>[A-Z]\w*)\b", RegexOptions.Compiled)
+let private duCaseRegex =
+    Regex(@"^\s*\|\s*(?<case>[A-Z]\w*)\b", RegexOptions.Compiled)
 
 /// `type X =` AND `and X =` — column 0 or nested; the arity mangle (``Foo`1``) never appears in an `.fsi`.
 ///
@@ -977,7 +1010,8 @@ let private arityKey (name: string) (generics: string) =
 /// `type Foo = Bar of int` is a single-case union, and nothing in the text tells them apart — so a
 /// one-line body with neither `{` nor `|` is left alone rather than guessed at, and `assertNoAmbiguousOneLiner`
 /// below makes sure no mirror ever writes one.
-let private oneLineFieldRegex = Regex(@"(?<field>[A-Z]\w*)\s*:", RegexOptions.Compiled)
+let private oneLineFieldRegex =
+    Regex(@"(?<field>[A-Z]\w*)\s*:", RegexOptions.Compiled)
 
 let private inlineMembers (rest: string) =
     let body = rest.TrimStart()
@@ -989,7 +1023,9 @@ let private inlineMembers (rest: string) =
             ""
 
     if body.StartsWith("{", StringComparison.Ordinal) then
-        [ for m in oneLineFieldRegex.Matches body -> m.Groups.["field"].Value, RecordField ]
+        [
+            for m in oneLineFieldRegex.Matches body -> m.Groups.["field"].Value, RecordField
+        ]
     elif body.Contains "|" then
         body.Split('|')
         |> Array.choose (fun segment ->
@@ -1001,7 +1037,11 @@ let private inlineMembers (rest: string) =
                 |> Array.tryHead
 
             match token with
-            | Some tk when tk.Length > 0 && Char.IsUpper tk.[0] && tk |> Seq.forall (fun c -> Char.IsLetterOrDigit c || c = '_') ->
+            | Some tk when
+                tk.Length > 0
+                && Char.IsUpper tk.[0]
+                && tk |> Seq.forall (fun c -> Char.IsLetterOrDigit c || c = '_')
+                ->
                 Some(tk, UnionCase)
             | _ -> None)
         |> List.ofArray
@@ -1011,7 +1051,8 @@ let private inlineMembers (rest: string) =
 /// A record field: `{ Field: T` or a continuation line `  Field: T }`. Deliberately requires the
 /// capital-initial + colon shape, which is what a record field IS — an inline `///` comment above it is
 /// skipped by the `///` guard, and a `val` line cannot match because `val` is lowercase.
-let private recordFieldRegex = Regex(@"^\s*[{]?\s*(?<field>[A-Z]\w*)\s*:", RegexOptions.Compiled)
+let private recordFieldRegex =
+    Regex(@"^\s*[{]?\s*(?<field>[A-Z]\w*)\s*:", RegexOptions.Compiled)
 
 /// ONE walk of the mirror, THREE projections — the same discipline `readTypeSurface` keeps on the pin's
 /// side, and for the same reason: the two halves of a gate have to agree about what a TYPE is, or the gate
@@ -1076,12 +1117,14 @@ let private mirrorParse =
                 // F3: the body may be RIGHT HERE, on this same line, and this is the only chance to read it.
                 for (memberName, kind) in inlineMembers m.Groups.["rest"].Value do
                     acc.Add
-                        { Doc = rel
-                          Line = i + 1
-                          Namespace = ns
-                          Type = typeName
-                          Member = memberName
-                          Kind = kind }
+                        {
+                            Doc = rel
+                            Line = i + 1
+                            Namespace = ns
+                            Type = typeName
+                            Member = memberName
+                            Kind = kind
+                        }
             elif
                 trimmed.StartsWith("val ", StringComparison.Ordinal)
                 || trimmed.StartsWith("module ", StringComparison.Ordinal)
@@ -1097,20 +1140,24 @@ let private mirrorParse =
 
                     if case.Success then
                         acc.Add
-                            { Doc = rel
-                              Line = i + 1
-                              Namespace = ns
-                              Type = typeName
-                              Member = case.Groups.["case"].Value
-                              Kind = UnionCase }
+                            {
+                                Doc = rel
+                                Line = i + 1
+                                Namespace = ns
+                                Type = typeName
+                                Member = case.Groups.["case"].Value
+                                Kind = UnionCase
+                            }
                     elif field.Success then
                         acc.Add
-                            { Doc = rel
-                              Line = i + 1
-                              Namespace = ns
-                              Type = typeName
-                              Member = field.Groups.["field"].Value
-                              Kind = RecordField }
+                            {
+                                Doc = rel
+                                Line = i + 1
+                                Namespace = ns
+                                Type = typeName
+                                Member = field.Groups.["field"].Value
+                                Kind = RecordField
+                            }
 
     List.ofSeq acc, Set.ofSeq declaredTypes, Set.ofSeq namespaces
 
@@ -1193,10 +1240,12 @@ let private skillProseSymbols =
                 not precededBySlash && not (sourceFileExtensions.Contains m.Groups.[3].Value))
             |> Seq.map (fun m ->
                 m.Groups.[1].Value,
-                { Doc = rel
-                  Line = line.Number
-                  Module = m.Groups.[2].Value
-                  Member = m.Groups.[3].Value })
+                {
+                    Doc = rel
+                    Line = line.Number
+                    Module = m.Groups.[2].Value
+                    Member = m.Groups.[3].Value
+                })
             |> List.ofSeq))
     |> List.ofSeq
 
@@ -1209,11 +1258,13 @@ let private skillProseSymbols =
 /// throwing it away left the pinned oracle with no choice but to answer for all of them at once.
 let private judgedDocOccurrences =
     List.concat
-        [ skillFenceSymbols
-          skillProseSymbols
-          mirrorValSymbols
-          mirrorDocCommentSymbols
-          scaffoldSourceDocCommentSymbols ]
+        [
+            skillFenceSymbols
+            skillProseSymbols
+            mirrorValSymbols
+            mirrorDocCommentSymbols
+            scaffoldSourceDocCommentSymbols
+        ]
     |> List.filter (fun (qualifier, s) -> isJudgedDocModule qualifier s.Module)
 
 /// The judged occurrences as bare symbols — what everything except the pin resolution wants.
@@ -1226,7 +1277,10 @@ let private docKeyQualifiers =
     judgedDocOccurrences
     |> List.groupBy (fun (_, s) -> docKey s)
     |> List.map (fun (key, occurrences) ->
-        key, occurrences |> List.map (fun (qualifier, _) -> qualifier.TrimEnd('.')) |> List.distinct)
+        key,
+        occurrences
+        |> List.map (fun (qualifier, _) -> qualifier.TrimEnd('.'))
+        |> List.distinct)
     |> Map.ofList
 
 /// Every line a judged `docKey` occurs on. The dedup below is right for the VERDICT (one symbol in one
@@ -1252,7 +1306,7 @@ let private renderDocSymbol (s: DocSymbol) =
     let head = $"{s.Doc}:{s.Line}  {s.Module}.{s.Member}"
 
     match docKeySites |> Map.tryFind (docKey s) with
-    | Some (_ :: _ :: _ as lines) ->
+    | Some(_ :: _ :: _ as lines) ->
         let rendered = lines |> List.map string |> String.concat ", "
         $"{head}  ({lines.Length} sites: lines {rendered})"
     | _ -> head
@@ -1269,7 +1323,9 @@ let private renderDocSymbol (s: DocSymbol) =
 let private docPackages =
     let fromVals =
         docSymbols
-        |> List.choose (fun s -> resolveModule s.Module s.Member |> Option.map (fun m -> packageForNamespace m.Namespace))
+        |> List.choose (fun s ->
+            resolveModule s.Module s.Member
+            |> Option.map (fun m -> packageForNamespace m.Namespace))
 
     // #611 — and every package whose mirror declares a TYPE, because the case rule judges those and can
     // only judge what the oracle restored. Deriving the restore set from the `val` symbols ALONE (which is
@@ -1302,8 +1358,7 @@ let private docPackages =
     // whose types are all opaque, restores nothing — so the completeness rule's coverage would depend on the
     // case rule's subject matter, and a whole package could go unjudged because none of its mirrored types
     // happened to be a record or a union.
-    let fromMirror =
-        mirrorNamespaces |> Set.toList |> List.map packageForNamespace
+    let fromMirror = mirrorNamespaces |> Set.toList |> List.map packageForNamespace
 
     fromVals @ fromTypes @ fromCandidates @ fromMirror |> List.distinct |> List.sort
 
@@ -1351,9 +1406,15 @@ let private readModuleSurface (dll: string) : (string * string) list * (string *
 
     // Per SEGMENT, because every segment of a nested path carries both manglings.
     let segment (raw: string) =
-        let withoutArity = match raw.IndexOf '`' with | -1 -> raw | i -> raw.Substring(0, i)
+        let withoutArity =
+            match raw.IndexOf '`' with
+            | -1 -> raw
+            | i -> raw.Substring(0, i)
 
-        if withoutArity.EndsWith("Module", StringComparison.Ordinal) && withoutArity.Length > 6 then
+        if
+            withoutArity.EndsWith("Module", StringComparison.Ordinal)
+            && withoutArity.Length > 6
+        then
             withoutArity.Substring(0, withoutArity.Length - 6)
         else
             withoutArity
@@ -1396,24 +1457,26 @@ let private readModuleSurface (dll: string) : (string * string) list * (string *
     let declaredModules = ResizeArray<string * string>()
 
     let members =
-        [ for handle in md.TypeDefinitions do
-            let td = md.GetTypeDefinition handle
+        [
+            for handle in md.TypeDefinitions do
+                let td = md.GetTypeDefinition handle
 
-            if isPublic td && isFSharpModule td && nameable td then
-                let path = pathOf td
+                if isPublic td && isFSharpModule td && nameable td then
+                    let path = pathOf td
 
-                declaredModules.Add(namespaceOf td, path)
+                    declaredModules.Add(namespaceOf td, path)
 
-                for methodHandle in td.GetMethods() do
-                    let m = md.GetMethodDefinition methodHandle
+                    for methodHandle in td.GetMethods() do
+                        let m = md.GetMethodDefinition methodHandle
 
-                    if (m.Attributes &&& MethodAttributes.MemberAccessMask) = MethodAttributes.Public then
-                        let memberName = md.GetString m.Name
-                        yield path, memberName
+                        if (m.Attributes &&& MethodAttributes.MemberAccessMask) = MethodAttributes.Public then
+                            let memberName = md.GetString m.Name
+                            yield path, memberName
 
-                        for prefix in [ "get_"; "set_" ] do
-                            if memberName.StartsWith(prefix, StringComparison.Ordinal) then
-                                yield path, memberName.Substring prefix.Length ]
+                            for prefix in [ "get_"; "set_" ] do
+                                if memberName.StartsWith(prefix, StringComparison.Ordinal) then
+                                    yield path, memberName.Substring prefix.Length
+        ]
 
     List.ofSeq declaredModules, members
 
@@ -1421,7 +1484,6 @@ let private readModuleSurface (dll: string) : (string * string) list * (string *
 /// if anything at all went wrong: an oracle that silently knows nothing would report every doc symbol
 /// as unresolved, and an oracle that silently knows nothing about ONE package would excuse every symbol
 /// in it. Both are the fails-open shape (FS-GG/.github#266) this file's header forbids.
-
 /// #611 — the PINNED package's TYPE surface: every union case and record field, keyed by type.
 ///
 /// A DU's cases are not methods and are not on a module, so `readModuleSurface` cannot see them.
@@ -1513,61 +1575,61 @@ let private readTypeSurface (dll: string) : (string * string) list * (string * s
     let declaredTypes = ResizeArray<string * string>()
 
     let members =
-        [ for handle in md.TypeDefinitions do
-            let td = md.GetTypeDefinition handle
-            let visibility = td.Attributes &&& TypeAttributes.VisibilityMask
+        [
+            for handle in md.TypeDefinitions do
+                let td = md.GetTypeDefinition handle
+                let visibility = td.Attributes &&& TypeAttributes.VisibilityMask
 
-            let isPublic =
-                visibility = TypeAttributes.Public || visibility = TypeAttributes.NestedPublic
+                let isPublic =
+                    visibility = TypeAttributes.Public || visibility = TypeAttributes.NestedPublic
 
-            // A type NESTED IN A TYPE is not something a mirror can declare — it is the compiler's own
-            // furniture: a DU's `Tags`, and one class per union case (`ViewerEffect+CaptureScreenshot`).
-            // Registering those as top-level types mints entries called `Circle`, `KeyDown`, `Custom`, each
-            // carrying `Item`/`Item1`, which then collide with REAL types of the same name in other packages.
-            // A type nested in a MODULE is different — that is what `module Foo = type Bar = …` compiles to,
-            // and a mirror can declare it — so those are kept.
-            let declaredAtTypeLevel =
-                let parent = td.GetDeclaringType()
-                parent.IsNil || isModule (md.GetTypeDefinition parent)
+                // A type NESTED IN A TYPE is not something a mirror can declare — it is the compiler's own
+                // furniture: a DU's `Tags`, and one class per union case (`ViewerEffect+CaptureScreenshot`).
+                // Registering those as top-level types mints entries called `Circle`, `KeyDown`, `Custom`, each
+                // carrying `Item`/`Item1`, which then collide with REAL types of the same name in other packages.
+                // A type nested in a MODULE is different — that is what `module Foo = type Bar = …` compiles to,
+                // and a mirror can declare it — so those are kept.
+                let declaredAtTypeLevel =
+                    let parent = td.GetDeclaringType()
+                    parent.IsNil || isModule (md.GetTypeDefinition parent)
 
-            // `readModuleSurface` owns the modules, and the two maps stay apart so a `type Scene` case can
-            // never excuse a `module Scene` member.
-            if isPublic && not (isModule td) && declaredAtTypeLevel then
-                // IL's own name, arity mangle AND ALL (`Attr`1`). NOT stripped: a type's identity is its name
-                // AND its arity, and published FS.GG.UI.SkiaViewer 0.9.0 exports BOTH `ViewerEffect` and
-                // `ViewerEffect`1` (an unrelated `ViewerEffect<'msg>` from Host/Diagnostics). Merge them and a
-                // case the generic one carries EXCUSES the same-named case on the closed one — a wider oracle,
-                // and a wider oracle excuses a real violation. #594's ledger keys on arity for this exact
-                // reason; the oracle it is checked against has to agree with it. The mirror extractor mangles
-                // its side to match, so no translation is needed between them.
-                let name = md.GetString td.Name
+                // `readModuleSurface` owns the modules, and the two maps stay apart so a `type Scene` case can
+                // never excuse a `module Scene` member.
+                if isPublic && not (isModule td) && declaredAtTypeLevel then
+                    // IL's own name, arity mangle AND ALL (`Attr`1`). NOT stripped: a type's identity is its name
+                    // AND its arity, and published FS.GG.UI.SkiaViewer 0.9.0 exports BOTH `ViewerEffect` and
+                    // `ViewerEffect`1` (an unrelated `ViewerEffect<'msg>` from Host/Diagnostics). Merge them and a
+                    // case the generic one carries EXCUSES the same-named case on the closed one — a wider oracle,
+                    // and a wider oracle excuses a real violation. #594's ledger keys on arity for this exact
+                    // reason; the oracle it is checked against has to agree with it. The mirror extractor mangles
+                    // its side to match, so no translation is needed between them.
+                    let name = md.GetString td.Name
 
-                // The pin ⊆ mirror subject (#752). Recorded for EVERY public type, not only the ones that
-                // carry a case or a field: an opaque type (`type Keymap`, whose representation the mirror
-                // cannot see) has neither, and it is exactly the kind the mirror was found to have dropped.
-                declaredTypes.Add(namespaceOf td, name)
+                    // The pin ⊆ mirror subject (#752). Recorded for EVERY public type, not only the ones that
+                    // carry a case or a field: an opaque type (`type Keymap`, whose representation the mirror
+                    // cannot see) has neither, and it is exactly the kind the mirror was found to have dropped.
+                    declaredTypes.Add(namespaceOf td, name)
 
-                for methodHandle in td.GetMethods() do
-                    let m = md.GetMethodDefinition methodHandle
-                    let memberName = md.GetString m.Name
+                    for methodHandle in td.GetMethods() do
+                        let m = md.GetMethodDefinition methodHandle
+                        let memberName = md.GetString m.Name
 
-                    let flags =
-                        m.GetCustomAttributes() |> Seq.tryPick (compilationMappingFlags md)
+                        let flags = m.GetCustomAttributes() |> Seq.tryPick (compilationMappingFlags md)
 
-                    if flags = Some SourceConstructUnionCase then
-                        if memberName.StartsWith("New", StringComparison.Ordinal) then
-                            yield name, memberName.Substring 3
-                        elif memberName.StartsWith("get_", StringComparison.Ordinal) then
-                            yield name, memberName.Substring 4
+                        if flags = Some SourceConstructUnionCase then
+                            if memberName.StartsWith("New", StringComparison.Ordinal) then
+                                yield name, memberName.Substring 3
+                            elif memberName.StartsWith("get_", StringComparison.Ordinal) then
+                                yield name, memberName.Substring 4
 
-                for propertyHandle in td.GetProperties() do
-                    let pd = md.GetPropertyDefinition propertyHandle
+                    for propertyHandle in td.GetProperties() do
+                        let pd = md.GetPropertyDefinition propertyHandle
 
-                    let flags =
-                        pd.GetCustomAttributes() |> Seq.tryPick (compilationMappingFlags md)
+                        let flags = pd.GetCustomAttributes() |> Seq.tryPick (compilationMappingFlags md)
 
-                    if flags = Some SourceConstructField || flags = Some SourceConstructUnionCase then
-                        yield name, md.GetString pd.Name ]
+                        if flags = Some SourceConstructField || flags = Some SourceConstructUnionCase then
+                            yield name, md.GetString pd.Name
+        ]
 
     List.ofSeq declaredTypes, members
 
@@ -1642,33 +1704,35 @@ let private readTypeSurface (dll: string) : (string * string) list * (string * s
 /// unforgettable rather than merely documented: a rule cannot hold the pinned surface without having gone
 /// through the door that defers in the release window.
 type PinnedSurface =
-    { /// (package, module path) -> the `val`s the published assembly exports. Keyed by PACKAGE as well as
-      /// path for the SAME reason `Types` is, and it took a second bug (#683) to say so: `Cmd` is
-      /// FS.GG.Audio.Elmish's `Audio.Cmd` (`ofEngine`, `playSfx`, …) AND FS.GG.UI.Controls.Elmish's
-      /// top-level `Cmd` (`none`, alone) — disjoint member sets. Keyed on the bare name they merge, and the
-      /// Audio package's `ofEngine` then EXCUSES a UI doc naming `Cmd.ofEngine`, whose reader gets a hard
-      /// build error. And by PATH, not by simple name, because that is what the mirror keys on: the two
-      /// halves have to agree about what a module IS, or the gate reports green on the difference (#648).
-      Modules: Map<string * string, Set<string>>
-      /// (package, type) -> the union cases / record fields it exports. Keyed by PACKAGE as well as name
-      /// because the pinned packages declare seventeen type names twice or more, and `Scene`'s `Fatal`
-      /// case must not excuse its absence from `Layout`'s same-named type.
-      Types: Map<string * string, Set<string>>
-      /// #752 — (package, namespace, type) for EVERY public type the pin exports. The subject of the
-      /// completeness rule, and the one thing `Types` cannot be: `Types` is keyed by name alone and holds
-      /// only types that carry a case or a field, so it can neither see an opaque type nor tell
-      /// `FS.GG.UI.Controls.Typed.ButtonProps` (deliberately NOT mirrored — feature 085, FR-013) from
-      /// `FS.GG.UI.Controls.Widget` (mirrored namespace, simply missing). Without the namespace the
-      /// completeness rule would have to accuse both or neither, and accusing a documented carve-out is how
-      /// a rule gets ledgered into silence by the first person it wrongly accuses.
-      DeclaredTypes: Set<string * string * string>
-      /// #752 — (package, namespace, module path) for every public F# MODULE the pin exports. Kept APART
-      /// from `DeclaredTypes` for the reason the maps above are kept apart: a module and a type are
-      /// different things that may share a name (`module Scene` beside `type Scene`), and a merged set would
-      /// let a mirrored `type Scene` excuse an omitted `module Scene`. A module is exactly as omittable as a
-      /// type — `module Keymap` (twelve rebind functions) and `module KeymapCodec` are both absent from the
-      /// mirror at 0.9.2 — and a types-only completeness rule reports green on every one of them.
-      DeclaredModules: Set<string * string * string> }
+    {
+        /// (package, module path) -> the `val`s the published assembly exports. Keyed by PACKAGE as well as
+        /// path for the SAME reason `Types` is, and it took a second bug (#683) to say so: `Cmd` is
+        /// FS.GG.Audio.Elmish's `Audio.Cmd` (`ofEngine`, `playSfx`, …) AND FS.GG.UI.Controls.Elmish's
+        /// top-level `Cmd` (`none`, alone) — disjoint member sets. Keyed on the bare name they merge, and the
+        /// Audio package's `ofEngine` then EXCUSES a UI doc naming `Cmd.ofEngine`, whose reader gets a hard
+        /// build error. And by PATH, not by simple name, because that is what the mirror keys on: the two
+        /// halves have to agree about what a module IS, or the gate reports green on the difference (#648).
+        Modules: Map<string * string, Set<string>>
+        /// (package, type) -> the union cases / record fields it exports. Keyed by PACKAGE as well as name
+        /// because the pinned packages declare seventeen type names twice or more, and `Scene`'s `Fatal`
+        /// case must not excuse its absence from `Layout`'s same-named type.
+        Types: Map<string * string, Set<string>>
+        /// #752 — (package, namespace, type) for EVERY public type the pin exports. The subject of the
+        /// completeness rule, and the one thing `Types` cannot be: `Types` is keyed by name alone and holds
+        /// only types that carry a case or a field, so it can neither see an opaque type nor tell
+        /// `FS.GG.UI.Controls.Typed.ButtonProps` (deliberately NOT mirrored — feature 085, FR-013) from
+        /// `FS.GG.UI.Controls.Widget` (mirrored namespace, simply missing). Without the namespace the
+        /// completeness rule would have to accuse both or neither, and accusing a documented carve-out is how
+        /// a rule gets ledgered into silence by the first person it wrongly accuses.
+        DeclaredTypes: Set<string * string * string>
+        /// #752 — (package, namespace, module path) for every public F# MODULE the pin exports. Kept APART
+        /// from `DeclaredTypes` for the reason the maps above are kept apart: a module and a type are
+        /// different things that may share a name (`module Scene` beside `type Scene`), and a merged set would
+        /// let a mirrored `type Scene` excuse an omitted `module Scene`. A module is exactly as omittable as a
+        /// type — `module Keymap` (twelve rebind functions) and `module KeymapCodec` are both absent from the
+        /// mirror at 0.9.2 — and a types-only completeness rule reports green on every one of them.
+        DeclaredModules: Set<string * string * string>
+    }
 
 module private PinnedApi =
 
@@ -1689,7 +1753,8 @@ module private PinnedApi =
     /// rule would have been the one that forgot it and hard-failed every offline run.
     let private skipRequested =
         match Environment.GetEnvironmentVariable "FS_GG_SKIP_TEMPLATE_PINNED_API" with
-        | null | "" -> false
+        | null
+        | "" -> false
         | _ -> true
 
     /// Sequential pipe drain is safe HERE and would not be in `runNameofProbe`: a `--unified=0` diff of one
@@ -1744,7 +1809,10 @@ module private PinnedApi =
                 let header = String(sign, 3)
 
                 out.Replace("\r\n", "\n").Split('\n')
-                |> Array.filter (fun l -> l.Length > 0 && l.[0] = sign && not (l.StartsWith(header, StringComparison.Ordinal)))
+                |> Array.filter (fun l ->
+                    l.Length > 0
+                    && l.[0] = sign
+                    && not (l.StartsWith(header, StringComparison.Ordinal)))
                 |> Array.choose (fun l ->
                     let m = rx.Match l
                     if m.Success then Some(m.Groups.[1].Value.Trim()) else None)
@@ -1755,12 +1823,14 @@ module private PinnedApi =
             Ok(not added.IsEmpty && added <> removed)
 
     /// The severity+code of a build diagnostic, in MSBuild's canonical format (`… error NU1102: …`).
-    let private errorCodeRegex = Regex(@"\berror\s+[A-Z]+[0-9]+\b", RegexOptions.Compiled)
+    let private errorCodeRegex =
+        Regex(@"\berror\s+[A-Z]+[0-9]+\b", RegexOptions.Compiled)
 
     /// The FS.GG.* package ids named on a line. Read off the IDS THEMSELVES rather than NuGet's English
     /// prose ("Unable to find package X with version (>= Y)"), so the waiver's scope is decided by what the
     /// diagnostic is ABOUT and not by wording that a localized or reworded NuGet could change underneath it.
-    let private fsGgIdRegex = Regex(@"\bFS\.GG\.[A-Za-z0-9.]*[A-Za-z0-9]", RegexOptions.Compiled)
+    let private fsGgIdRegex =
+        Regex(@"\bFS\.GG\.[A-Za-z0-9.]*[A-Za-z0-9]", RegexOptions.Compiled)
 
     /// Does this line name EXACTLY `version` — as a whole version token, not as a substring of a longer one?
     ///
@@ -1811,8 +1881,7 @@ module private PinnedApi =
     /// wrong in.
     let private failedOnlyOnUnpublishedUiPin (output: string) (uiPin: string) =
         let errorLines =
-            output.Replace("\r\n", "\n").Split('\n')
-            |> Array.filter errorCodeRegex.IsMatch
+            output.Replace("\r\n", "\n").Split('\n') |> Array.filter errorCodeRegex.IsMatch
 
         let unresolvedPins = errorLines |> Array.filter (fun l -> l.Contains "NU1102")
 
@@ -1829,7 +1898,8 @@ module private PinnedApi =
         //    token, because "0.9.2" is a SUBSTRING of "0.9.20" and of "0.9.2-preview.1" (#711).
         && namedPins
            |> Array.forall (fun (line, ids) ->
-               ids |> List.forall (fun id -> id.StartsWith("FS.GG.UI.", StringComparison.Ordinal))
+               ids
+               |> List.forall (fun id -> id.StartsWith("FS.GG.UI.", StringComparison.Ordinal))
                && namesVersion line uiPin)
 
     // -----------------------------------------------------------------------------------------
@@ -1937,8 +2007,7 @@ module private PinnedApi =
     /// exactly when the failure is the calling rule's own business to judge.
     ///
     /// This is the whole waiver, and it is the only path to it.
-    let private settle (subject: string) (output: string) : unit =
-        enact (classify subject output)
+    let private settle (subject: string) (output: string) : unit = enact (classify subject output)
 
     /// The skip message, in one place, so the opt-out reads the same whichever door was knocked on.
     let private skipped (subject: string) : 'a =
@@ -1971,7 +2040,10 @@ module private PinnedApi =
         // PackageReferences come from it, and the `open` lines stay as the namespaces they are.
         let packages =
             namespaces |> List.map packageForNamespace |> List.distinct |> List.sort
-        let workDir = Path.Combine(Path.GetTempPath(), "fsgg-pinned-api-probe-" + Guid.NewGuid().ToString("N"))
+
+        let workDir =
+            Path.Combine(Path.GetTempPath(), "fsgg-pinned-api-probe-" + Guid.NewGuid().ToString("N"))
+
         Directory.CreateDirectory workDir |> ignore
 
         try
@@ -2024,7 +2096,8 @@ module private PinnedApi =
             for ns in namespaces do
                 probeSource.AppendLine($"open {ns}") |> ignore
 
-            probeSource.AppendLine().AppendLine("let private probed : string list =").AppendLine("    [") |> ignore
+            probeSource.AppendLine().AppendLine("let private probed : string list =").AppendLine("    [")
+            |> ignore
 
             for line in nameofLines do
                 probeSource.AppendLine($"      nameof {line}") |> ignore
@@ -2071,7 +2144,10 @@ module private PinnedApi =
                     proc.WaitForExit()
                     proc.ExitCode, lock output (fun () -> output.ToString())
                 else
-                    try proc.Kill true with _ -> ()
+                    try
+                        proc.Kill true
+                    with _ ->
+                        ()
 
                     let minutes = probeTimeoutMs / 60_000
 
@@ -2080,7 +2156,10 @@ module private PinnedApi =
                       restore from nuget.org stalled. This is an infrastructure failure, NOT a missing \
                       API.\n\n{lock output (fun () -> output.ToString())}"
         finally
-            try Directory.Delete(workDir, true) with _ -> ()
+            try
+                Directory.Delete(workDir, true)
+            with _ ->
+                ()
 
     /// Restore `packages` at `versionOf`, and read their module + type surface out of the restored assemblies.
     ///
@@ -2096,13 +2175,16 @@ module private PinnedApi =
         (packages: string list)
         (versionOf: string -> string)
         : Result<
-            Map<string * string, Set<string>>
-            * Map<string * string, Set<string>>
-            * Set<string * string * string>
-            * Set<string * string * string>,
-            string
-          > =
-        let workDir = Path.Combine(Path.GetTempPath(), "fsgg-doc-pin-probe-" + Guid.NewGuid().ToString("N"))
+              Map<string * string, Set<string>> *
+              Map<string * string, Set<string>> *
+              Set<string * string * string> *
+              Set<string * string * string>,
+              string
+           >
+        =
+        let workDir =
+            Path.Combine(Path.GetTempPath(), "fsgg-doc-pin-probe-" + Guid.NewGuid().ToString("N"))
+
         Directory.CreateDirectory workDir |> ignore
 
         try
@@ -2157,8 +2239,13 @@ module private PinnedApi =
                 proc.BeginErrorReadLine()
 
                 if not (proc.WaitForExit probeTimeoutMs) then
-                    try proc.Kill true with _ -> ()
-                    Error $"the doc-vs-pin restore did not finish within {probeTimeoutMs / 60_000} minute(s) — most \
+                    try
+                        proc.Kill true
+                    with _ ->
+                        ()
+
+                    Error
+                        $"the doc-vs-pin restore did not finish within {probeTimeoutMs / 60_000} minute(s) — most \
                             likely the restore from nuget.org stalled. This is an infrastructure failure, NOT a \
                             missing API.\n\n{lock output (fun () -> output.ToString())}"
                 else
@@ -2166,17 +2253,21 @@ module private PinnedApi =
                     let text = lock output (fun () -> output.ToString())
 
                     if proc.ExitCode <> 0 then
-                        Error $"the doc-vs-pin restore FAILED, so the pinned surface is unknown and no doc symbol \
+                        Error
+                            $"the doc-vs-pin restore FAILED, so the pinned surface is unknown and no doc symbol \
                                 can be judged against it.\n\n{text}"
                     else
                         // Every pinned package must yield exactly one assembly. A package that restored but
                         // whose lib/ we cannot find is an oracle with a hole in it, and a hole excuses every
                         // symbol that would have landed in it.
                         let missing = ResizeArray<string>()
+
                         let surface =
                             Collections.Generic.Dictionary<string * string, Collections.Generic.HashSet<string>>()
+
                         let types =
                             Collections.Generic.Dictionary<string * string, Collections.Generic.HashSet<string>>()
+
                         let declared = Collections.Generic.HashSet<string * string * string>()
                         let declaredModules = Collections.Generic.HashSet<string * string * string>()
 
@@ -2259,18 +2350,27 @@ module private PinnedApi =
                         if missing.Count > 0 then
                             let names = String.Join(", ", missing)
 
-                            Error $"restored, but no lib assembly was found under {probePackagesDir} for: \
+                            Error
+                                $"restored, but no lib assembly was found under {probePackagesDir} for: \
                                     {names}. The oracle would have a hole in it, and a hole EXCUSES every doc \
                                     symbol that belongs in it — fail closed instead.\n\n{text}"
                         elif surface.Count = 0 then
-                            Error "the pinned packages exported ZERO F# modules — the metadata reader has stopped \
+                            Error
+                                "the pinned packages exported ZERO F# modules — the metadata reader has stopped \
                                    seeing the surface. That is a defect in this test, not an empty framework."
                         else
-                            let modules = surface |> Seq.map (fun kvp -> kvp.Key, Set.ofSeq kvp.Value) |> Map.ofSeq
-                            let typeMap = types |> Seq.map (fun kvp -> kvp.Key, Set.ofSeq kvp.Value) |> Map.ofSeq
+                            let modules =
+                                surface |> Seq.map (fun kvp -> kvp.Key, Set.ofSeq kvp.Value) |> Map.ofSeq
+
+                            let typeMap =
+                                types |> Seq.map (fun kvp -> kvp.Key, Set.ofSeq kvp.Value) |> Map.ofSeq
+
                             Ok(modules, typeMap, Set.ofSeq declared, Set.ofSeq declaredModules)
         finally
-            try Directory.Delete(workDir, true) with _ -> ()
+            try
+                Directory.Delete(workDir, true)
+            with _ ->
+                ()
 
     /// Restored ONCE per run, not once per test. Four rules below ask for the pinned surface, and a restore
     /// is the expensive, network-bound half of this file — so asking four times would quadruple the gate's
@@ -2322,10 +2422,12 @@ module private PinnedApi =
             match pinnedSurfaceResult.Value with
             | Ok(modules, types, declared, declaredModules) ->
                 f
-                    { Modules = modules
-                      Types = types
-                      DeclaredTypes = declared
-                      DeclaredModules = declaredModules }
+                    {
+                        Modules = modules
+                        Types = types
+                        DeclaredTypes = declared
+                        DeclaredModules = declaredModules
+                    }
             | Error why ->
                 // Defers in the release window; fails on a stale pin, in the release lane, or on a git that
                 // cannot answer. Returns only when the failure is something else entirely —
@@ -2346,10 +2448,12 @@ module private PinnedApi =
             match oracleSurfaceResult.Value with
             | Ok(modules, types, declared, declaredModules) ->
                 f
-                    { Modules = modules
-                      Types = types
-                      DeclaredTypes = declared
-                      DeclaredModules = declaredModules }
+                    {
+                        Modules = modules
+                        Types = types
+                        DeclaredTypes = declared
+                        DeclaredModules = declaredModules
+                    }
             | Error why -> skiptest why
 
     /// THE ONLY WAY TO COMPILE A `nameof` PROBE AGAINST THE PIN, and the second half of #673's fix.
@@ -2413,11 +2517,7 @@ let private runProbeBuild () =
 /// that are top-level in their namespace would wrongly accuse the 20 shipped sites that write a bare
 /// `Perf.runScript`, and a false positive is how this rule gets ledgered into silence by the first
 /// person it wrongly accuses.
-let private occurrenceResolvesInPin
-    (pinned: Map<string * string, Set<string>>)
-    (qualifier: string)
-    (s: DocSymbol)
-    =
+let private occurrenceResolvesInPin (pinned: Map<string * string, Set<string>>) (qualifier: string) (s: DocSymbol) =
     admittedCandidates qualifier s.Module
     |> List.exists (fun m ->
         match pinned |> Map.tryFind (packageForNamespace m.Namespace, m.Path) with
@@ -2517,8 +2617,7 @@ let private omissionLedgerPath = repoPath omissionLedgerRel
 ///
 /// The name is spelled as IL spells it, arity mangle and all (``Foo`1``), because that is what both sides
 /// key on; a module's is its PATH within the namespace (`Audio.Cmd`), which is what the mirror keys on.
-let private omissionKey (kind: string) (package: string, ns: string, name: string) =
-    $"{kind} {package}::{ns}.{name}"
+let private omissionKey (kind: string) (package: string, ns: string, name: string) = $"{kind} {package}::{ns}.{name}"
 
 let private omissionLedger =
     if not (File.Exists omissionLedgerPath) then
@@ -2655,7 +2754,7 @@ let private pinSurfaceInMirrorScope (surface: PinnedSurface) : Set<string> =
 /// the key outright, so a mirror declaration in one package would retire a ledger entry written for another.
 /// The file's own comments name four type names that span packages (`DiagnosticSeverity`, `Point`, `Rect`,
 /// `ViewerMsg`), which is precisely where that would bite.
-let private mirrorSurfaceKeys : Set<string> =
+let private mirrorSurfaceKeys: Set<string> =
     let types =
         mirrorDeclaredTypes
         |> Set.map (fun (ns, name) -> omissionKey "type" (packageForNamespace ns, ns, name))
@@ -2686,9 +2785,10 @@ let private persistentHostArg = @"(?:generatedHost|interactiveHost)"
 
 /// A launch that HONOURS both effects, capturing the launcher token (group 1): SOME launcher (any overload
 /// name) applied to `viewerOptions` and, as its terminal arguments, the audio sink then the persistent
-/// host. `[^\n]*` tolerates the window-behavior request the `--window-*` overload threads between them.
+/// host. The bounded cross-line span tolerates Fantomas placing each argument on its own line and the
+/// window-behavior request the `--window-*` overload threads between them.
 let private effectHonouringLaunch =
-    Regex($@"([A-Za-z_][\w.]*)\s+viewerOptions\b[^\n]*\baudioSink\s+{persistentHostArg}\b")
+    Regex($@"([A-Za-z_][\w.]*)\s+viewerOptions\b[\s\S]{{0,500}}?\baudioSink\s+{persistentHostArg}\b")
 
 /// The SINKLESS launch shape #436 forbids: the persistent host threaded DIRECTLY after `viewerOptions`
 /// with NO audio sink between them. Launcher-name-agnostic, so a rename cannot disguise a silent launch.
@@ -2717,177 +2817,181 @@ let private programDefaultBranchText () =
 
 [<Tests>]
 let templateConsumesPinnedApiTests =
-    testList "Template consumes the pinned framework API (#504)" [
+    testList
+        "Template consumes the pinned framework API (#504)"
+        [
 
-        // The extractor is the load-bearing part of every assertion below it. If it silently matches
-        // nothing, every other test in this list passes VACUOUSLY — green because it checked
-        // nothing, which is the failure this whole item exists to stop.
-        test "the template's Program.fs calls framework entry points (extractor is not vacuous)" {
-            Expect.isNonEmpty frameworkModules "the bundled api-surface mirror declares framework modules"
+            // The extractor is the load-bearing part of every assertion below it. If it silently matches
+            // nothing, every other test in this list passes VACUOUSLY — green because it checked
+            // nothing, which is the failure this whole item exists to stop.
+            test "the template's Program.fs calls framework entry points (extractor is not vacuous)" {
+                Expect.isNonEmpty frameworkModules "the bundled api-surface mirror declares framework modules"
 
-            Expect.isNonEmpty
-                callSites
-                $"framework entry points were extracted from {programPath}. Zero call sites means the \
+                Expect.isNonEmpty
+                    callSites
+                    $"framework entry points were extracted from {programPath}. Zero call sites means the \
                   extractor has stopped seeing the template's framework usage — that is a defect in \
                   this test, not a passing template."
-        }
+            }
 
-        // The seam from #429 — the concrete API that existed in `src/`, shipped in no package the
-        // template pinned, and was unreachable from every scaffolded product for the life of 0.8.0. If a
-        // refactor ever stops the extractor from seeing the viewer launch calls, this test says so out
-        // loud rather than quietly reducing the check to nothing.
-        //
-        // #436 completes that story: `Viewer.runApp` and `ControlsElmish.runInteractiveApp` — the two
-        // SINKLESS overloads — are no longer called; every windowed profile launches through the
-        // audio-carrying sibling. Governance#297/#981 then moved this off the exact overload NAMES onto the
-        // launch BEHAVIOR: the launcher(s) the template calls are captured by the effect ARGUMENTS they
-        // receive (viewerOptions … audioSink … persistent host), each is asserted to be among the extracted
-        // call sites the pin proof compiles, and the sinkless shape is forbidden by argument shape — so a
-        // sanctioned launcher upgrade passes without editing this suite.
-        test "the viewer launch seam is present, extracted, and carries the audio sink (behavior, not overload name)" {
-            let extracted = callSites |> List.map (fun c -> $"{c.Module}.{c.Member}") |> Set.ofList
-            let rendered = extracted |> Set.toList |> String.concat ", "
-            let defaultBranch = programDefaultBranchText ()
+            // The seam from #429 — the concrete API that existed in `src/`, shipped in no package the
+            // template pinned, and was unreachable from every scaffolded product for the life of 0.8.0. If a
+            // refactor ever stops the extractor from seeing the viewer launch calls, this test says so out
+            // loud rather than quietly reducing the check to nothing.
+            //
+            // #436 completes that story: `Viewer.runApp` and `ControlsElmish.runInteractiveApp` — the two
+            // SINKLESS overloads — are no longer called; every windowed profile launches through the
+            // audio-carrying sibling. Governance#297/#981 then moved this off the exact overload NAMES onto the
+            // launch BEHAVIOR: the launcher(s) the template calls are captured by the effect ARGUMENTS they
+            // receive (viewerOptions … audioSink … persistent host), each is asserted to be among the extracted
+            // call sites the pin proof compiles, and the sinkless shape is forbidden by argument shape — so a
+            // sanctioned launcher upgrade passes without editing this suite.
+            test
+                "the viewer launch seam is present, extracted, and carries the audio sink (behavior, not overload name)" {
+                let extracted =
+                    callSites |> List.map (fun c -> $"{c.Module}.{c.Member}") |> Set.ofList
 
-            // The launcher(s) the default branch actually calls, WHATEVER they are named — captured by the
-            // effect arguments (viewerOptions … audioSink … persistent host), not a hardcoded overload
-            // name. A sanctioned launcher upgrade renames these and still matches.
-            let launchers =
-                effectHonouringLaunch.Matches defaultBranch
-                |> Seq.map (fun m -> m.Groups.[1].Value)
-                |> Set.ofSeq
+                let rendered = extracted |> Set.toList |> String.concat ", "
+                let defaultBranch = programDefaultBranchText ()
 
-            // Non-vacuous: the default branch MUST thread the effects into a launcher, or the pin proof
-            // below would go vacuous the moment the launch seam disappeared (the #504 extractor guard).
-            Expect.isNonEmpty
-                (Set.toList launchers)
-                $"Program.fs default branch must thread `viewerOptions`, the audio sink, and the persistent \
+                // The launcher(s) the default branch actually calls, WHATEVER they are named — captured by the
+                // effect arguments (viewerOptions … audioSink … persistent host), not a hardcoded overload
+                // name. A sanctioned launcher upgrade renames these and still matches.
+                let launchers =
+                    effectHonouringLaunch.Matches defaultBranch
+                    |> Seq.map (fun m -> m.Groups.[1].Value)
+                    |> Set.ofSeq
+
+                // Non-vacuous: the default branch MUST thread the effects into a launcher, or the pin proof
+                // below would go vacuous the moment the launch seam disappeared (the #504 extractor guard).
+                Expect.isNonEmpty
+                    (Set.toList launchers)
+                    $"Program.fs default branch must thread `viewerOptions`, the audio sink, and the persistent \
                   host into a launcher — the host honours PlayAudio and Persist, whatever the launcher is \
                   named (extracted call sites: {rendered})"
 
-            // Every launcher the template calls is among the extracted framework call sites, so the
-            // pin-grounded proof below actually compiles the launch seam against the pin (the #429 class),
-            // whatever the launcher was renamed to.
-            for launcher in launchers do
-                Expect.isTrue
-                    (extracted.Contains launcher)
-                    $"the launcher `{launcher}` the template's Program.fs calls is among the extracted \
+                // Every launcher the template calls is among the extracted framework call sites, so the
+                // pin-grounded proof below actually compiles the launch seam against the pin (the #429 class),
+                // whatever the launcher was renamed to.
+                for launcher in launchers do
+                    Expect.isTrue
+                        (extracted.Contains launcher)
+                        $"the launcher `{launcher}` the template's Program.fs calls is among the extracted \
                       framework entry points compiled against the pin (extracted: {rendered})"
 
-            // #436, by ARGUMENT shape: no profile launches through a sink-discarding overload — the host
-            // threaded directly after `viewerOptions` with no `audioSink` between them. Launcher-name-
-            // agnostic, so a rename cannot smuggle a silent launch past (which left `app`/`sample-pack`
-            // mute while every positive check stayed green).
-            Expect.isFalse
-                (sinklessLaunch.IsMatch defaultBranch)
-                "the template must not launch through a sink-discarding overload — every windowed profile \
+                // #436, by ARGUMENT shape: no profile launches through a sink-discarding overload — the host
+                // threaded directly after `viewerOptions` with no `audioSink` between them. Launcher-name-
+                // agnostic, so a rename cannot smuggle a silent launch past (which left `app`/`sample-pack`
+                // mute while every positive check stayed green).
+                Expect.isFalse
+                    (sinklessLaunch.IsMatch defaultBranch)
+                    "the template must not launch through a sink-discarding overload — every windowed profile \
                  carries the audio sink (#436); matched by argument shape, so a launcher rename cannot hide one"
-        }
+            }
 
-        // Offline necessary-but-not-sufficient condition. It CANNOT catch #429 (the mirror tracks
-        // `src/`, so it advertises the seam the pin lacks) — the pin-grounded test below is what
-        // does. It catches the other direction: a call site that names nothing at all.
-        test "every framework entry point the template calls exists in the bundled mirror" {
-            let unresolved =
-                callSites
-                |> List.filter (fun c -> (owningModule c).IsNone)
-                |> List.map (fun c -> $"{c.Module}.{c.Member} (Program.fs:{c.Line})")
+            // Offline necessary-but-not-sufficient condition. It CANNOT catch #429 (the mirror tracks
+            // `src/`, so it advertises the seam the pin lacks) — the pin-grounded test below is what
+            // does. It catches the other direction: a call site that names nothing at all.
+            test "every framework entry point the template calls exists in the bundled mirror" {
+                let unresolved =
+                    callSites
+                    |> List.filter (fun c -> (owningModule c).IsNone)
+                    |> List.map (fun c -> $"{c.Module}.{c.Member} (Program.fs:{c.Line})")
 
-            Expect.equal
-                (String.concat "; " unresolved)
-                ""
-                "every framework entry point called by the template's Program.fs is declared in the \
+                Expect.equal
+                    (String.concat "; " unresolved)
+                    ""
+                    "every framework entry point called by the template's Program.fs is declared in the \
                  bundled api-surface mirror"
-        }
+            }
 
-        // THE assertion #504 asks for, and it runs BY DEFAULT — including on the gate.
-        //
-        // It is deliberately NOT opt-in. The sibling restore proofs
-        // (scripts/validate-template-payload-pins.fsx) are gated behind an opt-in env var that the
-        // WORKFLOW sets; this test cannot rely on that, because switching it on would mean editing
-        // gate.yml. An opt-in check that nothing opts into is a check that never runs — it would
-        // report green having verified nothing, which is the exact fails-open shape (#266) that let
-        // #429 sit unreachable for the life of 0.8.0. #504 exists to fire ON the PR, so it fires.
-        //
-        // The cost is honest and named: this restores from nuget.org, so the gate's test step now
-        // depends on the feed being up. FS_GG_SKIP_TEMPLATE_PINNED_API=1 skips it for offline work —
-        // an explicit, visible opt-OUT rather than a silent default-off.
-        //
-        // And it DEFERS, rather than failing, in the one window where the pin cannot resolve by
-        // construction: the release PR that bumps $(FsGgUiVersion) to the version it is about to
-        // publish (#543 — see the RELEASE-PENDING note in the header for the bounds).
-        testCase "every framework entry point the template calls exists in the PINNED package" <| fun _ ->
-            // The env opt-out and the RELEASE-PENDING deferral are BOTH `PinnedApi`'s, not this rule's
-            // (#673). What is left here is the only thing that was ever this rule's own: what a probe
-            // failure MEANS once we know it is not the release window.
-            let exitCode, output = runProbeBuild ()
+            // THE assertion #504 asks for, and it runs BY DEFAULT — including on the gate.
+            //
+            // It is deliberately NOT opt-in. The sibling restore proofs
+            // (scripts/validate-template-payload-pins.fsx) are gated behind an opt-in env var that the
+            // WORKFLOW sets; this test cannot rely on that, because switching it on would mean editing
+            // gate.yml. An opt-in check that nothing opts into is a check that never runs — it would
+            // report green having verified nothing, which is the exact fails-open shape (#266) that let
+            // #429 sit unreachable for the life of 0.8.0. #504 exists to fire ON the PR, so it fires.
+            //
+            // The cost is honest and named: this restores from nuget.org, so the gate's test step now
+            // depends on the feed being up. FS_GG_SKIP_TEMPLATE_PINNED_API=1 skips it for offline work —
+            // an explicit, visible opt-OUT rather than a silent default-off.
+            //
+            // And it DEFERS, rather than failing, in the one window where the pin cannot resolve by
+            // construction: the release PR that bumps $(FsGgUiVersion) to the version it is about to
+            // publish (#543 — see the RELEASE-PENDING note in the header for the bounds).
+            testCase "every framework entry point the template calls exists in the PINNED package"
+            <| fun _ ->
+                // The env opt-out and the RELEASE-PENDING deferral are BOTH `PinnedApi`'s, not this rule's
+                // (#673). What is left here is the only thing that was ever this rule's own: what a probe
+                // failure MEANS once we know it is not the release window.
+                let exitCode, output = runProbeBuild ()
 
-            if exitCode <> 0 then
-                let uiPin = readAxis uiAxis
-                let audioPin = readAxis "FsGgAudioVersion"
+                if exitCode <> 0 then
+                    let uiPin = readAxis uiAxis
+                    let audioPin = readAxis "FsGgAudioVersion"
 
-                failtest
-                    $"the template's framework call sites do NOT compile against the PINNED packages \
+                    failtest
+                        $"the template's framework call sites do NOT compile against the PINNED packages \
                       (FsGgUiVersion={uiPin}, FsGgAudioVersion={audioPin}). \
                       A failure here means the framework has grown public API that a scaffolded product \
                       CANNOT reach — the #429/#492 class. Either the seam is unreleased (cut the release, \
                       then bump the pin) or the template calls API that no longer exists.\n\n{output}"
 
-        // ---- #589: the shipped DOCS, against the same pin ------------------------------------
+            // ---- #589: the shipped DOCS, against the same pin ------------------------------------
 
-        // Same guard as the extractor test above, for the same reason: every assertion below is a
-        // `forall` over these lists, so an extractor that silently matches nothing turns all of them
-        // green having checked nothing (FS-GG/.github#266).
-        test "the shipped docs name framework API (the doc extractor is not vacuous)" {
-            Expect.isNonEmpty
-                skillFenceSymbols
-                $"`Module.member` symbols were extracted from the ```fsharp fences of {productSkillsRoot}. \
+            // Same guard as the extractor test above, for the same reason: every assertion below is a
+            // `forall` over these lists, so an extractor that silently matches nothing turns all of them
+            // green having checked nothing (FS-GG/.github#266).
+            test "the shipped docs name framework API (the doc extractor is not vacuous)" {
+                Expect.isNonEmpty
+                    skillFenceSymbols
+                    $"`Module.member` symbols were extracted from the ```fsharp fences of {productSkillsRoot}. \
                   Zero means the fence extractor has stopped seeing the skills — a defect in this test, \
                   not a repo whose skills teach no API."
 
-            // #597's extractor, under the same guard as its siblings and for the same reason: it was ADDED
-            // because the rule read a product skill's FENCES and not the prose around them, so an
-            // implementation that matches nothing restores that blind spot while reporting green (#266).
-            //
-            // Anchored by NAME, not by count. `isNonEmpty` would be satisfied by any one skill, so an
-            // extractor that silently stopped skipping fences — reading only code, or only ```console
-            // blocks — could still pass a bare count. `Keyboard.update` is named in fs-gg-keyboard-input's
-            // PROSE, outside every fence, and it resolves; if it falls out, the prose reader has broken.
-            Expect.isTrue
-                (skillProseSymbols
-                 |> List.exists (fun (_, s) -> s.Module = "Keyboard" && s.Member = "update"))
-                $"`Keyboard.update` must be among the symbols extracted from the PROSE of the shipped product \
+                // #597's extractor, under the same guard as its siblings and for the same reason: it was ADDED
+                // because the rule read a product skill's FENCES and not the prose around them, so an
+                // implementation that matches nothing restores that blind spot while reporting green (#266).
+                //
+                // Anchored by NAME, not by count. `isNonEmpty` would be satisfied by any one skill, so an
+                // extractor that silently stopped skipping fences — reading only code, or only ```console
+                // blocks — could still pass a bare count. `Keyboard.update` is named in fs-gg-keyboard-input's
+                // PROSE, outside every fence, and it resolves; if it falls out, the prose reader has broken.
+                Expect.isTrue
+                    (skillProseSymbols
+                     |> List.exists (fun (_, s) -> s.Module = "Keyboard" && s.Member = "update"))
+                    $"`Keyboard.update` must be among the symbols extracted from the PROSE of the shipped product \
                   skills ({List.length skillProseSymbols} found). It is named in a sentence of \
                   fs-gg-keyboard-input, outside any fence — so if it falls out, the prose extractor has \
                   stopped seeing the surface a product author actually reads (#597's blind spot, reopened)."
 
-            Expect.isNonEmpty
-                mirrorValSymbols
-                "public `val`s were extracted from the shipped api-surface mirror."
+                Expect.isNonEmpty mirrorValSymbols "public `val`s were extracted from the shipped api-surface mirror."
 
-            // #598's extractor, under the same guard as its two siblings and for the same reason: this
-            // one was ADDED because the rule was silently blind to doc-comments, so an implementation
-            // that matches nothing would restore the exact blind spot it exists to close — and would do
-            // it while reporting green, which is the shape (#266) this file refuses.
-            Expect.isNonEmpty
-                mirrorDocCommentSymbols
-                "`Module.member` symbols were extracted from the `///` doc-comments of the shipped \
+                // #598's extractor, under the same guard as its two siblings and for the same reason: this
+                // one was ADDED because the rule was silently blind to doc-comments, so an implementation
+                // that matches nothing would restore the exact blind spot it exists to close — and would do
+                // it while reporting green, which is the shape (#266) this file refuses.
+                Expect.isNonEmpty
+                    mirrorDocCommentSymbols
+                    "`Module.member` symbols were extracted from the `///` doc-comments of the shipped \
                  api-surface mirror. Zero means the doc-comment extractor has stopped seeing the prose \
                  the mirror instructs a product author with — the #598 blind spot, reopened."
 
-            // #608's extractor, under the same guard as its three siblings and for the same reason. It was
-            // added because the rule was blind to the prose in the scaffold's OWN SOURCE — the files a
-            // product author opens on day one — so an implementation that matches nothing restores that
-            // blind spot while reporting green (#266).
-            //
-            // The RAW half: did the extractor read the fragments at all? Anchored by NAME, because
-            // `isNonEmpty` would be satisfied by `template/base/src` alone (Model.fs names two symbols), so
-            // an extractor that silently dropped `template/fragments` would pass a count check. A named
-            // anchor fails when the coverage narrows; a count does not.
-            Expect.isTrue
-                (scaffoldSourceDocCommentSymbols
-                 |> List.exists (fun (_, s) -> s.Module = "SpatialGrid" && s.Member = "build"))
-                $"`SpatialGrid.build` must be among the symbols extracted from the `///` doc-comments of the \
+                // #608's extractor, under the same guard as its three siblings and for the same reason. It was
+                // added because the rule was blind to the prose in the scaffold's OWN SOURCE — the files a
+                // product author opens on day one — so an implementation that matches nothing restores that
+                // blind spot while reporting green (#266).
+                //
+                // The RAW half: did the extractor read the fragments at all? Anchored by NAME, because
+                // `isNonEmpty` would be satisfied by `template/base/src` alone (Model.fs names two symbols), so
+                // an extractor that silently dropped `template/fragments` would pass a count check. A named
+                // anchor fails when the coverage narrows; a count does not.
+                Expect.isTrue
+                    (scaffoldSourceDocCommentSymbols
+                     |> List.exists (fun (_, s) -> s.Module = "SpatialGrid" && s.Member = "build"))
+                    $"`SpatialGrid.build` must be among the symbols extracted from the `///` doc-comments of the \
                   scaffold's own source ({List.length scaffoldSourceDocCommentSymbols} found across \
                   template/base/src + template/fragments). It is named in template/fragments/vec2/src/Product/\
                   Vec2.fs, which is a FRAGMENT — so if it falls out, either that comment was reworded (the \
@@ -2896,443 +3000,482 @@ let templateConsumesPinnedApiTests =
                   failure is worse than no diagnosis."
 
 
-            Expect.isNonEmpty
-                docSymbols
-                "at least one shipped doc symbol survives the framework/product filter and is judged."
+                Expect.isNonEmpty
+                    docSymbols
+                    "at least one shipped doc symbol survives the framework/product filter and is judged."
 
-            // The exemption is what keeps this rule off correct guidance, so it must not silently
-            // evaporate: if the fragments ever stop being read, `Geometry.toRect` becomes a false
-            // finding and someone "fixes" a doc that was right all along.
-            Expect.isTrue
-                (scaffoldModules.Contains "Geometry")
-                $"the scaffold-materialized modules were read from template/base/src + template/fragments \
+                // The exemption is what keeps this rule off correct guidance, so it must not silently
+                // evaporate: if the fragments ever stop being read, `Geometry.toRect` becomes a false
+                // finding and someone "fixes" a doc that was right all along.
+                Expect.isTrue
+                    (scaffoldModules.Contains "Geometry")
+                    $"the scaffold-materialized modules were read from template/base/src + template/fragments \
                   ({scaffoldModules.Count} found). `Geometry` must be among them — the scaffold writes \
                   `module Geometry` into the product (template/fragments/vec2/src/Product/Vec2.fs) while \
                   FS.GG.Game.Core ALSO exports one, and without this exemption the product's own module is \
                   judged against the framework's and correct guidance is reported as a defect."
 
-            // And the exemption must not OVERREACH, which is the far more dangerous direction: it makes
-            // the rule silently check less while still reporting green. `View.fs` ALIASES eight framework
-            // modules (`module Button = FS.GG.UI.Controls.Typed.Button`); reading an alias as a
-            // materialized module exempts the entire widget surface the skills teach.
-            for aliased in [ "Button"; "Stack"; "DataGrid"; "TextBlock"; "TextBox"; "RichText"; "LineChart"; "GraphView" ] do
-                Expect.isFalse
-                    (scaffoldModules.Contains aliased)
-                    $"`{aliased}` is ALIASED by the scaffold (`module {aliased} = FS.GG.UI.Controls.Typed.{aliased}` \
+                // And the exemption must not OVERREACH, which is the far more dangerous direction: it makes
+                // the rule silently check less while still reporting green. `View.fs` ALIASES eight framework
+                // modules (`module Button = FS.GG.UI.Controls.Typed.Button`); reading an alias as a
+                // materialized module exempts the entire widget surface the skills teach.
+                for aliased in
+                    [
+                        "Button"
+                        "Stack"
+                        "DataGrid"
+                        "TextBlock"
+                        "TextBox"
+                        "RichText"
+                        "LineChart"
+                        "GraphView"
+                    ] do
+                    Expect.isFalse
+                        (scaffoldModules.Contains aliased)
+                        $"`{aliased}` is ALIASED by the scaffold (`module {aliased} = FS.GG.UI.Controls.Typed.{aliased}` \
                       in template/base/src/Product/View.fs), not DEFINED by it — the alias resolves to the \
                       framework module, so every `{aliased}.member` a skill teaches must be judged against the \
                       pin. Treating it as scaffold-local exempts it, and the rule goes quietly blind to the \
                       widget surface while still reporting green."
 
-            // The positive half of the same guard, asserted on the real subject rather than on the
-            // exemption set: the widget symbols the skills teach must actually reach the rule.
-            let judged = docSymbols |> List.map (fun s -> $"{s.Module}.{s.Member}") |> Set.ofList
+                // The positive half of the same guard, asserted on the real subject rather than on the
+                // exemption set: the widget symbols the skills teach must actually reach the rule.
+                let judged =
+                    docSymbols |> List.map (fun s -> $"{s.Module}.{s.Member}") |> Set.ofList
 
-            // The JUDGED half — and this is the one that actually guards #608's contribution.
-            //
-            // The raw check above is NOT enough, and review proved it. EXACTLY ONE scaffold-source symbol
-            // survives `isJudgedDocModule` today (`SpatialGrid.build`; the other five are scaffold modules or
-            // absent from the mirror). So a single `module SpatialGrid =` appearing in any fragment — and
-            // five such fragments already exist, all wrapping FS.GG.Game.Core, with `fs-gg-product-collision`
-            // already teaching "broad-phase over SpatialGrid" — makes `scaffoldModules` swallow every
-            // `SpatialGrid.*` on EVERY surface. #608's contribution to the judged set goes to ZERO, and the
-            // raw anchor stays green because the symbol is still extracted.
-            //
-            // Review planted exactly that and got 39/39 passing with an undeclared symbol sitting in a
-            // shipped scaffold doc-comment — the #550 class, in the surface this item exists to close. The
-            // #598 sibling below anchors on `judged` for this reason; the first draft of this one did not,
-            // while claiming to be "under the same guard".
-            Expect.isTrue
-                (judged.Contains "SpatialGrid.build")
-                $"`SpatialGrid.build` must survive into the JUDGED set, not merely be extracted. It is the \
+                // The JUDGED half — and this is the one that actually guards #608's contribution.
+                //
+                // The raw check above is NOT enough, and review proved it. EXACTLY ONE scaffold-source symbol
+                // survives `isJudgedDocModule` today (`SpatialGrid.build`; the other five are scaffold modules or
+                // absent from the mirror). So a single `module SpatialGrid =` appearing in any fragment — and
+                // five such fragments already exist, all wrapping FS.GG.Game.Core, with `fs-gg-product-collision`
+                // already teaching "broad-phase over SpatialGrid" — makes `scaffoldModules` swallow every
+                // `SpatialGrid.*` on EVERY surface. #608's contribution to the judged set goes to ZERO, and the
+                // raw anchor stays green because the symbol is still extracted.
+                //
+                // Review planted exactly that and got 39/39 passing with an undeclared symbol sitting in a
+                // shipped scaffold doc-comment — the #550 class, in the surface this item exists to close. The
+                // #598 sibling below anchors on `judged` for this reason; the first draft of this one did not,
+                // while claiming to be "under the same guard".
+                Expect.isTrue
+                    (judged.Contains "SpatialGrid.build")
+                    $"`SpatialGrid.build` must survive into the JUDGED set, not merely be extracted. It is the \
                   ONLY scaffold-source symbol that does, so if a `module SpatialGrid` ever appears in the \
                   scaffold (a `spatial-grid` fragment beside the five that already exist), `scaffoldModules` \
                   exempts it and #608 silently judges NOTHING while every test stays green. That is the \
                   fails-open shape (.github#266) this file refuses everywhere else. If this fires, do not \
                   delete it — find what started exempting the symbol."
 
-            Expect.isTrue
-                (judged.Contains "Button.create" && judged.Contains "DataGrid.visibleRange")
-                "the widget symbols the product skills teach (`Button.create`, `DataGrid.visibleRange`) are \
+                Expect.isTrue
+                    (judged.Contains "Button.create" && judged.Contains "DataGrid.visibleRange")
+                    "the widget symbols the product skills teach (`Button.create`, `DataGrid.visibleRange`) are \
                  among the symbols this rule judges. If they fall out, the exemption has overreached again \
                  and the rule is checking less than it claims."
 
-            // #597's JUDGED half, and it needs its own anchor for exactly the reason the #608 one above
-            // does: being EXTRACTED is not being CHECKED. `Keyboard.update` is named in fs-gg-keyboard-input's
-            // PROSE, `Keyboard` is a mirror module and no fragment declares one, so it must survive
-            // `isJudgedDocModule`. If it stops, skill prose is being read and then discarded, and #597's
-            // blind spot is open again behind a green run.
-            Expect.isTrue
-                (judged.Contains "Keyboard.update")
-                "`Keyboard.update` must survive into the JUDGED set from a product skill's PROSE, not merely \
+                // #597's JUDGED half, and it needs its own anchor for exactly the reason the #608 one above
+                // does: being EXTRACTED is not being CHECKED. `Keyboard.update` is named in fs-gg-keyboard-input's
+                // PROSE, `Keyboard` is a mirror module and no fragment declares one, so it must survive
+                // `isJudgedDocModule`. If it stops, skill prose is being read and then discarded, and #597's
+                // blind spot is open again behind a green run.
+                Expect.isTrue
+                    (judged.Contains "Keyboard.update")
+                    "`Keyboard.update` must survive into the JUDGED set from a product skill's PROSE, not merely \
                  be extracted from it. If it falls out, prose is being read and thrown away — the #597 blind \
                  spot, reopened while every test stays green."
 
-            // #597's fence tracking FAILS OPEN, so the fences have to be proven closed.
-            //
-            // An UNCLOSED fence — an opener whose closer was dropped, a stray fence in a sentence — leaves the
-            // prose reader stuck "inside code" for the WHOLE REST OF THE FILE, and every prose line below it is
-            // silently skipped. A skill could then name any unpinned symbol past that point and this rule would
-            // report green having read none of it: "nothing to check" and "checked, and it's fine" sharing an
-            // exit code, which is the shape (.github#266) this file refuses everywhere else.
-            //
-            // The anti-vacuity anchor above cannot catch it — it proves ONE symbol in ONE file survives, and
-            // says nothing about the other sixteen.
-            //
-            // #669: this used to count ``` lines and demand the count be EVEN, which is a fourth hand-rolled
-            // reading of a fence and a weaker one — it cannot see a ~~~ block at all, and it calls a document
-            // balanced when a ```` closes a ``` it never opened. The scanner already answers this exactly, and
-            // it is the same scanner the reader above uses, so the property proven here is the property the
-            // reader actually has.
-            let unclosed =
-                Directory.EnumerateFiles(productSkillsRoot, "*.md", SearchOption.AllDirectories)
-                |> Seq.filter (fun path -> (MarkdownFences.scan (File.ReadAllText path)).UnclosedFence)
-                |> Seq.map (fun path -> Path.GetRelativePath(repoRoot, path).Replace('\\', '/'))
-                |> List.ofSeq
+                // #597's fence tracking FAILS OPEN, so the fences have to be proven closed.
+                //
+                // An UNCLOSED fence — an opener whose closer was dropped, a stray fence in a sentence — leaves the
+                // prose reader stuck "inside code" for the WHOLE REST OF THE FILE, and every prose line below it is
+                // silently skipped. A skill could then name any unpinned symbol past that point and this rule would
+                // report green having read none of it: "nothing to check" and "checked, and it's fine" sharing an
+                // exit code, which is the shape (.github#266) this file refuses everywhere else.
+                //
+                // The anti-vacuity anchor above cannot catch it — it proves ONE symbol in ONE file survives, and
+                // says nothing about the other sixteen.
+                //
+                // #669: this used to count ``` lines and demand the count be EVEN, which is a fourth hand-rolled
+                // reading of a fence and a weaker one — it cannot see a ~~~ block at all, and it calls a document
+                // balanced when a ```` closes a ``` it never opened. The scanner already answers this exactly, and
+                // it is the same scanner the reader above uses, so the property proven here is the property the
+                // reader actually has.
+                let unclosed =
+                    Directory.EnumerateFiles(productSkillsRoot, "*.md", SearchOption.AllDirectories)
+                    |> Seq.filter (fun path -> (MarkdownFences.scan (File.ReadAllText path)).UnclosedFence)
+                    |> Seq.map (fun path -> Path.GetRelativePath(repoRoot, path).Replace('\\', '/'))
+                    |> List.ofSeq
 
-            let unclosedList = String.Join(", ", unclosed)
+                let unclosedList = String.Join(", ", unclosed)
 
-            Expect.isEmpty
-                unclosed
-                $"every shipped product skill closes every fence it opens. An unclosed fence leaves the prose \
+                Expect.isEmpty
+                    unclosed
+                    $"every shipped product skill closes every fence it opens. An unclosed fence leaves the prose \
                   reader stuck inside a code block for the rest of the file, so every symbol below it goes \
                   UNJUDGED and this rule reports green having read nothing — the fails-open shape (.github#266). \
                   Fix the fence in the skill; do not relax this. Unclosed: {unclosedList}"
 
-            // #598's path guard, held from BOTH sides.
-            //
-            // It must bite: no judged symbol may have an F# source extension as its member. `Scene`,
-            // `Control`, `Loop` and `Persistence` are all column-0 mirror modules, so an unguarded
-            // extractor turns a doc-comment that merely NAMES `Scene.fs` into `Scene.fs` — a member no
-            // package exports — and reddens a correct doc with no honest remedy.
-            let judgedFileShaped =
-                docSymbols
-                |> List.filter (fun s -> sourceFileExtensions.Contains s.Member)
-                |> List.map (fun s -> $"{s.Doc}:{s.Line}  {s.Module}.{s.Member}")
+                // #598's path guard, held from BOTH sides.
+                //
+                // It must bite: no judged symbol may have an F# source extension as its member. `Scene`,
+                // `Control`, `Loop` and `Persistence` are all column-0 mirror modules, so an unguarded
+                // extractor turns a doc-comment that merely NAMES `Scene.fs` into `Scene.fs` — a member no
+                // package exports — and reddens a correct doc with no honest remedy.
+                let judgedFileShaped =
+                    docSymbols
+                    |> List.filter (fun s -> sourceFileExtensions.Contains s.Member)
+                    |> List.map (fun s -> $"{s.Doc}:{s.Line}  {s.Module}.{s.Member}")
 
-            Expect.isEmpty
-                judgedFileShaped
-                "no judged doc symbol has `fs`/`fsi`/`fsx` as its member — those are FILES a doc-comment \
+                Expect.isEmpty
+                    judgedFileShaped
+                    "no judged doc symbol has `fs`/`fsi`/`fsx` as its member — those are FILES a doc-comment \
                  mentioned, not API a reader can call, and judging one invents a violation against a \
                  correct doc."
 
-            // And it must not overreach: the doc-comment extractor still has to reach the real thing.
-            // `ViewerKeyboard.toKeyId` is named ONLY by a `///` comment (ControlsElmish.fsi) — no `val`
-            // and no fence carries it — so it is the sharpest proof that #598's extractor is doing the
-            // work, and that the guard above did not swallow it on the way.
-            Expect.isTrue
-                (judged.Contains "ViewerKeyboard.toKeyId")
-                "`ViewerKeyboard.toKeyId` — named only in a `///` doc-comment of the shipped mirror — is \
+                // And it must not overreach: the doc-comment extractor still has to reach the real thing.
+                // `ViewerKeyboard.toKeyId` is named ONLY by a `///` comment (ControlsElmish.fsi) — no `val`
+                // and no fence carries it — so it is the sharpest proof that #598's extractor is doing the
+                // work, and that the guard above did not swallow it on the way.
+                Expect.isTrue
+                    (judged.Contains "ViewerKeyboard.toKeyId")
+                    "`ViewerKeyboard.toKeyId` — named only in a `///` doc-comment of the shipped mirror — is \
                  among the judged symbols. If it falls out, #598's doc-comment extractor has stopped \
                  reaching the prose it was added for, and the rule is checking less than it claims."
-        }
+            }
 
-        // THE RULE (#589).
-        //
-        // Deferred in the same window, on the same bounds, as the probe above: in the release window the
-        // pinned packages do not exist, so the oracle cannot be built. SKIPPED, NOT PASSED.
-        // #597 — the `advance` trap, which is the reason this rule resolves QUALIFIED names and never bare
-        // ones. Asserted rather than assumed, because the trap is invisible until it fires and the failure
-        // is silent in both directions.
-        //
-        // `fs-gg-game-core` teaches `Loop.advance` — Game.Core, public, exported at the pin, correct
-        // guidance. The framework ALSO has `RetainedRender.advance`, an `AnimationClock` seam declared
-        // `module internal` and reachable only through `InternalsVisibleTo`. Same bare name, different
-        // module, OPPOSITE verdicts. A bare-name matcher conflates them and fails whichever way it guesses:
-        // red on `Loop.advance` (a correct doc reported as a defect, with no honest remedy), or green on a
-        // doc that genuinely taught the internal.
-        //
-        // Both halves are asserted. The first is the one #597's acceptance names; the second is the one that
-        // rots quietly, because a module that stops being judged stops being reported.
-        test "the rule resolves QUALIFIED names, so `Loop.advance` and `RetainedRender.advance` part company (#597)" {
-            let judged = docSymbols |> List.map (fun s -> $"{s.Module}.{s.Member}") |> Set.ofList
+            // THE RULE (#589).
+            //
+            // Deferred in the same window, on the same bounds, as the probe above: in the release window the
+            // pinned packages do not exist, so the oracle cannot be built. SKIPPED, NOT PASSED.
+            // #597 — the `advance` trap, which is the reason this rule resolves QUALIFIED names and never bare
+            // ones. Asserted rather than assumed, because the trap is invisible until it fires and the failure
+            // is silent in both directions.
+            //
+            // `fs-gg-game-core` teaches `Loop.advance` — Game.Core, public, exported at the pin, correct
+            // guidance. The framework ALSO has `RetainedRender.advance`, an `AnimationClock` seam declared
+            // `module internal` and reachable only through `InternalsVisibleTo`. Same bare name, different
+            // module, OPPOSITE verdicts. A bare-name matcher conflates them and fails whichever way it guesses:
+            // red on `Loop.advance` (a correct doc reported as a defect, with no honest remedy), or green on a
+            // doc that genuinely taught the internal.
+            //
+            // Both halves are asserted. The first is the one #597's acceptance names; the second is the one that
+            // rots quietly, because a module that stops being judged stops being reported.
+            test "the rule resolves QUALIFIED names, so `Loop.advance` and `RetainedRender.advance` part company (#597)" {
+                let judged =
+                    docSymbols |> List.map (fun s -> $"{s.Module}.{s.Member}") |> Set.ofList
 
-            Expect.isTrue
-                (judged.Contains "Loop.advance")
-                "`Loop.advance` is taught by fs-gg-game-core, is public in FS.GG.Game.Core, and is exported at \
+                Expect.isTrue
+                    (judged.Contains "Loop.advance")
+                    "`Loop.advance` is taught by fs-gg-game-core, is public in FS.GG.Game.Core, and is exported at \
                  the pin — so it must be JUDGED and must PASS. (That it passes is the rule above; that it is \
                  judged at all is this assertion.) If it is missing, the extractor has stopped reading the \
                  skill that teaches it, and the trap below is no longer being tested by anything."
 
-            let retained = judged |> Set.filter (fun s -> s.StartsWith("RetainedRender.", StringComparison.Ordinal))
+                let retained =
+                    judged
+                    |> Set.filter (fun s -> s.StartsWith("RetainedRender.", StringComparison.Ordinal))
 
-            Expect.isEmpty
-                retained
-                "`RetainedRender` is `module internal` and is NOT in the shipped mirror, so no symbol on it may \
+                Expect.isEmpty
+                    retained
+                    "`RetainedRender` is `module internal` and is NOT in the shipped mirror, so no symbol on it may \
                  ever enter the judged set. If one does, the closed world has been widened to modules a product \
                  cannot reach, and `RetainedRender.advance` will now be conflated with the `Loop.advance` that \
                  fs-gg-game-core correctly teaches — the bare-name unsoundness this rule exists to avoid."
-        }
+            }
 
-        // #648 — `Module.Submodule.member`, the spelling the rule was blind to.
-        //
-        // The extractor read COLUMN-0 `module` declarations only, so `ControlsElmish.Perf.runScript` found no
-        // module named `Perf`, `isFrameworkCall` returned false, and the call site was dropped as "the product
-        // calling itself" — SILENTLY, with no diagnostic. It failed in the dangerous direction: not a false
-        // alarm, a false PASS. A shipped doc could teach an UNRELEASED nested API and merge green, which is
-        // precisely the #550 class this rule was built to close.
-        //
-        // It was found because the gate flagged `ControlsElmish.audioRequests` and said NOTHING about
-        // `ControlsElmish.Perf.runScriptToEffects` — named on the line ABOVE it, in the same doc, in the same
-        // fenced block, and just as unbindable on the pin.
-        //
-        // The oracle could always see these: `readModuleSurface` reads `NestedPublic` types, so `Perf` was in
-        // the pinned surface the whole time. Only the EXTRACTOR was blind, and a gate whose two halves
-        // disagree about what a module IS reports green on the difference. (It keyed them by their SIMPLE
-        // NAME then, which was a second bug in the same neighbourhood and is #683 below; the two halves now
-        // agree on the PATH.)
-        test "a NESTED framework module is judged, so a doc cannot teach an unreleased `Module.Submodule.member` (#648)" {
-            let judged = docSymbols |> List.map (fun s -> $"{s.Module}.{s.Member}") |> Set.ofList
+            // #648 — `Module.Submodule.member`, the spelling the rule was blind to.
+            //
+            // The extractor read COLUMN-0 `module` declarations only, so `ControlsElmish.Perf.runScript` found no
+            // module named `Perf`, `isFrameworkCall` returned false, and the call site was dropped as "the product
+            // calling itself" — SILENTLY, with no diagnostic. It failed in the dangerous direction: not a false
+            // alarm, a false PASS. A shipped doc could teach an UNRELEASED nested API and merge green, which is
+            // precisely the #550 class this rule was built to close.
+            //
+            // It was found because the gate flagged `ControlsElmish.audioRequests` and said NOTHING about
+            // `ControlsElmish.Perf.runScriptToEffects` — named on the line ABOVE it, in the same doc, in the same
+            // fenced block, and just as unbindable on the pin.
+            //
+            // The oracle could always see these: `readModuleSurface` reads `NestedPublic` types, so `Perf` was in
+            // the pinned surface the whole time. Only the EXTRACTOR was blind, and a gate whose two halves
+            // disagree about what a module IS reports green on the difference. (It keyed them by their SIMPLE
+            // NAME then, which was a second bug in the same neighbourhood and is #683 below; the two halves now
+            // agree on the PATH.)
+            test
+                "a NESTED framework module is judged, so a doc cannot teach an unreleased `Module.Submodule.member` (#648)" {
+                let judged =
+                    docSymbols |> List.map (fun s -> $"{s.Module}.{s.Member}") |> Set.ofList
 
-            // The anti-vacuity anchor, by NAME rather than by count: the walk must actually reach the nested
-            // declarations. `Perf` and `Live` are nested in `ControlsElmish`, `Light`/`Dark` in `DesignTokens`,
-            // `Cmd` in `Audio` — five, across three packages.
-            for nested in [ "Perf"; "Live"; "Light"; "Dark" ] do
-                Expect.isTrue
-                    (frameworkModules |> List.exists (fun m -> m.Name = nested && m.Path.Contains "."))
-                    $"`{nested}` is a NESTED module of the shipped mirror and must be a framework entry point in \
+                // The anti-vacuity anchor, by NAME rather than by count: the walk must actually reach the nested
+                // declarations. `Perf` and `Live` are nested in `ControlsElmish`, `Light`/`Dark` in `DesignTokens`,
+                // `Cmd` in `Audio` — five, across three packages.
+                for nested in [ "Perf"; "Live"; "Light"; "Dark" ] do
+                    Expect.isTrue
+                        (frameworkModules
+                         |> List.exists (fun m -> m.Name = nested && m.Path.Contains "."))
+                        $"`{nested}` is a NESTED module of the shipped mirror and must be a framework entry point in \
                       its own right. If it falls out, `parseMirrorFile` has gone back to reading column-0 \
                       declarations only, and every `Module.{nested}.member` a shipped doc names is silently \
                       unjudged again (#648)."
 
-            // THE INSTANCE, and the sharpest anchor in this test: it must be JUDGED, not merely extracted.
-            // `fs-gg-elmish` is what teaches a product author to drive their UI headlessly, so `Perf.*` is one
-            // of the most-copied spellings in the shipped corpus — and it was the one nothing could see.
-            Expect.isTrue
-                (judged.Contains "Perf.runScriptToEffects")
-                "`ControlsElmish.Perf.runScriptToEffects` — named by the shipped mirror AND by fs-gg-elmish's \
+                // THE INSTANCE, and the sharpest anchor in this test: it must be JUDGED, not merely extracted.
+                // `fs-gg-elmish` is what teaches a product author to drive their UI headlessly, so `Perf.*` is one
+                // of the most-copied spellings in the shipped corpus — and it was the one nothing could see.
+                Expect.isTrue
+                    (judged.Contains "Perf.runScriptToEffects")
+                    "`ControlsElmish.Perf.runScriptToEffects` — named by the shipped mirror AND by fs-gg-elmish's \
                  fenced block — must survive into the JUDGED set. It is #648's instance: the gate flagged \
                  `ControlsElmish.audioRequests` on the very next line and was silent on this one. If it falls \
                  out, the nested spelling is unjudged again and a doc can teach an unreleased nested API green."
 
-            Expect.isTrue
-                (judged.Contains "Perf.runScriptToModel" && judged.Contains "Live.runScript")
-                "the nested spellings the product skills actually teach (`Perf.runScriptToModel` in fs-gg-elmish \
+                Expect.isTrue
+                    (judged.Contains "Perf.runScriptToModel" && judged.Contains "Live.runScript")
+                    "the nested spellings the product skills actually teach (`Perf.runScriptToModel` in fs-gg-elmish \
                  and fs-gg-testing, `Live.runScript` in the mirror) must be judged. A single instance passing \
                  proves the walk reached one file; these prove it reached the surface."
 
-            // A nested `val` belongs to the module that DECLARES it, not to its parent. The old walk matched
-            // `val` at ANY indent while tracking only column-0 modules, so `Perf.runScript` was recorded as
-            // `ControlsElmish.runScript` — a member nothing exports. Nothing looked it up, so it never fired;
-            // this keeps it from being re-armed.
-            let controlsElmish =
-                frameworkModules |> List.filter (fun m -> m.Path = "ControlsElmish")
+                // A nested `val` belongs to the module that DECLARES it, not to its parent. The old walk matched
+                // `val` at ANY indent while tracking only column-0 modules, so `Perf.runScript` was recorded as
+                // `ControlsElmish.runScript` — a member nothing exports. Nothing looked it up, so it never fired;
+                // this keeps it from being re-armed.
+                let controlsElmish =
+                    frameworkModules |> List.filter (fun m -> m.Path = "ControlsElmish")
 
-            Expect.isNonEmpty controlsElmish "the mirror declares `module ControlsElmish`."
+                Expect.isNonEmpty controlsElmish "the mirror declares `module ControlsElmish`."
 
-            for m in controlsElmish do
-                Expect.isFalse
-                    (m.Members.Contains "runScript")
-                    "`runScript` is declared by `ControlsElmish.Perf` and `ControlsElmish.Live`, NOT by \
+                for m in controlsElmish do
+                    Expect.isFalse
+                        (m.Members.Contains "runScript")
+                        "`runScript` is declared by `ControlsElmish.Perf` and `ControlsElmish.Live`, NOT by \
                      `ControlsElmish` itself. If it appears among the parent's members, the walk is attributing \
                      nested `val`s to their ancestor again and inventing `ControlsElmish.runScript` — a spelling \
                      nothing exports and no doc names."
 
-            // THE RESOLUTION HALF, asserted DIRECTLY — and it has to be, because nothing else in this test can
-            // see it. The docs spell a nested call BOTH ways: `ControlsElmish.Perf.runScriptToEffects` in
-            // fs-gg-elmish's fences, and a bare `Perf.runScript` in its prose. The mirror's own `val` always
-            // arrives UNQUALIFIED (`mirrorValSymbols` reports the innermost owner and no qualifier), so a nested
-            // symbol lands in the judged SET through the empty-qualifier path whatever this function does — which
-            // means every symbol-level assertion above still passes with the qualified path completely broken.
-            //
-            // Verified, not assumed: reverting this to the old `m.Namespace = qualified` leaves all 39 tests
-            // green. The exact-namespace test can never match a nested module — `Perf`'s namespace is
-            // `FS.GG.UI.Controls.Elmish`, and the qualifier a call site offers is `ControlsElmish` — so every
-            // QUALIFIED occurrence is dropped, silently, and only the mirror's `val` keeps the symbol alive.
-            Expect.isTrue
-                (isFrameworkCall "ControlsElmish." "Perf")
-                "`ControlsElmish.Perf.runScript` must resolve as a framework call. The qualifier a call site \
+                // THE RESOLUTION HALF, asserted DIRECTLY — and it has to be, because nothing else in this test can
+                // see it. The docs spell a nested call BOTH ways: `ControlsElmish.Perf.runScriptToEffects` in
+                // fs-gg-elmish's fences, and a bare `Perf.runScript` in its prose. The mirror's own `val` always
+                // arrives UNQUALIFIED (`mirrorValSymbols` reports the innermost owner and no qualifier), so a nested
+                // symbol lands in the judged SET through the empty-qualifier path whatever this function does — which
+                // means every symbol-level assertion above still passes with the qualified path completely broken.
+                //
+                // Verified, not assumed: reverting this to the old `m.Namespace = qualified` leaves all 39 tests
+                // green. The exact-namespace test can never match a nested module — `Perf`'s namespace is
+                // `FS.GG.UI.Controls.Elmish`, and the qualifier a call site offers is `ControlsElmish` — so every
+                // QUALIFIED occurrence is dropped, silently, and only the mirror's `val` keeps the symbol alive.
+                Expect.isTrue
+                    (isFrameworkCall "ControlsElmish." "Perf")
+                    "`ControlsElmish.Perf.runScript` must resolve as a framework call. The qualifier a call site \
                  offers (`ControlsElmish`) is a SUFFIX of what encloses the module \
                  (`FS.GG.UI.Controls.Elmish.ControlsElmish`), never equal to its namespace — so an \
                  exact-namespace test drops every qualified nested spelling in the shipped corpus (#648)."
 
-            Expect.isFalse
-                (isFrameworkCall "AppRoot." "Perf")
-                "a qualifier that is NOT a suffix of the module's enclosing path is the product calling itself, \
+                Expect.isFalse
+                    (isFrameworkCall "AppRoot." "Perf")
+                    "a qualifier that is NOT a suffix of the module's enclosing path is the product calling itself, \
                  and must not resolve. If this passes, the suffix match has been widened into a bare substring \
                  or dropped altogether, and the product's own modules are being judged against the pin."
 
-            // The SITES half, which is what the reader actually pays for. `renderDocSymbol` names every line a
-            // symbol occurs on, deliberately ("a message that understates the work by 3x sends the reader back
-            // around the loop for nothing"). fs-gg-elmish teaches `Perf.runScriptToEffects` once in PROSE (bare)
-            // and twice in FENCES (qualified) — the blocks a reader COPIES. Drop the qualified path and the bare
-            // prose mention is the ONLY site that still resolves: the symbol still reports, and the two lines a
-            // reader must actually edit vanish from the message.
-            //
-            // Asserted as a COUNT, not as a line number. `List.exists (fun line -> line > 126)` was the first
-            // spelling, and it is the fails-open shape in miniature: 126 is where the prose mention happens to
-            // sit today, so one edit to the skill that pushes the prose further down the file satisfies it with
-            // the fenced sites gone and the qualified path completely broken. A count cannot be satisfied by the
-            // site it is meant to be checking PAST.
-            let effectsSites =
-                docKeySites
-                |> Map.tryFind "template/product-skills/fs-gg-elmish/SKILL.md::Perf.runScriptToEffects"
-                |> Option.defaultValue []
+                // The SITES half, which is what the reader actually pays for. `renderDocSymbol` names every line a
+                // symbol occurs on, deliberately ("a message that understates the work by 3x sends the reader back
+                // around the loop for nothing"). fs-gg-elmish teaches `Perf.runScriptToEffects` once in PROSE (bare)
+                // and twice in FENCES (qualified) — the blocks a reader COPIES. Drop the qualified path and the bare
+                // prose mention is the ONLY site that still resolves: the symbol still reports, and the two lines a
+                // reader must actually edit vanish from the message.
+                //
+                // Asserted as a COUNT, not as a line number. `List.exists (fun line -> line > 126)` was the first
+                // spelling, and it is the fails-open shape in miniature: 126 is where the prose mention happens to
+                // sit today, so one edit to the skill that pushes the prose further down the file satisfies it with
+                // the fenced sites gone and the qualified path completely broken. A count cannot be satisfied by the
+                // site it is meant to be checking PAST.
+                let effectsSites =
+                    docKeySites
+                    |> Map.tryFind "template/product-skills/fs-gg-elmish/SKILL.md::Perf.runScriptToEffects"
+                    |> Option.defaultValue []
 
-            Expect.isGreaterThan
-                effectsSites.Length
-                1
-                $"`ControlsElmish.Perf.runScriptToEffects` is named by fs-gg-elmish in PROSE (bare) and in two \
+                Expect.isGreaterThan
+                    effectsSites.Length
+                    1
+                    $"`ControlsElmish.Perf.runScriptToEffects` is named by fs-gg-elmish in PROSE (bare) and in two \
                   FENCES (qualified), so it must report MORE THAN ONE site (found: {effectsSites}). Only the bare \
                   prose mention resolves through the empty-qualifier path — so a single site means the QUALIFIED \
                   spelling is being dropped again, and the fenced blocks a reader actually copies have gone \
                   unjudged (#648)."
 
-            // The probe has to be able to SPELL what the extractor found. `nameof Perf.runScript` does not
-            // compile under `open FS.GG.UI.Controls.Elmish`; only `ControlsElmish.Perf.runScript` does. Nothing
-            // in `Program.fs` calls a nested module today, so this is the guard that keeps the probe honest on
-            // the day something does — otherwise it would fail on ITSELF and blame the pin.
-            Expect.equal
-                (probeSpelling { Module = "Perf"; Member = "runScript"; Line = 0 })
-                "ControlsElmish.Perf"
-                "the probe must spell a nested call site by its path WITHIN the namespace. A bare `Perf.runScript` \
+                // The probe has to be able to SPELL what the extractor found. `nameof Perf.runScript` does not
+                // compile under `open FS.GG.UI.Controls.Elmish`; only `ControlsElmish.Perf.runScript` does. Nothing
+                // in `Program.fs` calls a nested module today, so this is the guard that keeps the probe honest on
+                // the day something does — otherwise it would fail on ITSELF and blame the pin.
+                Expect.equal
+                    (probeSpelling
+                        {
+                            Module = "Perf"
+                            Member = "runScript"
+                            Line = 0
+                        })
+                    "ControlsElmish.Perf"
+                    "the probe must spell a nested call site by its path WITHIN the namespace. A bare `Perf.runScript` \
                  cannot bind under `open FS.GG.UI.Controls.Elmish`, so the probe would fail to compile and report \
                  the PIN as missing an API that is present — a wrong diagnosis on a real failure."
 
-            // THE CONTAINER MUST SURVIVE UN-HOISTING, held where it can actually fail. Attributing `val`s to
-            // the module that really declares them empties the pure CONTAINERS — `DesignTokens` around
-            // `Light`/`Dark`, the Elmish `Audio` around `Cmd` declare no `val` of their own — and the old walk
-            // would have dropped them for it. `frameworkModules` deliberately keeps them (see its comment), and
-            // this is the assertion that says so: if a member-less module is ever filtered out again, a doc
-            // naming `DesignTokens.<member>` stops being framework, goes UNJUDGED, and the rule reports green
-            // having read nothing. An unjudged symbol is not a failure, it is a SILENCE — no other test here
-            // would go red.
-            Expect.isTrue
-                (frameworkModules |> List.exists (fun m -> m.Path = "DesignTokens"))
-                "`DesignTokens` declares no `val` of its own — its members live in the nested `Light`/`Dark` — \
+                // THE CONTAINER MUST SURVIVE UN-HOISTING, held where it can actually fail. Attributing `val`s to
+                // the module that really declares them empties the pure CONTAINERS — `DesignTokens` around
+                // `Light`/`Dark`, the Elmish `Audio` around `Cmd` declare no `val` of their own — and the old walk
+                // would have dropped them for it. `frameworkModules` deliberately keeps them (see its comment), and
+                // this is the assertion that says so: if a member-less module is ever filtered out again, a doc
+                // naming `DesignTokens.<member>` stops being framework, goes UNJUDGED, and the rule reports green
+                // having read nothing. An unjudged symbol is not a failure, it is a SILENCE — no other test here
+                // would go red.
+                Expect.isTrue
+                    (frameworkModules |> List.exists (fun m -> m.Path = "DesignTokens"))
+                    "`DesignTokens` declares no `val` of its own — its members live in the nested `Light`/`Dark` — \
                  but it is still a framework module a doc can name. If it has fallen out of the mirror's module \
                  set, un-hoisting the nested members has quietly narrowed the closed world."
 
-            // AND THE MULTI-CANDIDATE NAME STILL RESOLVES THROUGH THE MODULE THAT DECLARES THE MEMBER. `Audio`
-            // is declared by THREE mirrors — Audio.Core, Audio.Host, and the member-less Elmish container above
-            // — and the shipped audio skills name `Audio.interpret` / `Audio.playSfx` ~40 times. `resolveModule`
-            // picks the candidate that owns the member, so an EMPTY container sharing the name must never be
-            // what answers for them. This is the highest-traffic surface in the corpus, and nothing else pins it.
-            Expect.isTrue
-                (judged.Contains "Audio.interpret" && judged.Contains "Audio.playSfx")
-                "`Audio.interpret` / `Audio.playSfx` are taught throughout the audio skills and declared by the \
+                // AND THE MULTI-CANDIDATE NAME STILL RESOLVES THROUGH THE MODULE THAT DECLARES THE MEMBER. `Audio`
+                // is declared by THREE mirrors — Audio.Core, Audio.Host, and the member-less Elmish container above
+                // — and the shipped audio skills name `Audio.interpret` / `Audio.playSfx` ~40 times. `resolveModule`
+                // picks the candidate that owns the member, so an EMPTY container sharing the name must never be
+                // what answers for them. This is the highest-traffic surface in the corpus, and nothing else pins it.
+                Expect.isTrue
+                    (judged.Contains "Audio.interpret" && judged.Contains "Audio.playSfx")
+                    "`Audio.interpret` / `Audio.playSfx` are taught throughout the audio skills and declared by the \
                  Audio.Core / Audio.Host mirrors. They must stay judged. If they fall out, the `Audio` name is \
                  resolving through the EMPTY Elmish container instead of the mirrors that declare the members, \
                  and the real audio surface has gone unjudged — silently, with every other test still green."
-        }
+            }
 
-        // #683 — THE MODULE ORACLE IS KEYED BY (PACKAGE, PATH), NOT BY BARE NAME.
-        //
-        // `readSurfaceAt` used to key the module surface by the module's SIMPLE NAME and union the members of
-        // every restored package under it, so `resolvesInPin` answered "does ANY pinned package export a
-        // module of this name that has this member?" — not "does the package this doc's module actually
-        // belongs to export it?". #611 had already keyed the TYPE map by (package, type) for precisely this
-        // reason, and spelled the reasoning out at length; the module map was the same shape and never got
-        // the same treatment.
-        //
-        // Two names span packages TODAY, so this is not hypothetical. `Cmd` is `FS.GG.Audio.Elmish`'s
-        // `Audio.Cmd` (`ofEffects`, `ofEngine`, `playSfx`, …) and `FS.GG.UI.Controls.Elmish`'s top-level `Cmd`
-        // (`none`, and nothing else) — DISJOINT member sets, by design. Merged under one key, the Audio
-        // package's `ofEngine` EXCUSED a UI doc naming `Cmd.ofEngine`, and its reader gets a hard build
-        // error: a false PASS, the #550 class this rule exists to refuse. (`Audio` is the same shape across
-        // Core/Elmish/Host.) It never bit for want of luck, not structure — no shipped doc happened to name a
-        // colliding member on the wrong side.
-        //
-        // The surface below is SYNTHETIC, with the shape the real pin has, so the property is stated without
-        // paying for a restore — and the anchor above it is what keeps the statement from going vacuous if
-        // the framework ever stops colliding on `Cmd`. The REAL oracle's keys are held against the real
-        // packages by the doc-vs-pin rule itself, which is the half a hand-written surface cannot prove.
-        test "the module oracle is keyed by (package, path), so one package's module cannot excuse another's (#683)" {
-            let candidates = admittedCandidates "" "Cmd"
+            // #683 — THE MODULE ORACLE IS KEYED BY (PACKAGE, PATH), NOT BY BARE NAME.
+            //
+            // `readSurfaceAt` used to key the module surface by the module's SIMPLE NAME and union the members of
+            // every restored package under it, so `resolvesInPin` answered "does ANY pinned package export a
+            // module of this name that has this member?" — not "does the package this doc's module actually
+            // belongs to export it?". #611 had already keyed the TYPE map by (package, type) for precisely this
+            // reason, and spelled the reasoning out at length; the module map was the same shape and never got
+            // the same treatment.
+            //
+            // Two names span packages TODAY, so this is not hypothetical. `Cmd` is `FS.GG.Audio.Elmish`'s
+            // `Audio.Cmd` (`ofEffects`, `ofEngine`, `playSfx`, …) and `FS.GG.UI.Controls.Elmish`'s top-level `Cmd`
+            // (`none`, and nothing else) — DISJOINT member sets, by design. Merged under one key, the Audio
+            // package's `ofEngine` EXCUSED a UI doc naming `Cmd.ofEngine`, and its reader gets a hard build
+            // error: a false PASS, the #550 class this rule exists to refuse. (`Audio` is the same shape across
+            // Core/Elmish/Host.) It never bit for want of luck, not structure — no shipped doc happened to name a
+            // colliding member on the wrong side.
+            //
+            // The surface below is SYNTHETIC, with the shape the real pin has, so the property is stated without
+            // paying for a restore — and the anchor above it is what keeps the statement from going vacuous if
+            // the framework ever stops colliding on `Cmd`. The REAL oracle's keys are held against the real
+            // packages by the doc-vs-pin rule itself, which is the half a hand-written surface cannot prove.
+            test "the module oracle is keyed by (package, path), so one package's module cannot excuse another's (#683)" {
+                let candidates = admittedCandidates "" "Cmd"
 
-            let packages =
-                candidates
-                |> List.map (fun m -> packageForNamespace m.Namespace)
-                |> List.distinct
-                |> List.sort
+                let packages =
+                    candidates
+                    |> List.map (fun m -> packageForNamespace m.Namespace)
+                    |> List.distinct
+                    |> List.sort
 
-            // ANTI-VACUITY. Every assertion below is about what happens when ONE NAME spans TWO PACKAGES; if
-            // the mirror stops declaring `Cmd` in more than one, they all pass by describing nothing.
-            Expect.isGreaterThan
-                packages.Length
-                1
-                $"`Cmd` must be declared by MORE THAN ONE pinned package for this test to be testing anything \
+                // ANTI-VACUITY. Every assertion below is about what happens when ONE NAME spans TWO PACKAGES; if
+                // the mirror stops declaring `Cmd` in more than one, they all pass by describing nothing.
+                Expect.isGreaterThan
+                    packages.Length
+                    1
+                    $"`Cmd` must be declared by MORE THAN ONE pinned package for this test to be testing anything \
                   (found: {packages}). It is `Audio.Cmd` in FS.GG.Audio.Elmish and a top-level `Cmd` in \
                   FS.GG.UI.Controls.Elmish. If the collision is gone, re-point this test at whatever name \
                   spans packages now — do NOT delete it: the unsoundness it guards is in the KEY, not in the \
                   particular name that exposed it."
 
-            // The two `Cmd`s, keyed the way the real oracle keys them, with the members the real packages
-            // export. Under the old bare-name key these two rows were ONE, and its member set was the union.
-            let surface =
-                Map.ofList
-                    [ ("FS.GG.UI.Controls.Elmish", "Cmd"), Set.ofList [ "none" ]
-                      ("FS.GG.Audio.Elmish", "Audio.Cmd"),
-                      Set.ofList
-                          [ "ofEffects"; "ofEngine"; "playMusic"; "playSfx"; "setMasterVolume"; "stopMusic" ] ]
+                // The two `Cmd`s, keyed the way the real oracle keys them, with the members the real packages
+                // export. Under the old bare-name key these two rows were ONE, and its member set was the union.
+                let surface =
+                    Map.ofList
+                        [
+                            ("FS.GG.UI.Controls.Elmish", "Cmd"), Set.ofList [ "none" ]
+                            ("FS.GG.Audio.Elmish", "Audio.Cmd"),
+                            Set.ofList
+                                [
+                                    "ofEffects"
+                                    "ofEngine"
+                                    "playMusic"
+                                    "playSfx"
+                                    "setMasterVolume"
+                                    "stopMusic"
+                                ]
+                        ]
 
-            let cmd memberName =
-                { Doc = "synthetic"; Line = 0; Module = "Cmd"; Member = memberName }
+                let cmd memberName =
+                    {
+                        Doc = "synthetic"
+                        Line = 0
+                        Module = "Cmd"
+                        Member = memberName
+                    }
 
-            // THE INSTANCE. A doc that reaches `Cmd` through the UI package's own namespace and names
-            // `ofEngine` is naming a member of the AUDIO package's unrelated `Cmd`. The UI `Cmd` exports
-            // `none` and nothing else, so this must be REFUSED — and under the bare-name key it was not.
-            Expect.isFalse
-                (occurrenceResolvesInPin surface "FS.GG.UI.Controls.Elmish.Authoring" (cmd "ofEngine"))
-                "`Cmd.ofEngine`, qualified into FS.GG.UI.Controls.Elmish, must NOT resolve: that package's \
+                // THE INSTANCE. A doc that reaches `Cmd` through the UI package's own namespace and names
+                // `ofEngine` is naming a member of the AUDIO package's unrelated `Cmd`. The UI `Cmd` exports
+                // `none` and nothing else, so this must be REFUSED — and under the bare-name key it was not.
+                Expect.isFalse
+                    (occurrenceResolvesInPin surface "FS.GG.UI.Controls.Elmish.Authoring" (cmd "ofEngine"))
+                    "`Cmd.ofEngine`, qualified into FS.GG.UI.Controls.Elmish, must NOT resolve: that package's \
                  `Cmd` exports `none` alone, and `ofEngine` belongs to FS.GG.Audio.Elmish's unrelated \
                  `Audio.Cmd`. If it resolves, the module surface is keyed on the BARE NAME again and one \
                  package's module is excusing another's — a false PASS on a doc whose reader gets a hard \
                  build error (#683)."
 
-            // The other half, and it is what keeps the fix from being "refuse everything": the SAME qualifier
-            // must still resolve the member that package really does export.
-            Expect.isTrue
-                (occurrenceResolvesInPin surface "FS.GG.UI.Controls.Elmish.Authoring" (cmd "none"))
-                "`Cmd.none` IS exported by FS.GG.UI.Controls.Elmish, and must resolve. If this fails, the \
+                // The other half, and it is what keeps the fix from being "refuse everything": the SAME qualifier
+                // must still resolve the member that package really does export.
+                Expect.isTrue
+                    (occurrenceResolvesInPin surface "FS.GG.UI.Controls.Elmish.Authoring" (cmd "none"))
+                    "`Cmd.none` IS exported by FS.GG.UI.Controls.Elmish, and must resolve. If this fails, the \
                  (package, path) key does not agree with the mirror's `Path` and the oracle now accuses \
                  correct docs — a false POSITIVE, which is how this rule gets ledgered into silence by the \
                  first person it wrongly accuses."
 
-            // ...and the qualifier is what picks the package. Reached through `module Audio`, the very same
-            // `Cmd.ofEngine` is correct.
-            Expect.isTrue
-                (occurrenceResolvesInPin surface "Audio" (cmd "ofEngine"))
-                "`Audio.Cmd.ofEngine` must resolve: the qualifier `Audio` admits FS.GG.Audio.Elmish's nested \
+                // ...and the qualifier is what picks the package. Reached through `module Audio`, the very same
+                // `Cmd.ofEngine` is correct.
+                Expect.isTrue
+                    (occurrenceResolvesInPin surface "Audio" (cmd "ofEngine"))
+                    "`Audio.Cmd.ofEngine` must resolve: the qualifier `Audio` admits FS.GG.Audio.Elmish's nested \
                  `Audio.Cmd`, which exports it. If this fails, the qualifier is no longer selecting the \
                  candidate — and a rule that cannot tell the two `Cmd`s apart can only be wrong in one \
                  direction or the other."
 
-            // AND A MEMBER NO CANDIDATE EXPORTS IS STILL A VIOLATION, from either side. This is the rule's
-            // subject at its sharpest, and the one thing the ANY-of-candidates reading must never lose.
-            for qualifier in [ ""; "Audio"; "FS.GG.UI.Controls.Elmish.Authoring" ] do
-                Expect.isFalse
-                    (occurrenceResolvesInPin surface qualifier (cmd "ofNothing"))
-                    $"`Cmd.ofNothing` (qualifier: '{qualifier}') is exported by NO candidate, so it must be a \
+                // AND A MEMBER NO CANDIDATE EXPORTS IS STILL A VIOLATION, from either side. This is the rule's
+                // subject at its sharpest, and the one thing the ANY-of-candidates reading must never lose.
+                for qualifier in [ ""; "Audio"; "FS.GG.UI.Controls.Elmish.Authoring" ] do
+                    Expect.isFalse
+                        (occurrenceResolvesInPin surface qualifier (cmd "ofNothing"))
+                        $"`Cmd.ofNothing` (qualifier: '{qualifier}') is exported by NO candidate, so it must be a \
                       violation however it is spelled. If it resolves, the oracle has a hole in it, and a \
                       hole EXCUSES every symbol that belongs in it (.github#266)."
-        }
+            }
 
-        // The walk itself, against a mirror written FOR the test — the only way to assert the half of it the
-        // shipped corpus cannot reach.
-        //
-        // `internal` IS handled by `parseMirrorFile`, and today's mirror exercises NONE of it: the api-surface
-        // mirror ships zero `module internal` / `val internal` declarations (src has 55; mirroring strips them).
-        // So an assertion phrased against the real corpus — "`Coalescing` is not a framework module" — is
-        // vacuously true, stays green if the handling is deleted outright, and is exactly the "green because it
-        // checked nothing" shape (.github#266) this file refuses everywhere else. It was written that way first,
-        // and a mutation run is what exposed it: removing the `internal` tracking left all 39 tests passing.
-        //
-        // The handling still has to be there and still has to be RIGHT, because the mirror is REGENERATED from
-        // src, and one regen that carries an internal module through is all it takes. An internal module must be
-        // TRACKED, not skipped: refuse to push it and its `val`s fall through to the nearest public ancestor,
-        // inventing `ControlsElmish.isCoalescibleSample` — a member no package exports, a phantom violation
-        // against a correct mirror, with no honest remedy. Track it; mark it; judge nothing under it.
-        //
-        // A synthetic mirror asserts the contract directly, so the walk is pinned by something that fails when
-        // it breaks rather than by the corpus's current good luck.
-        test "the mirror walk: a nested module owns its own `val`s, and `internal` is tracked but never judged (#648)" {
-            let dir = Path.Combine(Path.GetTempPath(), "fsgg-mirror-walk-" + Guid.NewGuid().ToString("N"))
-            Directory.CreateDirectory dir |> ignore
+            // The walk itself, against a mirror written FOR the test — the only way to assert the half of it the
+            // shipped corpus cannot reach.
+            //
+            // `internal` IS handled by `parseMirrorFile`, and today's mirror exercises NONE of it: the api-surface
+            // mirror ships zero `module internal` / `val internal` declarations (src has 55; mirroring strips them).
+            // So an assertion phrased against the real corpus — "`Coalescing` is not a framework module" — is
+            // vacuously true, stays green if the handling is deleted outright, and is exactly the "green because it
+            // checked nothing" shape (.github#266) this file refuses everywhere else. It was written that way first,
+            // and a mutation run is what exposed it: removing the `internal` tracking left all 39 tests passing.
+            //
+            // The handling still has to be there and still has to be RIGHT, because the mirror is REGENERATED from
+            // src, and one regen that carries an internal module through is all it takes. An internal module must be
+            // TRACKED, not skipped: refuse to push it and its `val`s fall through to the nearest public ancestor,
+            // inventing `ControlsElmish.isCoalescibleSample` — a member no package exports, a phantom violation
+            // against a correct mirror, with no honest remedy. Track it; mark it; judge nothing under it.
+            //
+            // A synthetic mirror asserts the contract directly, so the walk is pinned by something that fails when
+            // it breaks rather than by the corpus's current good luck.
+            test
+                "the mirror walk: a nested module owns its own `val`s, and `internal` is tracked but never judged (#648)" {
+                let dir =
+                    Path.Combine(Path.GetTempPath(), "fsgg-mirror-walk-" + Guid.NewGuid().ToString("N"))
 
-            try
-                let source =
-                    "namespace FS.GG.Test.Pkg\n\
+                Directory.CreateDirectory dir |> ignore
+
+                try
+                    let source =
+                        "namespace FS.GG.Test.Pkg\n\
                      \n\
                      module Outer =\n\
                      \n\
@@ -3347,148 +3490,160 @@ let templateConsumesPinnedApiTests =
                      \x20   val afterNested: int -> int\n\
                      \x20   val internal notSurface: int -> int\n"
 
-                let path = Path.Combine(dir, "Probe.fsi")
-                File.WriteAllText(path, source)
+                    let path = Path.Combine(dir, "Probe.fsi")
+                    File.WriteAllText(path, source)
 
-                let parsed = parseMirrorFile path
-                let byPath = parsed |> List.map (fun m -> m.Path, m) |> Map.ofList
+                    let parsed = parseMirrorFile path
+                    let byPath = parsed |> List.map (fun m -> m.Path, m) |> Map.ofList
 
-                // `Hidden` is internal: tracked (so `secret` does not fall through to `Outer`) and registered
-                // NOWHERE. If it appears here, the closed world now contains a module no product can bind.
-                Expect.equal
-                    (parsed |> List.map (fun m -> m.Path) |> List.sort)
-                    [ "Outer"; "Outer.Inner" ]
-                    "the walk registers every PUBLIC module at every depth, and no internal one. `Outer.Hidden` \
+                    // `Hidden` is internal: tracked (so `secret` does not fall through to `Outer`) and registered
+                    // NOWHERE. If it appears here, the closed world now contains a module no product can bind.
+                    Expect.equal
+                        (parsed |> List.map (fun m -> m.Path) |> List.sort)
+                        [ "Outer"; "Outer.Inner" ]
+                        "the walk registers every PUBLIC module at every depth, and no internal one. `Outer.Hidden` \
                      is `module internal` — a product cannot reach it, so it must never become a framework entry \
                      point (the `RetainedRender` unsoundness, one level down)."
 
-                let outer = byPath.["Outer"]
+                    let outer = byPath.["Outer"]
 
-                // The indent stack, asserted end to end: `topLevel` precedes the nested blocks and `afterNested`
-                // FOLLOWS them, so it is only attributed correctly if the nested modules were CLOSED at dedent.
-                // `nested` and `secret` must not appear, and neither may `notSurface` (`val internal`).
-                Expect.equal
-                    (outer.Members |> Set.toList |> List.sort)
-                    [ "afterNested"; "topLevel" ]
-                    "a module owns the `val`s it declares ITSELF. `nested` belongs to `Outer.Inner` and `secret` \
+                    // The indent stack, asserted end to end: `topLevel` precedes the nested blocks and `afterNested`
+                    // FOLLOWS them, so it is only attributed correctly if the nested modules were CLOSED at dedent.
+                    // `nested` and `secret` must not appear, and neither may `notSurface` (`val internal`).
+                    Expect.equal
+                        (outer.Members |> Set.toList |> List.sort)
+                        [ "afterNested"; "topLevel" ]
+                        "a module owns the `val`s it declares ITSELF. `nested` belongs to `Outer.Inner` and `secret` \
                      to the internal `Outer.Hidden`; attributing either to the parent invents `Outer.nested` — the \
                      `ControlsElmish.runScript` phantom. `afterNested` is declared AFTER the nested blocks, so it \
                      lands on `Outer` only if they were closed at the dedent. And `val internal notSurface` is not \
                      product surface at all."
 
-                let inner = byPath.["Outer.Inner"]
+                    let inner = byPath.["Outer.Inner"]
 
-                Expect.equal (inner.Name, inner.Members |> Set.toList) ("Inner", [ "nested" ])
-                    "a nested module is keyed by its INNERMOST name — that is what a call site spells \
+                    Expect.equal
+                        (inner.Name, inner.Members |> Set.toList)
+                        ("Inner", [ "nested" ])
+                        "a nested module is keyed by its INNERMOST name — that is what a call site spells \
                      (`Outer.Inner.nested`) and what the pinned-package oracle keys on (`Outer+Inner`)."
 
-                Expect.equal (enclosingPath inner) "FS.GG.Test.Pkg.Outer"
-                    "what ENCLOSES a nested module is its namespace PLUS its parents, which is why a qualifier \
+                    Expect.equal
+                        (enclosingPath inner)
+                        "FS.GG.Test.Pkg.Outer"
+                        "what ENCLOSES a nested module is its namespace PLUS its parents, which is why a qualifier \
                      (`Outer`) is a suffix of it and never equal to the namespace. This is the comparison \
                      `isFrameworkCall` makes, and the one #648's exact-namespace test could never satisfy."
-            finally
-                try Directory.Delete(dir, true) with _ -> ()
-        }
+                finally
+                    try
+                        Directory.Delete(dir, true)
+                    with _ ->
+                        ()
+            }
 
-        // #597 / #585 — FRAMEWORK skills are not judged, and that is a decision, not an omission.
-        //
-        // #585's second criterion read "framework skills teach APIs a product cannot reach, as if it could",
-        // and named three: `InteractionRepro` (InternalsVisibleTo), `RetainedRender.hitTestLayout` (`module
-        // internal`), `Viewer.traceStartCapture`/`traceDrainCapture`/`traceEmit` (`val internal`). All three
-        // are taught in `src/*/skill/SKILL.md`.
-        //
-        // ON THOSE THREE THERE IS NO DEFECT, and this test is where that verdict is written down.
-        // A FRAMEWORK skill is not shipped: it is not packed into the package and it is not in
-        // `template/product-skills/`, so no generated product ever receives one. Its audience is people
-        // working ON this framework, who reach internals through `InternalsVisibleTo` — which is precisely
-        // what `traceStartCapture` EXISTS for. So `src/Diagnostics/skill/SKILL.md` saying "a test or tool can
-        // `Viewer.traceStartCapture ()`" is TRUE FOR ITS READERS, and its doc comment ("internal — diagnostic
-        // seam, not a product contract") agrees with it rather than contradicting it.
-        //
-        // The audience is the whole distinction, and it is the thing to carry away: a doc is honest or
-        // dishonest RELATIVE TO WHO RECEIVES IT. Judging a framework skill against the product's pin would
-        // report a defect in a document no product will ever read, and would pressure someone to delete a
-        // true sentence from it. The rule that generalizes: judge a doc against the surface ITS READER has.
-        //
-        // The real gap #585 was pointing at is the one this rule now closes — nothing held a SHIPPED product
-        // skill to the symbols a product can actually call — and it is the opposite direction from the one
-        // the criterion described.
-        test "framework skills are not a judged doc surface, and no product skill is a framework skill (#585/#597)" {
-            let frameworkSkills =
-                Directory.EnumerateDirectories(repoPath "src")
-                |> Seq.map (fun d -> Path.Combine(d, "skill", "SKILL.md"))
-                |> Seq.filter File.Exists
-                |> List.ofSeq
+            // #597 / #585 — FRAMEWORK skills are not judged, and that is a decision, not an omission.
+            //
+            // #585's second criterion read "framework skills teach APIs a product cannot reach, as if it could",
+            // and named three: `InteractionRepro` (InternalsVisibleTo), `RetainedRender.hitTestLayout` (`module
+            // internal`), `Viewer.traceStartCapture`/`traceDrainCapture`/`traceEmit` (`val internal`). All three
+            // are taught in `src/*/skill/SKILL.md`.
+            //
+            // ON THOSE THREE THERE IS NO DEFECT, and this test is where that verdict is written down.
+            // A FRAMEWORK skill is not shipped: it is not packed into the package and it is not in
+            // `template/product-skills/`, so no generated product ever receives one. Its audience is people
+            // working ON this framework, who reach internals through `InternalsVisibleTo` — which is precisely
+            // what `traceStartCapture` EXISTS for. So `src/Diagnostics/skill/SKILL.md` saying "a test or tool can
+            // `Viewer.traceStartCapture ()`" is TRUE FOR ITS READERS, and its doc comment ("internal — diagnostic
+            // seam, not a product contract") agrees with it rather than contradicting it.
+            //
+            // The audience is the whole distinction, and it is the thing to carry away: a doc is honest or
+            // dishonest RELATIVE TO WHO RECEIVES IT. Judging a framework skill against the product's pin would
+            // report a defect in a document no product will ever read, and would pressure someone to delete a
+            // true sentence from it. The rule that generalizes: judge a doc against the surface ITS READER has.
+            //
+            // The real gap #585 was pointing at is the one this rule now closes — nothing held a SHIPPED product
+            // skill to the symbols a product can actually call — and it is the opposite direction from the one
+            // the criterion described.
+            test "framework skills are not a judged doc surface, and no product skill is a framework skill (#585/#597)" {
+                let frameworkSkills =
+                    Directory.EnumerateDirectories(repoPath "src")
+                    |> Seq.map (fun d -> Path.Combine(d, "skill", "SKILL.md"))
+                    |> Seq.filter File.Exists
+                    |> List.ofSeq
 
-            Expect.isNonEmpty
-                frameworkSkills
-                "there are framework skills under src/*/skill/ — if there are none, this test's subject is gone \
+                Expect.isNonEmpty
+                    frameworkSkills
+                    "there are framework skills under src/*/skill/ — if there are none, this test's subject is gone \
                  and the comment above it is stale."
 
-            // The rule's subject is `template/product-skills/**` and the shipped scaffold. Not one framework
-            // skill may leak into it: they are allowed to teach internals, so judging one would either report
-            // a false defect or, worse, force a true sentence out of a doc whose readers can call the symbol.
-            let judgedDocs = docSymbols |> List.map (fun s -> s.Doc) |> List.distinct
+                // The rule's subject is `template/product-skills/**` and the shipped scaffold. Not one framework
+                // skill may leak into it: they are allowed to teach internals, so judging one would either report
+                // a false defect or, worse, force a true sentence out of a doc whose readers can call the symbol.
+                let judgedDocs = docSymbols |> List.map (fun s -> s.Doc) |> List.distinct
 
-            let leaked =
-                judgedDocs
-                |> List.filter (fun doc -> doc.StartsWith("src/", StringComparison.Ordinal) && doc.Contains "/skill/")
+                let leaked =
+                    judgedDocs
+                    |> List.filter (fun doc ->
+                        doc.StartsWith("src/", StringComparison.Ordinal) && doc.Contains "/skill/")
 
-            Expect.isEmpty
-                leaked
-                "no `src/*/skill/SKILL.md` may enter the judged set. A framework skill is NOT shipped (not \
+                Expect.isEmpty
+                    leaked
+                    "no `src/*/skill/SKILL.md` may enter the judged set. A framework skill is NOT shipped (not \
                  packed, not in template/product-skills/), its readers reach internals through \
                  InternalsVisibleTo, and `Viewer.traceStartCapture` is exactly such a seam — so teaching it \
                  there is correct. Judge a doc against the surface ITS READER has."
-        }
+            }
 
-        testCase "every FS.GG.* symbol a shipped template doc names exists in the PINNED package" <| fun _ ->
-            PinnedApi.withPinnedSurface "the doc-vs-pin rule" <| fun surface ->
-                let uiPin = readAxis uiAxis
+            testCase "every FS.GG.* symbol a shipped template doc names exists in the PINNED package"
+            <| fun _ ->
+                PinnedApi.withPinnedSurface "the doc-vs-pin rule"
+                <| fun surface ->
+                    let uiPin = readAxis uiAxis
 
-                // #683 — THE ORACLE ITSELF, held against the REAL packages before it is asked anything.
-                // The synthetic test above proves the RESOLVER reads a (package, path) key correctly; only
-                // this proves `readModuleSurface` actually EMITS one. Re-key it by the bare name and the two
-                // rows below merge into one whose members are the union — which is #683 exactly, and the
-                // resolver test would not notice, because its surface is hand-written.
-                //
-                // Held as DISJOINT MEMBER SETS rather than as two keys: two keys can exist and still carry
-                // the merged members, and it is the merge that excuses the doc.
-                for (package, path, mustHave, mustNotHave) in
-                    [ "FS.GG.UI.Controls.Elmish", "Cmd", "none", "ofEngine"
-                      "FS.GG.Audio.Elmish", "Audio.Cmd", "ofEngine", "none" ] do
-                    match surface.Modules |> Map.tryFind (package, path) with
-                    | None ->
-                        failtest
-                            $"the pinned surface has no module `{path}` in {package}. The (package, path) \
+                    // #683 — THE ORACLE ITSELF, held against the REAL packages before it is asked anything.
+                    // The synthetic test above proves the RESOLVER reads a (package, path) key correctly; only
+                    // this proves `readModuleSurface` actually EMITS one. Re-key it by the bare name and the two
+                    // rows below merge into one whose members are the union — which is #683 exactly, and the
+                    // resolver test would not notice, because its surface is hand-written.
+                    //
+                    // Held as DISJOINT MEMBER SETS rather than as two keys: two keys can exist and still carry
+                    // the merged members, and it is the merge that excuses the doc.
+                    for (package, path, mustHave, mustNotHave) in
+                        [
+                            "FS.GG.UI.Controls.Elmish", "Cmd", "none", "ofEngine"
+                            "FS.GG.Audio.Elmish", "Audio.Cmd", "ofEngine", "none"
+                        ] do
+                        match surface.Modules |> Map.tryFind (package, path) with
+                        | None ->
+                            failtest
+                                $"the pinned surface has no module `{path}` in {package}. The (package, path) \
                               key no longer agrees with the mirror's `Path`, so every doc symbol on that \
                               module now reads as unexported and the rule is about to accuse correct docs \
                               (#683)."
-                    | Some members ->
-                        Expect.isTrue
-                            (members.Contains mustHave)
-                            $"{package}'s `{path}` must export `{mustHave}` at the pin — it is what the \
+                        | Some members ->
+                            Expect.isTrue
+                                (members.Contains mustHave)
+                                $"{package}'s `{path}` must export `{mustHave}` at the pin — it is what the \
                               module is FOR. If it does not, the oracle is reading the wrong assembly."
 
-                        Expect.isFalse
-                            (members.Contains mustNotHave)
-                            $"{package}'s `{path}` must NOT export `{mustNotHave}` — that member belongs to \
+                            Expect.isFalse
+                                (members.Contains mustNotHave)
+                                $"{package}'s `{path}` must NOT export `{mustNotHave}` — that member belongs to \
                               the OTHER package's same-named `Cmd`. If it appears here, the module surface \
                               has been keyed on the bare name again and the two packages' members are \
                               unioned, so one package's `Cmd` will excuse a doc naming the other's — a false \
                               PASS on a doc whose reader gets a hard build error (#683)."
 
-                let undeclared =
-                    docSymbols
-                    |> List.filter (fun s -> not (resolvesInPin surface.Modules s))
-                    |> List.filter (fun s -> not (docLedger.Contains(docKey s)))
-                    |> List.map renderDocSymbol
+                    let undeclared =
+                        docSymbols
+                        |> List.filter (fun s -> not (resolvesInPin surface.Modules s))
+                        |> List.filter (fun s -> not (docLedger.Contains(docKey s)))
+                        |> List.map renderDocSymbol
 
-                let rendered = String.concat "; " undeclared
+                    let rendered = String.concat "; " undeclared
 
-                Expect.isEmpty
-                    undeclared
-                    $"these symbols are named by a SHIPPED template doc and are exported by NO package a \
+                    Expect.isEmpty
+                        undeclared
+                        $"these symbols are named by a SHIPPED template doc and are exported by NO package a \
                       scaffolded product restores at $({uiAxis})={uiPin}. A reader who copies the block \
                       gets a hard build error — the #550 class, which every other doc gate in this repo is \
                       blind to because they all resolve against `src/`, where the symbol exists.\n\n\
@@ -3500,79 +3655,81 @@ let templateConsumesPinnedApiTests =
                       Undeclared: {rendered}"
 
 
-        // #611 — THE SAME QUESTION, ASKED OF CASES.
-        //
-        // The rule above judges `Module.member` and is blind to union cases and record fields by
-        // construction (`callRegex` demands a lowercase member; a case is capitalised and hangs off a TYPE).
-        // So a shipped mirror could declare a case the pinned package does not export, and every gate in
-        // this repo stayed green. That is not hypothetical: #535 added `ViewerEffect.Persist` to the shipped
-        // SkiaViewer mirror — M-MIR/TYPE COMPELS it, since a mirrored type must match src member-for-member —
-        // and published FS.GG.UI.SkiaViewer 0.9.0 exports 15 `ViewerEffect` cases, of which `Persist` is not
-        // one. The `val` half of that same commit (`Viewer.runAppWithPersistence`) WAS caught and is
-        // ledgered. The case half was not, because nothing could see it.
-        //
-        // This is #550's rule applied to types, and it is the half #611 calls the more valuable one: it
-        // would have caught `Persist` on the day #535 landed, without anybody reasoning about it.
-        //
-        // Judged from DECLARATIONS, not prose — `| Persist of effects: …` under `type ViewerEffect =` is
-        // unambiguous in a way a sentence never is.
-        //
-        // RELEASE-PENDING — THIS RULE IS WHY `PinnedApi` EXISTS (#673).
-        //
-        // It shipped (#611) WITHOUT the deferral its val-level siblings already carried, because nothing
-        // forced it to have one, and the omission is invisible until the one commit it breaks: a RELEASE. On
-        // that commit `$(FsGgUiVersion)` names a version nuget.org does not carry yet — the merge is what
-        // publishes it — so the pinned surface cannot be restored, and a bare `failtest` hard-fails NU1102 on
-        // the required `Deterministic gate` with `enforce_admins` ON and `--admin` forbidden. The commit whose
-        // whole job is to be merged CANNOT BE MERGED. 0.9.1 (#587) was the first release cut since #611
-        // landed, and it is how this was found; #642 and #651 hit it too.
-        //
-        // There is no waiver written here any more, and THAT IS THE FIX. The bounds live once, behind
-        // `withPinnedSurface`, which is now the only way to obtain a `PinnedSurface` at all — so the next rule
-        // to ask this question cannot ship without them either. See `PinnedApi`'s header.
-        testCase "every union case and record field a SHIPPED mirror declares exists in the PINNED package" <| fun _ ->
-            PinnedApi.withPinnedSurface "the case/field-vs-pin rule" <| fun surface ->
-                let uiPin = readAxis uiAxis
+            // #611 — THE SAME QUESTION, ASKED OF CASES.
+            //
+            // The rule above judges `Module.member` and is blind to union cases and record fields by
+            // construction (`callRegex` demands a lowercase member; a case is capitalised and hangs off a TYPE).
+            // So a shipped mirror could declare a case the pinned package does not export, and every gate in
+            // this repo stayed green. That is not hypothetical: #535 added `ViewerEffect.Persist` to the shipped
+            // SkiaViewer mirror — M-MIR/TYPE COMPELS it, since a mirrored type must match src member-for-member —
+            // and published FS.GG.UI.SkiaViewer 0.9.0 exports 15 `ViewerEffect` cases, of which `Persist` is not
+            // one. The `val` half of that same commit (`Viewer.runAppWithPersistence`) WAS caught and is
+            // ledgered. The case half was not, because nothing could see it.
+            //
+            // This is #550's rule applied to types, and it is the half #611 calls the more valuable one: it
+            // would have caught `Persist` on the day #535 landed, without anybody reasoning about it.
+            //
+            // Judged from DECLARATIONS, not prose — `| Persist of effects: …` under `type ViewerEffect =` is
+            // unambiguous in a way a sentence never is.
+            //
+            // RELEASE-PENDING — THIS RULE IS WHY `PinnedApi` EXISTS (#673).
+            //
+            // It shipped (#611) WITHOUT the deferral its val-level siblings already carried, because nothing
+            // forced it to have one, and the omission is invisible until the one commit it breaks: a RELEASE. On
+            // that commit `$(FsGgUiVersion)` names a version nuget.org does not carry yet — the merge is what
+            // publishes it — so the pinned surface cannot be restored, and a bare `failtest` hard-fails NU1102 on
+            // the required `Deterministic gate` with `enforce_admins` ON and `--admin` forbidden. The commit whose
+            // whole job is to be merged CANNOT BE MERGED. 0.9.1 (#587) was the first release cut since #611
+            // landed, and it is how this was found; #642 and #651 hit it too.
+            //
+            // There is no waiver written here any more, and THAT IS THE FIX. The bounds live once, behind
+            // `withPinnedSurface`, which is now the only way to obtain a `PinnedSurface` at all — so the next rule
+            // to ask this question cannot ship without them either. See `PinnedApi`'s header.
+            testCase "every union case and record field a SHIPPED mirror declares exists in the PINNED package"
+            <| fun _ ->
+                PinnedApi.withPinnedSurface "the case/field-vs-pin rule"
+                <| fun surface ->
+                    let uiPin = readAxis uiAxis
 
-                // The oracle must actually KNOW about types, or this rule excuses everything while
-                // reporting green — the fails-open shape (#266) this file refuses.
-                Expect.isNonEmpty
-                    (Map.toList surface.Types)
-                    "the pinned packages exported ZERO types with cases or fields — the TYPE oracle has \
+                    // The oracle must actually KNOW about types, or this rule excuses everything while
+                    // reporting green — the fails-open shape (#266) this file refuses.
+                    Expect.isNonEmpty
+                        (Map.toList surface.Types)
+                        "the pinned packages exported ZERO types with cases or fields — the TYPE oracle has \
                      stopped seeing the surface. That is a defect in this test, not an empty framework."
 
-                Expect.isNonEmpty
-                    mirrorTypeMembers
-                    "the shipped mirror declares union cases / record fields (if this is empty the \
+                    Expect.isNonEmpty
+                        mirrorTypeMembers
+                        "the shipped mirror declares union cases / record fields (if this is empty the \
                      extractor has stopped reading them, and the rule below judges nothing)."
 
-                let undeclared =
-                    mirrorTypeMembers
-                    |> List.filter (fun m ->
-                        // Against the package this mirror IS, never against "some package that happens
-                        // to have a type of that name" — see the (package, type) key in the oracle.
-                        match Map.tryFind (packageForNamespace m.Namespace, m.Type) surface.Types with
-                        | Some members -> not (members.Contains m.Member)
-                        // The pin has NO type of that name — and that is the rule at its SHARPEST, not
-                        // an exemption. A whole type a product cannot reach is strictly worse than one
-                        // missing case on a type it can.
-                        //
-                        // Returning `false` here was the comfortable choice and a fails-open one:
-                        // "the pin has never heard of this type" and "the pin is happy with this type"
-                        // would share a verdict (#266), and the hole would be invisible — a mirror could
-                        // evade the rule ENTIRELY by declaring a type the pin does not know, which is
-                        // exactly what an unreleased type IS. It is green today because all 2,083
-                        // members of all 21 mirrors resolve to a type the pin carries; if that stops
-                        // being true it must be somebody's decision, not this branch's silence.
-                        | None -> true)
-                    |> List.filter (fun m -> not (docLedger.Contains(typeMemberKey m)))
-                    |> List.map (fun m -> $"{m.Type}.{m.Member} ({m.Doc}:{m.Line})")
+                    let undeclared =
+                        mirrorTypeMembers
+                        |> List.filter (fun m ->
+                            // Against the package this mirror IS, never against "some package that happens
+                            // to have a type of that name" — see the (package, type) key in the oracle.
+                            match Map.tryFind (packageForNamespace m.Namespace, m.Type) surface.Types with
+                            | Some members -> not (members.Contains m.Member)
+                            // The pin has NO type of that name — and that is the rule at its SHARPEST, not
+                            // an exemption. A whole type a product cannot reach is strictly worse than one
+                            // missing case on a type it can.
+                            //
+                            // Returning `false` here was the comfortable choice and a fails-open one:
+                            // "the pin has never heard of this type" and "the pin is happy with this type"
+                            // would share a verdict (#266), and the hole would be invisible — a mirror could
+                            // evade the rule ENTIRELY by declaring a type the pin does not know, which is
+                            // exactly what an unreleased type IS. It is green today because all 2,083
+                            // members of all 21 mirrors resolve to a type the pin carries; if that stops
+                            // being true it must be somebody's decision, not this branch's silence.
+                            | None -> true)
+                        |> List.filter (fun m -> not (docLedger.Contains(typeMemberKey m)))
+                        |> List.map (fun m -> $"{m.Type}.{m.Member} ({m.Doc}:{m.Line})")
 
-                let rendered = String.concat "; " undeclared
+                    let rendered = String.concat "; " undeclared
 
-                Expect.isEmpty
-                    undeclared
-                    $"these union cases / record fields are DECLARED by a shipped api-surface mirror and \
+                    Expect.isEmpty
+                        undeclared
+                        $"these union cases / record fields are DECLARED by a shipped api-surface mirror and \
                       are exported by NO package a scaffolded product restores at $({uiAxis})={uiPin}. A \
                       product author reading the mirror is told about a case they cannot construct — the \
                       #550 class, one type-system level down, and invisible to every other gate here \
@@ -3584,46 +3741,49 @@ let templateConsumesPinnedApiTests =
                       lands.\n\n\
                       Undeclared: {rendered}"
 
-        // #752 — the converse of the rule above, and the direction that was never asked.
-        testCase "every TYPE and MODULE the PINNED package exports in a mirrored namespace is declared by the mirror" <| fun _ ->
-            PinnedApi.withPinnedSurface "the mirror-completeness rule" <| fun surface ->
-                let uiPin = readAxis uiAxis
+            // #752 — the converse of the rule above, and the direction that was never asked.
+            testCase
+                "every TYPE and MODULE the PINNED package exports in a mirrored namespace is declared by the mirror"
+            <| fun _ ->
+                PinnedApi.withPinnedSurface "the mirror-completeness rule"
+                <| fun surface ->
+                    let uiPin = readAxis uiAxis
 
-                // The oracle must actually SEE both kinds, or the rule finds no omissions of the kind it is
-                // blind to and reports green while judging half its subject — the fails-open shape (#266) it
-                // exists to close, and the bug the first cut of this very rule shipped with.
-                Expect.isNonEmpty
-                    (Set.toList surface.DeclaredTypes)
-                    "the pinned packages exported ZERO public types — the TYPE reader has stopped seeing the \
+                    // The oracle must actually SEE both kinds, or the rule finds no omissions of the kind it is
+                    // blind to and reports green while judging half its subject — the fails-open shape (#266) it
+                    // exists to close, and the bug the first cut of this very rule shipped with.
+                    Expect.isNonEmpty
+                        (Set.toList surface.DeclaredTypes)
+                        "the pinned packages exported ZERO public types — the TYPE reader has stopped seeing the \
                      surface. That is a defect in this test, not an empty framework."
 
-                Expect.isNonEmpty
-                    (Set.toList surface.DeclaredModules)
-                    "the pinned packages exported ZERO public modules — the MODULE reader has stopped seeing \
+                    Expect.isNonEmpty
+                        (Set.toList surface.DeclaredModules)
+                        "the pinned packages exported ZERO public modules — the MODULE reader has stopped seeing \
                      the surface, and every omitted module would pass unjudged."
 
-                Expect.isNonEmpty
-                    (Set.toList mirrorNamespaces)
-                    "the shipped mirror declares NO namespace — the extractor has stopped reading them, and \
+                    Expect.isNonEmpty
+                        (Set.toList mirrorNamespaces)
+                        "the shipped mirror declares NO namespace — the extractor has stopped reading them, and \
                      the rule below would have an empty subject and pass over everything."
 
-                let inScope = pinSurfaceInMirrorScope surface
+                    let inScope = pinSurfaceInMirrorScope surface
 
-                Expect.isNonEmpty
-                    (Set.toList inScope)
-                    "nothing the pin exports falls in any namespace the mirror declares. Either the mirror's \
+                    Expect.isNonEmpty
+                        (Set.toList inScope)
+                        "nothing the pin exports falls in any namespace the mirror declares. Either the mirror's \
                      namespaces and the pin's have stopped agreeing (a spelling change on one side), or the \
                      reader is blind — either way this rule is judging nothing."
 
-                let omitted =
-                    Set.difference (Set.difference inScope mirrorSurfaceKeys) omissionLedger
-                    |> Set.toList
+                    let omitted =
+                        Set.difference (Set.difference inScope mirrorSurfaceKeys) omissionLedger
+                        |> Set.toList
 
-                let rendered = String.concat "\n  " omitted
+                    let rendered = String.concat "\n  " omitted
 
-                Expect.isEmpty
-                    omitted
-                    $"these types / modules are exported by a package a scaffolded product restores at \
+                    Expect.isEmpty
+                        omitted
+                        $"these types / modules are exported by a package a scaffolded product restores at \
                       $({uiAxis})={uiPin}, in a namespace the mirror DECLARES — and the mirror does not \
                       declare them. A product author reading `docs/api-surface/` is not misled about them; \
                       they are told these do not exist, which is worse, because there is nothing to \
@@ -3636,174 +3796,182 @@ let templateConsumesPinnedApiTests =
                       green.\n\n\
                       Omitted:\n  {rendered}"
 
-        // #752 — ANTI-ROT 1 (stale). A ledger entry the mirror NOW declares has been paid off, and a ledger
-        // that outlives its subjects stops being a ratchet: the entry sits there excusing something that no
-        // longer needs excusing, so the NEXT omission of it — a real regression — walks straight back through.
-        testCase "no mirror-omission ledger entry names something the mirror NOW declares" <| fun _ ->
-            let paid = Set.intersect omissionLedger mirrorSurfaceKeys |> Set.toList
-            let renderedPaid = String.concat "; " paid
+            // #752 — ANTI-ROT 1 (stale). A ledger entry the mirror NOW declares has been paid off, and a ledger
+            // that outlives its subjects stops being a ratchet: the entry sits there excusing something that no
+            // longer needs excusing, so the NEXT omission of it — a real regression — walks straight back through.
+            testCase "no mirror-omission ledger entry names something the mirror NOW declares"
+            <| fun _ ->
+                let paid = Set.intersect omissionLedger mirrorSurfaceKeys |> Set.toList
+                let renderedPaid = String.concat "; " paid
 
-            Expect.isEmpty
-                paid
-                $"these {omissionLedgerRel} entries name something the shipped mirror NOW declares — the gap \
+                Expect.isEmpty
+                    paid
+                    $"these {omissionLedgerRel} entries name something the shipped mirror NOW declares — the gap \
                   was closed and the entry is dead. A dead entry is not harmless: it goes on excusing its \
                   subject forever, so if that subject is ever dropped from the mirror again the omission rule \
                   waves the regression straight through. Delete the line(s): {renderedPaid}"
 
-        // #752 — ANTI-ROT 2 (phantom). An entry for something the pin no longer exports is excusing nothing,
-        // and it is load-bearing that it goes: it is the only thing between the ledger and a dumping ground
-        // nobody ever has to empty.
-        testCase "no mirror-omission ledger entry names something the PIN no longer exports" <| fun _ ->
-            PinnedApi.withPinnedSurface "the mirror-omission ledger's anti-rot rule" <| fun surface ->
-                let uiPin = readAxis uiAxis
-                let live = pinSurfaceInMirrorScope surface
-                let phantom = Set.difference omissionLedger live |> Set.toList
-                let renderedPhantom = String.concat "; " phantom
+            // #752 — ANTI-ROT 2 (phantom). An entry for something the pin no longer exports is excusing nothing,
+            // and it is load-bearing that it goes: it is the only thing between the ledger and a dumping ground
+            // nobody ever has to empty.
+            testCase "no mirror-omission ledger entry names something the PIN no longer exports"
+            <| fun _ ->
+                PinnedApi.withPinnedSurface "the mirror-omission ledger's anti-rot rule"
+                <| fun surface ->
+                    let uiPin = readAxis uiAxis
+                    let live = pinSurfaceInMirrorScope surface
+                    let phantom = Set.difference omissionLedger live |> Set.toList
+                    let renderedPhantom = String.concat "; " phantom
 
-                Expect.isEmpty
-                    phantom
-                    $"these {omissionLedgerRel} entries name something that NO package a scaffolded product \
+                    Expect.isEmpty
+                        phantom
+                        $"these {omissionLedgerRel} entries name something that NO package a scaffolded product \
                       restores at $({uiAxis})={uiPin} exports in a mirrored namespace — it was cut, renamed, \
                       or moved out of the mirror's scope, and the entry now excuses nothing. Delete the \
                       line(s): {renderedPhantom}"
 
-        // #752 — ANTI-ROT 3 (the ratchet itself). The ledger's header promises it may only SHRINK. Without
-        // this the promise is prose: a worker whose change reddens the completeness rule could go green by
-        // appending a line, which is precisely what the header forbids and what nothing else here detects.
-        testCase "the mirror-omission ledger only ever SHRINKS" <| fun _ ->
-            Expect.isLessThanOrEqual
-                (Set.count omissionLedger)
-                OmissionLedgerCeiling
-                $"{omissionLedgerRel} has grown. It is a RATCHET: it records the debt that existed when the \
+            // #752 — ANTI-ROT 3 (the ratchet itself). The ledger's header promises it may only SHRINK. Without
+            // this the promise is prose: a worker whose change reddens the completeness rule could go green by
+            // appending a line, which is precisely what the header forbids and what nothing else here detects.
+            testCase "the mirror-omission ledger only ever SHRINKS"
+            <| fun _ ->
+                Expect.isLessThanOrEqual
+                    (Set.count omissionLedger)
+                    OmissionLedgerCeiling
+                    $"{omissionLedgerRel} has grown. It is a RATCHET: it records the debt that existed when the \
                   completeness rule landed, and it may only shrink as the mirror is fixed. If you added an \
                   entry to make a red gate green, that is the one thing it is not for — mirror the symbol \
                   instead. If an entry is genuinely a new DELIBERATE curation, lower nothing and argue it: \
                   raise `OmissionLedgerCeiling` in the same commit, with the reason, so the growth is a \
                   decision somebody made rather than a line nobody noticed."
 
-        // #611 — THE ORACLE, ANCHORED. The rules above are only as good as `readTypeSurface`, and every way
-        // it can be wrong is SILENT:
-        //
-        //   * blinded (it stops seeing cases) -> the case rule finds nothing and reports GREEN;
-        //   * widened (it invents members)    -> a real violation is excused and it reports GREEN.
-        //
-        // Both were live bugs in this file's first cut, and neither made a test red. So the oracle is
-        // pinned to facts about a package that is PUBLISHED AND IMMUTABLE — FS.GG.UI.SkiaViewer 0.9.0 —
-        // and a published (id, version) cannot change under us. If these stop holding, the reader broke.
-        //
-        // It goes through `withOracleSurface`, NOT `withPinnedSurface`, and the difference is the whole of
-        // #688: this rule's subject is a version that CANNOT MOVE. It is also the one read of a package that
-        // is deliberately NOT release-pending-waived — a published version can never be "about to be
-        // published by this merge" — which is why it needs, and gets, its own named door rather than an
-        // accessor anyone could reach for.
-        testCase "the pinned-TYPE oracle reads a published DU the way F# actually emits it" <| fun _ ->
-            PinnedApi.withOracleSurface "the oracle anchor" <| fun oracle ->
-                match Map.tryFind ("FS.GG.UI.SkiaViewer", "ViewerEffect") oracle.Types with
-                | None ->
-                    failtest
-                        $"the oracle sees no `ViewerEffect` in FS.GG.UI.SkiaViewer {PinnedApi.oracleVersion} at \
+            // #611 — THE ORACLE, ANCHORED. The rules above are only as good as `readTypeSurface`, and every way
+            // it can be wrong is SILENT:
+            //
+            //   * blinded (it stops seeing cases) -> the case rule finds nothing and reports GREEN;
+            //   * widened (it invents members)    -> a real violation is excused and it reports GREEN.
+            //
+            // Both were live bugs in this file's first cut, and neither made a test red. So the oracle is
+            // pinned to facts about a package that is PUBLISHED AND IMMUTABLE — FS.GG.UI.SkiaViewer 0.9.0 —
+            // and a published (id, version) cannot change under us. If these stop holding, the reader broke.
+            //
+            // It goes through `withOracleSurface`, NOT `withPinnedSurface`, and the difference is the whole of
+            // #688: this rule's subject is a version that CANNOT MOVE. It is also the one read of a package that
+            // is deliberately NOT release-pending-waived — a published version can never be "about to be
+            // published by this merge" — which is why it needs, and gets, its own named door rather than an
+            // accessor anyone could reach for.
+            testCase "the pinned-TYPE oracle reads a published DU the way F# actually emits it"
+            <| fun _ ->
+                PinnedApi.withOracleSurface "the oracle anchor"
+                <| fun oracle ->
+                    match Map.tryFind ("FS.GG.UI.SkiaViewer", "ViewerEffect") oracle.Types with
+                    | None ->
+                        failtest
+                            $"the oracle sees no `ViewerEffect` in FS.GG.UI.SkiaViewer {PinnedApi.oracleVersion} at \
                           all. It has gone BLIND, and a blind oracle passes every rule above by finding \
                           nothing."
-                | Some cases ->
-                    // Multi-field case (emitted `NewOpenWindow`) and nullary case (emitted
-                    // `get_CloseWindow`): the two shapes a union case takes in IL, and the reader must
-                    // read both. Missing the nullary half would hide exactly the cases that look most
-                    // like ordinary properties.
-                    Expect.isTrue
-                        (cases.Contains "OpenWindow")
-                        "the oracle lost `ViewerEffect.OpenWindow` — a case with fields, emitted as \
+                    | Some cases ->
+                        // Multi-field case (emitted `NewOpenWindow`) and nullary case (emitted
+                        // `get_CloseWindow`): the two shapes a union case takes in IL, and the reader must
+                        // read both. Missing the nullary half would hide exactly the cases that look most
+                        // like ordinary properties.
+                        Expect.isTrue
+                            (cases.Contains "OpenWindow")
+                            "the oracle lost `ViewerEffect.OpenWindow` — a case with fields, emitted as \
                          `NewOpenWindow`. The union-case reader is broken."
 
-                    Expect.isTrue
-                        (cases.Contains "CloseWindow")
-                        "the oracle lost `ViewerEffect.CloseWindow` — a NULLARY case, emitted as a \
+                        Expect.isTrue
+                            (cases.Contains "CloseWindow")
+                            "the oracle lost `ViewerEffect.CloseWindow` — a NULLARY case, emitted as a \
                          static property `get_CloseWindow` and not as a `New…` factory. Reading only \
                          `New…` silently drops every nullary case."
 
-                    // The negative half, and the one no other test can reach. `Tag` and `Item` are
-                    // compiler-generated on EVERY union; if they appear, the reader is matching IL
-                    // SHAPE (a `get_` prefix) instead of the compiler's `CompilationMappingAttribute`,
-                    // and a widened oracle excuses real violations while every test stays green.
-                    Expect.isFalse
-                        (cases.Contains "Tag" || cases.Contains "Item")
-                        "the oracle invented `ViewerEffect.Tag` / `.Item` — compiler-generated members \
+                        // The negative half, and the one no other test can reach. `Tag` and `Item` are
+                        // compiler-generated on EVERY union; if they appear, the reader is matching IL
+                        // SHAPE (a `get_` prefix) instead of the compiler's `CompilationMappingAttribute`,
+                        // and a widened oracle excuses real violations while every test stays green.
+                        Expect.isFalse
+                            (cases.Contains "Tag" || cases.Contains "Item")
+                            "the oracle invented `ViewerEffect.Tag` / `.Item` — compiler-generated members \
                          that are not union cases. It is reading IL shape rather than the F# compiler's \
                          own CompilationMappingAttribute, and a WIDER oracle EXCUSES a real violation."
 
-                    // The NEGATIVE half of the reader's ground truth: `oracleVersion` predates #535, so
-                    // it genuinely does not carry `Persist`. This is a fact about THAT version and no
-                    // other — asserting it against `$(FsGgUiVersion)` is exactly what reddened `main`
-                    // once the pin moved past #535 (#688). The message names the version it READ, so it
-                    // can never again accuse an innocent 0.9.0 of a fact about some other release.
-                    Expect.isFalse
-                        (cases.Contains "Persist")
-                        $"published FS.GG.UI.SkiaViewer {PinnedApi.oracleVersion} now exports \
+                        // The NEGATIVE half of the reader's ground truth: `oracleVersion` predates #535, so
+                        // it genuinely does not carry `Persist`. This is a fact about THAT version and no
+                        // other — asserting it against `$(FsGgUiVersion)` is exactly what reddened `main`
+                        // once the pin moved past #535 (#688). The message names the version it READ, so it
+                        // can never again accuse an innocent 0.9.0 of a fact about some other release.
+                        Expect.isFalse
+                            (cases.Contains "Persist")
+                            $"published FS.GG.UI.SkiaViewer {PinnedApi.oracleVersion} now exports \
                          `ViewerEffect.Persist` — which it cannot, since a published version is immutable. The \
                          oracle is reading something other than {PinnedApi.oracleVersion} (a locally-packed \
                          package leaking into the probe folder is the classic cause), and the ledger entry it \
                          justifies is void."
 
-        // Anti-rot 1 (stale). The release landed and the symbol is reachable now; the excuse has outlived
-        // its reason. This is the rule that retires a ledger entry at exactly the right moment.
-        testCase "no doc-ledger entry names a symbol the PINNED package now exports" <| fun _ ->
-            if Set.isEmpty docLedger then
-                skiptest "the doc ledger is empty — there is no entry that could have gone stale."
-            else
-                PinnedApi.withPinnedSurface "the ledger's staleness check" <| fun surface ->
-                    let staleVals =
-                        docSymbols
-                        |> List.filter (fun s -> docLedger.Contains(docKey s) && resolvesInPin surface.Modules s)
-                        |> List.map docKey
+            // Anti-rot 1 (stale). The release landed and the symbol is reachable now; the excuse has outlived
+            // its reason. This is the rule that retires a ledger entry at exactly the right moment.
+            testCase "no doc-ledger entry names a symbol the PINNED package now exports"
+            <| fun _ ->
+                if Set.isEmpty docLedger then
+                    skiptest "the doc ledger is empty — there is no entry that could have gone stale."
+                else
+                    PinnedApi.withPinnedSurface "the ledger's staleness check"
+                    <| fun surface ->
+                        let staleVals =
+                            docSymbols
+                            |> List.filter (fun s -> docLedger.Contains(docKey s) && resolvesInPin surface.Modules s)
+                            |> List.map docKey
 
-                    // #611 — and the same retirement for a ledgered CASE or FIELD. Without this, the type
-                    // half of the ledger is write-only: entries go in and nothing ever takes them out, so
-                    // `ViewerEffect.Persist` would keep excusing itself for as long as the file exists —
-                    // long after the release that makes it reachable. An exemption that cannot expire is
-                    // not an exemption, it is a hole.
-                    let staleTypes =
-                        mirrorTypeMembers
-                        |> List.filter (fun m ->
-                            docLedger.Contains(typeMemberKey m)
-                            && (match Map.tryFind (packageForNamespace m.Namespace, m.Type) surface.Types with
-                                | Some members -> members.Contains m.Member
-                                | None -> false))
-                        |> List.map typeMemberKey
+                        // #611 — and the same retirement for a ledgered CASE or FIELD. Without this, the type
+                        // half of the ledger is write-only: entries go in and nothing ever takes them out, so
+                        // `ViewerEffect.Persist` would keep excusing itself for as long as the file exists —
+                        // long after the release that makes it reachable. An exemption that cannot expire is
+                        // not an exemption, it is a hole.
+                        let staleTypes =
+                            mirrorTypeMembers
+                            |> List.filter (fun m ->
+                                docLedger.Contains(typeMemberKey m)
+                                && (match Map.tryFind (packageForNamespace m.Namespace, m.Type) surface.Types with
+                                    | Some members -> members.Contains m.Member
+                                    | None -> false))
+                            |> List.map typeMemberKey
 
-                    let stale = staleVals @ staleTypes
-                    let rendered = String.concat "; " stale
+                        let stale = staleVals @ staleTypes
+                        let rendered = String.concat "; " stale
 
-                    Expect.isEmpty
-                        stale
-                        $"these are declared in {docLedgerRel} as naming API the pin does not carry — and the \
+                        Expect.isEmpty
+                            stale
+                            $"these are declared in {docLedgerRel} as naming API the pin does not carry — and the \
                           pinned package NOW EXPORTS them. The release landed; the ledger only shrinks. Delete \
                           the line.\n\nStale: {rendered}"
 
-        // Anti-rot 2 (phantom), and the one that keeps the ledger from re-opening #550: a dead entry
-        // would excuse its symbol forever, so when #587 publishes `interpretRecordOnly` and someone
-        // re-applies the spelling EARLY, the entry would wave the bug straight back through. The ledger
-        // is not allowed to outlive its subjects.
-        test "no doc-ledger entry names a doc site that no longer names it" {
-            // #611 — BOTH kinds of subject, because the ledger now carries both. Leaving the type members
-            // out would not merely miss a phantom: `ViewerEffect.Persist` is a live doc site, so this rule
-            // would call the ONLY entry keeping the build green a phantom and demand its deletion — a gate
-            // that orders you to remove the exemption another gate requires. The two halves have to see the
-            // same world.
-            let live =
-                Set.union
-                    (docSymbols |> List.map docKey |> Set.ofList)
-                    (mirrorTypeMembers |> List.map typeMemberKey |> Set.ofList)
+            // Anti-rot 2 (phantom), and the one that keeps the ledger from re-opening #550: a dead entry
+            // would excuse its symbol forever, so when #587 publishes `interpretRecordOnly` and someone
+            // re-applies the spelling EARLY, the entry would wave the bug straight back through. The ledger
+            // is not allowed to outlive its subjects.
+            test "no doc-ledger entry names a doc site that no longer names it" {
+                // #611 — BOTH kinds of subject, because the ledger now carries both. Leaving the type members
+                // out would not merely miss a phantom: `ViewerEffect.Persist` is a live doc site, so this rule
+                // would call the ONLY entry keeping the build green a phantom and demand its deletion — a gate
+                // that orders you to remove the exemption another gate requires. The two halves have to see the
+                // same world.
+                let live =
+                    Set.union
+                        (docSymbols |> List.map docKey |> Set.ofList)
+                        (mirrorTypeMembers |> List.map typeMemberKey |> Set.ofList)
 
-            let phantom = docLedger - live |> Set.toList
-            let rendered = String.concat "; " phantom
+                let phantom = docLedger - live |> Set.toList
+                let rendered = String.concat "; " phantom
 
-            Expect.isEmpty
-                phantom
-                $"these are declared in {docLedgerRel}, and no shipped doc names them any more — the doc was \
+                Expect.isEmpty
+                    phantom
+                    $"these are declared in {docLedgerRel}, and no shipped doc names them any more — the doc was \
                   fixed and the exemption outlived it. Delete the line: an entry that survives its subject \
                   silently re-excuses the symbol if a doc ever names it again.\n\n\
                   Phantom: {rendered}"
-        }
-    ]
+            }
+        ]
 
 // ---------------------------------------------------------------------------------------------
 // #711 — THE WAIVER'S BOUNDS, DRIVEN.
@@ -3862,15 +4030,19 @@ let private probeProj = "/tmp/fsgg-pinned-api-probe-4f2a/Probe.fsproj"
 /// and why every fixture here that carries an NU1102 carries its continuations too. A fixture that emitted
 /// the header alone would pass without ever touching the reason the code is written the way it is.
 let private nu1102 (packageId: string) (version: string) =
-    [ $"{probeProj} : error NU1102: Unable to find package {packageId} with version (>= {version})"
-      $"{probeProj} : error NU1102:   - Found 12 version(s) in nuget.org [ Nearest version: 0.9.1 ]"
-      $"{probeProj} : error NU1102:   - Versions from /usr/lib/dotnet/library-packs were not considered" ]
+    [
+        $"{probeProj} : error NU1102: Unable to find package {packageId} with version (>= {version})"
+        $"{probeProj} : error NU1102:   - Found 12 version(s) in nuget.org [ Nearest version: 0.9.1 ]"
+        $"{probeProj} : error NU1102:   - Versions from /usr/lib/dotnet/library-packs were not considered"
+    ]
 
 /// The framework grew API the template cannot consume — #504's entire subject, and the failure the waiver
 /// must NEVER swallow.
 let private fs0039 (symbol: string) =
-    [ $"/tmp/fsgg-pinned-api-probe-4f2a/Probe.fs(7,13): error FS0039: The value, constructor, namespace or \
-       field '{symbol}' is not defined." ]
+    [
+        $"/tmp/fsgg-pinned-api-probe-4f2a/Probe.fs(7,13): error FS0039: The value, constructor, namespace or \
+       field '{symbol}' is not defined."
+    ]
 
 let private restoreOutput (lines: string list) = String.concat "\n" lines
 
@@ -3896,281 +4068,296 @@ let pinnedApiWaiverBoundsTests =
     testList
         "issue-711 PinnedApi RELEASE-PENDING waiver bounds"
         [
-          // ---- the headline, and the shape #544 froze for the sibling ----------------------------
-          //
-          // A conjunction is exactly the thing a well-meaning edit loosens by one term, so assert the
-          // whole space rather than the rows someone thought to write down.
+            // ---- the headline, and the shape #544 froze for the sibling ----------------------------
+            //
+            // A conjunction is exactly the thing a well-meaning edit loosens by one term, so assert the
+            // whole space rather than the rows someone thought to write down.
 
-          test "the waiver opens in exactly one of the eight possible worlds" {
-            let worlds =
-                [ for unresolvedUiPin in [ true; false ] do
-                      for releaseLane in [ true; false ] do
-                          for bumpedHere in [ true; false ] do
-                              yield unresolvedUiPin, releaseLane, bumpedHere ]
+            test "the waiver opens in exactly one of the eight possible worlds" {
+                let worlds =
+                    [
+                        for unresolvedUiPin in [ true; false ] do
+                            for releaseLane in [ true; false ] do
+                                for bumpedHere in [ true; false ] do
+                                    yield unresolvedUiPin, releaseLane, bumpedHere
+                    ]
 
-            let defers (unresolvedUiPin, releaseLane, bumpedHere) =
-                let output =
-                    if unresolvedUiPin then
-                        releaseWindowOutput
-                    else
-                        restoreOutput (fs0039 "Viewer.runAppWithAudio")
+                let defers (unresolvedUiPin, releaseLane, bumpedHere) =
+                    let output =
+                        if unresolvedUiPin then
+                            releaseWindowOutput
+                        else
+                            restoreOutput (fs0039 "Viewer.runAppWithAudio")
 
-                match classify releaseLane (Ok bumpedHere) output with
-                | PinnedApi.ReleasePending _ -> true
-                | _ -> false
+                    match classify releaseLane (Ok bumpedHere) output with
+                    | PinnedApi.ReleasePending _ -> true
+                    | _ -> false
 
-            let opened = worlds |> List.filter defers
+                let opened = worlds |> List.filter defers
 
-            Expect.equal
-                opened
-                [ true, false, true ]
-                "exactly ONE of the eight worlds may defer: the UI pin is unresolved, we are NOT gating the \
+                Expect.equal
+                    opened
+                    [ true, false, true ]
+                    "exactly ONE of the eight worlds may defer: the UI pin is unresolved, we are NOT gating the \
                  publish, and THIS commit bumped it. Every other world names a defect that must stay red. If \
                  this is now failing, a conjunct in `PinnedApi.classifyIn` was weakened — re-derive the \
                  bounds from its header before you touch this table."
-          }
+            }
 
-          // ---- conjunct 1: only an NU1102. The rest are what this file exists to catch -----------
+            // ---- conjunct 1: only an NU1102. The rest are what this file exists to catch -----------
 
-          test "an FS0039 is NEVER waived — it is the defect the probe exists to find" {
-            // #429's audio seam: the framework grew `Viewer.runAppWithAudio`, the template pinned a version
-            // that did not carry it, and nothing went red for the life of 0.8.0. A waiver that swallowed an
-            // FS0039 would retire this entire file, and would do it in the release window — when the pin is
-            // MOST likely to be the thing that is wrong.
-            let verdict =
-                classify false (Ok true) (restoreOutput (fs0039 "Viewer.runAppWithAudio"))
+            test "an FS0039 is NEVER waived — it is the defect the probe exists to find" {
+                // #429's audio seam: the framework grew `Viewer.runAppWithAudio`, the template pinned a version
+                // that did not carry it, and nothing went red for the life of 0.8.0. A waiver that swallowed an
+                // FS0039 would retire this entire file, and would do it in the release window — when the pin is
+                // MOST likely to be the thing that is wrong.
+                let verdict =
+                    classify false (Ok true) (restoreOutput (fs0039 "Viewer.runAppWithAudio"))
 
-            Expect.equal
-                verdict
-                PinnedApi.NotAboutAvailability
-                "an unresolved SYMBOL is not an unresolved PACKAGE. The waiver has no opinion on it, and the \
-                 rule that asked must judge it itself (that is what `NotAboutAvailability` buys)."
-          }
-
-          test "an FS0039 is not waived even in the release lane — the availability question is asked first" {
-            // Order is load-bearing: `classifyIn` asks "is this even ABOUT availability?" BEFORE it asks
-            // about the lane. Swap the two and a genuine API break in the release lane is reported as
-            // "the packages are DUE" — a true statement, and the wrong diagnosis, on the commit that ships.
-            let verdict = classify true (Ok true) (restoreOutput (fs0039 "Viewer.runAppWithPersistence"))
-
-            Expect.equal
-                verdict
-                PinnedApi.NotAboutAvailability
-                "the lane decides what an UNAVAILABLE pin means; it does not turn a compile error into one"
-          }
-
-          test "an NU1101 (typo'd id) and an NU1603 (upward resolution) are never waived" {
-            for code, line in
-                [ "NU1101", $"{probeProj} : error NU1101: Unable to find package FS.GG.UI.Scne. No packages \
-                              exist with this id."
-                  "NU1603", $"{probeProj} : error NU1603: FS.GG.UI.Scene depends on FS.GG.UI.Core (>= \
-                              {testPin}) but FS.GG.UI.Core {testPin} was not found. FS.GG.UI.Core 0.9.3 was \
-                              resolved instead." ] do
                 Expect.equal
-                    (classify false (Ok true) line)
+                    verdict
                     PinnedApi.NotAboutAvailability
-                    $"only an NU1102 means 'the feed does not carry this exact id@version'. An {code} is a \
+                    "an unresolved SYMBOL is not an unresolved PACKAGE. The waiver has no opinion on it, and the \
+                 rule that asked must judge it itself (that is what `NotAboutAvailability` buys)."
+            }
+
+            test "an FS0039 is not waived even in the release lane — the availability question is asked first" {
+                // Order is load-bearing: `classifyIn` asks "is this even ABOUT availability?" BEFORE it asks
+                // about the lane. Swap the two and a genuine API break in the release lane is reported as
+                // "the packages are DUE" — a true statement, and the wrong diagnosis, on the commit that ships.
+                let verdict =
+                    classify true (Ok true) (restoreOutput (fs0039 "Viewer.runAppWithPersistence"))
+
+                Expect.equal
+                    verdict
+                    PinnedApi.NotAboutAvailability
+                    "the lane decides what an UNAVAILABLE pin means; it does not turn a compile error into one"
+            }
+
+            test "an NU1101 (typo'd id) and an NU1603 (upward resolution) are never waived" {
+                for code, line in
+                    [
+                        "NU1101",
+                        $"{probeProj} : error NU1101: Unable to find package FS.GG.UI.Scne. No packages \
+                              exist with this id."
+                        "NU1603",
+                        $"{probeProj} : error NU1603: FS.GG.UI.Scene depends on FS.GG.UI.Core (>= \
+                              {testPin}) but FS.GG.UI.Core {testPin} was not found. FS.GG.UI.Core 0.9.3 was \
+                              resolved instead."
+                    ] do
+                    Expect.equal
+                        (classify false (Ok true) line)
+                        PinnedApi.NotAboutAvailability
+                        $"only an NU1102 means 'the feed does not carry this exact id@version'. An {code} is a \
                       different defect and the waiver must not reach it — it fails CLOSED, and a release \
                       wedged by a real {code} is the correct outcome."
-          }
+            }
 
-          test "an NU1102 mixed with an FS0039 is not waived — EVERY error must be the pin" {
-            // The dangerous shape: a genuine release window that ALSO broke an API. Waive on "some error is
-            // an NU1102" instead of "every error is" and the API break ships inside the window.
-            let output = restoreOutput (nu1102 "FS.GG.UI.Scene" testPin @ fs0039 "Viewer.runAppWithAudio")
+            test "an NU1102 mixed with an FS0039 is not waived — EVERY error must be the pin" {
+                // The dangerous shape: a genuine release window that ALSO broke an API. Waive on "some error is
+                // an NU1102" instead of "every error is" and the API break ships inside the window.
+                let output =
+                    restoreOutput (nu1102 "FS.GG.UI.Scene" testPin @ fs0039 "Viewer.runAppWithAudio")
 
-            Expect.equal
-                (classify false (Ok true) output)
-                PinnedApi.NotAboutAvailability
-                "the window excuses an absent PACKAGE, never an absent SYMBOL. One FS0039 anywhere in the \
-                 output and the whole restore is the rule's own business again."
-          }
-
-          // ---- conjunct 2: the UI axis alone. This is the fail-open the sibling calls its worst ----
-
-          test "an unpublished FS.GG.Audio.* / FS.GG.Game.* pin is NEVER waived, window or not" {
-            // Bumping $(FsGgAudioVersion) HERE publishes nothing — that package ships from its own repo — so
-            // an absent Audio/Game pin is a real defect on every commit, including the one that bumped it.
-            // A waiver keyed on "an axis was bumped and the feed lacks it" would sail straight past it: #235,
-            // the exact defect the sibling script was written to catch, in a new coat.
-            for packageId in [ "FS.GG.Audio.Core"; "FS.GG.Game.Core" ] do
-                let alone = restoreOutput (nu1102 packageId "0.4.0")
-
-                Expect.equal
-                    (classify false (Ok true) alone)
-                    PinnedApi.NotAboutAvailability
-                    $"{packageId} publishes from ANOTHER repo. A bump here publishes nothing, so an \
-                      unpublished pin is drift on every commit — there is no window for it to be pending in."
-
-                // ...and it survives a genuine UI release window happening around it, which is the case a
-                // careless axis bound really would let through.
-                let alongsideAGenuineWindow =
-                    restoreOutput (nu1102 "FS.GG.UI.Scene" testPin @ nu1102 packageId "0.4.0")
-
-                Expect.equal
-                    (classify false (Ok true) alongsideAGenuineWindow)
-                    PinnedApi.NotAboutAvailability
-                    $"the UI release window is genuinely open, and it still may not excuse {packageId}. The \
-                      waiver is bounded to $(FsGgUiVersion) ALONE."
-          }
-
-          test "an FS.GG.UI.* pin at a version this commit does NOT pin is not waived" {
-            // The window's premise is "the packages THIS commit pins are not published yet". A UI package
-            // unresolved at some OTHER version is not that: it is a stale transitive pin, and it is red.
-            //
-            // THE LAST TWO ARE WHY THE BOUND IS A TOKEN MATCH AND NOT A SUBSTRING. `line.Contains uiPin`
-            // reads "0.9.2" INSIDE "0.9.20" and inside "0.9.2-preview.1" — so with the pin at 0.9.2, an
-            // unresolved UI package at either of those versions satisfied the version bound and the waiver
-            // fired on a pin this commit never bumped. That is the fail-open the axis bound exists to
-            // prevent, reached through the version half of it instead of the id half, and it becomes
-            // ORDINARY the moment a patch number passes 9 (0.9.1 is a substring of 0.9.10 through 0.9.19).
-            // Found by #711 while building this table; the bound now demands a delimited version token.
-            for absent in [ "0.7.1"; "0.9.20"; $"{testPin}-preview.1" ] do
-                Expect.equal
-                    (classify false (Ok true) (restoreOutput (nu1102 "FS.GG.UI.Scene" absent)))
-                    PinnedApi.NotAboutAvailability
-                    $"the NU1102 names FS.GG.UI.Scene at {absent}, and this commit pins {testPin} — a \
-                      DIFFERENT version. Waiving it excuses a stale pin that the bump merely happened to \
-                      look like."
-          }
-
-          // ---- conjunct 3: THIS commit bumped it ------------------------------------------------
-
-          test "an ordinary commit inheriting an unpublished pin is NOT waived — it is stale, and red" {
-            // Without the bumped-here conjunct the waiver keys on "the feed lacks it", which is true of a
-            // typo'd or half-released pin on every commit thereafter — so the gate would go quiet exactly
-            // when the repo is broken, and stay quiet.
-            let verdict = classify false (Ok false) releaseWindowOutput
-
-            match verdict with
-            | PinnedApi.Unavailable why ->
-                Expect.stringContains
-                    why
-                    releaseWindowOutput
-                    "the verdict must carry the restore that produced it, or nobody can diagnose it"
-            | other ->
-                failtestf
-                    "a pin nobody bumped that the feed does not carry is STALE — a half-failed release, or a \
-                     typo. It must be `Unavailable` (red), never deferred. Got: %A"
-                    other
-          }
-
-          test "a git that cannot answer 'was it bumped?' is Unavailable — never a silent 'no'" {
-            // A shallow clone has no HEAD~1. Reading that as "not bumped" would be the QUIET choice and the
-            // wrong one: it silently restores the always-red release gate #543 exists to remove, and nobody
-            // would ever learn why. `bumpedInCommitUnderTest` returns Error, and Error is red.
-            let why = "`git diff HEAD~1 HEAD` failed — most likely a shallow clone."
-            let verdict = classify false (Error why) releaseWindowOutput
-
-            match verdict with
-            | PinnedApi.Unavailable reason ->
-                Expect.stringContains reason why "the git failure must reach the human, not be swallowed"
-            | other ->
-                failtestf
-                    "an unanswerable bump question must fail CLOSED — it is neither a window nor a pass. \
-                     Got: %A"
-                    other
-          }
-
-          // ---- conjunct 4: never in the release lane ---------------------------------------------
-
-          test "FS_GG_VERSION_COHERENCE_RELEASE_LANE=1 kills the waiver — the packages are DUE, not pending" {
-            // The waiver's premise is "these packages cannot exist yet — this very commit creates them".
-            // That stops being true at publish time. A waiver that survived into the lane would let
-            // `release.yml` publish a coherent set whose members are not there.
-            let verdict = classify true (Ok true) releaseWindowOutput
-
-            match verdict with
-            | PinnedApi.Unavailable _ -> ()
-            | other ->
-                failtestf
-                    "the lane that gates the PUBLISH gets no waiver: by then the version must really be on \
-                     the feed. Got: %A"
-                    other
-          }
-
-          // ---- the vacuous case: "nothing to check" may not read as "checked, and it's fine" ------
-
-          test "a probe that names no pin at all cannot waive by empty `forall` (.github#266)" {
-            // THE FAILS-OPEN SHAPE THIS FILE'S OWN HEADER FORBIDS. `failedOnlyOnUnpublishedUiPin` asks
-            // "is every error an NU1102, and is every NAMED pin a UI pin at this version?" — and over an
-            // EMPTY set of diagnostics both halves are vacuously true. A probe TIMEOUT reports no
-            // diagnostics whatsoever, and would then have waived itself into a green release window while
-            // having verified precisely nothing. The `not (Array.isEmpty namedPins)` conjunct is the whole
-            // defence, and this is the test that holds it there.
-            let vacuous =
-                [ "", "a timeout: the probe reported nothing at all"
-                  "The build timed out after 360s and was killed.", "a timeout that reports PROSE, not diagnostics"
-                  restoreOutput
-                      [ $"{probeProj} : error NU1102:   - Found 12 version(s) in nuget.org"
-                        $"{probeProj} : error NU1102:   - Versions from /usr/lib/dotnet/library-packs were not considered" ],
-                  "NU1102 CONTINUATION lines only — the code is there, but no line names a package" ]
-
-            for output, description in vacuous do
                 Expect.equal
                     (classify false (Ok true) output)
                     PinnedApi.NotAboutAvailability
-                    $"{description}. 'Nothing to check' and 'checked, and it's fine' must not share a \
+                    "the window excuses an absent PACKAGE, never an absent SYMBOL. One FS0039 anywhere in the \
+                 output and the whole restore is the rule's own business again."
+            }
+
+            // ---- conjunct 2: the UI axis alone. This is the fail-open the sibling calls its worst ----
+
+            test "an unpublished FS.GG.Audio.* / FS.GG.Game.* pin is NEVER waived, window or not" {
+                // Bumping $(FsGgAudioVersion) HERE publishes nothing — that package ships from its own repo — so
+                // an absent Audio/Game pin is a real defect on every commit, including the one that bumped it.
+                // A waiver keyed on "an axis was bumped and the feed lacks it" would sail straight past it: #235,
+                // the exact defect the sibling script was written to catch, in a new coat.
+                for packageId in [ "FS.GG.Audio.Core"; "FS.GG.Game.Core" ] do
+                    let alone = restoreOutput (nu1102 packageId "0.4.0")
+
+                    Expect.equal
+                        (classify false (Ok true) alone)
+                        PinnedApi.NotAboutAvailability
+                        $"{packageId} publishes from ANOTHER repo. A bump here publishes nothing, so an \
+                      unpublished pin is drift on every commit — there is no window for it to be pending in."
+
+                    // ...and it survives a genuine UI release window happening around it, which is the case a
+                    // careless axis bound really would let through.
+                    let alongsideAGenuineWindow =
+                        restoreOutput (nu1102 "FS.GG.UI.Scene" testPin @ nu1102 packageId "0.4.0")
+
+                    Expect.equal
+                        (classify false (Ok true) alongsideAGenuineWindow)
+                        PinnedApi.NotAboutAvailability
+                        $"the UI release window is genuinely open, and it still may not excuse {packageId}. The \
+                      waiver is bounded to $(FsGgUiVersion) ALONE."
+            }
+
+            test "an FS.GG.UI.* pin at a version this commit does NOT pin is not waived" {
+                // The window's premise is "the packages THIS commit pins are not published yet". A UI package
+                // unresolved at some OTHER version is not that: it is a stale transitive pin, and it is red.
+                //
+                // THE LAST TWO ARE WHY THE BOUND IS A TOKEN MATCH AND NOT A SUBSTRING. `line.Contains uiPin`
+                // reads "0.9.2" INSIDE "0.9.20" and inside "0.9.2-preview.1" — so with the pin at 0.9.2, an
+                // unresolved UI package at either of those versions satisfied the version bound and the waiver
+                // fired on a pin this commit never bumped. That is the fail-open the axis bound exists to
+                // prevent, reached through the version half of it instead of the id half, and it becomes
+                // ORDINARY the moment a patch number passes 9 (0.9.1 is a substring of 0.9.10 through 0.9.19).
+                // Found by #711 while building this table; the bound now demands a delimited version token.
+                for absent in [ "0.7.1"; "0.9.20"; $"{testPin}-preview.1" ] do
+                    Expect.equal
+                        (classify false (Ok true) (restoreOutput (nu1102 "FS.GG.UI.Scene" absent)))
+                        PinnedApi.NotAboutAvailability
+                        $"the NU1102 names FS.GG.UI.Scene at {absent}, and this commit pins {testPin} — a \
+                      DIFFERENT version. Waiving it excuses a stale pin that the bump merely happened to \
+                      look like."
+            }
+
+            // ---- conjunct 3: THIS commit bumped it ------------------------------------------------
+
+            test "an ordinary commit inheriting an unpublished pin is NOT waived — it is stale, and red" {
+                // Without the bumped-here conjunct the waiver keys on "the feed lacks it", which is true of a
+                // typo'd or half-released pin on every commit thereafter — so the gate would go quiet exactly
+                // when the repo is broken, and stay quiet.
+                let verdict = classify false (Ok false) releaseWindowOutput
+
+                match verdict with
+                | PinnedApi.Unavailable why ->
+                    Expect.stringContains
+                        why
+                        releaseWindowOutput
+                        "the verdict must carry the restore that produced it, or nobody can diagnose it"
+                | other ->
+                    failtestf
+                        "a pin nobody bumped that the feed does not carry is STALE — a half-failed release, or a \
+                     typo. It must be `Unavailable` (red), never deferred. Got: %A"
+                        other
+            }
+
+            test "a git that cannot answer 'was it bumped?' is Unavailable — never a silent 'no'" {
+                // A shallow clone has no HEAD~1. Reading that as "not bumped" would be the QUIET choice and the
+                // wrong one: it silently restores the always-red release gate #543 exists to remove, and nobody
+                // would ever learn why. `bumpedInCommitUnderTest` returns Error, and Error is red.
+                let why = "`git diff HEAD~1 HEAD` failed — most likely a shallow clone."
+                let verdict = classify false (Error why) releaseWindowOutput
+
+                match verdict with
+                | PinnedApi.Unavailable reason ->
+                    Expect.stringContains reason why "the git failure must reach the human, not be swallowed"
+                | other ->
+                    failtestf
+                        "an unanswerable bump question must fail CLOSED — it is neither a window nor a pass. \
+                     Got: %A"
+                        other
+            }
+
+            // ---- conjunct 4: never in the release lane ---------------------------------------------
+
+            test "FS_GG_VERSION_COHERENCE_RELEASE_LANE=1 kills the waiver — the packages are DUE, not pending" {
+                // The waiver's premise is "these packages cannot exist yet — this very commit creates them".
+                // That stops being true at publish time. A waiver that survived into the lane would let
+                // `release.yml` publish a coherent set whose members are not there.
+                let verdict = classify true (Ok true) releaseWindowOutput
+
+                match verdict with
+                | PinnedApi.Unavailable _ -> ()
+                | other ->
+                    failtestf
+                        "the lane that gates the PUBLISH gets no waiver: by then the version must really be on \
+                     the feed. Got: %A"
+                        other
+            }
+
+            // ---- the vacuous case: "nothing to check" may not read as "checked, and it's fine" ------
+
+            test "a probe that names no pin at all cannot waive by empty `forall` (.github#266)" {
+                // THE FAILS-OPEN SHAPE THIS FILE'S OWN HEADER FORBIDS. `failedOnlyOnUnpublishedUiPin` asks
+                // "is every error an NU1102, and is every NAMED pin a UI pin at this version?" — and over an
+                // EMPTY set of diagnostics both halves are vacuously true. A probe TIMEOUT reports no
+                // diagnostics whatsoever, and would then have waived itself into a green release window while
+                // having verified precisely nothing. The `not (Array.isEmpty namedPins)` conjunct is the whole
+                // defence, and this is the test that holds it there.
+                let vacuous =
+                    [
+                        "", "a timeout: the probe reported nothing at all"
+                        "The build timed out after 360s and was killed.",
+                        "a timeout that reports PROSE, not diagnostics"
+                        restoreOutput
+                            [
+                                $"{probeProj} : error NU1102:   - Found 12 version(s) in nuget.org"
+                                $"{probeProj} : error NU1102:   - Versions from /usr/lib/dotnet/library-packs were not considered"
+                            ],
+                        "NU1102 CONTINUATION lines only — the code is there, but no line names a package"
+                    ]
+
+                for output, description in vacuous do
+                    Expect.equal
+                        (classify false (Ok true) output)
+                        PinnedApi.NotAboutAvailability
+                        $"{description}. 'Nothing to check' and 'checked, and it's fine' must not share a \
                       verdict. Even in a real release window, an output that names no unresolved pin is not \
                       evidence OF one."
-          }
+            }
 
-          test "the NU1102 continuation lines do not VETO a waiver that should fire" {
-            // The other side of the same coin, and the bug the first cut of this predicate really had:
-            // NuGet repeats the error code on its detail lines, so one unresolved pin arrives as three
-            // `error NU1102:` lines and only the first names a package. Ask "is every NU1102 line about a UI
-            // pin?" of ALL of them and the detail lines — which name nothing — fail the test, the waiver
-            // never fires, and the release is wedged by its own elaboration. Hence: asked of `namedPins`.
-            match classify false (Ok true) releaseWindowOutput with
-            | PinnedApi.ReleasePending why ->
-                Expect.stringContains
-                    why
-                    releaseWindowOutput
-                    "the deferral must show the releaser the restore it is deferring on"
-            | other ->
-                failtestf
-                    "this is THE release window — a single unresolved UI pin at the bumped version, with the \
+            test "the NU1102 continuation lines do not VETO a waiver that should fire" {
+                // The other side of the same coin, and the bug the first cut of this predicate really had:
+                // NuGet repeats the error code on its detail lines, so one unresolved pin arrives as three
+                // `error NU1102:` lines and only the first names a package. Ask "is every NU1102 line about a UI
+                // pin?" of ALL of them and the detail lines — which name nothing — fail the test, the waiver
+                // never fires, and the release is wedged by its own elaboration. Hence: asked of `namedPins`.
+                match classify false (Ok true) releaseWindowOutput with
+                | PinnedApi.ReleasePending why ->
+                    Expect.stringContains
+                        why
+                        releaseWindowOutput
+                        "the deferral must show the releaser the restore it is deferring on"
+                | other ->
+                    failtestf
+                        "this is THE release window — a single unresolved UI pin at the bumped version, with the \
                      detail lines NuGet really emits. It must defer. Got: %A"
-                    other
-          }
+                        other
+            }
 
-          // ---- the verdict's CONSEQUENCE. A perfect table over a broken mapping is still a fail-open --
+            // ---- the verdict's CONSEQUENCE. A perfect table over a broken mapping is still a fail-open --
 
-          test "a verdict's consequence is not merely its name: `enact` must skip, fail, or return" {
-            // `classifyIn` can be flawless and the gate still fail open if `enact` mishandles the verdict —
-            // a `ReleasePending` that fell through to `()` would hand the calling rule a surface that was
-            // never restored, and a `NotAboutAvailability` that skipped would retire every rule in this file
-            // on the first unrelated restore hiccup. Both halves are load-bearing; both are asserted.
+            test "a verdict's consequence is not merely its name: `enact` must skip, fail, or return" {
+                // `classifyIn` can be flawless and the gate still fail open if `enact` mishandles the verdict —
+                // a `ReleasePending` that fell through to `()` would hand the calling rule a surface that was
+                // never restored, and a `NotAboutAvailability` that skipped would retire every rule in this file
+                // on the first unrelated restore hiccup. Both halves are load-bearing; both are asserted.
 
-            Expect.throwsT<Expecto.IgnoreException>
-                (fun () -> PinnedApi.enact (PinnedApi.ReleasePending "the window is open"))
-                "RELEASE-PENDING must be reported IGNORED — skipped is not passed, and it is not red either"
+                Expect.throwsT<Expecto.IgnoreException>
+                    (fun () -> PinnedApi.enact (PinnedApi.ReleasePending "the window is open"))
+                    "RELEASE-PENDING must be reported IGNORED — skipped is not passed, and it is not red either"
 
-            // `AssertException` is what `failtest` raises, and it is the same exception a failed `Expect`
-            // throws — which is the point: an `Unavailable` verdict must be indistinguishable from the rule
-            // itself asserting and losing. Red is red.
-            Expect.throwsT<Expecto.AssertException>
-                (fun () -> PinnedApi.enact (PinnedApi.Unavailable "the pin is stale"))
-                "an unavailable pin that is NOT a release window is a DEFECT, and must redden the gate"
+                // `AssertException` is what `failtest` raises, and it is the same exception a failed `Expect`
+                // throws — which is the point: an `Unavailable` verdict must be indistinguishable from the rule
+                // itself asserting and losing. Red is red.
+                Expect.throwsT<Expecto.AssertException>
+                    (fun () -> PinnedApi.enact (PinnedApi.Unavailable "the pin is stale"))
+                    "an unavailable pin that is NOT a release window is a DEFECT, and must redden the gate"
 
-            // No exception: the rule that asked gets its failure back to judge itself. This is the case that
-            // keeps the waiver from having an opinion on an FS0039.
-            PinnedApi.enact PinnedApi.NotAboutAvailability
-          }
+                // No exception: the rule that asked gets its failure back to judge itself. This is the case that
+                // keeps the waiver from having an opinion on an FS0039.
+                PinnedApi.enact PinnedApi.NotAboutAvailability
+            }
 
-          test "every verdict that carries a reason carries the RESTORE that produced it" {
-            // The messages are releaser-facing prose and may be reworded; the EVIDENCE may not go missing.
-            // A deferral or a failure whose reason does not show the restore is one nobody can act on.
-            let worlds =
-                [ classify false (Ok true) releaseWindowOutput, "the release window"
-                  classify false (Ok false) releaseWindowOutput, "a stale pin"
-                  classify true (Ok true) releaseWindowOutput, "the release lane" ]
+            test "every verdict that carries a reason carries the RESTORE that produced it" {
+                // The messages are releaser-facing prose and may be reworded; the EVIDENCE may not go missing.
+                // A deferral or a failure whose reason does not show the restore is one nobody can act on.
+                let worlds =
+                    [
+                        classify false (Ok true) releaseWindowOutput, "the release window"
+                        classify false (Ok false) releaseWindowOutput, "a stale pin"
+                        classify true (Ok true) releaseWindowOutput, "the release lane"
+                    ]
 
-            for verdict, description in worlds do
-                Expect.stringContains
-                    (reasonOf verdict)
-                    releaseWindowOutput
-                    $"the verdict for {description} must echo the restore output — it is the only evidence a \
+                for verdict, description in worlds do
+                    Expect.stringContains
+                        (reasonOf verdict)
+                        releaseWindowOutput
+                        $"the verdict for {description} must echo the restore output — it is the only evidence a \
                       human has, and every one of these lands in CI where the restore itself is long gone"
-          }
+            }
         ]

@@ -46,28 +46,28 @@ let audioSkillSurfaceTests =
     testList
         "fs-gg-audio skill surface (ADR-0024 step 4)"
         [
-          // A-NS — the general anti-drift rule. A bundled doc copy cannot outlive the package it claims:
-          // its declared namespace must carry the directory name as a dotted component.
-          test "every bundled api-surface .fsi declares a namespace carrying its package directory" {
-              let offenders =
-                  Directory.GetDirectories apiSurfaceRoot
-                  |> Seq.collect (fun dir ->
-                      let pkg = DirectoryInfo(dir).Name
+            // A-NS — the general anti-drift rule. A bundled doc copy cannot outlive the package it claims:
+            // its declared namespace must carry the directory name as a dotted component.
+            test "every bundled api-surface .fsi declares a namespace carrying its package directory" {
+                let offenders =
+                    Directory.GetDirectories apiSurfaceRoot
+                    |> Seq.collect (fun dir ->
+                        let pkg = DirectoryInfo(dir).Name
 
-                      Directory.GetFiles(dir, "*.fsi")
-                      |> Seq.choose (fun file ->
-                          let text = File.ReadAllText file
+                        Directory.GetFiles(dir, "*.fsi")
+                        |> Seq.choose (fun file ->
+                            let text = File.ReadAllText file
 
-                          match declaredNamespace text with
-                          | None -> Some(file, "<no namespace declaration>")
-                          | Some ns ->
-                              let namespaceComponent =
-                                  namespaceComponentsByPackage |> Map.tryFind pkg |> Option.defaultValue pkg
+                            match declaredNamespace text with
+                            | None -> Some(file, "<no namespace declaration>")
+                            | Some ns ->
+                                let namespaceComponent =
+                                    namespaceComponentsByPackage |> Map.tryFind pkg |> Option.defaultValue pkg
 
-                              let pattern = sprintf @"(^|\.)%s(\.|$)" (Regex.Escape namespaceComponent)
-                              if Regex.IsMatch(ns, pattern) then None else Some(file, ns)))
-                  |> Seq.toList
+                                let pattern = sprintf @"(^|\.)%s(\.|$)" (Regex.Escape namespaceComponent)
+                                if Regex.IsMatch(ns, pattern) then None else Some(file, ns)))
+                    |> Seq.toList
 
-              Expect.isEmpty offenders "each bundled <Pkg>/*.fsi declares a namespace containing <Pkg>"
-          }
+                Expect.isEmpty offenders "each bundled <Pkg>/*.fsi declares a namespace containing <Pkg>"
+            }
         ]

@@ -42,8 +42,10 @@ type AudioEffect =
 /// is the primary, hardware-free evidence for the headless path: the recorded requests ARE the
 /// evidence (no real sound output is involved).
 type AudioEvidence =
-    { /// Requested effects in dispatch order, oldest first, with volumes normalized.
-      Requested: AudioEffect list }
+    {
+        /// Requested effects in dispatch order, oldest first, with volumes normalized.
+        Requested: AudioEffect list
+    }
 
 /// Public contract module exposed by this FS.GG.Audio.Core package.
 /// The audio request vocabulary plus a pure record-only interpreter. A product's `update` emits

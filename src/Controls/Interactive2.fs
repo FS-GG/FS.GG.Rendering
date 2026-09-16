@@ -11,7 +11,10 @@ module Interactive2 =
 
     module Rate =
         let create attrs = Control.create "rate" attrs
-        let value stars = Attr.create "value" Content (FloatValue stars)
+
+        let value stars =
+            Attr.create "value" Content (FloatValue stars)
+
         let onChange map = onPayload "onChange" map
 
     module Carousel =

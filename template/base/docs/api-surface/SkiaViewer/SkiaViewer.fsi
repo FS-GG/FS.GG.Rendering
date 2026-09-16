@@ -9,41 +9,45 @@ open FS.GG.UI.Scene
 
 /// Public contract type exposed by this FS.GG.UI package.
 type ViewerOptions =
-    { Title: string
-      InitialSize: Size
-      /// Live present mechanism. Defaults to `ViewerPresentMode.DirectToSwapchain` (feature 119) — the
-      /// readback-free direct present on the OpenGL backend (the scene is drawn straight onto the default
-      /// framebuffer and presented by the toolkit buffer swap, no per-frame GPU→CPU readback). Set to
-      /// `ViewerPresentMode.OffscreenReadback` only for evidence/screenshot capture that needs a readback.
-      /// (Feature 120, FR-016: corrects stale feature-118 text that named `OffscreenReadback` as the
-      /// default; the shipped default lives at `Viewer.defaultConfiguration`, which uses
-      /// `DirectToSwapchain` — the docstring is brought into agreement with it.)
-      PresentMode: ViewerPresentMode
-      /// Optional consumer frame-rate cap for the live persistent interactive loop (feature 121,
-      /// FR-001/FR-002). `None` keeps the default 60 FPS — the exact pre-feature-121 behaviour. `Some n`
-      /// (n > 0) bounds BOTH the update and the present cadence of the native event loop, so a host
-      /// without a blocking compositor does not free-run the present loop; `Some n` with n <= 0 is
-      /// rejected at startup validation. Ignored by the offscreen/evidence (`runBounded`) path, which
-      /// does not use the persistent event loop.
-      FrameRateCap: int option
-      /// Issue #246: the fixed logical resolution a product renders in. `None` (the pre-#246
-      /// behaviour) means the product renders directly in output-surface coordinates. `Some logical`
-      /// makes the host scale that canvas uniformly to the output surface and center it, clipping
-      /// content to the canvas and leaving letterbox bars on the surplus axis — so a fixed-resolution
-      /// game fills whatever window or offscreen evidence surface it is given.
-      ///
-      /// When set, the logical size is also what a size-aware `InteractiveViewerHost.View` is handed,
-      /// and pointer input is mapped back into logical coordinates before `MapPointer` sees it: the
-      /// product never observes the window size. `Some` with a non-positive extent is rejected at
-      /// startup validation. See `LogicalCanvas`.
-      LogicalSize: Size option }
+    {
+        Title: string
+        InitialSize: Size
+        /// Live present mechanism. Defaults to `ViewerPresentMode.DirectToSwapchain` (feature 119) — the
+        /// readback-free direct present on the OpenGL backend (the scene is drawn straight onto the default
+        /// framebuffer and presented by the toolkit buffer swap, no per-frame GPU→CPU readback). Set to
+        /// `ViewerPresentMode.OffscreenReadback` only for evidence/screenshot capture that needs a readback.
+        /// (Feature 120, FR-016: corrects stale feature-118 text that named `OffscreenReadback` as the
+        /// default; the shipped default lives at `Viewer.defaultConfiguration`, which uses
+        /// `DirectToSwapchain` — the docstring is brought into agreement with it.)
+        PresentMode: ViewerPresentMode
+        /// Optional consumer frame-rate cap for the live persistent interactive loop (feature 121,
+        /// FR-001/FR-002). `None` keeps the default 60 FPS — the exact pre-feature-121 behaviour. `Some n`
+        /// (n > 0) bounds BOTH the update and the present cadence of the native event loop, so a host
+        /// without a blocking compositor does not free-run the present loop; `Some n` with n <= 0 is
+        /// rejected at startup validation. Ignored by the offscreen/evidence (`runBounded`) path, which
+        /// does not use the persistent event loop.
+        FrameRateCap: int option
+        /// Issue #246: the fixed logical resolution a product renders in. `None` (the pre-#246
+        /// behaviour) means the product renders directly in output-surface coordinates. `Some logical`
+        /// makes the host scale that canvas uniformly to the output surface and center it, clipping
+        /// content to the canvas and leaving letterbox bars on the surplus axis — so a fixed-resolution
+        /// game fills whatever window or offscreen evidence surface it is given.
+        ///
+        /// When set, the logical size is also what a size-aware `InteractiveViewerHost.View` is handed,
+        /// and pointer input is mapped back into logical coordinates before `MapPointer` sees it: the
+        /// product never observes the window size. `Some` with a non-positive extent is rejected at
+        /// startup validation. See `LogicalCanvas`.
+        LogicalSize: Size option
+    }
 
 /// Issue #246: how a fixed logical canvas maps onto the actual output surface — a uniform
 /// scale plus the centering offset that puts the unused surface into letterbox bars.
 type LogicalCanvasFit =
-    { Scale: float
-      OffsetX: float
-      OffsetY: float }
+    {
+        Scale: float
+        OffsetX: float
+        OffsetY: float
+    }
 
 /// Issue #246: the letterbox seam for a fixed-logical-resolution product.
 ///
@@ -133,35 +137,41 @@ type ViewerWindowOptionStatus =
 
 /// Public contract type exposed by this FS.GG.UI package.
 type ViewerWindowBehaviorRequest =
-    { ResizePolicy: ViewerWindowResizePolicy
-      MaximizePolicy: ViewerWindowMaximizePolicy
-      StartupState: ViewerWindowStartupState
-      StartupPosition: ViewerWindowPosition option
-      BackendPreference: ViewerBackendPreference option }
+    {
+        ResizePolicy: ViewerWindowResizePolicy
+        MaximizePolicy: ViewerWindowMaximizePolicy
+        StartupState: ViewerWindowStartupState
+        StartupPosition: ViewerWindowPosition option
+        BackendPreference: ViewerBackendPreference option
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type ViewerWindowOptionResult =
-    { Option: string
-      Requested: string
-      Observed: string option
-      Status: ViewerWindowOptionStatus
-      Message: string }
+    {
+        Option: string
+        Requested: string
+        Observed: string option
+        Status: ViewerWindowOptionStatus
+        Message: string
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type ViewerWindowStateDiagnostic =
-    { WindowInitialized: bool
-      NativeHandle: ViewerObservedValue
-      Visible: ViewerObservedValue
-      Focusable: ViewerObservedValue
-      Focused: ViewerObservedValue
-      Minimized: ViewerObservedValue
-      Maximized: ViewerObservedValue
-      ClientSize: string option
-      RenderableSurfaceAvailable: ViewerObservedValue
-      Backend: string option
-      InputDevicesAvailable: ViewerObservedValue
-      FailureClass: string option
-      Message: string }
+    {
+        WindowInitialized: bool
+        NativeHandle: ViewerObservedValue
+        Visible: ViewerObservedValue
+        Focusable: ViewerObservedValue
+        Focused: ViewerObservedValue
+        Minimized: ViewerObservedValue
+        Maximized: ViewerObservedValue
+        ClientSize: string option
+        RenderableSurfaceAvailable: ViewerObservedValue
+        Backend: string option
+        InputDevicesAvailable: ViewerObservedValue
+        FailureClass: string option
+        Message: string
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type ViewerVisualEvidenceKind =
@@ -172,12 +182,14 @@ type ViewerVisualEvidenceKind =
 
 /// Public contract type exposed by this FS.GG.UI package.
 type ViewerVisualEvidenceArtifact =
-    { Kind: ViewerVisualEvidenceKind
-      Path: string option
-      ImageDecodable: bool option
-      ProvesSceneRendering: bool
-      ProvesDesktopVisibility: bool
-      Message: string }
+    {
+        Kind: ViewerVisualEvidenceKind
+        Path: string option
+        ImageDecodable: bool option
+        ProvesSceneRendering: bool
+        ProvesDesktopVisibility: bool
+        Message: string
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type ViewerFailureClass =
@@ -251,20 +263,24 @@ type ViewerRunFailureClassification =
 
 /// Public contract type exposed by this FS.GG.UI package.
 type ViewerDiagnosticEvent =
-    { Level: ViewerDiagnosticLevel
-      Category: ViewerDiagnosticCategory
-      Message: string
-      FrameIndex: int option
-      Stage: ViewerRunBlockedStage option
-      Elapsed: TimeSpan option }
+    {
+        Level: ViewerDiagnosticLevel
+        Category: ViewerDiagnosticCategory
+        Message: string
+        FrameIndex: int option
+        Stage: ViewerRunBlockedStage option
+        Elapsed: TimeSpan option
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type ViewerDiagnosticsOptions =
-    { MinimumLevel: ViewerDiagnosticLevel
-      Categories: Set<ViewerDiagnosticCategory>
-      FrameLogLimit: int option
-      Sink: (ViewerDiagnosticEvent -> unit) option
-      Verbose: bool }
+    {
+        MinimumLevel: ViewerDiagnosticLevel
+        Categories: Set<ViewerDiagnosticCategory>
+        FrameLogLimit: int option
+        Sink: (ViewerDiagnosticEvent -> unit) option
+        Verbose: bool
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type ViewerEvidenceTarget =
@@ -274,28 +290,34 @@ type ViewerEvidenceTarget =
 
 /// Public contract type exposed by this FS.GG.UI package.
 type ViewerRunRequest =
-    { Target: ViewerEvidenceTarget
-      Timeout: TimeSpan
-      Diagnostics: ViewerDiagnosticsOptions
-      RendererMode: string
-      EvidencePath: string option }
+    {
+        Target: ViewerEvidenceTarget
+        Timeout: TimeSpan
+        Diagnostics: ViewerDiagnosticsOptions
+        RendererMode: string
+        EvidencePath: string option
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type ViewerRunEvidence =
-    { FramesRendered: int
-      Elapsed: TimeSpan
-      InitialOutputSize: Size
-      RendererMode: string
-      LastDiagnosticSummary: string option
-      EvidencePath: string option }
+    {
+        FramesRendered: int
+        Elapsed: TimeSpan
+        InitialOutputSize: Size
+        RendererMode: string
+        LastDiagnosticSummary: string option
+        EvidencePath: string option
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type ViewerRunFailure =
-    { BlockedStage: ViewerRunBlockedStage
-      Classification: ViewerRunFailureClassification
-      DiagnosticCategory: ViewerDiagnosticCategory
-      Message: string
-      LastDiagnosticSummary: string option }
+    {
+        BlockedStage: ViewerRunBlockedStage
+        Classification: ViewerRunFailureClassification
+        DiagnosticCategory: ViewerDiagnosticCategory
+        Message: string
+        LastDiagnosticSummary: string option
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type ScreenshotEvidenceStatus =
@@ -305,18 +327,19 @@ type ScreenshotEvidenceStatus =
 
 /// Public contract type exposed by this FS.GG.UI package.
 type ScreenshotEvidenceRequest =
-    { Command: string
-      AppOrSample: string
-      OutputPath: string
-      Width: int
-      Height: int
-      RendererMode: string
-      CaptureMode: ScreenshotCaptureMode
-      HostFacts: string list
-      Timeout: TimeSpan }
+    {
+        Command: string
+        AppOrSample: string
+        OutputPath: string
+        Width: int
+        Height: int
+        RendererMode: string
+        CaptureMode: ScreenshotCaptureMode
+        HostFacts: string list
+        Timeout: TimeSpan
+    }
 
-and ScreenshotCaptureMode =
-    | ViewerRenderTargetPng
+and ScreenshotCaptureMode = | ViewerRenderTargetPng
 
 /// Public contract type exposed by this FS.GG.UI package.
 type ViewerOpenStatus =
@@ -355,108 +378,120 @@ type ScreenshotPixelContentValidation =
 
 /// Public contract type exposed by this FS.GG.UI package.
 type ScreenshotEvidenceResult =
-    { Status: ScreenshotEvidenceStatus
-      Command: string
-      AppOrSample: string
-      HostFacts: string list
-      CaptureMode: ScreenshotCaptureMode
-      EvidenceKind: string
-      OutputPath: string option
-      ScreenshotPath: string option
-      Width: int option
-      Height: int option
-      PixelContentValidation: ScreenshotPixelContentValidation
-      RendererMode: string
-      FramesRendered: int option
-      ViewerOpenStatus: ViewerOpenStatus
-      FirstFrameStatus: FirstFrameStatus
-      CaptureAvailability: ScreenshotCaptureAvailability
-      CaptureSource: ScreenshotCaptureSource
-      DeterministicFallbackKind: string option
-      ProvesScreenshot: bool
-      BlockedStage: ViewerRunBlockedStage option
-      Classification: ViewerRunFailureClassification option
-      Category: ViewerDiagnosticCategory option
-      Message: string
-      Timestamp: DateTimeOffset
-      UnsupportedHostReason: string option
-      Fallback: string option
-      Diagnostics: string list }
+    {
+        Status: ScreenshotEvidenceStatus
+        Command: string
+        AppOrSample: string
+        HostFacts: string list
+        CaptureMode: ScreenshotCaptureMode
+        EvidenceKind: string
+        OutputPath: string option
+        ScreenshotPath: string option
+        Width: int option
+        Height: int option
+        PixelContentValidation: ScreenshotPixelContentValidation
+        RendererMode: string
+        FramesRendered: int option
+        ViewerOpenStatus: ViewerOpenStatus
+        FirstFrameStatus: FirstFrameStatus
+        CaptureAvailability: ScreenshotCaptureAvailability
+        CaptureSource: ScreenshotCaptureSource
+        DeterministicFallbackKind: string option
+        ProvesScreenshot: bool
+        BlockedStage: ViewerRunBlockedStage option
+        Classification: ViewerRunFailureClassification option
+        Category: ViewerDiagnosticCategory option
+        Message: string
+        Timestamp: DateTimeOffset
+        UnsupportedHostReason: string option
+        Fallback: string option
+        Diagnostics: string list
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type ViewerRuntimeCapability =
-    { PersistentWindow: bool
-      BoundedSmoke: bool
-      KeyboardInput: bool
-      RendererMode: string
-      UnsupportedHostReasons: string list
-      MissingPackageCapabilities: string list }
+    {
+        PersistentWindow: bool
+        BoundedSmoke: bool
+        KeyboardInput: bool
+        RendererMode: string
+        UnsupportedHostReasons: string list
+        MissingPackageCapabilities: string list
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type ViewerDesktopSessionDiagnostic =
-    { RuntimeDirectory: string option
-      RuntimeDirectoryExists: bool
-      RuntimeDirectoryOwnerSuitable: bool
-      RuntimeDirectoryPermissionsSuitable: bool
-      DisplayVariable: string option
-      DisplaySocket: string option
-      DisplaySocketExists: bool
-      SessionBus: string option
-      FallbackRuntimeDirectory: string option
-      FallbackIsFullDesktopSession: bool
-      DiagnosticClass: string
-      Message: string }
+    {
+        RuntimeDirectory: string option
+        RuntimeDirectoryExists: bool
+        RuntimeDirectoryOwnerSuitable: bool
+        RuntimeDirectoryPermissionsSuitable: bool
+        DisplayVariable: string option
+        DisplaySocket: string option
+        DisplaySocketExists: bool
+        SessionBus: string option
+        FallbackRuntimeDirectory: string option
+        FallbackIsFullDesktopSession: bool
+        DiagnosticClass: string
+        Message: string
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type ViewerLaunchOutcome =
-    { Status: string
-      Mode: string
-      Command: string option
-      RendererMode: string
-      WindowOpened: bool
-      WindowVisible: ViewerObservedValue
-      FirstFramePresented: bool
-      CloseReason: ViewerCloseReason option
-      UserCloseObserved: bool
-      AppCloseObserved: bool
-      EvidenceCloseObserved: bool
-      SelfClosedForEvidence: bool
-      InputDispatch: string
-      ExitPath: bool
-      WindowDiagnostics: ViewerWindowStateDiagnostic list
-      OptionResults: ViewerWindowOptionResult list
-      VisualEvidence: ViewerVisualEvidenceArtifact list
-      FailureClass: ViewerFailureClass option
-      BlockedStage: ViewerRunBlockedStage option
-      Classification: ViewerRunFailureClassification option
-      Category: ViewerDiagnosticCategory option
-      Message: string }
+    {
+        Status: string
+        Mode: string
+        Command: string option
+        RendererMode: string
+        WindowOpened: bool
+        WindowVisible: ViewerObservedValue
+        FirstFramePresented: bool
+        CloseReason: ViewerCloseReason option
+        UserCloseObserved: bool
+        AppCloseObserved: bool
+        EvidenceCloseObserved: bool
+        SelfClosedForEvidence: bool
+        InputDispatch: string
+        ExitPath: bool
+        WindowDiagnostics: ViewerWindowStateDiagnostic list
+        OptionResults: ViewerWindowOptionResult list
+        VisualEvidence: ViewerVisualEvidenceArtifact list
+        FailureClass: ViewerFailureClass option
+        BlockedStage: ViewerRunBlockedStage option
+        Classification: ViewerRunFailureClassification option
+        Category: ViewerDiagnosticCategory option
+        Message: string
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 /// Feature 183 (US3): the four window-observation inputs `classifyWindowObservation` takes, named so
 /// the two bools and two bool-options cannot be transposed at the call site. Values/results unchanged.
 type WindowObservationInputs =
-    { ExternalObservationAttempted: bool
-      ExternalWindowMatched: bool option
-      CaptureAttempted: bool
-      CaptureSucceeded: bool option }
+    {
+        ExternalObservationAttempted: bool
+        ExternalWindowMatched: bool option
+        CaptureAttempted: bool
+        CaptureSucceeded: bool option
+    }
 
 type ViewerWindowObservationResult =
-    { DiagnosticSource: string
-      Command: string option
-      HostFacts: string list
-      ViewerFacts: string list
-      ViewerWindowOpened: bool
-      ViewerFirstFramePresented: bool
-      ViewerWindowVisible: ViewerObservedValue
-      ExternalObservationAttempted: bool
-      ExternalWindowMatched: bool option
-      CaptureAttempted: bool
-      CaptureSucceeded: bool option
-      BlockedStage: ViewerRunBlockedStage option
-      Classification: ViewerRunFailureClassification option
-      MissingFacts: string list
-      Message: string }
+    {
+        DiagnosticSource: string
+        Command: string option
+        HostFacts: string list
+        ViewerFacts: string list
+        ViewerWindowOpened: bool
+        ViewerFirstFramePresented: bool
+        ViewerWindowVisible: ViewerObservedValue
+        ExternalObservationAttempted: bool
+        ExternalWindowMatched: bool option
+        CaptureAttempted: bool
+        CaptureSucceeded: bool option
+        BlockedStage: ViewerRunBlockedStage option
+        Classification: ViewerRunFailureClassification option
+        MissingFacts: string list
+        Message: string
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type ViewerLifecycleState =
@@ -479,22 +514,26 @@ type ViewerLifecycleState =
 
 /// Public contract type exposed by this FS.GG.UI package.
 type ViewerModel =
-    { Options: ViewerOptions
-      WindowBehavior: ViewerWindowBehaviorRequest
-      IsRunning: bool
-      LifecycleState: ViewerLifecycleState
-      FirstFramePresented: bool
-      UserCloseObserved: bool
-      InputDispatch: ViewerInputDispatchStatus
-      LastScene: SceneNode option }
+    {
+        Options: ViewerOptions
+        WindowBehavior: ViewerWindowBehaviorRequest
+        IsRunning: bool
+        LifecycleState: ViewerLifecycleState
+        FirstFramePresented: bool
+        UserCloseObserved: bool
+        InputDispatch: ViewerInputDispatchStatus
+        LastScene: SceneNode option
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type ViewerRunModel =
-    { Request: ViewerRunRequest
-      FramesRendered: int
-      StartedAt: DateTimeOffset option
-      LastDiagnostic: ViewerDiagnosticEvent option
-      Completed: Result<ViewerRunEvidence, ViewerRunFailure> option }
+    {
+        Request: ViewerRunRequest
+        FramesRendered: int
+        StartedAt: DateTimeOffset option
+        LastDiagnostic: ViewerDiagnosticEvent option
+        Completed: Result<ViewerRunEvidence, ViewerRunFailure> option
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type ViewerMsg =
@@ -579,13 +618,15 @@ type ViewerRunEffect =
 
 /// Public contract type exposed by this FS.GG.UI package.
 type EvidenceWorkflowModel =
-    { Request: ScreenshotEvidenceRequest
-      ViewerOpenStatus: ViewerOpenStatus
-      FirstFrameStatus: FirstFrameStatus
-      CaptureAvailability: ScreenshotCaptureAvailability
-      OutputPath: string option
-      Result: ScreenshotEvidenceResult option
-      Diagnostics: string list }
+    {
+        Request: ScreenshotEvidenceRequest
+        ViewerOpenStatus: ViewerOpenStatus
+        FirstFrameStatus: FirstFrameStatus
+        CaptureAvailability: ScreenshotCaptureAvailability
+        OutputPath: string option
+        Result: ScreenshotEvidenceResult option
+        Diagnostics: string list
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 type EvidenceWorkflowMsg =
@@ -609,13 +650,15 @@ type EvidenceWorkflowEffect =
     | ValidateGeneratedGuidance
 
 /// Public contract type exposed by this FS.GG.UI package.
-type GeneratedAppHost<'model,'msg> =
-    { Init: unit -> 'model * ViewerEffect list
-      Update: 'msg -> 'model -> 'model * ViewerEffect list
-      View: 'model -> SceneNode
-      MapKey: ViewerKey -> bool -> 'msg option
-      Tick: TimeSpan -> 'msg option
-      Diagnostics: ViewerDiagnosticsOptions }
+type GeneratedAppHost<'model, 'msg> =
+    {
+        Init: unit -> 'model * ViewerEffect list
+        Update: 'msg -> 'model -> 'model * ViewerEffect list
+        View: 'model -> SceneNode
+        MapKey: ViewerKey -> bool -> 'msg option
+        Tick: TimeSpan -> 'msg option
+        Diagnostics: ViewerDiagnosticsOptions
+    }
 
 /// Public contract type exposed by this FS.GG.UI package.
 /// Issue #911: the `GeneratedAppHost.auditKeyWiring` result — a declared input surface partitioned
@@ -625,8 +668,10 @@ type GeneratedAppHost<'model,'msg> =
 /// for this host — "a key that is bound is a key that dispatches" — and a non-empty `Dead` over a
 /// product's declared keymap is a bound key that dispatches nothing.
 type SceneHostKeyWiring<'msg> =
-    { Wired: (ViewerKeyEvent * 'msg) list
-      Dead: ViewerKeyEvent list }
+    {
+        Wired: (ViewerKeyEvent * 'msg) list
+        Dead: ViewerKeyEvent list
+    }
 
 [<RequireQualifiedAccess>]
 /// Framework-neutral pointer button identity surfaced to the interactive host (085).
@@ -647,12 +692,14 @@ type ViewerPointerPhaseKind =
 /// A host-independent pointer sample raised by the live window for the interactive host
 /// (085). X/Y are in the swapchain/scene coordinate space.
 type ViewerPointerInput =
-    { Phase: ViewerPointerPhaseKind
-      X: float
-      Y: float
-      Button: ViewerPointerButtonKind option
-      DeltaX: float
-      DeltaY: float }
+    {
+        Phase: ViewerPointerPhaseKind
+        X: float
+        Y: float
+        Button: ViewerPointerButtonKind option
+        DeltaX: float
+        DeltaY: float
+    }
 
 [<RequireQualifiedAccess>]
 /// Policy for replaceable continuous pointer samples at the interactive viewer boundary.
@@ -670,17 +717,21 @@ type ViewerPointerRepaintCause =
 
 /// Live counters emitted after each pointer-input batch is drained.
 type ViewerPointerPacingMetrics =
-    { RawSamplesReceived: int
-      FoldedSamplesApplied: int
-      CoalescedSamples: int
-      ModelUpdates: int
-      PresentedFrames: int64
-      RepaintCause: ViewerPointerRepaintCause
-      FullRenderFallbacks: int }
+    {
+        RawSamplesReceived: int
+        FoldedSamplesApplied: int
+        CoalescedSamples: int
+        ModelUpdates: int
+        PresentedFrames: int64
+        RepaintCause: ViewerPointerRepaintCause
+        FullRenderFallbacks: int
+    }
 
 type ViewerPointerPacingOptions =
-    { ContinuousPolicy: ViewerContinuousPointerPolicy
-      OnMetrics: ViewerPointerPacingMetrics -> unit }
+    {
+        ContinuousPolicy: ViewerContinuousPointerPolicy
+        OnMetrics: ViewerPointerPacingMetrics -> unit
+    }
 
 /// Pointer-aware, size-aware durable host variant (feature 085). Mirrors `GeneratedAppHost`
 /// field-for-field PLUS a model-aware pointer seam (`MapPointer`) and a size-carrying `View`.
@@ -703,34 +754,42 @@ type ViewerPointerPacingOptions =
 /// sibling `GeneratedAppHost.MapKey` is DELIBERATELY left at `'msg option`: it backs the
 /// non-interactive `Viewer.runApp` path (generated projects, samples) where multi-message keys are
 /// not needed, and widening it would churn the template/generated host for no behavioral gain.
-type InteractiveViewerHost<'model,'msg> =
-    { Init: unit -> 'model * ViewerEffect list
-      Update: 'msg -> 'model -> 'model * ViewerEffect list
-      View: Size -> 'model -> SceneNode
-      MapKey: ViewerKey -> bool -> 'msg list
-      MapPointer: ViewerPointerInput -> Size -> 'model -> 'msg list
-      Tick: TimeSpan -> 'msg option
-      Diagnostics: ViewerDiagnosticsOptions }
+type InteractiveViewerHost<'model, 'msg> =
+    {
+        Init: unit -> 'model * ViewerEffect list
+        Update: 'msg -> 'model -> 'model * ViewerEffect list
+        View: Size -> 'model -> SceneNode
+        MapKey: ViewerKey -> bool -> 'msg list
+        MapPointer: ViewerPointerInput -> Size -> 'model -> 'msg list
+        Tick: TimeSpan -> 'msg option
+        Diagnostics: ViewerDiagnosticsOptions
+    }
 
 /// Framework-neutral controller values sampled at the native host edge. A source owns device
 /// discovery and normalization; the viewer owns the once-per-presented-frame poll boundary.
 type GamepadSnapshot =
-    { LeftStickX: float
-      LeftStickY: float
-      RightStickX: float
-      RightStickY: float
-      LeftTrigger: float
-      RightTrigger: float }
+    {
+        LeftStickX: float
+        LeftStickY: float
+        RightStickX: float
+        RightStickY: float
+        LeftTrigger: float
+        RightTrigger: float
+    }
 
 /// Native gamepad producer plus the pure product mapping for one snapshot.
 type GamepadFrameSource<'msg> =
-    { Poll: unit -> GamepadSnapshot option
-      Map: GamepadSnapshot -> 'msg list }
+    {
+        Poll: unit -> GamepadSnapshot option
+        Map: GamepadSnapshot -> 'msg list
+    }
 
 /// Additive gamepad-capable variant of `InteractiveViewerHost`; existing host records remain valid.
-type InteractiveViewerGamepadHost<'model,'msg> =
-    { Host: InteractiveViewerHost<'model,'msg>
-      Gamepad: GamepadFrameSource<'msg> }
+type InteractiveViewerGamepadHost<'model, 'msg> =
+    {
+        Host: InteractiveViewerHost<'model, 'msg>
+        Gamepad: GamepadFrameSource<'msg>
+    }
 
 module GamepadFrameSource =
     /// Poll one native snapshot and map it without retaining mutable device state. The live viewer
@@ -741,8 +800,11 @@ module GamepadFrameSource =
 module Viewer =
     /// Public contract function exposed by this FS.GG.UI package.
     val init: options: ViewerOptions -> ViewerModel * ViewerEffect list
+
     /// Public contract function exposed by this FS.GG.UI package.
-    val initWithWindowBehavior: options: ViewerOptions -> behavior: ViewerWindowBehaviorRequest -> ViewerModel * ViewerEffect list
+    val initWithWindowBehavior:
+        options: ViewerOptions -> behavior: ViewerWindowBehaviorRequest -> ViewerModel * ViewerEffect list
+
     /// Public contract function exposed by this FS.GG.UI package.
     val update: msg: ViewerMsg -> model: ViewerModel -> ViewerModel * ViewerEffect list
     /// Public contract function exposed by this FS.GG.UI package.
@@ -755,22 +817,32 @@ module Viewer =
     val defaultWindowBehavior: ViewerWindowBehaviorRequest
     /// Public contract function exposed by this FS.GG.UI package.
     val validateWindowBehavior: request: ViewerWindowBehaviorRequest -> ViewerWindowOptionResult list
+
     /// Public contract function exposed by this FS.GG.UI package.
-    val validateWindowLaunchBehavior: initialSize: Size -> request: ViewerWindowBehaviorRequest -> ViewerWindowOptionResult list
+    val validateWindowLaunchBehavior:
+        initialSize: Size -> request: ViewerWindowBehaviorRequest -> ViewerWindowOptionResult list
+
     /// Public contract function exposed by this FS.GG.UI package.
     val classifyWindowState: diagnostic: ViewerWindowStateDiagnostic -> ViewerLifecycleState
     /// Public contract function exposed by this FS.GG.UI package.
     val shouldCaptureDiagnostic: options: ViewerDiagnosticsOptions -> diagnostic: ViewerDiagnosticEvent -> bool
+
     /// Public contract function exposed by this FS.GG.UI package.
-    val captureDiagnostic: options: ViewerDiagnosticsOptions -> diagnostic: ViewerDiagnosticEvent -> ViewerDiagnosticEvent option
+    val captureDiagnostic:
+        options: ViewerDiagnosticsOptions -> diagnostic: ViewerDiagnosticEvent -> ViewerDiagnosticEvent option
+
     /// Public contract function exposed by this FS.GG.UI package.
     val failureFromDiagnostic: diagnostic: ViewerDiagnosticEvent -> ViewerRunFailure
+
     /// Public contract function exposed by this FS.GG.UI package.
-    val classifyWindowObservation: outcome: ViewerLaunchOutcome -> inputs: WindowObservationInputs -> ViewerWindowObservationResult
+    val classifyWindowObservation:
+        outcome: ViewerLaunchOutcome -> inputs: WindowObservationInputs -> ViewerWindowObservationResult
+
     /// Public contract function exposed by this FS.GG.UI package.
     val desktopSessionDiagnostic: unit -> ViewerDesktopSessionDiagnostic
     /// Public contract function exposed by this FS.GG.UI package.
     val runtimeCapability: unit -> ViewerRuntimeCapability
+
     /// Deterministically apply frame-bounded inputs through the same paced queue transition as the live host.
     val runDeterministicPacing:
         policy: ViewerContinuousPointerPolicy ->
@@ -780,6 +852,7 @@ module Viewer =
 
     /// Public contract function exposed by this FS.GG.UI package.
     val run: program: ViewerProgram<'model, 'msg> -> Result<unit, RenderDiagnostic>
+
     /// Issue #444 — EVIDENCE EFFECTS ARE HONORED HERE. A host that emits `CaptureScreenshot`,
     /// `CaptureImageEvidence`, `WriteVisualEvidence` or `WriteRunEvidence` from `Init`/`Update` gets the
     /// file written. Before #444 all four were discarded by the launch loop — no file, no error, and the
@@ -795,20 +868,37 @@ module Viewer =
     /// A write that fails does not throw and does not take the window down; it raises an
     /// `Error`/`Screenshot`/`ArtifactWrite` diagnostic naming the effect, the path and the reason, so the
     /// failure is observable on `Diagnostics` rather than silent.
-    val runApp: options: ViewerOptions -> host: GeneratedAppHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
+    val runApp:
+        options: ViewerOptions -> host: GeneratedAppHost<'model, 'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
+
     /// As `runApp` (including the Issue #444 evidence-effect handling), with an explicit window behavior.
-    val runAppWithWindowBehavior: options: ViewerOptions -> behavior: ViewerWindowBehaviorRequest -> host: GeneratedAppHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
+    val runAppWithWindowBehavior:
+        options: ViewerOptions ->
+        behavior: ViewerWindowBehaviorRequest ->
+        host: GeneratedAppHost<'model, 'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
+
     /// Issue #245 — as `runApp`, but every `ViewerEffect.PlayAudio` batch the host emits is handed to
     /// `audioSink` in dispatch order instead of being discarded. This is the seam from a product's pure
     /// `update` to real playback: pass `FS.GG.Audio.Host.Audio.play backend` and a scaffolded game's
     /// sound requests reach the device with no edit to the durable `Program.fs`. Additive —
     /// `runApp`/`runAppWithWindowBehavior` stay intact and keep discarding audio (FR-006), and the viewer
     /// still owns no audio device: the backend's lifetime belongs to the caller.
-    val runAppWithAudio: options: ViewerOptions -> audioSink: (AudioEffect list -> unit) -> host: GeneratedAppHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
+    val runAppWithAudio:
+        options: ViewerOptions ->
+        audioSink: (AudioEffect list -> unit) ->
+        host: GeneratedAppHost<'model, 'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
+
     /// Issue #245 — `runAppWithAudio` with an explicit window behavior, completing the pairing that
     /// `runApp`/`runAppWithWindowBehavior` already have. The generated game template uses this when a
     /// `--window-*` flag is supplied and `runAppWithAudio` otherwise.
-    val runAppWithWindowBehaviorAndAudio: options: ViewerOptions -> behavior: ViewerWindowBehaviorRequest -> audioSink: (AudioEffect list -> unit) -> host: GeneratedAppHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
+    val runAppWithWindowBehaviorAndAudio:
+        options: ViewerOptions ->
+        behavior: ViewerWindowBehaviorRequest ->
+        audioSink: (AudioEffect list -> unit) ->
+        host: GeneratedAppHost<'model, 'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
 
     /// Issue #535 — the launch that gives a product's save/load requests somewhere to GO, and an answer
     /// to come BACK on.
@@ -836,7 +926,7 @@ module Viewer =
         options: ViewerOptions ->
         persistenceSink: (PersistenceEffect list -> PersistenceOutcome list) ->
         mapOutcome: (PersistenceOutcome -> 'msg option) ->
-        host: GeneratedAppHost<'model,'msg> ->
+        host: GeneratedAppHost<'model, 'msg> ->
             Result<ViewerLaunchOutcome, ViewerRunFailure>
 
     /// Issue #535 — sound AND saves. Without this pairing, adopting persistence would mean giving up
@@ -846,8 +936,9 @@ module Viewer =
         audioSink: (AudioEffect list -> unit) ->
         persistenceSink: (PersistenceEffect list -> PersistenceOutcome list) ->
         mapOutcome: (PersistenceOutcome -> 'msg option) ->
-        host: GeneratedAppHost<'model,'msg> ->
+        host: GeneratedAppHost<'model, 'msg> ->
             Result<ViewerLaunchOutcome, ViewerRunFailure>
+
     /// Issue #979 — window behavior AND sound AND saves, the last corner of the generated-app launcher
     /// matrix. `runAppWithWindowBehaviorAndAudio` (audio, no saves) and `runAppWithAudioAndPersistence`
     /// (saves, but `defaultWindowBehavior`) each drop one capability the other keeps, so a `--window-*`
@@ -862,20 +953,31 @@ module Viewer =
         audioSink: (AudioEffect list -> unit) ->
         persistenceSink: (PersistenceEffect list -> PersistenceOutcome list) ->
         mapOutcome: (PersistenceOutcome -> 'msg option) ->
-        host: GeneratedAppHost<'model,'msg> ->
+        host: GeneratedAppHost<'model, 'msg> ->
             Result<ViewerLaunchOutcome, ViewerRunFailure>
+
     /// Feature 085 — pointer-aware, size-aware durable launch. Routes native pointer events
     /// and window resizes to the host and renders the size-aware `View`; additive to
     /// `runApp`/`runAppWithWindowBehavior`, which stay intact (FR-004/FR-006/FR-009).
-    val runInteractiveViewer: options: ViewerOptions -> host: InteractiveViewerHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
+    val runInteractiveViewer:
+        options: ViewerOptions ->
+        host: InteractiveViewerHost<'model, 'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
+
     /// As `runInteractiveViewer`, polling `Gamepad.Poll` exactly once at every presented-frame
     /// boundary and folding its mapped messages before the ordinary tick.
     val runInteractiveViewerWithGamepad:
         options: ViewerOptions ->
-        gamepadHost: InteractiveViewerGamepadHost<'model,'msg> ->
+        gamepadHost: InteractiveViewerGamepadHost<'model, 'msg> ->
             Result<ViewerLaunchOutcome, ViewerRunFailure>
+
     /// As `runInteractiveViewer` with an explicit window behavior.
-    val runInteractiveViewerWithWindowBehavior: options: ViewerOptions -> behavior: ViewerWindowBehaviorRequest -> host: InteractiveViewerHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
+    val runInteractiveViewerWithWindowBehavior:
+        options: ViewerOptions ->
+        behavior: ViewerWindowBehaviorRequest ->
+        host: InteractiveViewerHost<'model, 'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
+
     /// Issue #429 — `runInteractiveViewer` with an audio sink, so the pointer/size-aware host family
     /// can request sound. Before this, audio was reachable only through `runAppWithAudio`, whose
     /// `GeneratedAppHost` has no pointer: a product that needed both got silence, because the
@@ -884,19 +986,22 @@ module Viewer =
     val runInteractiveViewerWithAudio:
         options: ViewerOptions ->
         audioSink: (AudioEffect list -> unit) ->
-        host: InteractiveViewerHost<'model,'msg> ->
+        host: InteractiveViewerHost<'model, 'msg> ->
             Result<ViewerLaunchOutcome, ViewerRunFailure>
+
     /// Issue #429 — `runInteractiveViewerWithAudio` with an explicit window behavior, completing the
     /// pairing the sinkless interactive runners already have.
     val runInteractiveViewerWithWindowBehaviorAndAudio:
         options: ViewerOptions ->
         behavior: ViewerWindowBehaviorRequest ->
         audioSink: (AudioEffect list -> unit) ->
-        host: InteractiveViewerHost<'model,'msg> ->
+        host: InteractiveViewerHost<'model, 'msg> ->
             Result<ViewerLaunchOutcome, ViewerRunFailure>
+
     /// Default retained pointer policy: latest `Moved` sample per presented-frame boundary; discrete
     /// events are lossless. The callback is `ignore`.
     val defaultPointerPacingOptions: ViewerPointerPacingOptions
+
     /// Enqueue using the same explicit continuous-pointer policy as the interactive live host.
     val enqueueInputWithPointerPolicy:
         policy: ViewerContinuousPointerPolicy ->
@@ -905,34 +1010,39 @@ module Viewer =
         payload: string ->
         queue: ViewerInputQueue ->
             ViewerInputEnvelope * ViewerInputQueue
+
     /// `runInteractiveViewer` with an explicit continuous-pointer policy and live pacing counters.
     val runInteractiveViewerWithPointerPacing:
         options: ViewerOptions ->
         pointerPacing: ViewerPointerPacingOptions ->
-        host: InteractiveViewerHost<'model,'msg> ->
+        host: InteractiveViewerHost<'model, 'msg> ->
             Result<ViewerLaunchOutcome, ViewerRunFailure>
+
     /// Pointer pacing and audio share the same interactive launch fold.
     val runInteractiveViewerWithPointerPacingAndAudio:
         options: ViewerOptions ->
         pointerPacing: ViewerPointerPacingOptions ->
         audioSink: (AudioEffect list -> unit) ->
-        host: InteractiveViewerHost<'model,'msg> ->
+        host: InteractiveViewerHost<'model, 'msg> ->
             Result<ViewerLaunchOutcome, ViewerRunFailure>
+
     /// Pointer pacing plus explicit window behavior on the same retained launch path.
     val runInteractiveViewerWithWindowBehaviorAndPointerPacing:
         options: ViewerOptions ->
         behavior: ViewerWindowBehaviorRequest ->
         pointerPacing: ViewerPointerPacingOptions ->
-        host: InteractiveViewerHost<'model,'msg> ->
+        host: InteractiveViewerHost<'model, 'msg> ->
             Result<ViewerLaunchOutcome, ViewerRunFailure>
+
     /// Full interactive launch: explicit window behavior, pointer pacing metrics, and audio.
     val runInteractiveViewerWithWindowBehaviorAndPointerPacingAndAudio:
         options: ViewerOptions ->
         behavior: ViewerWindowBehaviorRequest ->
         pointerPacing: ViewerPointerPacingOptions ->
         audioSink: (AudioEffect list -> unit) ->
-        host: InteractiveViewerHost<'model,'msg> ->
+        host: InteractiveViewerHost<'model, 'msg> ->
             Result<ViewerLaunchOutcome, ViewerRunFailure>
+
     /// Issue #438 — `runInteractiveViewerScript` with an audio sink. #429 gave the interactive family a
     /// sink but only on its NON-scripted entry points; the scripted runners kept passing `ignore`, so a
     /// scripted product's `PlayAudio` was still dropped with no error and no diagnostic. That mattered
@@ -944,8 +1054,9 @@ module Viewer =
         options: ViewerOptions ->
         script: ViewerScriptInput list ->
         audioSink: (AudioEffect list -> unit) ->
-        host: InteractiveViewerHost<'model,'msg> ->
+        host: InteractiveViewerHost<'model, 'msg> ->
             Result<ViewerLaunchOutcome, ViewerRunFailure>
+
     /// Issue #438 — `runInteractiveViewerScriptWithAudio` with an explicit window behavior, completing
     /// the pairing the sinkless scripted runners already have.
     val runInteractiveViewerScriptWithWindowBehaviorAndAudio:
@@ -953,16 +1064,23 @@ module Viewer =
         behavior: ViewerWindowBehaviorRequest ->
         script: ViewerScriptInput list ->
         audioSink: (AudioEffect list -> unit) ->
-        host: InteractiveViewerHost<'model,'msg> ->
+        host: InteractiveViewerHost<'model, 'msg> ->
             Result<ViewerLaunchOutcome, ViewerRunFailure>
+
     val runInteractiveViewerScriptWithPointerPacing:
         options: ViewerOptions ->
         pointerPacing: ViewerPointerPacingOptions ->
         script: ViewerScriptInput list ->
-        host: InteractiveViewerHost<'model,'msg> ->
+        host: InteractiveViewerHost<'model, 'msg> ->
             Result<ViewerLaunchOutcome, ViewerRunFailure>
+
     /// Public contract function exposed by this FS.GG.UI package.
-    val runAppEvidence: request: ViewerRunRequest -> options: ViewerOptions -> host: GeneratedAppHost<'model,'msg> -> Result<ViewerLaunchOutcome, ViewerRunFailure>
+    val runAppEvidence:
+        request: ViewerRunRequest ->
+        options: ViewerOptions ->
+        host: GeneratedAppHost<'model, 'msg> ->
+            Result<ViewerLaunchOutcome, ViewerRunFailure>
+
     /// Public contract function exposed by this FS.GG.UI package.
     /// Drives a real bounded Silk.NET window and reports `FramesRendered` = the number of frame
     /// callbacks the window fired. The window itself is NOT painted with `scene` (on-screen
@@ -970,33 +1088,50 @@ module Viewer =
     /// the scene is rasterized to real pixels through the shared CPU painter, so image evidence
     /// genuinely depicts `scene`. Read `FramesRendered` as window/frame-cadence proof, not as
     /// "the scene was presented on screen" (P6 / R4).
-    val runBounded: request: ViewerRunRequest -> options: ViewerOptions -> scene: SceneNode -> Result<ViewerRunEvidence, ViewerRunFailure>
+    val runBounded:
+        request: ViewerRunRequest ->
+        options: ViewerOptions ->
+        scene: SceneNode ->
+            Result<ViewerRunEvidence, ViewerRunFailure>
+
     /// Public contract function exposed by this FS.GG.UI package.
     /// Bounded run stopping at the first frame callback; see `runBounded` for what the evidence
     /// proves (window/frame cadence; scene depicted only in `.png` evidence, not on the live surface).
     val runUntilFirstFrame: options: ViewerOptions -> scene: SceneNode -> Result<ViewerRunEvidence, ViewerRunFailure>
+
     /// Public contract function exposed by this FS.GG.UI package.
     /// Bounded run stopping after `frameCount` frame callbacks; see `runBounded` for what the
     /// evidence proves (window/frame cadence; scene depicted only in `.png` evidence).
-    val runForFrames: frameCount: int -> options: ViewerOptions -> scene: SceneNode -> Result<ViewerRunEvidence, ViewerRunFailure>
+    val runForFrames:
+        frameCount: int -> options: ViewerOptions -> scene: SceneNode -> Result<ViewerRunEvidence, ViewerRunFailure>
+
     /// Public contract function exposed by this FS.GG.UI package.
-    val captureScreenshotEvidence: request: ScreenshotEvidenceRequest -> options: ViewerOptions -> scene: SceneNode -> ScreenshotEvidenceResult
+    val captureScreenshotEvidence:
+        request: ScreenshotEvidenceRequest -> options: ViewerOptions -> scene: SceneNode -> ScreenshotEvidenceResult
+
     /// Public contract function exposed by this FS.GG.UI package.
     val initEvidenceWorkflow: request: ScreenshotEvidenceRequest -> EvidenceWorkflowModel * EvidenceWorkflowEffect list
+
     /// Public contract function exposed by this FS.GG.UI package.
-    val updateEvidenceWorkflow: msg: EvidenceWorkflowMsg -> model: EvidenceWorkflowModel -> EvidenceWorkflowModel * EvidenceWorkflowEffect list
+    val updateEvidenceWorkflow:
+        msg: EvidenceWorkflowMsg -> model: EvidenceWorkflowModel -> EvidenceWorkflowModel * EvidenceWorkflowEffect list
 
 /// Public contract module exposed by this FS.GG.UI package.
 module GeneratedAppHost =
     /// Public contract function exposed by this FS.GG.UI package.
-    val dispatchKey: host: GeneratedAppHost<'model,'msg> -> raw: ViewerKeyEvent -> model: 'model -> 'model * ViewerEffect list
+    val dispatchKey:
+        host: GeneratedAppHost<'model, 'msg> -> raw: ViewerKeyEvent -> model: 'model -> 'model * ViewerEffect list
+
     /// Issue #245 — every sound request in an effect batch, flattened in dispatch order; non-audio
     /// effects are dropped. This is exactly what `runAppWithAudio` feeds its sink, exposed as a pure
     /// function so a product can assert what a frame requested without opening a window or a device:
     /// `dispatchKey host raw model |> snd |> audioRequests |> Audio.interpret` yields `AudioEvidence`.
     val audioRequests: effects: ViewerEffect list -> AudioEffect list
+
     /// Public contract function exposed by this FS.GG.UI package.
-    val smoke: host: GeneratedAppHost<'model,'msg> -> request: ViewerRunRequest -> Result<ViewerRunEvidence, ViewerRunFailure>
+    val smoke:
+        host: GeneratedAppHost<'model, 'msg> -> request: ViewerRunRequest -> Result<ViewerRunEvidence, ViewerRunFailure>
+
     /// Issue #911: the scene-host analogue of `ControlsElmish.Perf.runScriptToModel` (#461). Fold an
     /// ordered key-event script through the host's own `dispatchKey` (`normalizeEvent -> MapKey ->
     /// Update`) from `Init`'s model to the FINAL model, returning it with every `ViewerEffect` requested
@@ -1004,17 +1139,21 @@ module GeneratedAppHost =
     /// which routes input through this scene-host rather than the Controls click path, write an
     /// end-to-end "played through the host" test purely and headlessly. It drives the KEY source only;
     /// `Tick` is folded by the caller, or checked via `reachableMessages`.
-    val runKeyScriptToModel: host: GeneratedAppHost<'model,'msg> -> script: ViewerKeyEvent list -> 'model * ViewerEffect list
+    val runKeyScriptToModel:
+        host: GeneratedAppHost<'model, 'msg> -> script: ViewerKeyEvent list -> 'model * ViewerEffect list
+
     /// Issue #911: the scene-host analogue of `ControlRenderResult.BoundIds` — "a key that is bound is a
     /// key that dispatches". Partition a declared input surface into the events that route through
     /// `MapKey` to a product message (`Wired`) and the DEAD ones that route to none (`Dead`). A non-empty
     /// `Dead` over a product's declared keymap is a bound key that dispatches nothing. Reflection-free,
     /// total, pure — consults only `MapKey` (via `normalizeEvent`, as the live runtime does), never `Update`.
-    val auditKeyWiring: host: GeneratedAppHost<'model,'msg> -> probe: ViewerKeyEvent list -> SceneHostKeyWiring<'msg>
+    val auditKeyWiring: host: GeneratedAppHost<'model, 'msg> -> probe: ViewerKeyEvent list -> SceneHostKeyWiring<'msg>
+
     /// Issue #911: every product message the host's runtime SOURCES (`MapKey` over `probe`, and `Tick`
     /// when `tickSample` is `Some dt`) can produce, in probe order — the raw material for the stronger
     /// "handled-but-unwired" check. A `Msg` case handled in `Update` but absent from this list is
     /// dispatched by no source (the Rougue1 defect). This package uses no reflection, so it returns what
     /// IS reachable — as `BoundIds` returns a set the product checks against — and the product asserts its
     /// handled `Msg` universe is covered.
-    val reachableMessages: host: GeneratedAppHost<'model,'msg> -> probe: ViewerKeyEvent list -> tickSample: TimeSpan option -> 'msg list
+    val reachableMessages:
+        host: GeneratedAppHost<'model, 'msg> -> probe: ViewerKeyEvent list -> tickSample: TimeSpan option -> 'msg list
