@@ -918,6 +918,39 @@ let render (surface: Map<string, Map<string, Node list>>) (st: Stanza) : string 
     let text = Regex.Replace(text, @"\n+$", "\n")
     text
 
+let run (fileName: string) (arguments: string) =
+    let psi =
+        ProcessStartInfo(
+            fileName,
+            arguments,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            WorkingDirectory = repoRoot
+        )
+
+    use proc = Process.Start psi
+    let output = proc.StandardOutput.ReadToEnd() + proc.StandardError.ReadToEnd()
+    proc.WaitForExit()
+    proc.ExitCode, output
+
+let formatGenerated (relativePath: string) (content: string) =
+    let tempDir =
+        Path.Combine(Path.GetTempPath(), $"fsgg-api-surface-format-{Guid.NewGuid():N}")
+
+    Directory.CreateDirectory tempDir |> ignore
+    let tempPath = Path.Combine(tempDir, Path.GetFileName relativePath)
+
+    try
+        File.WriteAllText(tempPath, content)
+        let formatCode, formatOutput = run "dotnet" $"fantomas \"{tempPath}\""
+
+        if formatCode <> 0 then
+            fail $"Fantomas could not normalize generated API surface {relativePath}.\n{formatOutput}"
+
+        File.ReadAllText(tempPath).Replace("\r\n", "\n")
+    finally
+        Directory.Delete(tempDir, true)
+
 // ---------------------------------------------------------------------------------------------
 // Drive.
 // ---------------------------------------------------------------------------------------------
@@ -930,6 +963,11 @@ if not releaseWindowProjects.IsEmpty then
         (pins |> Map.find (releaseWindowProjects |> Map.toList |> List.head |> fst))
         releaseWindowProjects.Count
         (pins.Count - releaseWindowProjects.Count)
+
+let restoreCode, restoreOutput = run "dotnet" "tool restore"
+
+if restoreCode <> 0 then
+    fail $"restoring the repository-pinned Fantomas failed; cannot normalize generated API surfaces.\n{restoreOutput}"
 
 restorePins ()
 let surface = loadPinSurface ()
@@ -1003,7 +1041,7 @@ for st in stanzas do
     let target =
         Path.Combine(mirrorRoot, st.File.Replace('/', Path.DirectorySeparatorChar))
 
-    let text = render surface st
+    let text = render surface st |> formatGenerated st.File
 
     Directory.CreateDirectory(Path.GetDirectoryName target) |> ignore
 
