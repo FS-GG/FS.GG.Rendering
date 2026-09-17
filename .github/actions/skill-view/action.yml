@@ -54,22 +54,4 @@ runs:
   steps:
     - name: Resolve the view roots this tree no longer commits
       shell: bash
-      run: |
-        invocation=(bash scripts/skill-view generate --receiver-proj .config/kit/FS.GG.Kit.receiver.proj)
-        expected='bash scripts/skill-view generate --receiver-proj .config/kit/FS.GG.Kit.receiver.proj'
-        actual="${invocation[*]}"
-        pin() { [ "$1" = "$expected" ]; }
-        retired="bash scripts/skill-view generate --"'source .claude/skills --'"roots .agents/skills"
-        wrong_path='bash scripts/skill-view generate --receiver-proj .config/kit/wrong.receiver.proj'
-        extra_flag="$expected --verbose"
-        for rejected in "$retired" "$wrong_path" "$extra_flag"; do
-          if pin "$rejected"; then
-            echo "::error::skill-view exact-call negative control unexpectedly passed" >&2
-            exit 1
-          fi
-        done
-        if ! pin "$actual"; then
-          echo "::error::skill-view generate must use the exact receiver declaration invocation" >&2
-          exit 1
-        fi
-        "${invocation[@]}"
+      run: bash scripts/skill-view generate --receiver-proj .config/kit/FS.GG.Kit.receiver.proj
