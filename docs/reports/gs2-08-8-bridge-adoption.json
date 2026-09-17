@@ -1,0 +1,117 @@
+{
+  "schema": "fsgg.gs2-08.8-receiver-adoption/1",
+  "unit": "GS2-08.8",
+  "receiver": "FS-GG/FS.GG.Rendering",
+  "baseRevision": "b3eead22a813aaa3f6a40c7db690463408f3ad96",
+  "state": "qualified-receiver-adoption",
+  "adoptionClaim": {
+    "included": [
+      "receiver-owned FS.GG.Coord.Cli installation",
+      "receiver-owned FS.GG.Kit materialization and skill-view"
+    ],
+    "excluded": [
+      "dispatch job to FS-GG/FS.GG.Templates",
+      "dispatch-github job to FS-GG/.github"
+    ],
+    "fleetComplete": false
+  },
+  "bridge": {
+    "version": "0.90.0",
+    "release": "https://github.com/FS-GG/.github/releases/tag/coherent-set/v0.90.0",
+    "sourceCommit": "3adada5a9738464291088830c47a30a3a8fc9561",
+    "sourceTree": "0f075e251d90a2d33efe556df1dac38394b0a388",
+    "contentId": "sha256:52b2774de277855c16a3c0852bc5113deea13d9076b866e6a7de0acc84f4b9c4",
+    "releaseManifestSha256": "1bbb77f3de10ba3116f9de2ea1df3f5edee38be0de07fa0eaf7c173da3a8456a",
+    "packages": [
+      {
+        "id": "FS.GG.Coord.Cli",
+        "version": "0.90.0",
+        "producerArchiveSha256": "5d7ed17671338afdf14b9f824d65cffd4477bd53d49a05abe4117798992edcbe",
+        "publicServedArchiveSha256": "69a7100358e01c846216cedb3f5ce17f72e99e8328a23be8e75b077dfd82d3e6",
+        "payloadSha256": "725b46203eeccbe1f73b42667d95ed07c6581dc2ca0886ac8011145c278ee481"
+      },
+      {
+        "id": "FS.GG.Kit",
+        "version": "0.90.0",
+        "producerArchiveSha256": "f8a76276b4770f3a4a5bb1911be95e17ce423e4c2cc0bd1e936e7462b6fa9f9a",
+        "publicServedArchiveSha256": "bea35100645f1acb459e385e303d0ef4ff7aa6576fa3f032ef8325cfef38b858",
+        "payloadSha256": "f2a318f0b900d049c496618bfdd7c2def5f50ffd9e649d8998f5c6585384f1f4"
+      }
+    ]
+  },
+  "pins": [
+    {
+      "package": "FS.GG.Coord.Cli",
+      "path": ".config/dotnet-tools.json",
+      "sha256": "737abc74d4160710bb9f396eb6402a572f38c0eb161e1174290e30fd65893611"
+    },
+    {
+      "package": "FS.GG.Kit",
+      "path": "Directory.Packages.local.props",
+      "sha256": "dd92a15ba800da5201091bf7a1b1907f4516f9accb5c77bb1938c259b8c95a36"
+    }
+  ],
+  "routes": [
+    {
+      "id": "receiver-cli",
+      "path": "scripts/fsgg-coord -> .config/dotnet-tools.json",
+      "disposition": "adopted-public-bridge"
+    },
+    {
+      "id": "template-dispatch",
+      "path": ".github/workflows/template-dispatch.yml jobs.dispatch",
+      "callee": "FS-GG/.github/.github/workflows/dispatch-sender.yml@5fed2838f9ed085ffca09f4cc18b4f7bc59c1294",
+      "disposition": "GS2-08.9-sealing-obligation",
+      "reason": "The reusable sender owns the App-token repository_dispatch effect and exposes no common bridge admission port to this receiver."
+    },
+    {
+      "id": "template-dispatch-github",
+      "path": ".github/workflows/template-dispatch.yml jobs.dispatch-github",
+      "callee": "FS-GG/.github/.github/workflows/dispatch-sender.yml@5fed2838f9ed085ffca09f4cc18b4f7bc59c1294",
+      "disposition": "GS2-08.9-sealing-obligation",
+      "reason": "The reusable sender owns the App-token repository_dispatch effect and exposes no common bridge admission port to this receiver."
+    }
+  ],
+  "qualification": {
+    "materializer": {
+      "command": "dotnet build .config/kit/FS.GG.Kit.receiver.proj -t:FsggKitMaterialize -v minimal",
+      "materializedFiles": 37,
+      "writtenFiles": 0,
+      "result": "passed-byte-identical"
+    },
+    "skillView": {
+      "generateInvocation": "bash scripts/skill-view generate --receiver-proj .config/kit/FS.GG.Kit.receiver.proj",
+      "exactCallPin": "passed",
+      "negativeControls": [
+        "retired-source-roots",
+        "wrong-receiver-project",
+        "extra-flag"
+      ],
+      "selftest": "passed"
+    },
+    "publicRestore": {
+      "feed": "nuget.org",
+      "authentication": "anonymous",
+      "ambientSources": "cleared",
+      "caches": "private",
+      "result": "passed"
+    },
+    "installedCommand": {
+      "command": "fsgg-coord-engine --help",
+      "result": "passed",
+      "assemblySha256": {
+        "FS.GG.Coord.Core.dll": "be468389c045213dd05deb3857a084d077b3e9004ea78fb658066ffcee1f5444",
+        "FS.GG.Coord.GitHub.dll": "a11ef52027b9f4485ffc0f959ebf3592002d7b5338723a90c3aaa1240ea9ff49",
+        "fsgg-coord-engine.dll": "c37d76fa42483e76b91275d8764bdcb04881cb9f3643c6e9fe9b0df3914d3512"
+      }
+    },
+    "refusedUnavailableFence": {
+      "result": "passed",
+      "diagnostic": "production v1 admission is not installed",
+      "provider": "loopback-only",
+      "credential": "fake",
+      "providerMutationCount": 0
+    },
+    "liveDispatchOrProviderWrites": false
+  }
+}

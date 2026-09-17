@@ -150,10 +150,10 @@
     from a moving hub `main`: a receiver's verdict must be a function of the receiver
     (FS-GG/.github#1584).
 
-    The `roots` flag names the view roots EXPLICITLY rather than letting the tool fall back to
-    ADR-0011's default pair. The fallback would also try to resolve `.claude/skills`, this repo's
-    TRACKED live root, and `skill-view` refuses to generate over a tracked root with no override, so it
-    would be a refusal rather than a no-op.
+    The `receiver-proj` flag makes this declaration the single reader for both the tracked source and
+    the view roots. It avoids a second hand-copied root list and follows legal root-disposition changes;
+    `skill-view selftest` proves that swapped-root behavior while the action call site pins this exact
+    receiver-project invocation.
 
     The `Condition` guards on the PROPERTY, so if a later change empties FsggKitViewSkillRoots this
     target stops running with it instead of generating a view nothing asserts. That same emptying is
@@ -163,7 +163,7 @@
   <Target Name="FsggRenderingGenerateSkillView" BeforeTargets="FsggKitCheckSkillView"
           Condition="'$(FsggKitViewSkillRoots)' != ''">
     <Exec WorkingDirectory="$(FsggKitReceiverRoot)"
-          Command="bash scripts/skill-view generate --source $(FsggKitSkillRoots) --roots &quot;$(FsggKitViewSkillRoots.Replace(';',' '))&quot;" />
+          Command="bash scripts/skill-view generate --receiver-proj .config/kit/FS.GG.Kit.receiver.proj" />
   </Target>
 
 </Project>
