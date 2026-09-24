@@ -8,7 +8,7 @@
   <ItemGroup>
     <Compile Include="Program.fs" />
     <PackageReference Include="Fable.Core" Version="5.2.0" />
-    <PackageReference Include="FS.GG.Game.Core" Version="0.15.0-svg-runtime.3" />
+    <PackageReference Include="FS.GG.Game.Core" Version="0.16.0" />
     <PackageReference Include="FS.GG.UI.Scene.SvgBrowser" Version="0.29.0-svg-runtime.4" />
   </ItemGroup>
 </Project>
