@@ -7,6 +7,7 @@ dotnet fsi tests/skill-staging-physical/PhysicalTests.fsx
 dotnet fsi tests/skill-staging-physical/PinnedTests.fsx
 dotnet fsi tests/skill-staging-physical/CapturedPlanTests.fsx
 dotnet fsi tests/skill-staging-physical/ManifestCaptureTests.fsx
+dotnet fsi tests/skill-staging-physical/DirectoryModeTests.fsx
 python3 tests/skill-staging-physical/PythonContrast.py
 ```
 
@@ -39,3 +40,6 @@ for a possible later copy adapter. It still writes no output.
 
 The further stacked [manifest capture](ManifestCapture.md) pins the manifest
 read before passing its bytes to that plan.
+
+The [directory plan](DirectoryMode.md) retains empty directories and source
+modes as read-only facts for a later copy adapter.

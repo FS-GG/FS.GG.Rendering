@@ -9,6 +9,7 @@ open SkillStagingPolicy
 open SkillStagingPhysical
 
 type CopyCandidate = { Destination: string; SourceMode: uint32; Bytes: byte[] }
+type DirectoryCandidate = { Destination: string; SourceMode: uint32 }
 
 type PlannedFile internal (destination: string, sourceMode: uint32, digest: string, bytes: byte[]) =
     let snapshot = Array.copy bytes
@@ -17,10 +18,16 @@ type PlannedFile internal (destination: string, sourceMode: uint32, digest: stri
     member _.CanonicalDigest = digest
     member _.Bytes = Array.copy snapshot
 
-type StagePlan internal (manifestBytes: byte[], files: PlannedFile list, productCount: int) =
+type PlannedDirectory internal (destination: string, sourceMode: uint32) =
+    member _.Destination = destination
+    member _.SourceMode = sourceMode
+
+type StagePlan internal (manifestBytes: byte[], files: PlannedFile list,
+                         directories: PlannedDirectory list, productCount: int) =
     let manifestSnapshot = Array.copy manifestBytes
     member _.ManifestBytes = Array.copy manifestSnapshot
     member _.Files = files
+    member _.Directories = directories
     member _.ProductCount = productCount
 
 type private ProductRow = {
@@ -83,6 +90,9 @@ let private sameContent (left: PlannedFile) (right: PlannedFile) =
     && left.CanonicalDigest = right.CanonicalDigest
     && left.Bytes = right.Bytes
 
+let private sameDirectory (left: PlannedDirectory) (right: PlannedDirectory) =
+    left.Destination = right.Destination && left.SourceMode = right.SourceMode
+
 /// Capture every product row, validate its closed bytes against the manifest,
 /// then own the exact bytes and source modes a later copier would need.
 let prepareCurrent repositoryRoot (manifestBytes: byte[]) : Result<StagePlan, string> =
@@ -92,38 +102,51 @@ let prepareCurrent repositoryRoot (manifestBytes: byte[]) : Result<StagePlan, st
     | Ok rows ->
         let seenIds = HashSet<string>(StringComparer.OrdinalIgnoreCase)
         let seenDestinations = HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        let rec collect (accumulated: PlannedFile list) remaining =
+        let rec collect (accumulatedFiles: PlannedFile list)
+                        (accumulatedDirectories: PlannedDirectory list) remaining =
             match remaining with
             | [] ->
-                accumulated
-                |> List.sortWith (fun left right ->
+                let sortFiles (rows: PlannedFile list) = rows |> List.sortWith (fun left right ->
                     StringComparer.Ordinal.Compare(left.Destination, right.Destination))
-                |> fun files -> Ok(StagePlan(manifestSnapshot, files, rows.Length))
+                let sortDirectories (rows: PlannedDirectory list) = rows |> List.sortWith (fun left right ->
+                    StringComparer.Ordinal.Compare(left.Destination, right.Destination))
+                Ok(StagePlan(manifestSnapshot, sortFiles accumulatedFiles,
+                             sortDirectories accumulatedDirectories, rows.Length))
             | row :: tail ->
                 if not (validId row.Id) then Error "skill-id-invalid"
                 elif not (seenIds.Add row.Id) then Error "skill-id-alias"
                 else
-                    match captureSnapshot repositoryRoot row.SuppliedBy row.BodyDigest row.Files with
+                    match captureTreeSnapshot repositoryRoot row.SuppliedBy row.BodyDigest row.Files with
                     | Error issue -> Error issue
                     | Ok captured ->
                         let declaredPaths = row.Files |> List.map _.Path |> Set.ofList
-                        let capturedPaths = captured |> List.map _.Path |> Set.ofList
+                        let capturedPaths = captured.Files |> List.map _.Path |> Set.ofList
                         if declaredPaths <> capturedPaths then Error "declared-path-noncanonical"
                         else
                             let byPath = row.Files |> List.map (fun file -> file.Path, file.Sha256) |> Map.ofList
-                            let projected =
-                                captured |> List.map (fun file ->
+                            let projectedFiles =
+                                captured.Files |> List.map (fun file ->
                                     let destination = $"skills/{row.Id}/{file.Path}"
                                     PlannedFile(destination, file.Mode, byPath.[file.Path], file.Bytes))
-                            if projected |> List.exists (fun file -> not (seenDestinations.Add file.Destination)) then
+                            let projectedDirectories =
+                                captured.Directories |> List.map (fun directory ->
+                                    let destination =
+                                        if directory.Path = "" then $"skills/{row.Id}"
+                                        else $"skills/{row.Id}/{directory.Path}"
+                                    PlannedDirectory(destination, directory.Mode))
+                            let paths =
+                                (projectedFiles |> List.map _.Destination)
+                                @ (projectedDirectories |> List.map _.Destination)
+                            if paths |> List.exists (fun path -> not (seenDestinations.Add path)) then
                                 Error "copy-path-alias"
-                            else collect (projected @ accumulated) tail
-        collect [] rows
+                            else collect (projectedFiles @ accumulatedFiles)
+                                         (projectedDirectories @ accumulatedDirectories) tail
+        collect [] [] rows
 
 /// Check that an independently proposed copy projection uses these paths,
 /// captured modes, and exact raw bytes. It does not inspect a staged receiver.
 let verifyProjection (plan: StagePlan) (proposed: CopyCandidate list) : Result<unit, string> =
-    let sort rows = rows |> List.sortWith (fun left right ->
+    let sort (rows: CopyCandidate list) = rows |> List.sortWith (fun left right ->
         StringComparer.Ordinal.Compare(left.Destination, right.Destination))
     let expected = plan.Files
     let actual = sort proposed
@@ -137,6 +160,20 @@ let verifyProjection (plan: StagePlan) (proposed: CopyCandidate list) : Result<u
             else None)
         |> function Some issue -> Error issue | None -> Ok ()
 
+/// Independently check the proposed directory roster and source modes,
+/// including empty directories that have no declared files below them.
+let verifyDirectoryProjection (plan: StagePlan) (proposed: DirectoryCandidate list) : Result<unit, string> =
+    let actual = proposed |> List.sortWith (fun left right ->
+        StringComparer.Ordinal.Compare(left.Destination, right.Destination))
+    if plan.Directories.Length <> actual.Length then Error "copy-directory-mismatch"
+    else
+        List.zip plan.Directories actual
+        |> List.tryPick (fun (want, got) ->
+            if got.Destination <> want.Destination then Some "copy-directory-mismatch"
+            elif got.SourceMode <> want.SourceMode then Some "copy-directory-mode-mismatch"
+            else None)
+        |> function Some issue -> Error issue | None -> Ok ()
+
 /// A later planner can refuse a stale manifest or changed source before use.
 /// This is a fresh observation, not a reservation or atomic transaction.
 let verifyCurrent (plan: StagePlan) repositoryRoot (currentManifestBytes: byte[]) : Result<unit, string> =
@@ -147,6 +184,8 @@ let verifyCurrent (plan: StagePlan) repositoryRoot (currentManifestBytes: byte[]
         | Error issue -> Error issue
         | Ok current ->
             if plan.ProductCount <> current.ProductCount
-               || plan.Files.Length <> current.Files.Length then Error "stale-plan"
-            elif List.forall2 sameContent plan.Files current.Files then Ok ()
+               || plan.Files.Length <> current.Files.Length
+               || plan.Directories.Length <> current.Directories.Length then Error "source-changed"
+            elif List.forall2 sameContent plan.Files current.Files
+                 && List.forall2 sameDirectory plan.Directories current.Directories then Ok ()
             else Error "source-changed"

@@ -23,10 +23,10 @@ are supplied by the caller; this script does not pin a manifest file descriptor
 or make all product-root captures atomic. A source can change after the last
 fresh check, and adversarial ABA or concurrent in-place mutation can evade
 bounded observations. File mode is captured source metadata, not a verified
-staged or installed mode. Empty directory outputs, directory modes, and the
-manifest output mode are not represented by this file projection. A copier
-must consume the plan's owned bytes and verify its complete output before any
-parity or receiver claim.
+staged or installed mode. The stacked [directory plan](DirectoryMode.md) now
+records source directory paths and modes, including empty directories. The
+manifest output mode remains unrepresented. A copier must consume the plan's
+owned bytes and verify its complete output before any parity or receiver claim.
 
 Rendering #1333 is a release-preflight reducer, not a skill copy plan, and is
 untouched here. #1332 Python preflight, #1334/#1335 physical source acceptance,
