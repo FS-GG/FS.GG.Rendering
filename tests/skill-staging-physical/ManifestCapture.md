@@ -10,18 +10,23 @@ dotnet fsi tests/skill-staging-physical/ManifestCaptureTests.fsx
 `template/skill-manifest/skill-manifest.json` chain through held Linux directory
 descriptors. Every child open uses `O_NOFOLLOW`; the manifest must be regular,
 and two reads with descriptor metadata checks must agree. The captured raw
-bytes are passed directly to the #1336 file plan. A fresh pinned capture plus
-fresh product-source observation can refuse a stale plan before later use.
+bytes are passed directly to the #1336 file plan. After product-source
+capture, the planner pins the manifest again and refuses persistent manifest
+drift. A fresh pinned capture plus fresh product-source observation can also
+refuse a stale plan before later use.
 
 The test reproduces foreign bytes from a pathname probe/read swap, then checks
-before-open link refusal, original bytes after a held-file or held-parent swap,
+before-open link refusal, original bytes from a single descriptor capture after
+a held-file or held-parent swap,
 in-place mutation refusal, stale-plan refusal, symlink and FIFO refusal, and
 the committed 20-product catalog. All fixture writes are under temporary
 directories; no staging output is created.
 
 The manifest descriptor and product-root descriptors are opened at different
-times. A source may change after the last check, and bounded double reads do
-not prove an atomic snapshot against adversarial ABA. The stacked directory
+times. The [cross-root fixture](CrossRootInstant.md) shows one different-instant
+false green fixed by the second manifest capture. A source may change after
+the last check, and bounded observations do not prove an atomic snapshot
+against adversarial ABA. The stacked directory
 plan records empty directory paths and source modes; the stacked output mode
 contract projects a fresh manifest mode under an explicit umask. Staged mode
 parity remains unproved. #1332

@@ -9,6 +9,7 @@ dotnet fsi tests/skill-staging-physical/CapturedPlanTests.fsx
 dotnet fsi tests/skill-staging-physical/ManifestCaptureTests.fsx
 dotnet fsi tests/skill-staging-physical/DirectoryModeTests.fsx
 dotnet fsi tests/skill-staging-physical/OutputModeTests.fsx
+dotnet fsi tests/skill-staging-physical/CrossRootInstantTests.fsx
 python3 tests/skill-staging-physical/PythonContrast.py
 ```
 
@@ -47,3 +48,7 @@ modes as read-only facts for a later copy adapter.
 
 The [output mode contract](OutputMode.md) projects a successful fresh target
 under an explicit umask and checks the current Python policy without staging.
+
+The [cross-root fixture](CrossRootInstant.md) refuses persistent manifest
+drift between pinned manifest and product-root captures. It does not prove an
+atomic snapshot or exclude adversarial ABA.

@@ -44,6 +44,10 @@ let planBytes (result: Result<StagePlan, string>) =
     match result with
     | Ok plan -> plan.ManifestBytes
     | Error issue -> failwithf "pinned plan refused: %s" issue
+let capturedBytes (result: Result<byte[], string>) =
+    match result with
+    | Ok raw -> raw
+    | Error issue -> failwithf "pinned manifest capture refused: %s" issue
 
 [<DllImport("libc", EntryPoint = "mkfifo", SetLastError = true)>]
 extern int mkfifo(string path, uint32 mode)
@@ -87,7 +91,7 @@ fixture (fun root _ path _ foreignPath ->
             File.CreateSymbolicLink(path, foreignPath) |> ignore
             swapped <- true
     check "held manifest fd resists path swap" manifest
-        (preparePinnedWithHooks ignore afterOpen ignore root |> planBytes)
+        (captureManifestWithHooks ignore afterOpen ignore root |> capturedBytes)
     check "held manifest hook fired" true swapped)
 
 fixture (fun root manifestDirectory _ foreignDirectory _ ->
@@ -98,7 +102,7 @@ fixture (fun root manifestDirectory _ foreignDirectory _ ->
             Directory.CreateSymbolicLink(manifestDirectory, foreignDirectory) |> ignore
             swapped <- true
     check "held manifest parent resists directory swap" manifest
-        (preparePinnedWithHooks ignore afterOpen ignore root |> planBytes)
+        (captureManifestWithHooks ignore afterOpen ignore root |> capturedBytes)
     check "held manifest parent hook fired" true swapped)
 
 fixture (fun root _ path _ _ ->

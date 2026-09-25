@@ -57,9 +57,17 @@ let captureManifestWithHooks (beforeOpen: string -> unit) (afterOpen: string -> 
 let captureManifest repositoryRoot =
     captureManifestWithHooks ignore ignore ignore repositoryRoot
 
+/// Bracket product capture with manifest reads to refuse persistent drift.
+/// This cannot establish an atomic cross-root snapshot or exclude ABA.
 let preparePinnedWithHooks beforeOpen afterOpen afterFirstChunk repositoryRoot =
     captureManifestWithHooks beforeOpen afterOpen afterFirstChunk repositoryRoot
-    |> Result.bind (prepareCurrent repositoryRoot)
+    |> Result.bind (fun first ->
+        prepareCurrent repositoryRoot first
+        |> Result.bind (fun plan ->
+            captureManifest repositoryRoot
+            |> Result.bind (fun last ->
+                if first = last then Ok plan
+                else Error "manifest-changed-during-capture")))
 
 let preparePinned repositoryRoot =
     preparePinnedWithHooks ignore ignore ignore repositoryRoot
