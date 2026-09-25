@@ -12,6 +12,8 @@ open SkillStagingPolicy
 open SkillStagingLinuxDescriptors
 
 type CapturedFile = { Path: string; Bytes: byte[]; Mode: uint32 }
+type CapturedDirectory = { Path: string; Mode: uint32 }
+type CapturedTree = { Files: CapturedFile list; Directories: CapturedDirectory list }
 
 let private reason = function
     | LinuxDescriptors.Link -> "source-symlink"
@@ -24,7 +26,7 @@ let private safeName (name: string) =
     && name |> Seq.forall (fun character -> int character <= 127 && character <> '/' && character <> '\\')
 
 let private capturePinned (beforeOpen: string -> unit) (afterOpen: string -> unit)
-                          repositoryRoot source : Result<CapturedFile list, string> =
+                          repositoryRoot source : Result<CapturedTree, string> =
     if not (OperatingSystem.IsLinux()) || not BitConverter.IsLittleEndian then
         Error "source-platform-unsupported"
     else
@@ -39,10 +41,10 @@ let private capturePinned (beforeOpen: string -> unit) (afterOpen: string -> uni
             let rec collect (directory: SafeFileHandle) prefix =
                 match LinuxDescriptors.namesStable ignore directory with
                 | Error issue -> Error(reason issue)
-                | Ok names ->
+                | Ok(names, mode) ->
                     names
                     |> List.fold (fun state name ->
-                        state |> Result.bind (fun files ->
+                        state |> Result.bind (fun tree ->
                             let relative = if prefix = "" then name else prefix + "/" + name
                             if not (safeName name) then Error "source-path-unsafe"
                             elif not (seen.Add relative) then Error "source-path-alias"
@@ -56,12 +58,16 @@ let private capturePinned (beforeOpen: string -> unit) (afterOpen: string -> uni
                                     match kind with
                                     | LinuxDescriptors.Special -> Error "source-entry-unsupported"
                                     | LinuxDescriptors.Directory ->
-                                        collect handle relative |> Result.map (fun nested -> nested @ files)
+                                        collect handle relative |> Result.map (fun nested ->
+                                            { Files = nested.Files @ tree.Files
+                                              Directories = nested.Directories @ tree.Directories })
                                     | LinuxDescriptors.Regular ->
                                         match LinuxDescriptors.readBytesStable ignore handle with
                                         | Error issue -> Error(reason issue)
                                         | Ok(bytes, mode) ->
-                                            Ok({ Path = relative; Bytes = bytes; Mode = mode } :: files))) (Ok [])
+                                            let file = { Path = relative; Bytes = bytes; Mode = mode }
+                                            Ok { tree with Files = file :: tree.Files }))
+                        (Ok { Files = []; Directories = [ { Path = prefix; Mode = mode } ] })
             // The recursive use scopes keep every parent live through traversal.
             let rec openSource (parent: SafeFileHandle) remaining =
                 match remaining with
@@ -80,8 +86,8 @@ let private capturePinned (beforeOpen: string -> unit) (afterOpen: string -> uni
             openSource repository components
 
 /// Test hooks bracket each held-fd child open; ordinary capture supplies no hooks.
-let captureSnapshotWithHooks beforeOpen afterOpen repositoryRoot suppliedBy bodyDigest
-                             (declared: DeclaredFile list) : Result<CapturedFile list, string> =
+let captureTreeSnapshotWithHooks beforeOpen afterOpen repositoryRoot suppliedBy bodyDigest
+                                 (declared: DeclaredFile list) : Result<CapturedTree, string> =
     try
         match sourceDirectory repositoryRoot suppliedBy with
         | Error issue -> Error issue
@@ -89,15 +95,25 @@ let captureSnapshotWithHooks beforeOpen afterOpen repositoryRoot suppliedBy body
             capturePinned beforeOpen afterOpen repositoryRoot source
             |> Result.bind (fun captured ->
                 let sourceFiles: SourceFile list =
-                    captured |> List.map (fun file -> { Path = file.Path; Bytes = file.Bytes })
+                    captured.Files |> List.map (fun file -> { Path = file.Path; Bytes = file.Bytes })
                 validateSnapshot repositoryRoot suppliedBy bodyDigest declared sourceFiles
                 |> Result.map (fun _ ->
-                    captured |> List.map (fun file -> { file with Bytes = Array.copy file.Bytes })))
+                    { captured with
+                        Files = captured.Files |> List.map (fun file ->
+                            { file with Bytes = Array.copy file.Bytes }) }))
     with
     | :? IOException
     | :? UnauthorizedAccessException
     | :? ArgumentException
     | :? System.Security.SecurityException -> Error "source-io"
+
+let captureTreeSnapshot repositoryRoot suppliedBy bodyDigest (declared: DeclaredFile list) =
+    captureTreeSnapshotWithHooks ignore ignore repositoryRoot suppliedBy bodyDigest declared
+
+let captureSnapshotWithHooks beforeOpen afterOpen repositoryRoot suppliedBy bodyDigest
+                             (declared: DeclaredFile list) =
+    captureTreeSnapshotWithHooks beforeOpen afterOpen repositoryRoot suppliedBy bodyDigest declared
+    |> Result.map _.Files
 
 let captureSnapshot repositoryRoot suppliedBy bodyDigest (declared: DeclaredFile list) =
     captureSnapshotWithHooks ignore ignore repositoryRoot suppliedBy bodyDigest declared

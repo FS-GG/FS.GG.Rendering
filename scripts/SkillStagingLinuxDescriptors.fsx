@@ -161,7 +161,8 @@ module LinuxDescriptors =
                     else
                         let second = readNames ignore directory
                         match stamp directory, second with
-                        | Ok after, Ok repeated when after = middle && names = repeated -> Ok names
+                        | Ok after, Ok repeated when after = middle && names = repeated ->
+                            Ok(names, snd after)
                         | Error issue, _ -> Error issue
                         | _, Error issue -> Error issue
                         | _ -> Error Changed
