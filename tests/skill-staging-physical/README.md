@@ -5,6 +5,7 @@ Run from the repository root:
 ```sh
 dotnet fsi tests/skill-staging-physical/PhysicalTests.fsx
 dotnet fsi tests/skill-staging-physical/PinnedTests.fsx
+dotnet fsi tests/skill-staging-physical/CapturedPlanTests.fsx
 python3 tests/skill-staging-physical/PythonContrast.py
 ```
 
@@ -31,3 +32,6 @@ scans/checks do not prove an atomic snapshot against adversarial ABA or all
 concurrent in-place writes. #1332 Python preflight acceptance, #1334 source
 acceptance, and installed-package parity remain prerequisites for any live
 receiver decision. This draft does not authorize a release or cutover.
+
+The stacked [captured plan](CapturedPlan.md) owns byte copies and source modes
+for a possible later copy adapter. It still writes no output.

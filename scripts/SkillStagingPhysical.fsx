@@ -11,6 +11,8 @@ open Microsoft.Win32.SafeHandles
 open SkillStagingPolicy
 open SkillStagingLinuxDescriptors
 
+type CapturedFile = { Path: string; Bytes: byte[]; Mode: uint32 }
+
 let private reason = function
     | LinuxDescriptors.Link -> "source-symlink"
     | LinuxDescriptors.NonRegular -> "source-entry-unsupported"
@@ -22,7 +24,7 @@ let private safeName (name: string) =
     && name |> Seq.forall (fun character -> int character <= 127 && character <> '/' && character <> '\\')
 
 let private capturePinned (beforeOpen: string -> unit) (afterOpen: string -> unit)
-                          repositoryRoot source : Result<SourceFile list, string> =
+                          repositoryRoot source : Result<CapturedFile list, string> =
     if not (OperatingSystem.IsLinux()) || not BitConverter.IsLittleEndian then
         Error "source-platform-unsupported"
     else
@@ -58,7 +60,8 @@ let private capturePinned (beforeOpen: string -> unit) (afterOpen: string -> uni
                                     | LinuxDescriptors.Regular ->
                                         match LinuxDescriptors.readBytesStable ignore handle with
                                         | Error issue -> Error(reason issue)
-                                        | Ok bytes -> Ok({ Path = relative; Bytes = bytes } :: files))) (Ok [])
+                                        | Ok(bytes, mode) ->
+                                            Ok({ Path = relative; Bytes = bytes; Mode = mode } :: files))) (Ok [])
             // The recursive use scopes keep every parent live through traversal.
             let rec openSource (parent: SafeFileHandle) remaining =
                 match remaining with
@@ -77,19 +80,32 @@ let private capturePinned (beforeOpen: string -> unit) (afterOpen: string -> uni
             openSource repository components
 
 /// Test hooks bracket each held-fd child open; ordinary capture supplies no hooks.
-let inspectSnapshotWithHooks beforeOpen afterOpen repositoryRoot suppliedBy bodyDigest
-                             (declared: DeclaredFile list) =
+let captureSnapshotWithHooks beforeOpen afterOpen repositoryRoot suppliedBy bodyDigest
+                             (declared: DeclaredFile list) : Result<CapturedFile list, string> =
     try
         match sourceDirectory repositoryRoot suppliedBy with
         | Error issue -> Error issue
         | Ok source ->
             capturePinned beforeOpen afterOpen repositoryRoot source
-            |> Result.bind (validateSnapshot repositoryRoot suppliedBy bodyDigest declared)
+            |> Result.bind (fun captured ->
+                let sourceFiles: SourceFile list =
+                    captured |> List.map (fun file -> { Path = file.Path; Bytes = file.Bytes })
+                validateSnapshot repositoryRoot suppliedBy bodyDigest declared sourceFiles
+                |> Result.map (fun _ ->
+                    captured |> List.map (fun file -> { file with Bytes = Array.copy file.Bytes })))
     with
     | :? IOException
     | :? UnauthorizedAccessException
     | :? ArgumentException
     | :? System.Security.SecurityException -> Error "source-io"
+
+let captureSnapshot repositoryRoot suppliedBy bodyDigest (declared: DeclaredFile list) =
+    captureSnapshotWithHooks ignore ignore repositoryRoot suppliedBy bodyDigest declared
+
+let inspectSnapshotWithHooks beforeOpen afterOpen repositoryRoot suppliedBy bodyDigest
+                             (declared: DeclaredFile list) =
+    captureSnapshotWithHooks beforeOpen afterOpen repositoryRoot suppliedBy bodyDigest declared
+    |> Result.map (fun captured -> captured |> List.map _.Path |> List.sort)
 
 let inspectSnapshot repositoryRoot suppliedBy bodyDigest (declared: DeclaredFile list) =
     inspectSnapshotWithHooks ignore ignore repositoryRoot suppliedBy bodyDigest declared
