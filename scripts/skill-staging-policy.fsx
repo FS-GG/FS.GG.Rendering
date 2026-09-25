@@ -28,7 +28,7 @@ let canonicalDigest (raw: byte[]) : string =
     SHA256.HashData(folded.ToArray()) |> Convert.ToHexString |> fun value -> value.ToLowerInvariant()
 
 let private safeRelative (path: string) =
-    if String.IsNullOrWhiteSpace path || Path.IsPathRooted path ||
+    if String.IsNullOrWhiteSpace path || path.Contains(char 0) || Path.IsPathRooted path ||
        (path.Length >= 2 && Char.IsLetter path.[0] && path.[1] = ':') then
         Error "unsafe-path"
     else
@@ -39,8 +39,13 @@ let private safeRelative (path: string) =
         else
             Ok(String.Join("/", parts))
 
+// Lexical containment only. A filesystem adapter must resolve every existing path
+// component and refuse symlink escapes before reading or copying source bytes.
 let sourceDirectory (repositoryRoot: string) (suppliedBy: string) : Result<string, string> =
-    match safeRelative (suppliedBy.TrimEnd('/', '\\')) with
+    let trimmed =
+        if String.IsNullOrWhiteSpace suppliedBy then ""
+        else suppliedBy.TrimEnd('/', '\\')
+    match safeRelative trimmed with
     | Error _ -> Error "supplied-by-unsafe"
     | Ok relative ->
         let root = Path.GetFullPath repositoryRoot
@@ -57,6 +62,8 @@ let validateSnapshot
     (declared: DeclaredFile list)
     (actual: SourceFile list)
     : Result<string list, string> =
+    // This verdict binds the byte arrays supplied at this call. A later copier must
+    // use an immutable snapshot or re-read and revalidate to close the mutation gap.
     match sourceDirectory repositoryRoot suppliedBy with
     | Error reason -> Error reason
     | Ok _ ->
@@ -73,6 +80,7 @@ let validateSnapshot
         if List.isEmpty declared || List.isEmpty actual then Error "empty-file-set"
         elif normalizeDeclared |> List.exists Result.isError then Error "declared-path-unsafe"
         elif normalizeActual |> List.exists Result.isError then Error "source-path-unsafe"
+        elif actual |> List.exists (fun row -> isNull row.Bytes) then Error "source-bytes-missing"
         else
             let declarations = normalizeDeclared |> List.choose Result.toOption
             let sources = normalizeActual |> List.choose Result.toOption
