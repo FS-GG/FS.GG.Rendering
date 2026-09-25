@@ -47,6 +47,8 @@ let main _ =
     refused "newer baseline rolls back target" "baseline-order" source "0.31.0" (raw.Replace("\"baselineVersion\": \"0.30.0\"", "\"baselineVersion\": \"0.32.0\""))
     refused "equal baseline has no new release" "baseline-order" source "0.31.0" (raw.Replace("\"baselineVersion\": \"0.30.0\"", "\"baselineVersion\": \"0.31.0\""))
     refused "requested version differs" "plan-version" source "0.32.0" raw
+    refused "wrong release tag" "plan-tags" source "0.31.0" (raw.Replace("fs-gg-ui/v0.31.0", "wrong-tag"))
+    refused "release tags reordered" "plan-tags" source "0.31.0" (raw.Replace("\"fs-gg-ui/v0.31.0\",", "\"v0.31.0\",").Replace("\"v0.31.0\"\n  ]", "\"fs-gg-ui/v0.31.0\"\n  ]"))
     refused "missing source package fact" "source-count" (source.Tail) "0.31.0" raw
     refused "case colliding source facts" "source-duplicate" ({ source.Head with Id = "fs.gg.ui.canvas" } :: source) "0.31.0" raw
     refused "malformed JSON" "json-invalid" source "0.31.0" "{"

@@ -83,6 +83,20 @@ module Plan =
                 | Some targetParts, Some baselineParts when baselineParts < targetParts -> ()
                 | _ -> findings.Add("baseline-order")
 
+                let expectedTags =
+                    [ $"fs-gg-ui/v{target}"; $"fs-gg-ui-template/v{target}"; $"v{target}" ]
+                    |> List.map Some
+                let tags =
+                    match property "tags" root with
+                    | Some value when value.ValueKind = JsonValueKind.Array ->
+                        value.EnumerateArray()
+                        |> Seq.map (fun item ->
+                            if item.ValueKind = JsonValueKind.String then Option.ofObj (item.GetString())
+                            else None)
+                        |> Seq.toList
+                    | _ -> []
+                if tags <> expectedTags then findings.Add("plan-tags")
+
                 let rows =
                     match property "packages" root with
                     | Some value when value.ValueKind = JsonValueKind.Array ->

@@ -6,6 +6,8 @@ source commit. It refuses duplicate JSON properties, malformed or case-alias
 IDs, missing or extra packages, wrong package kinds, version mismatch, and a
 baseline that does not precede the target. The source facts themselves must be
 19 distinct identities: 17 libraries, the `FS.GG.UI` BOM, and the template.
+The plan must also contain the ordered release tags for the requested target:
+`fs-gg-ui/v<version>`, `fs-gg-ui-template/v<version>`, and `v<version>`.
 
 This is a source-only FSC-06 candidate stacked on Python preflight repair
 Rendering PR #1332. The Python gate remains authoritative. The adapter must
