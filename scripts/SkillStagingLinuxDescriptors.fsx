@@ -92,15 +92,18 @@ module LinuxDescriptors =
                         descend child tail
             descend filesystemRoot components
 
-    let private stamp (directory: SafeFileHandle) =
+    let private stamp (handle: SafeFileHandle) =
         let buffer = Array.zeroCreate<byte> 256
-        // BASIC_STATS requests mtime and ctime. Refuse when the filesystem cannot provide both.
-        if statx(number directory, "", 0x1000, 0x7ffu, buffer) <> 0 then Error Unreadable
-        elif (BitConverter.ToUInt32(buffer, 0) &&& 0xC0u) <> 0xC0u then Error Changed
+        // BASIC_STATS requests mode, mtime, and ctime. Compare mode/uid/gid too,
+        // so a copy plan cannot silently inherit metadata from another instant.
+        if statx(number handle, "", 0x1000, 0x7ffu, buffer) <> 0 then Error Unreadable
+        elif (BitConverter.ToUInt32(buffer, 0) &&& 0xC2u) <> 0xC2u then Error Changed
         else
-            [| buffer.[16..19]; buffer.[32..47]; buffer.[96..127]; buffer.[136..143] |]
-            |> Array.concat
-            |> Ok
+            let fingerprint =
+                [| buffer.[16..31]; buffer.[32..47]; buffer.[96..127]; buffer.[136..143] |]
+                |> Array.concat
+            let mode = uint32 (BitConverter.ToUInt16(buffer, 28)) &&& 0o7777u
+            Ok(fingerprint, mode)
 
     let private readNames (afterFirstBatch: unit -> unit) (directory: SafeFileHandle) =
         let buffer = Array.zeroCreate<byte> 32768
@@ -194,5 +197,5 @@ module LinuxDescriptors =
                     let second = readPass ignore
                     match stamp handle with
                     | Error issue -> Error issue
-                    | Ok after when middle = after && first = second -> Ok first
+                        | Ok after when middle = after && first = second -> Ok(first, snd after)
                     | Ok _ -> Error Changed
