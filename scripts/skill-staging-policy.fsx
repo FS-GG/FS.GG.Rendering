@@ -4,6 +4,7 @@
 module SkillStagingPolicy
 
 open System
+open System.Collections.Generic
 open System.IO
 open System.Security.Cryptography
 
@@ -29,12 +30,13 @@ let canonicalDigest (raw: byte[]) : string =
 
 let private safeRelative (path: string) =
     if String.IsNullOrWhiteSpace path || path.Contains(char 0) || Path.IsPathRooted path ||
-       (path.Length >= 2 && Char.IsLetter path.[0] && path.[1] = ':') then
+       (path.Length >= 2 && Char.IsLetter path.[0] && path.[1] = ':') ||
+       (path |> Seq.exists (fun value -> value > char 127)) then
         Error "unsafe-path"
     else
         let parts = path.Replace('\\', '/').Split('/')
 
-        if parts |> Array.exists (fun part -> part = ".." || part = "") then
+        if parts |> Array.exists (fun part -> part = ".." || part = "." || part = "") then
             Error "unsafe-path"
         else
             Ok(String.Join("/", parts))
@@ -85,7 +87,9 @@ let validateSnapshot
             let declarations = normalizeDeclared |> List.choose Result.toOption
             let sources = normalizeActual |> List.choose Result.toOption
             let keys rows = rows |> List.map fst
-            let distinct rows = rows |> keys |> Set.ofList |> Set.count = List.length rows
+            let distinct rows =
+                let seen = HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                rows |> keys |> List.forall seen.Add
 
             if not (distinct declarations) then Error "duplicate-declared-file"
             elif not (distinct sources) then Error "duplicate-source-file"

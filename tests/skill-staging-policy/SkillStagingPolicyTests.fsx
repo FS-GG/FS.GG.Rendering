@@ -33,6 +33,24 @@ expect (Error "duplicate-declared-file")
     (validate "template/product-skills/example/" (declared @ [ { Path = "notes\\detail.md"; Sha256 = hash sidecar } ]) actual)
 expect (Error "duplicate-source-file")
     (validate "template/product-skills/example/" declared (actual @ [ { Path = "notes\\detail.md"; Bytes = sidecar } ]))
+expect (Error "duplicate-declared-file")
+    (validate "template/product-skills/example/"
+        (declared @ [ { Path = "skill.md"; Sha256 = hash body } ])
+        (actual @ [ { Path = "skill.md"; Bytes = body } ]))
+expect (Error "duplicate-source-file")
+    (validate "template/product-skills/example/"
+        declared
+        (actual @ [ { Path = "skill.md"; Bytes = body } ]))
+expect (Error "declared-path-unsafe")
+    (validate "template/product-skills/example/"
+        (declared @ [ { Path = "Straße.md"; Sha256 = hash sidecar } ])
+        (actual @ [ { Path = "Straße.md"; Bytes = sidecar } ]))
+expect (Error "declared-path-unsafe")
+    (validate "template/product-skills/example/" [ declared.[0]; { declared.[1] with Path = "notes/./detail.md" } ]
+        [ actual.[0]; { actual.[1] with Path = "notes/./detail.md" } ])
+expect (Error "source-path-unsafe")
+    (validate "template/product-skills/example/" declared
+        [ actual.[0]; { actual.[1] with Path = "notes/./detail.md" } ])
 expect (Error "file-set-mismatch")
     (validate "template/product-skills/example/" declared (actual @ [ { Path = "extra.md"; Bytes = sidecar } ]))
 expect (Error "source-digest-mismatch")
@@ -49,6 +67,8 @@ expect (Error "supplied-by-unsafe")
     (sourceDirectory "/checkout/rendering" Unchecked.defaultof<string>)
 expect (Error "supplied-by-unsafe")
     (sourceDirectory "/checkout/rendering" "bad\u0000/")
+expect (Error "supplied-by-unsafe")
+    (sourceDirectory "/checkout/rendering" "template/./product-skills/example/")
 expect (Error "source-bytes-missing")
     (validate "template/product-skills/example/" declared
         [ { actual.[0] with Bytes = Unchecked.defaultof<byte[]> }; actual.[1] ])
@@ -90,4 +110,4 @@ for row in productRows do
     | Ok _ -> ()
     | Error reason -> failwithf "%s: %s" (row.GetProperty("id").GetString()) reason
 
-printfn "skill staging pure policy: 15 controls and %d committed product rows passed" productRows.Length
+printfn "skill staging pure policy: 21 controls and %d committed product rows passed" productRows.Length
