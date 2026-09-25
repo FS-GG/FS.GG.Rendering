@@ -1,61 +1,95 @@
-// Read-only, observation-time source adapter for the provisional skill policy.
-// Path checks and reads are separate operations: this is not a race-free staging
-// authority. A copier needs handle-bound reads or an immutable validated snapshot.
+// Read-only Linux source capture. Every component is opened relative to a held
+// directory descriptor with O_NOFOLLOW. Captured bytes pass to pure policy.
+// No later copy is bound to this capture, and concurrent ABA remains possible.
 #load "skill-staging-policy.fsx"
+#load "SkillStagingLinuxDescriptors.fsx"
 
 open System
+open System.Collections.Generic
 open System.IO
+open Microsoft.Win32.SafeHandles
 open SkillStagingPolicy
+open SkillStagingLinuxDescriptors
 
-let private isLink (entry: FileSystemInfo) =
-    not (isNull entry.LinkTarget)
-    || (entry.Exists && entry.Attributes.HasFlag FileAttributes.ReparsePoint)
+let private reason = function
+    | LinuxDescriptors.Link -> "source-symlink"
+    | LinuxDescriptors.NonRegular -> "source-entry-unsupported"
+    | LinuxDescriptors.Unreadable -> "source-io"
+    | LinuxDescriptors.Changed -> "source-unstable"
 
-let private directoryChain (path: string) =
-    let rec collect (current: string) =
-        let parent = Path.GetDirectoryName current
-        if String.IsNullOrEmpty parent || parent = current then [ current ]
-        else collect parent @ [ current ]
-    collect path
+let private safeName (name: string) =
+    name <> "" && name <> "." && name <> ".."
+    && name |> Seq.forall (fun character -> int character <= 127 && character <> '/' && character <> '\\')
 
-let private checkSourceDirectories (path: string) =
-    directoryChain path
-    |> List.fold (fun result part ->
-        result |> Result.bind (fun () ->
-            let directory = DirectoryInfo part
-            if isLink directory then Error "source-symlink"
-            elif not directory.Exists then Error "source-not-directory"
-            else Ok ())) (Ok ())
+let private capturePinned (beforeOpen: string -> unit) (afterOpen: string -> unit)
+                          repositoryRoot source : Result<SourceFile list, string> =
+    if not (OperatingSystem.IsLinux()) || not BitConverter.IsLittleEndian then
+        Error "source-platform-unsupported"
+    else
+        let root = Path.GetFullPath repositoryRoot
+        let relative = Path.GetRelativePath(root, source)
+        let components = relative.Split('/', StringSplitOptions.RemoveEmptyEntries) |> Array.toList
+        match LinuxDescriptors.openRoot root with
+        | Error issue -> Error(reason issue)
+        | Ok repository ->
+            use repository = repository
+            let seen = HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            let rec collect (directory: SafeFileHandle) prefix =
+                match LinuxDescriptors.namesStable ignore directory with
+                | Error issue -> Error(reason issue)
+                | Ok names ->
+                    names
+                    |> List.fold (fun state name ->
+                        state |> Result.bind (fun files ->
+                            let relative = if prefix = "" then name else prefix + "/" + name
+                            if not (safeName name) then Error "source-path-unsafe"
+                            elif not (seen.Add relative) then Error "source-path-alias"
+                            else
+                                beforeOpen relative
+                                match LinuxDescriptors.openChild directory name with
+                                | Error issue -> Error(reason issue)
+                                | Ok(handle, kind) ->
+                                    use handle = handle
+                                    afterOpen relative
+                                    match kind with
+                                    | LinuxDescriptors.Special -> Error "source-entry-unsupported"
+                                    | LinuxDescriptors.Directory ->
+                                        collect handle relative |> Result.map (fun nested -> nested @ files)
+                                    | LinuxDescriptors.Regular ->
+                                        match LinuxDescriptors.readBytesStable ignore handle with
+                                        | Error issue -> Error(reason issue)
+                                        | Ok bytes -> Ok({ Path = relative; Bytes = bytes } :: files))) (Ok [])
+            // The recursive use scopes keep every parent live through traversal.
+            let rec openSource (parent: SafeFileHandle) remaining =
+                match remaining with
+                | [] -> collect parent ""
+                | name :: tail ->
+                    if not (safeName name) then Error "source-path-unsafe"
+                    else
+                        match LinuxDescriptors.openChild parent name with
+                        | Error issue -> Error(reason issue)
+                        | Ok(handle, LinuxDescriptors.Directory) ->
+                            use handle = handle
+                            openSource handle tail
+                        | Ok(handle, _) ->
+                            handle.Dispose()
+                            Error "source-not-directory"
+            openSource repository components
 
-let rec private collectFiles (directory: DirectoryInfo) (prefix: string) : Result<SourceFile list, string> =
-    directory.EnumerateFileSystemInfos()
-    |> Seq.sortBy (fun entry -> entry.Name)
-    |> Seq.fold (fun result entry ->
-        result |> Result.bind (fun files ->
-            let relative = if prefix = "" then entry.Name else prefix + "/" + entry.Name
-            if isLink entry then Error "source-symlink"
-            elif entry.Attributes.HasFlag FileAttributes.Directory then
-                collectFiles (DirectoryInfo entry.FullName) relative
-                |> Result.map (fun nested -> nested @ files)
-            elif entry :? FileInfo then
-                Ok ({ Path = relative; Bytes = File.ReadAllBytes entry.FullName } :: files)
-            else Error "source-entry-unsupported")) (Ok [])
-
-/// Inspect one current source tree without writing to it. Every path component
-/// and every enumerated entry must be a non-link before bytes reach the pure
-/// policy. This does not bind those checks to later reads or copying.
-let inspectSnapshot repositoryRoot suppliedBy bodyDigest (declared: DeclaredFile list) =
+/// Test hooks bracket each held-fd child open; ordinary capture supplies no hooks.
+let inspectSnapshotWithHooks beforeOpen afterOpen repositoryRoot suppliedBy bodyDigest
+                             (declared: DeclaredFile list) =
     try
         match sourceDirectory repositoryRoot suppliedBy with
-        | Error reason -> Error reason
+        | Error issue -> Error issue
         | Ok source ->
-            match checkSourceDirectories source with
-            | Error reason -> Error reason
-            | Ok () ->
-                collectFiles (DirectoryInfo source) ""
-                |> Result.bind (validateSnapshot repositoryRoot suppliedBy bodyDigest declared)
+            capturePinned beforeOpen afterOpen repositoryRoot source
+            |> Result.bind (validateSnapshot repositoryRoot suppliedBy bodyDigest declared)
     with
     | :? IOException
     | :? UnauthorizedAccessException
     | :? ArgumentException
     | :? System.Security.SecurityException -> Error "source-io"
+
+let inspectSnapshot repositoryRoot suppliedBy bodyDigest (declared: DeclaredFile list) =
+    inspectSnapshotWithHooks ignore ignore repositoryRoot suppliedBy bodyDigest declared
