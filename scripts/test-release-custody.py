@@ -214,6 +214,13 @@ class ReleaseCustodyTests(unittest.TestCase):
                 custody.records_from_archives(plan, archives, "a" * 40)
             bom_path.write_bytes(original_bom)
 
+            self.archive(bom_path, "FS.GG.UI", "0.29.0", {"lib/net10.0/value.dll": b"FS.GG.UI"},
+                         dependencies=[(library, "[0.29.0]") for library in libraries]
+                                      + [(libraries[0], "[0.29.0]")])
+            with self.assertRaisesRegex(custody.CustodyError, "duplicate BOM dependency"):
+                custody.records_from_archives(plan, archives, "a" * 40)
+            bom_path.write_bytes(original_bom)
+
             manifest_path = archives / "release-custody.json"
             common = argparse.Namespace(plan=plan_path, archives=archives, manifest=manifest_path,
                                         source_sha="a" * 40)
