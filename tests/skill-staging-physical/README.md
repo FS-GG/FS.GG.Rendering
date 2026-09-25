@@ -6,6 +6,7 @@ Run from the repository root:
 dotnet fsi tests/skill-staging-physical/PhysicalTests.fsx
 dotnet fsi tests/skill-staging-physical/PinnedTests.fsx
 dotnet fsi tests/skill-staging-physical/CapturedPlanTests.fsx
+dotnet fsi tests/skill-staging-physical/ManifestCaptureTests.fsx
 python3 tests/skill-staging-physical/PythonContrast.py
 ```
 
@@ -35,3 +36,6 @@ receiver decision. This draft does not authorize a release or cutover.
 
 The stacked [captured plan](CapturedPlan.md) owns byte copies and source modes
 for a possible later copy adapter. It still writes no output.
+
+The further stacked [manifest capture](ManifestCapture.md) pins the manifest
+read before passing its bytes to that plan.
