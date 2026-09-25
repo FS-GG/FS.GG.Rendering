@@ -17,9 +17,10 @@ missing, extra, wrong-path and wrong-mode directory facts.
 
 This records source modes for a possible later copier. Rendering's live Python
 stager calls `shutil.copytree`, but this branch does not write an output tree or
-prove exact staged modes, ACL behavior, ownership, manifest output mode, or
-installed-package parity. The manifest and product roots are captured at
-different instants; adversarial ABA, concurrent in-place changes after the
+prove exact staged modes, ACL behavior, ownership, or installed-package parity.
+The stacked [output mode contract](OutputMode.md) projects fresh manifest and
+container modes under an explicit umask. Manifest and product roots are captured
+at different instants; adversarial ABA, concurrent in-place changes after the
 final checks, and crash behavior remain outside this source-only result.
 
 #1332 Python preflight and #1334/#1335 source acceptance are separate gates.

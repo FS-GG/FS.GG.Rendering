@@ -22,8 +22,9 @@ directories; no staging output is created.
 The manifest descriptor and product-root descriptors are opened at different
 times. A source may change after the last check, and bounded double reads do
 not prove an atomic snapshot against adversarial ABA. The stacked directory
-plan records empty directory paths and source modes; manifest output mode and
-staged mode parity remain unproved. #1332
+plan records empty directory paths and source modes; the stacked output mode
+contract projects a fresh manifest mode under an explicit umask. Staged mode
+parity remains unproved. #1332
 Python preflight, #1334/#1335 source acceptance, and installed-package parity
 remain separate gates. No package publication, release/BOM update, merge, or
 receiver pin is authorized.

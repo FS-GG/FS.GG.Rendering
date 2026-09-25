@@ -8,6 +8,7 @@ dotnet fsi tests/skill-staging-physical/PinnedTests.fsx
 dotnet fsi tests/skill-staging-physical/CapturedPlanTests.fsx
 dotnet fsi tests/skill-staging-physical/ManifestCaptureTests.fsx
 dotnet fsi tests/skill-staging-physical/DirectoryModeTests.fsx
+dotnet fsi tests/skill-staging-physical/OutputModeTests.fsx
 python3 tests/skill-staging-physical/PythonContrast.py
 ```
 
@@ -43,3 +44,6 @@ read before passing its bytes to that plan.
 
 The [directory plan](DirectoryMode.md) retains empty directories and source
 modes as read-only facts for a later copy adapter.
+
+The [output mode contract](OutputMode.md) projects a successful fresh target
+under an explicit umask and checks the current Python policy without staging.
