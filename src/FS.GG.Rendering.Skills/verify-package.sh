@@ -142,7 +142,7 @@ staged_count="$(find "$WORK/stage/skills" -mindepth 1 -maxdepth 1 -type d | wc -
   || fail "staged $staged_count skill dir(s) but the manifest declares ${#DELIVERED_ROWS[@]} product row(s)"
 step_ok "${#DELIVERED_ROWS[@]} product skill(s) staged & content-addressed"
 
-step "2. a newly added product row is staged from the manifest, even sourced out-of-tree"
+step "2. a BOM/CRLF product row stages from the manifest, even sourced out-of-tree"
 # Deliberately sourced from OUTSIDE template/product-skills/, because 3 of this repository's real
 # rows are (fs-gg-feedback-report, fs-gg-samples, fs-gg-project). A stager that derived the path
 # from the id instead of reading `supplied-by` would pass a fixture rooted at product-skills/ and
@@ -151,10 +151,13 @@ fixture="$WORK/new-row-repo"
 mkdir -p "$fixture/src/FS.GG.Rendering.Skills" "$fixture/template/skill-manifest" \
          "$fixture/template/somewhere-else/new-row/skill/notes"
 cp "$HERE/stage-skills.py" "$fixture/src/FS.GG.Rendering.Skills/stage-skills.py"
-printf 'new row body\n' > "$fixture/template/somewhere-else/new-row/skill/SKILL.md"
-printf 'a sidecar the body depends on\n' > "$fixture/template/somewhere-else/new-row/skill/notes/detail.md"
-new_sha="$(digest "$fixture/template/somewhere-else/new-row/skill/SKILL.md")"
-new_sidecar_sha="$(digest "$fixture/template/somewhere-else/new-row/skill/notes/detail.md")"
+# The committed manifest hashes UTF-8 text after removing a BOM and folding CRLF to LF.
+# Derive the fixture's expected hashes from independent LF bytes via sha256sum, rather
+# than calling digest() on the variant being tested (which would repeat a shared bug).
+printf '\357\273\277new row body\r\n' > "$fixture/template/somewhere-else/new-row/skill/SKILL.md"
+printf '\357\273\277a sidecar the body depends on\r\n' > "$fixture/template/somewhere-else/new-row/skill/notes/detail.md"
+new_sha="$(printf 'new row body\n' | sha256sum | cut -d' ' -f1)"
+new_sidecar_sha="$(printf 'a sidecar the body depends on\n' | sha256sum | cut -d' ' -f1)"
 python3 - "$fixture/template/skill-manifest/skill-manifest.json" "$new_sha" "$new_sidecar_sha" <<'PY'
 import json, sys
 doc = {"schemaVersion": 2, "skills": [{
@@ -177,7 +180,23 @@ python3 "$fixture/src/FS.GG.Rendering.Skills/stage-skills.py" "$fixture/stage" >
   || fail "a new product row was not staged from the manifest"
 [ -f "$fixture/stage/skills/fs-gg-new-row/notes/detail.md" ] \
   || fail "a new product row's sidecar was not staged alongside its body"
-step_ok "synthetic out-of-tree product row flowed from manifest to staged bytes, sidecar included"
+cmp "$fixture/template/somewhere-else/new-row/skill/SKILL.md" \
+    "$fixture/stage/skills/fs-gg-new-row/SKILL.md" >/dev/null \
+  || fail "staging changed BOM/CRLF source bytes instead of preserving them"
+cmp "$fixture/template/somewhere-else/new-row/skill/notes/detail.md" \
+    "$fixture/stage/skills/fs-gg-new-row/notes/detail.md" >/dev/null \
+  || fail "staging changed BOM/CRLF sidecar bytes instead of preserving them"
+step_ok "BOM/CRLF product row and sidecar match LF canonical hashes; staged bytes remain exact"
+
+step "2b. a changed body byte still fails canonical staging"
+printf '\357\273\277new row bodY\r\n' > "$fixture/template/somewhere-else/new-row/skill/SKILL.md"
+if python3 "$fixture/src/FS.GG.Rendering.Skills/stage-skills.py" "$fixture/rejected" \
+    >"$WORK/changed.out" 2>"$WORK/changed.err"; then
+  fail "a semantic body mutation passed despite the manifest's canonical digest"
+fi
+grep -q 'SKILL.md sha256' "$WORK/changed.err" \
+  || fail "the changed body was refused without naming its SKILL.md digest"
+step_ok "semantic body mutation rejected under the same BOM/CRLF fixture"
 
 step "3. pack + content assert (bodies AND their sidecars)"
 dotnet pack "$HERE/FS.GG.Rendering.Skills.csproj" -c Release -o "$WORK/out" >/dev/null

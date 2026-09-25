@@ -110,12 +110,25 @@ class ReleaseCustodyTests(unittest.TestCase):
             {"id": "FS.GG.UI", "kind": "bom"},
             {"id": "FS.GG.UI.Template", "kind": "template"},
         ]
-        custody.validate_plan({
+        plan = {
             "schema": "fsgg.rendering.release-plan/v1",
             "version": "0.30.0",
             "baselineVersion": "0.29.0",
             "packages": packages,
-        })
+        }
+        custody.validate_plan(plan)
+
+        # Count alone is insufficient: a port must keep the owner's exact kind
+        # roster and refuse a duplicate identity even when there are 19 rows.
+        wrong_kind = json.loads(json.dumps(plan))
+        wrong_kind["packages"][0]["kind"] = "bom"
+        with self.assertRaisesRegex(custody.CustodyError, "17 libraries \\+ one BOM \\+ one template"):
+            custody.validate_plan(wrong_kind)
+
+        duplicate = json.loads(json.dumps(plan))
+        duplicate["packages"][1]["id"] = duplicate["packages"][0]["id"]
+        with self.assertRaisesRegex(custody.CustodyError, "19 unique"):
+            custody.validate_plan(duplicate)
 
     def test_workflow_retains_before_push_and_never_deletes_release_tags(self):
         repo = SCRIPT.parent.parent
@@ -182,6 +195,31 @@ class ReleaseCustodyTests(unittest.TestCase):
                 elif item == "FS.GG.UI.Template":
                     entries.update({name: b"generated" for name in plan["releaseChecks"]["generatedTemplateEntries"]})
                 self.archive(archives / f"{item}.0.29.0.nupkg", item, "0.29.0", entries, dependencies=dependencies)
+
+            # Mutate the actual BOM archive, not only the release-plan JSON.
+            # The 19-archive count stays valid in both cases, so these refuse
+            # membership/version drift at the package-content boundary.
+            bom_path = archives / "FS.GG.UI.0.29.0.nupkg"
+            original_bom = bom_path.read_bytes()
+            self.archive(bom_path, "FS.GG.UI", "0.29.0", {"lib/net10.0/value.dll": b"FS.GG.UI"},
+                         dependencies=[(library, "[0.29.0]") for library in libraries[:-1]])
+            with self.assertRaisesRegex(custody.CustodyError, "BOM membership mismatch"):
+                custody.records_from_archives(plan, archives, "a" * 40)
+            bom_path.write_bytes(original_bom)
+
+            self.archive(bom_path, "FS.GG.UI", "0.29.0", {"lib/net10.0/value.dll": b"FS.GG.UI"},
+                         dependencies=[(library, "[0.28.0]" if library == libraries[0] else "[0.29.0]")
+                                       for library in libraries])
+            with self.assertRaisesRegex(custody.CustodyError, "BOM dependencies are not exact"):
+                custody.records_from_archives(plan, archives, "a" * 40)
+            bom_path.write_bytes(original_bom)
+
+            self.archive(bom_path, "FS.GG.UI", "0.29.0", {"lib/net10.0/value.dll": b"FS.GG.UI"},
+                         dependencies=[(library, "[0.29.0]") for library in libraries]
+                                      + [(libraries[0], "[0.29.0]")])
+            with self.assertRaisesRegex(custody.CustodyError, "duplicate BOM dependency"):
+                custody.records_from_archives(plan, archives, "a" * 40)
+            bom_path.write_bytes(original_bom)
 
             manifest_path = archives / "release-custody.json"
             common = argparse.Namespace(plan=plan_path, archives=archives, manifest=manifest_path,

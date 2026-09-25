@@ -165,7 +165,11 @@ def verify_release_shape(plan: dict, records: list[dict], archives: Path, source
 
     libraries = {p["id"] for p in plan["packages"] if p["kind"] == "library"}
     bom = by_id[[p["id"] for p in plan["packages"] if p["kind"] == "bom"][0]]
-    bom_internal = {d["id"]: d["version"] for d in bom["dependencies"] if d["id"].startswith("FS.GG.UI.")}
+    bom_dependencies = [d for d in bom["dependencies"] if d["id"].startswith("FS.GG.UI.")]
+    bom_ids = [d["id"] for d in bom_dependencies]
+    if len(bom_ids) != len(set(bom_ids)):
+        raise CustodyError("duplicate BOM dependency identity")
+    bom_internal = {d["id"]: d["version"] for d in bom_dependencies}
     if set(bom_internal) != libraries:
         raise CustodyError(f"BOM membership mismatch: missing={sorted(libraries-set(bom_internal))}, unexpected={sorted(set(bom_internal)-libraries)}")
     wrong = {key: value for key, value in bom_internal.items() if value != f"[{version}]"}
