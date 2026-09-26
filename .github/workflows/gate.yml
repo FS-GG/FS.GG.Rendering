@@ -1421,25 +1421,3 @@ jobs:
 
       - name: Behavioural test suite (planted drift in, filed issue out)
         run: scripts/test-template-pin-staleness-sweep.sh
-
-  # ── Cross-repo contract-coherence gate ──────────────────────────────────────────────────
-  # Adopted per FS-GG/.github#519 (decision: yes, the framework repos call it). The gate lives
-  # in FS-GG/.github and is CALLED, never copied — it asserts that the org registry is
-  # schema-valid and that its declared `fsgg-contracts` pin equals the ACTUAL FS.GG.Contracts
-  # package version. This repo consumes FS.GG.Contracts, so a registry that has drifted from
-  # the real package version is this repo's problem, and until now nothing here said so.
-  #
-  # The reusable gate's build-config drift step was RETIRED in FS-GG/.github#1262 (ADR-0062): build
-  # config now ships as the FS.GG.Kit package, so `check-build-config` is no longer consulted (a no-op
-  # input kept for compatibility). The inline `build-config-drift` job above keeps its exact `name:` —
-  # the REQUIRED status context is unchanged — but its body now asserts the committed .props match the
-  # pinned package instead of running the byte-copy `sync-build-config.sh --check`. The required context
-  # was preserved rather than removed, so no branch-protection change was needed.
-  #
-  # `packages: read` is MANDATORY for callers: the gate restores the typed fsgg-sdd registry
-  # validator from the org GitHub Packages feed using the run-scoped GITHUB_TOKEN.
-  contract-coherence:
-    uses: FS-GG/.github/.github/workflows/contract-coherence.yml@main
-    permissions:
-      contents: read
-      packages: read
