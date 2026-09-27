@@ -21,7 +21,7 @@
          behind the pure AudioEffect edge — the piece the fs-gg-audio skill calls "a real playback
          backend is deferred". Every profile that opens a viewer window (issue #436), not the
          simulation profiles only. See ADR-0024. -->
-    <FsGgAudioVersion>0.5.0</FsGgAudioVersion>
+    <FsGgAudioVersion>0.6.0</FsGgAudioVersion>
     <!-- Rendering#1060: producer-owned early performance intent. Keep this on the Contracts
          release axis rather than the FS.GG.UI coherent-set axis.
          Rendering#1101: 7.4.0 is the FIRST published FS.GG.Contracts that packs `api-surface/*.fsi`

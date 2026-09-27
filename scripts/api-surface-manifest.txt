@@ -79,7 +79,7 @@
 # ------------------------------------------------------------------------------------------
 file   Audio.Core/Audio.fsi
 skill  fs-gg-audio
-header // Mirrored from FS-GG/FS.GG.Audio @ 0.5.0 (src/FS.GG.Audio.Core/Audio.fsi); regenerate when $(FsGgAudioVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Audio @ 0.6.0 (src/FS.GG.Audio.Core/Audio.fsi); regenerate when $(FsGgAudioVersion) moves.
 ns     FS.GG.Audio.Core
 pkg    FS.GG.Audio.Core
 +      Audio.fsi type SoundId
@@ -104,7 +104,7 @@ pkg    FS.GG.Audio.Core
 # ------------------------------------------------------------------------------------------
 file   Audio.Elmish/Elmish.fsi
 skill  fs-gg-audio
-header // Mirrored from FS-GG/FS.GG.Audio @ 0.5.0 (src/FS.GG.Audio.Elmish/Elmish.fsi); regenerate when $(FsGgAudioVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Audio @ 0.6.0 (src/FS.GG.Audio.Elmish/Elmish.fsi); regenerate when $(FsGgAudioVersion) moves.
 ns     FS.GG.Audio.Elmish
 pkg    FS.GG.Audio.Elmish
 open   FS.GG.Audio.Core
@@ -120,7 +120,7 @@ open   FS.GG.Audio.Engine
 # ------------------------------------------------------------------------------------------
 file   Audio.Engine/Engine.fsi
 skill  fs-gg-audio
-header // Mirrored from FS-GG/FS.GG.Audio @ 0.5.0 (src/FS.GG.Audio.Engine/Engine.fsi); regenerate when $(FsGgAudioVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Audio @ 0.6.0 (src/FS.GG.Audio.Engine/Engine.fsi); regenerate when $(FsGgAudioVersion) moves.
 ns     FS.GG.Audio.Engine
 pkg    FS.GG.Audio.Engine
 open   FS.GG.Audio.Core
@@ -139,7 +139,7 @@ open   FS.GG.Audio.Host
 # ------------------------------------------------------------------------------------------
 file   Audio.Host/Host.fsi
 skill  fs-gg-audio
-header // Mirrored from FS-GG/FS.GG.Audio @ 0.5.0 (src/FS.GG.Audio.Host/Host.fsi); regenerate when $(FsGgAudioVersion) moves.
+header // Mirrored from FS-GG/FS.GG.Audio @ 0.6.0 (src/FS.GG.Audio.Host/Host.fsi); regenerate when $(FsGgAudioVersion) moves.
 ns     FS.GG.Audio.Host
 pkg    FS.GG.Audio.Host
 open   System

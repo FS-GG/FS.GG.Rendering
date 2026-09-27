@@ -9,7 +9,7 @@ packages="$work/packages"
 tools="$work/tools"
 mkdir -p "$feed" "$packages" "$tools"
 
-dotnet pack "$repo/src/Scene/Scene.fsproj" -c Release -o "$feed" -p:Version=0.29.0-preview.1
+dotnet pack "$repo/src/Scene/Scene.fsproj" -c Release -o "$feed" -p:Version=0.31.0
 cp -R "$repo/tests/Scene.PortableConsumers/DotNet" "$work/DotNet"
 cp -R "$repo/tests/Scene.PortableConsumers/Fable" "$work/Fable"
 cp "$repo/tests/Scene.PortableConsumers/Replay.fs" "$work/DotNet/Replay.fs"
