@@ -72,13 +72,16 @@ jobs:
             https://raw.githubusercontent.com/driusan/lmt/62fe18f2f6a6e11c158ff2b2209e1082a4fcd59c/main.go \
             --output "$RUNNER_TEMP/svg-retained-tools/main.go"
           echo '88bc47acae2c26919ab96a5cafa80b12fac762092c57840a2baad1afcc7feda3  '"$RUNNER_TEMP/svg-retained-tools/main.go" | sha256sum --check --strict
+          # SDD CLI 1.7.0 profile 2 accepts the exact lmt object built with Go 1.24.1.
+          qualified_go="$(GOTOOLCHAIN=go1.24.1 go env GOROOT)/bin/go"
+          test "$("$qualified_go" version)" = 'go version go1.24.1 linux/amd64'
           (
             cd "$RUNNER_TEMP/svg-retained-tools"
-            GO111MODULE=off CGO_ENABLED=1 go build -trimpath \
+            GO111MODULE=off CGO_ENABLED=1 "$qualified_go" build -trimpath \
               -ldflags '-buildid=IvXAt1kJ-3iINki1alCT/Ut12KGabgkWIkwVpw-xO/c4zkZMLAubfWHvjZOY8o/8-oR_8tNNndNgfMVoD8F -B 0x03d1703027f57ed4dd2ba90b7cdfc8cdea2815da' \
               -o lmt main.go
           )
-          echo '287d7cd061edbb09f85b6025580c80156a24ea4bec5f5d68659673b7da6d5219  '"$RUNNER_TEMP/svg-retained-tools/lmt" | sha256sum --check --strict
+          echo '37e0b0365c2641edce40b48605471f61fa12e97c3e2376152f0e849abdc31f10  '"$RUNNER_TEMP/svg-retained-tools/lmt" | sha256sum --check --strict
       - name: Enable qualified network namespace isolation
         run: |
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
