@@ -8,7 +8,7 @@ actual="$(git -C "$game_root" rev-parse HEAD)"
 work="$(mktemp -d "${TMPDIR:-/tmp}/svg-session-correspondence.XXXXXX")"
 trap 'rm -rf "$work"' EXIT
 mkdir -p "$work/feed" "$work/packages" "$work/tools"
-dotnet pack "$game_root/src/Game.Core/FS.GG.Game.Core.fsproj" -c Release -o "$work/feed" -p:Version=0.15.0-svg-runtime.3 >/dev/null
+dotnet pack "$game_root/src/Game.Core/FS.GG.Game.Core.fsproj" -c Release -o "$work/feed" -p:Version=0.16.0 >/dev/null
 dotnet pack "$repo/src/Scene/Scene.fsproj" -c Release -o "$work/feed" -p:Version=0.29.0-svg-runtime.4 >/dev/null
 dotnet pack "$repo/src/KeyboardInput/KeyboardInput.fsproj" -c Release -o "$work/feed" -p:Version=0.29.0-svg-runtime.4 >/dev/null
 dotnet pack "$repo/src/Scene.SvgBrowser/Scene.SvgBrowser.fsproj" -c Release -o "$work/feed" -p:Version=0.29.0-svg-runtime.4 >/dev/null
