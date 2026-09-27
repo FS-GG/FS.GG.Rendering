@@ -22,7 +22,7 @@ Acceptance evidence:
 - Four .NET reducer tests cover variable cadence, integer conversion, bounded projection ownership,
   monotonic retained revisions, stale generations, suspension recovery and pause/step/reset/replace/dispose.
 - `tests/SvgSessionCorrespondence/run.sh` packs this repository with exact Game revision
-  `e72be2d50dcecfe50b73b55942e0d351e46e9ebf`; .NET and Fable produce the same 299-byte transition corpus
+  `996832a6ebb5c893199627b0ecc46f7c1da848cd`; .NET and Fable produce the same 299-byte transition corpus
   (`sha256:569bc5541e77ca2f67f6c531af201ad5072a596eb454f13ec7cdfe98844aefb5`).
 - The packaged browser fixture exercises real RAF cadence, projection coalescing, pause, single-step, reset,
   replacement, a stale reply, blur recovery and disposal in Chromium, Firefox and WebKit. Disposal reports

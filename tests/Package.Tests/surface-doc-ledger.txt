@@ -99,6 +99,8 @@ vocabulary  inputKind
 vocabulary  maxSteps
 vocabulary  routeId
 owner-documented  runScriptWithIdentity
+owner-documented  checkActionCoverage
+owner-documented  isClean
 vocabulary  runnerIdentity
 vocabulary  runnerVersion
 vocabulary  scenarioId
@@ -290,6 +292,38 @@ vocabulary  neutral
 # nor `tracked`-stale (rule 2: no local skill can ever cite it, so the anti-rot rule can never fire against a
 # correct line). It retires only if #984 un-vendors the surface (rule 3 drops the .fsi, phantoms the line) or a
 # Rendering-owned skill ever documents one of these locally (delete that line). Both keep this section honest.
+
+# ---- Game.Core 0.16 product contracts
+# Rendering now teaches the published session, kinematics, replay, planning, rules, save and network
+# signatures because they are product composition boundaries in Game's package contract and the SVG
+# runtime/presentation roadmaps. The owner-sourced 0.16 skills do not yet cite these vals, so these are
+# explicit pending documentation gaps rather than invented `owner-documented` claims. Retire each row
+# when the owner skill package publishes the matching code citation.
+tracked     accepted
+tracked     addCheckpoint
+tracked     admit
+tracked     appendAdvance
+tracked     appendInput
+tracked     beginScenario
+tracked     bind
+tracked     canonicalText
+tracked     compare
+tracked     current
+tracked     evidence
+tracked     initialize
+tracked     isCompatible
+tracked     lastSequence
+tracked     proposeCommit
+tracked     replaceAccepted
+tracked     resync
+tracked     seek
+tracked     segmentHit
+tracked     unbind
+tracked     validateAdvance
+tracked     validateInitialization
+tracked     validateInput
+tracked     validateProjection
+tracked     validateSnapshot
 
 # ---- Game.Core/Ai.fsi
 owner-documented  aimError

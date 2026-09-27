@@ -2731,7 +2731,7 @@ let private omissionLedger =
 /// omissions introduced by SVG authoring, input, workspace and clip-animation work. The remaining ledger
 /// entries retain their earlier, unrelated curation decisions.
 [<Literal>]
-let private OmissionLedgerCeiling = 472
+let private OmissionLedgerCeiling = 479
 
 /// EVERYTHING the pin exports inside the mirror's own claimed scope — types AND modules, keyed alike.
 ///
