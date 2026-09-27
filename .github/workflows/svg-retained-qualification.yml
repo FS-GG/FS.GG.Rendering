@@ -78,7 +78,7 @@ jobs:
               -ldflags '-buildid=IvXAt1kJ-3iINki1alCT/Ut12KGabgkWIkwVpw-xO/c4zkZMLAubfWHvjZOY8o/8-oR_8tNNndNgfMVoD8F -B 0x03d1703027f57ed4dd2ba90b7cdfc8cdea2815da' \
               -o lmt main.go
           )
-          echo '37e0b0365c2641edce40b48605471f61fa12e97c3e2376152f0e849abdc31f10  '"$RUNNER_TEMP/svg-retained-tools/lmt" | sha256sum --check --strict
+          echo '287d7cd061edbb09f85b6025580c80156a24ea4bec5f5d68659673b7da6d5219  '"$RUNNER_TEMP/svg-retained-tools/lmt" | sha256sum --check --strict
       - name: Enable qualified network namespace isolation
         run: |
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
