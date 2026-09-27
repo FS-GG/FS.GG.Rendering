@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import importlib.util
 import base64
+import json
 import pathlib
 import sys
 import tempfile
@@ -37,6 +38,59 @@ class Response:
 
 
 class StatusTests(unittest.TestCase):
+    def test_preflight_binds_package_roster_to_exact_source(self):
+        root = SCRIPT.parent.parent
+        original = json.loads((root / "eng/release/svg-preview-c-0.31.0.json").read_text())
+        projects = sorted(str(path.relative_to(root)) for path in (root / "src").rglob("*.fsproj"))
+        projects.append(".template.package/FS.GG.UI.Template.fsproj")
+
+        def fake_git(_root, *args):
+            if args[0] == "ls-tree":
+                return "\n".join(projects)
+            return ""
+
+        def source(_root, _sha, path):
+            return (root / path).read_text()
+
+        for replacement in ("valid", "missing", "FS.GG.UI.Impostor", "fs.gg.ui.build", "wrong-kind", "duplicate-json", "rollback"):
+            with self.subTest(replacement=replacement), tempfile.TemporaryDirectory() as folder:
+                plan = json.loads(json.dumps(original))
+                if replacement == "missing":
+                    plan["packages"].pop(1)
+                elif replacement == "wrong-kind":
+                    plan["packages"][1]["kind"] = "bom"
+                elif replacement == "rollback":
+                    plan["baselineVersion"] = "0.32.0"
+                elif replacement not in ("valid", "duplicate-json"):
+                    plan["packages"][1]["id"] = replacement
+                plan_path = pathlib.Path(folder) / "plan.json"
+                body = json.dumps(plan)
+                if replacement == "duplicate-json":
+                    body = '{"version":"0.0.0",' + body[1:]
+                plan_path.write_text(body)
+                args = [
+                    str(SCRIPT), "--repo-root", str(root), "--plan", str(plan_path),
+                    "--source-sha", "a" * 40, "--version", "0.31.0",
+                    "--workflow-sha", "b" * 40, "--github-username", "actor",
+                    "--github-repository", "FS-GG/FS.GG.Rendering",
+                    "--github-workflow-ref", "FS-GG/FS.GG.Rendering/.github/workflows/release.yml@refs/heads/main",
+                    "--github-run-id", "123", "--github-token-env", "TEST_RELEASE_TOKEN",
+                    "--receipt", str(pathlib.Path(folder) / "receipt.json"),
+                    "--github-anchor-archive", str(pathlib.Path(folder) / "anchor.nupkg"),
+                ]
+                with patch.object(sys, "argv", args), patch.dict("os.environ", {"TEST_RELEASE_TOKEN": "offline"}), \
+                     patch.object(MODULE, "git", side_effect=fake_git), \
+                     patch.object(MODULE, "source_text", side_effect=source), \
+                     patch.object(MODULE, "verified_archive", return_value="c" * 64), \
+                     patch.object(MODULE, "version_index", return_value=(404, [])), \
+                     patch.object(MODULE, "status", return_value=404):
+                    if replacement == "valid":
+                        self.assertEqual(0, MODULE.main())
+                        self.assertTrue((pathlib.Path(folder) / "receipt.json").is_file())
+                    else:
+                        with self.assertRaises(SystemExit):
+                            MODULE.main()
+
     def test_release_preflight_accepts_only_the_release_entry_points(self):
         self.assertTrue(
             MODULE.is_authorized_workflow_ref(

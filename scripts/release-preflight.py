@@ -27,6 +27,15 @@ def fail(message: str) -> None:
     raise SystemExit(f"release-preflight: {message}")
 
 
+def unique_json_object(pairs: list[tuple[str, object]]) -> dict:
+    result = {}
+    for name, value in pairs:
+        if name in result:
+            fail(f"release plan contains duplicate JSON key {name!r}")
+        result[name] = value
+    return result
+
+
 def is_authorized_workflow_ref(workflow_ref: str) -> bool:
     """Accept only the release entry points that can legitimately call this preflight."""
     root = "FS-GG/FS.GG.Rendering/.github/workflows/"
@@ -182,6 +191,49 @@ def source_text(root: Path, source_sha: str, path: str) -> str:
     return git(root, "show", f"{source_sha}:{path}")
 
 
+def source_package_roster(root: Path, source_sha: str) -> dict[str, str]:
+    """Derive the release identities from packable projects at the exact source commit."""
+    paths = git(
+        root, "ls-tree", "-r", "--name-only", source_sha, "--", "src", ".template.package"
+    ).splitlines()
+    projects = [path for path in paths if path.endswith(".fsproj")]
+    if not projects:
+        fail("source commit exposes no package projects")
+    expected: dict[str, str] = {}
+    folded: set[str] = set()
+    template_path = ".template.package/FS.GG.UI.Template.fsproj"
+    if template_path not in projects:
+        fail("source commit has no template package project")
+    for path in projects:
+        try:
+            document = ET.fromstring(source_text(root, source_sha, path))
+        except ET.ParseError as exc:
+            fail(f"source package project {path} is malformed: {exc}")
+        def values(name: str) -> list[str]:
+            return [
+                (node.text or "").strip()
+                for node in document.iter()
+                if node.tag.rsplit("}", 1)[-1] == name
+            ]
+        if path != template_path and "true" not in [value.lower() for value in values("IsPackable")]:
+            continue
+        package_ids = values("PackageId")
+        if len(package_ids) != 1 or not package_ids[0]:
+            fail(f"source package project {path} has no single PackageId")
+        package_id = package_ids[0]
+        if package_id.casefold() in folded:
+            fail(f"source package identity is duplicated: {package_id}")
+        folded.add(package_id.casefold())
+        expected[package_id] = (
+            "template" if path == template_path else "bom" if package_id == "FS.GG.UI" else "library"
+        )
+    if expected.get("FS.GG.UI.Template") != "template" or expected.get("FS.GG.UI") != "bom":
+        fail("source package roster lacks the template or BOM identity")
+    if len(expected) != 19 or list(expected.values()).count("library") != 17:
+        fail("source package roster is not 17 libraries plus BOM and template")
+    return expected
+
+
 def single_value(text: str, pattern: str, label: str) -> str:
     values = re.findall(pattern, text)
     if len(values) != 1:
@@ -232,17 +284,35 @@ def main() -> int:
         fail(f"{args.github_token_env} is absent; authenticated GitHub collision state unavailable")
 
     plan_bytes = args.plan.read_bytes()
-    plan = json.loads(plan_bytes)
+    plan = json.loads(plan_bytes, object_pairs_hook=unique_json_object)
     if plan.get("version") != args.version:
         fail(f"plan version {plan.get('version')!r} does not equal requested {args.version!r}")
+    baseline = plan.get("baselineVersion")
+    target_parts = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", args.version)
+    baseline_parts = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", baseline) if isinstance(baseline, str) else None
+    if (
+        not target_parts
+        or not baseline_parts
+        or tuple(map(int, baseline_parts.groups())) >= tuple(map(int, target_parts.groups()))
+    ):
+        fail("release baseline must be a stable version preceding the requested version")
     packages = plan.get("packages")
-    if not isinstance(packages, list) or len(packages) != 19:
+    if not isinstance(packages, list) or len(packages) != 19 or not all(isinstance(item, dict) for item in packages):
         fail("release plan must contain exactly 19 packages")
     ids = [item.get("id") for item in packages]
-    if not all(isinstance(item, str) for item in ids) or len(ids) != len(set(ids)):
+    if not all(isinstance(item, str) and item for item in ids) or len(ids) != len({item.casefold() for item in ids}):
         fail("release plan package IDs must be 19 unique strings")
 
     git(root, "cat-file", "-e", f"{args.source_sha}^{{commit}}")
+    expected_packages = source_package_roster(root, args.source_sha)
+    planned_packages = {item["id"]: item.get("kind") for item in packages}
+    if planned_packages != expected_packages:
+        fail(
+            "release plan package roster differs from the exact source commit: "
+            f"missing={sorted(expected_packages.keys() - planned_packages.keys())}, "
+            f"unexpected={sorted(planned_packages.keys() - expected_packages.keys())}, "
+            f"wrong-kind={sorted(package_id for package_id in expected_packages.keys() & planned_packages.keys() if expected_packages[package_id] != planned_packages[package_id])}"
+        )
     framework = single_value(
         source_text(root, args.source_sha, "template/base/Directory.Packages.props"),
         r"<FsGgUiVersion>([^<]+)</FsGgUiVersion>",
@@ -271,7 +341,6 @@ def main() -> int:
             fail(f"tag collision: {tag} already exists")
 
     anchor_id = "FS.GG.UI.Scene"
-    baseline = plan.get("baselineVersion")
     if args.github_workflow_token_env:
         workflow_token = os.environ.get(args.github_workflow_token_env, "")
         if not workflow_token:
