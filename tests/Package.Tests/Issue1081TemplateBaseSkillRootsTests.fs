@@ -165,7 +165,13 @@ let templateBaseSkillRootTests =
 
                 let declared =
                     doc.RootElement.GetProperty("skills").EnumerateArray()
-                    |> Seq.map (fun e -> e.GetProperty("id").GetString(), e.GetProperty("sha256").GetString())
+                    |> Seq.map (fun e ->
+                        let requiredString (property: string) =
+                            e.GetProperty(property).GetString()
+                            |> Option.ofObj
+                            |> Option.defaultWith (fun () -> failwithf "manifest property '%s' must be a string" property)
+
+                        requiredString "id", requiredString "sha256")
                     |> Map.ofSeq
 
                 let mutable checkedAny = false

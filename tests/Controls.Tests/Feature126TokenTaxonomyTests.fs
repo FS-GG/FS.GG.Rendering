@@ -102,7 +102,10 @@ let feature126TokenTaxonomyTests =
                 psi.RedirectStandardError <- true
                 psi.RedirectStandardOutput <- true
                 psi.UseShellExecute <- false
-                use p = Process.Start psi
+                use p =
+                    Process.Start psi
+                    |> Option.ofObj
+                    |> Option.defaultWith (fun () -> failwith "failed to start the design-token drift check")
                 let stderr = p.StandardError.ReadToEnd()
                 p.WaitForExit()
                 Expect.equal p.ExitCode 0 (sprintf "generate-design-tokens.fsx --check reported drift: %s" stderr)
