@@ -66,7 +66,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           repository: FS-GG/FS.GG.Game
-          ref: e72be2d50dcecfe50b73b55942e0d351e46e9ebf
+          ref: 996832a6ebb5c893199627b0ecc46f7c1da848cd
           path: _game-runtime-candidate
       - name: Restore browser harness packages
         working-directory: tests/Scene.SvgBrowser.Tests
