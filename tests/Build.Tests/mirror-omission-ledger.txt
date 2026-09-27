@@ -125,9 +125,12 @@ type FS.GG.Game.Core::FS.GG.Game.Core.EdgeOrientation
 type FS.GG.Game.Core::FS.GG.Game.Core.GridSpec
 type FS.GG.Game.Core::FS.GG.Game.Core.Vertex
 
-# FS.GG.Game.Harness (41 — #1072 mirrors only the opaque production-journey receipt boundary used by
-# PerformanceEvidence; bots, exploration, laws, properties and legacy workload APIs remain producer-owned.)
+# FS.GG.Game.Harness (48 — #1072 mirrors only the opaque production-journey receipt boundary used by
+# PerformanceEvidence; bots, exploration, laws, properties and legacy workload APIs remain producer-owned.
+# Game 0.16's ContinuousArena is also deliberately omitted: it is the producer's representative
+# qualification product over Playable/Driver, while each generated product owns its actual arena.)
 module FS.GG.Game.Harness::FS.GG.Game.Harness.Bots
+module FS.GG.Game.Harness::FS.GG.Game.Harness.ContinuousArena
 module FS.GG.Game.Harness::FS.GG.Game.Harness.Driver
 module FS.GG.Game.Harness::FS.GG.Game.Harness.Explore
 module FS.GG.Game.Harness::FS.GG.Game.Harness.LawReport
@@ -141,6 +144,12 @@ module FS.GG.Game.Harness::FS.GG.Game.Harness.VisibilityPolygon
 module FS.GG.Game.Harness::FS.GG.Game.Harness.Workload
 type FS.GG.Game.Harness::FS.GG.Game.Harness.Bot`1
 type FS.GG.Game.Harness::FS.GG.Game.Harness.Counterexample
+type FS.GG.Game.Harness::FS.GG.Game.Harness.ContinuousArenaConfig
+type FS.GG.Game.Harness::FS.GG.Game.Harness.ContinuousArenaItem
+type FS.GG.Game.Harness::FS.GG.Game.Harness.ContinuousArenaItemKind
+type FS.GG.Game.Harness::FS.GG.Game.Harness.ContinuousArenaOutcome
+type FS.GG.Game.Harness::FS.GG.Game.Harness.ContinuousArenaProjection
+type FS.GG.Game.Harness::FS.GG.Game.Harness.ContinuousArenaWorld
 type FS.GG.Game.Harness::FS.GG.Game.Harness.ExpectedWorkload`1
 type FS.GG.Game.Harness::FS.GG.Game.Harness.ExploreConfig
 type FS.GG.Game.Harness::FS.GG.Game.Harness.FindResult
