@@ -1,5 +1,5 @@
 // See skill: fs-gg-audio
-// Mirrored from FS-GG/FS.GG.Audio @ 0.5.0 (src/FS.GG.Audio.Host/Host.fsi); regenerate when $(FsGgAudioVersion) moves.
+// Mirrored from FS-GG/FS.GG.Audio @ 0.6.0 (src/FS.GG.Audio.Host/Host.fsi); regenerate when $(FsGgAudioVersion) moves.
 namespace FS.GG.Audio.Host
 
 open System
