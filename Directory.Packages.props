@@ -22,7 +22,7 @@
        below — restating it here is a second copy that drifts every time the baseline moves.
        Adopting repos remove their local FSharp.Core PackageVersion (see docs/build/README.md). -->
   <ItemGroup Label="org-baseline">
-    <PackageVersion Include="FSharp.Core" Version="10.1.302" />
+    <PackageVersion Include="FSharp.Core" Version="10.1.401" />
   </ItemGroup>
 
   <!-- api-breaking-change-gate (H3 / .github#20, epic #16 Pillar 5). Centrally pins the public-API
