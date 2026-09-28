@@ -1,0 +1,146 @@
+{
+  "schema": "fsgg.github.v2-ci-ordinary-settlement-policy/1",
+  "policyId": "v2-ci-i1-ordinary-settlement-v1",
+  "status": "source-qualified-not-installed",
+  "repository": "FS-GG/FS.GG.Rendering",
+  "repositoryId": 1269292235,
+  "selectedSource": {
+    "profile": "rendering-v1",
+    "repository": "FS-GG/FS.GG.Rendering",
+    "repositoryId": 1269292235
+  },
+  "sourceImplementation": {
+    "repository": "FS-GG/FS.GG.Audio",
+    "commit": "257ff5cfe0bf2c9cb9fc728cd007321527a39e49",
+    "adaptation": "rendering-v1-code-owned-source-profile",
+    "observerSha256": "6e63f6f724fb267e77ef02f41b4c58a833e0dc5b08c003f07fd16c89e4f7fd55",
+    "qualificationSha256": "a5518e59add15e9c4c02d0a9854efcf236bb6c9bfc83b7981002a2f6751c5c9d"
+  },
+  "operationClass": "ordinary-post-merge-delivery-settlement",
+  "trigger": {
+    "event": "push",
+    "ref": "refs/heads/main",
+    "associationEndpoint": "GET /repos/FS-GG/FS.GG.Rendering/commits/{sourceSha}/pulls",
+    "associationCount": 1,
+    "requireMerged": true,
+    "requireMergeCommitMatch": true
+  },
+  "workflow": {
+    "path": ".github/workflows/v2-ci-ordinary-settlement.yml",
+    "revision": "sourceSha",
+    "requestEventsForbidden": ["pull_request", "pull_request_target"],
+    "manualEventsForbidden": ["workflow_dispatch", "repository_dispatch"]
+  },
+  "qualification": {
+    "phase": "secret-free-predecessor",
+    "credentialAccess": false,
+    "producerStatus": "trusted-main-push-predecessor",
+    "currentValidatorRole": "native-API-derived-evidence",
+    "requiredCheckAppId": 15368,
+    "requiredChecks": [
+      "Deterministic gate",
+      "routine-eligibility"
+    ],
+    "requiredGateChecks": [
+      "Deterministic gate",
+      "API compatibility gate (breaking-change → SemVer major)",
+      "kit / coordination-kit",
+      "skill-view-check",
+      "materialize / receiver-validate"
+    ],
+    "checkProducers": {
+      "Deterministic gate": {
+        "workflowId": 295951544,
+        "path": ".github/workflows/gate.yml",
+        "event": "pull_request"
+      },
+      "API compatibility gate (breaking-change → SemVer major)": {
+        "workflowId": 295951544,
+        "path": ".github/workflows/gate.yml",
+        "event": "pull_request"
+      },
+      "kit / coordination-kit": {
+        "workflowId": 307167629,
+        "path": ".github/workflows/coordination-coherence.yml",
+        "event": "pull_request"
+      },
+      "skill-view-check": {
+        "workflowId": 321983529,
+        "path": ".github/workflows/skill-view-check.yml",
+        "event": "pull_request"
+      },
+      "materialize / receiver-validate": {
+        "workflowId": 316870201,
+        "path": ".github/workflows/kit-materialize.yml",
+        "event": "pull_request"
+      },
+      "routine-eligibility": {
+        "workflowId": 356280746,
+        "path": ".github/workflows/routine-eligibility.yml",
+        "event": "pull_request_target"
+      }
+    }
+  },
+  "credentialJob": {
+    "environment": "ordinary-v2",
+    "runner": "github-hosted-ephemeral",
+    "requiredReviewers": 0,
+    "protectedBranchesOnly": true,
+    "allowedBranches": ["main"],
+    "installed": false,
+    "liveObservation": {
+      "observedAt": "2026-09-28T11:31:18Z",
+      "environmentPresent": true,
+      "environmentId": 22918944124,
+      "environmentNodeId": "EN_kwDOS6fcy88AAAAFVhNVfA",
+      "branchPolicyId": 61286114,
+      "branchPolicyNodeId": "MDE2OkdhdGVCcmFuY2hQb2xpY3k2MTI4NjExNA==",
+      "customBranchPolicy": "main",
+      "customBranchPolicyCount": 1,
+      "protectedBranches": false,
+      "customBranchPolicies": true,
+      "canAdminsBypass": true,
+      "requiredReviewerCount": 0,
+      "secretCount": 0,
+      "disposition": "main-only-environment-present-custody-pending"
+    }
+  },
+  "packagePin": {
+    "status": "unresolved-rendering-profile-release",
+    "version": null,
+    "sha256": null,
+    "servedPackageVerified": false,
+    "requiredCapability": "rendering-v1 selected source",
+    "requiredBeforeActivation": true,
+    "refusal": "no immutable published CLI release with rendering-v1 support is selected"
+  },
+  "credentialInventory": [],
+  "activationEvidence": {
+    "observedAt": "2026-09-28T11:31:18Z",
+    "sourceMainSha": "e4e07e4f44fe4afdf619ebe7a1f814ecb40f120d",
+    "sourceRepositoryId": 1269292235,
+    "requiredCheckAppId": 15368,
+    "requiredGateChecks": [
+      "Deterministic gate",
+      "API compatibility gate (breaking-change → SemVer major)",
+      "kit / coordination-kit",
+      "skill-view-check",
+      "materialize / receiver-validate"
+    ]
+  },
+  "activationPrerequisites": [
+    "published immutable Coordination CLI with rendering-v1 support and verified package SHA-256",
+    "all three dedicated ordinary-v2 secrets are enrolled and read back",
+    "current source-check population and shared Authority binding are read back again"
+  ],
+  "forbiddenCredentialReuse": [
+    "CALLABLE_ISOLATED_OPERATION_APP_PRIVATE_KEY",
+    "V1_ADMISSION_AUTHORIZER_PRIVATE_KEY",
+    "V1_ADMISSION_APP_PRIVATE_KEY"
+  ],
+  "unchangedGates": ["OpenV2"],
+  "migration": {
+    "v1Admission": false,
+    "receiverStateImport": false
+  }
+}
