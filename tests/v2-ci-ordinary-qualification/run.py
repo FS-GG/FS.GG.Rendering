@@ -137,20 +137,20 @@ class RenderingQualificationTests(unittest.TestCase):
         with self.assertRaisesRegex(MODULE.Refusal, "wrong repository"):
             self.qualify(associations=associations)
 
-    def test_policy_remains_disabled_with_explicit_release_and_custody_refusals(self):
-        self.assertEqual("source-qualified-not-installed", self.policy["status"])
-        self.assertFalse(self.policy["credentialJob"]["installed"])
-        self.assertEqual(3, self.policy["credentialJob"]["liveObservation"]["secretCount"])
+    def test_policy_installs_published_package_with_enrolled_credentials(self):
+        self.assertEqual("installed", self.policy["status"])
+        self.assertTrue(self.policy["credentialJob"]["installed"])
         self.assertEqual(3, len(self.policy["credentialInventory"]))
-        self.assertEqual("awaiting-published-rendering-profile-release",
-                         self.policy["packagePin"]["status"])
-        self.assertIsNone(self.policy["packagePin"]["version"])
-        self.assertIsNone(self.policy["packagePin"]["sha256"])
-        self.assertIn("no immutable published release asset",
-                      self.policy["packagePin"]["refusal"])
+        self.assertTrue(all(item["provisioned"] for item in self.policy["credentialInventory"]))
+        self.assertEqual("published-served-verified", self.policy["packagePin"]["status"])
+        self.assertEqual("0.1.4", self.policy["packagePin"]["version"])
+        self.assertEqual("10a51295db43e454b7692196533cceda48508165a8023dc98e87639be89f5c50", self.policy["packagePin"]["sha256"])
+        self.assertEqual(36427124428, self.policy["packagePin"]["publishRunId"])
+        self.assertTrue(self.policy["packagePin"]["servedPackageVerified"])
+        self.assertEqual(36416756692, self.policy["credentialEnrollmentEvidence"]["bridgeRunId"])
+        self.assertEqual([], self.policy["activationPrerequisites"])
         self.assertEqual(["OpenV2"], self.policy["unchangedGates"])
-        self.assertEqual({"v1Admission": False, "receiverStateImport": False},
-                         self.policy["migration"])
+        self.assertEqual({"v1Admission": False, "receiverStateImport": False}, self.policy["migration"])
 
 
 if __name__ == "__main__":

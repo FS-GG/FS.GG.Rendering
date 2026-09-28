@@ -1,7 +1,6 @@
 # C3-RENDERING-01 — Ordinary V2 receiver adoption
 
-Status: source merged and disabled. Dedicated custody is enrolled; CLI release pin and activation
-remain pending.
+Status: installed. Dedicated custody and immutable Coordination CLI 0.1.4 are pinned; protected-main pushes run secret-free qualification before the bounded settlement job.
 
 FS.GG.Rendering is the fixed C3 source repository (`FS-GG/FS.GG.Rendering`, repository ID
 `1269292235`) under the code-owned `rendering-v1` profile. This change adds only repository-owned
@@ -26,11 +25,8 @@ check, generated workspace content, or protected effect.
   App `5064713`, installation `164553252`, repository `FS-GG/FS.GG.Coordination.Authority`
   (`1351660651`), `contents:write`, metadata read, and the existing writer/integrity ruleset pins.
 - Rendering's `ordinary-v2` environment exists as ID `22918944124`, restricted to the single `main`
-  branch policy ID `61286114`, with no reviewers. The protected custody bridge run `36416756692`
-  succeeded and the environment now reads back the exact three dedicated ordinary-v2 secret names.
-- Coordination CLI `0.1.4` is the required target, but it has no published immutable release asset.
-  Selected version and package SHA-256 remain null, and policy explicitly refuses activation until
-  the served package digest is independently verified.
+  branch policy ID `61286114`, with no reviewers. The protected custody bridge run `36416756692` succeeded and the environment reads back the exact three dedicated ordinary-v2 secret names.
+- Coordination CLI `0.1.4` is installed from the immutable GitHub release asset pinned to SHA-256 `10a51295db43e454b7692196533cceda48508165a8023dc98e87639be89f5c50`; publisher run `36427124428` verified both feeds and anonymous installation.
 - Rendering already pins .NET SDK `10.0.401` in the repository's tracked `global.json`. This
   receiver leaves that pin unchanged and invokes no .NET setup while disabled.
 

@@ -95,45 +95,43 @@ class RenderingObservationSourceTests(unittest.TestCase):
         with patch.object(MODULE, "api", side_effect=api):
             MODULE.current_authority("FS-GG/FS.GG.Rendering", policy)
 
-    def test_workflow_is_hard_disabled_and_has_no_credential_or_package_surface(self):
+    def test_workflow_prepares_bounded_settlement_with_exact_receipt_guard(self):
         workflow = (ROOT / ".github/workflows/v2-ci-ordinary-settlement.yml").read_text()
         self.assertIn("  push:\n    branches: [main]", workflow)
-        self.assertIn("    if: ${{ false }}", workflow)
+        self.assertNotIn("    if: ${{ false }}", workflow)
+        self.assertIn("if: needs.preflight.outputs.activation == 'true'", workflow)
+        self.assertIn("environment: ordinary-v2", workflow)
         self.assertIn("FSGG_V2_SOURCE_PROFILE: rendering-v1", workflow)
         self.assertIn("persist-credentials: false", workflow)
         self.assertIn("python3 tools/v2-ci-ordinary-observe.py produce", workflow)
-        for forbidden in (
-            "secrets.", "environment:", "ordinary-settlement execute", "PACKAGE_VERSION",
-            "PACKAGE_SHA256", "setup-dotnet", "global.json", "workflow_dispatch:",
-            "repository_dispatch:", "pull_request:", "pull_request_target:",
-        ):
+        self.assertIn("python3 tools/v2-ci-ordinary-observe.py verify", workflow)
+        self.assertIn("PACKAGE_VERSION: 0.1.4", workflow)
+        self.assertIn("PACKAGE_SHA256: 10a51295db43e454b7692196533cceda48508165a8023dc98e87639be89f5c50", workflow)
+        self.assertIn("https://github.com/FS-GG/FS.GG.Coordination/releases/download/v$PACKAGE_VERSION/FS.GG.Coordination.Cli.$PACKAGE_VERSION.nupkg", workflow)
+        self.assertNotIn("api.nuget.org/v3-flatcontainer", workflow)
+        self.assertIn("ordinary-settlement execute", workflow)
+        for name in ("V2_ORDINARY_APP_ID", "V2_ORDINARY_APP_PRIVATE_KEY", "V2_ORDINARY_AUTHORIZER_PRIVATE_KEY"):
+            self.assertIn("${{ secrets." + name + " }}", workflow)
+        for forbidden in ("workflow_dispatch:", "repository_dispatch:", "pull_request:", "pull_request_target:", "V1_ADMISSION", "CALLABLE_ISOLATED_OPERATION"):
             self.assertNotIn(forbidden, workflow)
 
-    def test_policy_anchor_environment_and_unresolved_package_are_bounded(self):
+    def test_policy_and_anchor_bind_installed_release_and_shared_authority(self):
         policy = json.loads((ROOT / "policy/v2-ci-ordinary-settlement.json").read_text())
         anchor = json.loads((ROOT / "policy/v2-ci-ordinary-settlement-anchor.json").read_text())
         self.assertEqual("v2-ci-i1-ordinary-settlement-v1", policy["policyId"])
         self.assertEqual(policy["policyId"], anchor["policyId"])
-        self.assertEqual("source-qualified-not-installed", policy["status"])
-        self.assertFalse(policy["credentialJob"]["installed"])
+        self.assertEqual("installed", policy["status"])
+        self.assertTrue(policy["credentialJob"]["installed"])
         observation = policy["credentialJob"]["liveObservation"]
         self.assertEqual(22918944124, observation["environmentId"])
         self.assertEqual(61286114, observation["branchPolicyId"])
-        self.assertEqual("main", observation["customBranchPolicy"])
         self.assertEqual(3, observation["secretCount"])
-        self.assertEqual({
-            "V2_ORDINARY_APP_ID",
-            "V2_ORDINARY_APP_PRIVATE_KEY",
-            "V2_ORDINARY_AUTHORIZER_PRIVATE_KEY",
-        }, set(observation["secretNames"]))
-        self.assertEqual("awaiting-published-rendering-profile-release",
-                         policy["packagePin"]["status"])
-        self.assertEqual("0.1.4", policy["packagePin"]["targetVersion"])
-        self.assertIsNone(policy["packagePin"]["version"])
-        self.assertIsNone(policy["packagePin"]["sha256"])
-        self.assertFalse(policy["packagePin"]["servedPackageVerified"])
-        self.assertEqual(3, len(policy["credentialInventory"]))
-        self.assertTrue(all(item["provisioned"] for item in policy["credentialInventory"]))
+        self.assertEqual("published-served-verified", policy["packagePin"]["status"])
+        self.assertEqual("0.1.4", policy["packagePin"]["version"])
+        self.assertEqual("10a51295db43e454b7692196533cceda48508165a8023dc98e87639be89f5c50", policy["packagePin"]["sha256"])
+        self.assertEqual(36427124428, policy["packagePin"]["publishRunId"])
+        self.assertTrue(policy["packagePin"]["servedPackageVerified"])
+        self.assertEqual([], policy["activationPrerequisites"])
         self.assertEqual(5064713, anchor["writer"]["appId"])
         self.assertEqual(164553252, anchor["writer"]["installationId"])
         self.assertEqual(1351660651, anchor["writer"]["repositoryId"])
