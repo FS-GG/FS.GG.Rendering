@@ -1,0 +1,48 @@
+name: V2 ordinary post-merge settlement (source only)
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  actions: read
+  contents: read
+  checks: read
+  pull-requests: read
+
+concurrency:
+  group: v2-ci-ordinary-settlement-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    name: ordinary-v2-secret-free-preflight
+    # Rendering remains inert until an immutable rendering-v1 CLI release and
+    # dedicated custody are installed and read back in one later source change.
+    if: ${{ false }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out exact protected source without persisted credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Observe native source and required-check evidence
+        id: receipt
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_WORKFLOW_SHA: ${{ github.workflow_sha }}
+          FSGG_V2_SOURCE_PROFILE: rendering-v1
+        run: |
+          set -euo pipefail
+          python3 tools/v2-ci-ordinary-observe.py produce "$RUNNER_TEMP/ordinary-v2-preflight.json"
+      - name: Retain public exact-run receipt
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: ordinary-v2-preflight-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/ordinary-v2-preflight.json
+          retention-days: 30
+          if-no-files-found: error
