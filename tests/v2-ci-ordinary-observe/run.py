@@ -120,12 +120,20 @@ class RenderingObservationSourceTests(unittest.TestCase):
         self.assertEqual(22918944124, observation["environmentId"])
         self.assertEqual(61286114, observation["branchPolicyId"])
         self.assertEqual("main", observation["customBranchPolicy"])
-        self.assertEqual(0, observation["secretCount"])
-        self.assertEqual("unresolved-rendering-profile-release", policy["packagePin"]["status"])
+        self.assertEqual(3, observation["secretCount"])
+        self.assertEqual({
+            "V2_ORDINARY_APP_ID",
+            "V2_ORDINARY_APP_PRIVATE_KEY",
+            "V2_ORDINARY_AUTHORIZER_PRIVATE_KEY",
+        }, set(observation["secretNames"]))
+        self.assertEqual("awaiting-published-rendering-profile-release",
+                         policy["packagePin"]["status"])
+        self.assertEqual("0.1.4", policy["packagePin"]["targetVersion"])
         self.assertIsNone(policy["packagePin"]["version"])
         self.assertIsNone(policy["packagePin"]["sha256"])
         self.assertFalse(policy["packagePin"]["servedPackageVerified"])
-        self.assertEqual([], policy["credentialInventory"])
+        self.assertEqual(3, len(policy["credentialInventory"]))
+        self.assertTrue(all(item["provisioned"] for item in policy["credentialInventory"]))
         self.assertEqual(5064713, anchor["writer"]["appId"])
         self.assertEqual(164553252, anchor["writer"]["installationId"])
         self.assertEqual(1351660651, anchor["writer"]["repositoryId"])

@@ -89,7 +89,7 @@
     "allowedBranches": ["main"],
     "installed": false,
     "liveObservation": {
-      "observedAt": "2026-09-28T11:31:18Z",
+      "observedAt": "2026-09-28T12:08:36Z",
       "environmentPresent": true,
       "environmentId": 22918944124,
       "environmentNodeId": "EN_kwDOS6fcy88AAAAFVhNVfA",
@@ -101,23 +101,64 @@
       "customBranchPolicies": true,
       "canAdminsBypass": true,
       "requiredReviewerCount": 0,
-      "secretCount": 0,
-      "disposition": "main-only-environment-present-custody-pending"
+      "secretCount": 3,
+      "secretNames": [
+        "V2_ORDINARY_APP_ID",
+        "V2_ORDINARY_APP_PRIVATE_KEY",
+        "V2_ORDINARY_AUTHORIZER_PRIVATE_KEY"
+      ],
+      "disposition": "dedicated-custody-enrolled-release-pending"
     }
   },
   "packagePin": {
-    "status": "unresolved-rendering-profile-release",
+    "status": "awaiting-published-rendering-profile-release",
+    "targetVersion": "0.1.4",
     "version": null,
     "sha256": null,
     "servedPackageVerified": false,
     "requiredCapability": "rendering-v1 selected source",
     "requiredBeforeActivation": true,
-    "refusal": "no immutable published CLI release with rendering-v1 support is selected"
+    "refusal": "Coordination CLI 0.1.4 has no immutable published release asset or verified served SHA-256"
   },
-  "credentialInventory": [],
+  "credentialInventory": [
+    {
+      "name": "V2_ORDINARY_AUTHORIZER_PRIVATE_KEY",
+      "purpose": "sign canonical ordinary-v2 settlement intent",
+      "generation": "new-v2-dedicated",
+      "provisioned": true,
+      "publicIdentity": "ordinary-v2-production-6121c3f2ab38acf3; spki-sha256:6121c3f2ab38acf38a37f782eb7775da78598b9cfabc0054917d3d59fe50e3ee"
+    },
+    {
+      "name": "V2_ORDINARY_APP_ID",
+      "purpose": "identify the repository-scoped ordinary-v2 GitHub App",
+      "generation": "new-v2-dedicated",
+      "provisioned": true,
+      "publicIdentity": "app:5064713; installation:164553252"
+    },
+    {
+      "name": "V2_ORDINARY_APP_PRIVATE_KEY",
+      "purpose": "mint a short-lived repository-scoped installation token",
+      "generation": "new-v2-dedicated",
+      "provisioned": true,
+      "publicIdentity": "app:5064713; installation:164553252"
+    }
+  ],
+  "credentialEnrollmentEvidence": {
+    "status": "sealed-and-independently-read-back",
+    "bridgeRepository": "FS-GG/.github",
+    "bridgeRepositoryId": 1269292704,
+    "bridgeCommit": "792bea56adeb09597d7b2c6db8220983b689e779",
+    "bridgeWorkflow": ".github/workflows/c3-rendering-ordinary-enrollment-bridge.yml",
+    "bridgeRunId": 36416756692,
+    "bridgeRunAttempt": 1,
+    "bridgeConclusion": "success",
+    "ciphertextPacketVerification": "signed-packet-validated",
+    "encryptedPutCount": 3,
+    "readBackAt": "2026-09-28T12:08:36Z"
+  },
   "activationEvidence": {
-    "observedAt": "2026-09-28T11:31:18Z",
-    "sourceMainSha": "e4e07e4f44fe4afdf619ebe7a1f814ecb40f120d",
+    "observedAt": "2026-09-28T12:08:36Z",
+    "sourceMainSha": "cd8f9472fe44dfa648a1b293be535bfb8b5e68a6",
     "sourceRepositoryId": 1269292235,
     "requiredCheckAppId": 15368,
     "requiredGateChecks": [
@@ -129,9 +170,8 @@
     ]
   },
   "activationPrerequisites": [
-    "published immutable Coordination CLI with rendering-v1 support and verified package SHA-256",
-    "all three dedicated ordinary-v2 secrets are enrolled and read back",
-    "current source-check population and shared Authority binding are read back again"
+    "published immutable Coordination CLI 0.1.4 with rendering-v1 support and independently verified served package SHA-256",
+    "current source-check population and shared Authority binding are read back again with the release pin"
   ],
   "forbiddenCredentialReuse": [
     "CALLABLE_ISOLATED_OPERATION_APP_PRIVATE_KEY",

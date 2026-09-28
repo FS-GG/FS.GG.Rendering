@@ -1,6 +1,7 @@
 # C3-RENDERING-01 — Ordinary V2 receiver adoption
 
-Status: source prepared and disabled. CLI release, custody, installation, and activation remain pending.
+Status: source merged and disabled. Dedicated custody is enrolled; CLI release pin and activation
+remain pending.
 
 FS.GG.Rendering is the fixed C3 source repository (`FS-GG/FS.GG.Rendering`, repository ID
 `1269292235`) under the code-owned `rendering-v1` profile. This change adds only repository-owned
@@ -25,9 +26,11 @@ check, generated workspace content, or protected effect.
   App `5064713`, installation `164553252`, repository `FS-GG/FS.GG.Coordination.Authority`
   (`1351660651`), `contents:write`, metadata read, and the existing writer/integrity ruleset pins.
 - Rendering's `ordinary-v2` environment exists as ID `22918944124`, restricted to the single `main`
-  branch policy ID `61286114`, with no reviewers and zero secrets. No credential is enrolled.
-- No immutable published CLI release with `rendering-v1` support is selected. Version and package
-  SHA-256 remain null, and policy explicitly refuses activation rather than borrowing Audio's pin.
+  branch policy ID `61286114`, with no reviewers. The protected custody bridge run `36416756692`
+  succeeded and the environment now reads back the exact three dedicated ordinary-v2 secret names.
+- Coordination CLI `0.1.4` is the required target, but it has no published immutable release asset.
+  Selected version and package SHA-256 remain null, and policy explicitly refuses activation until
+  the served package digest is independently verified.
 - Rendering already pins .NET SDK `10.0.401` in the repository's tracked `global.json`. This
   receiver leaves that pin unchanged and invokes no .NET setup while disabled.
 
@@ -35,13 +38,11 @@ check, generated workspace content, or protected effect.
 
 Do not enable the preflight or add a credential job until one reviewed source change verifies all of:
 
-1. an immutable published Coordination CLI supports the exact `rendering-v1` source profile and its
-   served package SHA-256 is pinned;
-2. all three dedicated ordinary-v2 credentials are enrolled and independently read back without V1
-   or callable-operation credential reuse; and
-3. Rendering identity, exact current required-check population, producer mappings, and shared
+1. immutable published Coordination CLI `0.1.4` supports the exact `rendering-v1` source profile and
+   its independently verified served package SHA-256 is pinned; and
+2. Rendering identity, exact current required-check population, producer mappings, and shared
    Authority binding are freshly read back.
 
-The later activation must change policy status, installed state, package evidence, credential
-inventory, observer guard, and the bounded credential job together. This disabled source cannot
-settle work and imports no V1 admission or receiver state.
+The later activation must change policy status, installed state, package evidence, observer guard,
+and the bounded credential job together. This disabled source cannot settle work and imports no V1
+admission or receiver state.

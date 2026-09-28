@@ -140,13 +140,13 @@ class RenderingQualificationTests(unittest.TestCase):
     def test_policy_remains_disabled_with_explicit_release_and_custody_refusals(self):
         self.assertEqual("source-qualified-not-installed", self.policy["status"])
         self.assertFalse(self.policy["credentialJob"]["installed"])
-        self.assertEqual(0, self.policy["credentialJob"]["liveObservation"]["secretCount"])
-        self.assertEqual([], self.policy["credentialInventory"])
-        self.assertEqual("unresolved-rendering-profile-release",
+        self.assertEqual(3, self.policy["credentialJob"]["liveObservation"]["secretCount"])
+        self.assertEqual(3, len(self.policy["credentialInventory"]))
+        self.assertEqual("awaiting-published-rendering-profile-release",
                          self.policy["packagePin"]["status"])
         self.assertIsNone(self.policy["packagePin"]["version"])
         self.assertIsNone(self.policy["packagePin"]["sha256"])
-        self.assertIn("no immutable published CLI release",
+        self.assertIn("no immutable published release asset",
                       self.policy["packagePin"]["refusal"])
         self.assertEqual(["OpenV2"], self.policy["unchangedGates"])
         self.assertEqual({"v1Admission": False, "receiverStateImport": False},
