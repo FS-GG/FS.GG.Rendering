@@ -1,4 +1,4 @@
-name: V2 ordinary post-merge settlement (source only)
+name: V2 ordinary post-merge settlement
 
 on:
   push:
@@ -17,11 +17,11 @@ concurrency:
 jobs:
   preflight:
     name: ordinary-v2-secret-free-preflight
-    # Rendering remains inert until an immutable rendering-v1 CLI release and
-    # dedicated custody are installed and read back in one later source change.
-    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    outputs:
+      receipt_sha256: ${{ steps.receipt.outputs.sha256 }}
+      activation: ${{ steps.receipt.outputs.activation }}
     steps:
       - name: Check out exact protected source without persisted credentials
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -39,6 +39,10 @@ jobs:
         run: |
           set -euo pipefail
           python3 tools/v2-ci-ordinary-observe.py produce "$RUNNER_TEMP/ordinary-v2-preflight.json"
+          digest="$(sha256sum "$RUNNER_TEMP/ordinary-v2-preflight.json" | cut -d ' ' -f 1)"
+          activation="$(python3 -c 'import json,sys; print(str(json.load(open(sys.argv[1]))["activation"]).lower())' "$RUNNER_TEMP/ordinary-v2-preflight.json")"
+          echo "sha256=$digest" >> "$GITHUB_OUTPUT"
+          echo "activation=$activation" >> "$GITHUB_OUTPUT"
       - name: Retain public exact-run receipt
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
@@ -46,3 +50,79 @@ jobs:
           path: ${{ runner.temp }}/ordinary-v2-preflight.json
           retention-days: 30
           if-no-files-found: error
+
+  settle:
+    name: ordinary-v2-credential-settlement
+    needs: [preflight]
+    # Only the exact secret-free predecessor receipt can admit this job.
+    if: needs.preflight.outputs.activation == 'true'
+    environment: ordinary-v2
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PACKAGE_VERSION: 0.1.4
+      # Published release asset digest, independently read back from GitHub.
+      PACKAGE_SHA256: 10a51295db43e454b7692196533cceda48508165a8023dc98e87639be89f5c50
+    permissions:
+      actions: read
+      contents: read
+      checks: read
+      pull-requests: read
+    steps:
+      - name: Check out exact protected Rendering source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Download only this run's predecessor receipt
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: ordinary-v2-preflight-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/ordinary-v2-receipt
+      - name: Recheck the receipt and current public authority
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_WORKFLOW_SHA: ${{ github.workflow_sha }}
+          EXPECTED_RECEIPT_SHA256: ${{ needs.preflight.outputs.receipt_sha256 }}
+          FSGG_V2_SOURCE_PROFILE: rendering-v1
+        run: |
+          set -euo pipefail
+          receipt="$RUNNER_TEMP/ordinary-v2-receipt/ordinary-v2-preflight.json"
+          test "$(sha256sum "$receipt" | cut -d ' ' -f 1)" = "$EXPECTED_RECEIPT_SHA256"
+          python3 tools/v2-ci-ordinary-observe.py verify "$receipt"
+      - name: Set up the pinned .NET SDK
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
+        with:
+          global-json-file: global.json
+      - name: Install only the pinned public Coordination CLI archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          package_dir="$RUNNER_TEMP/ordinary-v2-package"
+          mkdir "$package_dir"
+          package="$package_dir/FS.GG.Coordination.Cli.$PACKAGE_VERSION.nupkg"
+          curl --fail --location --silent --show-error \
+            "https://github.com/FS-GG/FS.GG.Coordination/releases/download/v$PACKAGE_VERSION/FS.GG.Coordination.Cli.$PACKAGE_VERSION.nupkg" \
+            --output "$package"
+          test "$(sha256sum "$package" | cut -d ' ' -f 1)" = "$PACKAGE_SHA256"
+          config="$RUNNER_TEMP/ordinary-v2-local-only.config"
+          cat > "$config" <<CFG
+          <?xml version="1.0" encoding="utf-8"?><configuration><packageSources><clear/><add key="pinned" value="$package_dir"/></packageSources></configuration>
+          CFG
+          dotnet tool install FS.GG.Coordination.Cli --version "$PACKAGE_VERSION" \
+            --tool-path "$RUNNER_TEMP/ordinary-v2-cli" --configfile "$config" --no-cache
+      - name: Execute exactly one installed Rendering settlement attempt
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_WORKFLOW_SHA: ${{ github.workflow_sha }}
+          FSGG_V2_SOURCE_PROFILE: rendering-v1
+          FSGG_V2_PREFLIGHT_RECEIPT: ${{ runner.temp }}/ordinary-v2-receipt/ordinary-v2-preflight.json
+          V2_ORDINARY_APP_ID: ${{ secrets.V2_ORDINARY_APP_ID }}
+          V2_ORDINARY_APP_PRIVATE_KEY: ${{ secrets.V2_ORDINARY_APP_PRIVATE_KEY }}
+          V2_ORDINARY_AUTHORIZER_PRIVATE_KEY: ${{ secrets.V2_ORDINARY_AUTHORIZER_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/ordinary-v2-cli/fsgg-coordination" ordinary-settlement execute

@@ -1,7 +1,7 @@
 {
   "schema": "fsgg.github.v2-ci-ordinary-settlement-policy/1",
   "policyId": "v2-ci-i1-ordinary-settlement-v1",
-  "status": "source-qualified-not-installed",
+  "status": "installed",
   "repository": "FS-GG/FS.GG.Rendering",
   "repositoryId": 1269292235,
   "selectedSource": {
@@ -28,8 +28,14 @@
   "workflow": {
     "path": ".github/workflows/v2-ci-ordinary-settlement.yml",
     "revision": "sourceSha",
-    "requestEventsForbidden": ["pull_request", "pull_request_target"],
-    "manualEventsForbidden": ["workflow_dispatch", "repository_dispatch"]
+    "requestEventsForbidden": [
+      "pull_request",
+      "pull_request_target"
+    ],
+    "manualEventsForbidden": [
+      "workflow_dispatch",
+      "repository_dispatch"
+    ]
   },
   "qualification": {
     "phase": "secret-free-predecessor",
@@ -43,7 +49,7 @@
     ],
     "requiredGateChecks": [
       "Deterministic gate",
-      "API compatibility gate (breaking-change → SemVer major)",
+      "API compatibility gate (breaking-change \u2192 SemVer major)",
       "kit / coordination-kit",
       "skill-view-check",
       "materialize / receiver-validate"
@@ -54,7 +60,7 @@
         "path": ".github/workflows/gate.yml",
         "event": "pull_request"
       },
-      "API compatibility gate (breaking-change → SemVer major)": {
+      "API compatibility gate (breaking-change \u2192 SemVer major)": {
         "workflowId": 295951544,
         "path": ".github/workflows/gate.yml",
         "event": "pull_request"
@@ -86,10 +92,12 @@
     "runner": "github-hosted-ephemeral",
     "requiredReviewers": 0,
     "protectedBranchesOnly": true,
-    "allowedBranches": ["main"],
-    "installed": false,
+    "allowedBranches": [
+      "main"
+    ],
+    "installed": true,
     "liveObservation": {
-      "observedAt": "2026-09-28T11:31:18Z",
+      "observedAt": "2026-09-28T13:31:00Z",
       "environmentPresent": true,
       "environmentId": 22918944124,
       "environmentNodeId": "EN_kwDOS6fcy88AAAAFVhNVfA",
@@ -101,44 +109,96 @@
       "customBranchPolicies": true,
       "canAdminsBypass": true,
       "requiredReviewerCount": 0,
-      "secretCount": 0,
-      "disposition": "main-only-environment-present-custody-pending"
+      "secretCount": 3,
+      "secretNames": [
+        "V2_ORDINARY_APP_ID",
+        "V2_ORDINARY_APP_PRIVATE_KEY",
+        "V2_ORDINARY_AUTHORIZER_PRIVATE_KEY"
+      ],
+      "disposition": "dedicated-custody-enrolled-main-only"
     }
   },
   "packagePin": {
-    "status": "unresolved-rendering-profile-release",
-    "version": null,
-    "sha256": null,
-    "servedPackageVerified": false,
+    "status": "published-served-verified",
+    "version": "0.1.4",
+    "sha256": "10a51295db43e454b7692196533cceda48508165a8023dc98e87639be89f5c50",
+    "hostedCandidateRunId": 36424378261,
+    "publishRunId": 36427124428,
+    "publishRunAttempt": 2,
+    "publishRunHeadSha": "e29bc98dc0d43343768dabfadd9c3f727e252ee1",
+    "publishWorkflow": ".github/workflows/callable-cli-release-publish.yml",
+    "releaseUrl": "https://github.com/FS-GG/FS.GG.Coordination/releases/tag/v0.1.4",
+    "releasePublishedAt": "2026-09-28T13:29:06Z",
+    "assetName": "FS.GG.Coordination.Cli.0.1.4.nupkg",
+    "assetSize": 6433772,
+    "servedPackageVerified": true,
     "requiredCapability": "rendering-v1 selected source",
-    "requiredBeforeActivation": true,
-    "refusal": "no immutable published CLI release with rendering-v1 support is selected"
+    "requiredBeforeActivation": true
   },
-  "credentialInventory": [],
+  "credentialInventory": [
+    {
+      "name": "V2_ORDINARY_AUTHORIZER_PRIVATE_KEY",
+      "purpose": "sign canonical ordinary-v2 settlement intent",
+      "generation": "new-v2-dedicated",
+      "provisioned": true,
+      "publicIdentity": "ordinary-v2-production-6121c3f2ab38acf3; spki-sha256:6121c3f2ab38acf38a37f782eb7775da78598b9cfabc0054917d3d59fe50e3ee"
+    },
+    {
+      "name": "V2_ORDINARY_APP_ID",
+      "purpose": "identify the repository-scoped ordinary-v2 GitHub App",
+      "generation": "new-v2-dedicated",
+      "provisioned": true,
+      "publicIdentity": "app:5064713; installation:164553252"
+    },
+    {
+      "name": "V2_ORDINARY_APP_PRIVATE_KEY",
+      "purpose": "mint a short-lived repository-scoped installation token",
+      "generation": "new-v2-dedicated",
+      "provisioned": true,
+      "publicIdentity": "app:5064713; installation:164553252"
+    }
+  ],
+  "credentialEnrollmentEvidence": {
+    "status": "installed-and-independently-read-back",
+    "bridgeRepository": "FS-GG/.github",
+    "bridgeRepositoryId": 1269292704,
+    "bridgeCommit": "792bea56adeb09597d7b2c6db8220983b689e779",
+    "bridgeWorkflow": ".github/workflows/c3-rendering-ordinary-enrollment-bridge.yml",
+    "bridgeRunId": 36416756692,
+    "bridgeRunAttempt": 1,
+    "bridgeConclusion": "success",
+    "ciphertextPacketVerification": "signed-packet-validated",
+    "encryptedPutCount": 3,
+    "readBackAt": "2026-09-28T12:08:36Z"
+  },
   "activationEvidence": {
-    "observedAt": "2026-09-28T11:31:18Z",
-    "sourceMainSha": "e4e07e4f44fe4afdf619ebe7a1f814ecb40f120d",
+    "observedAt": "2026-09-28T13:31:00Z",
+    "sourceMainSha": "cd8f9472fe44dfa648a1b293be535bfb8b5e68a6",
     "sourceRepositoryId": 1269292235,
     "requiredCheckAppId": 15368,
     "requiredGateChecks": [
       "Deterministic gate",
-      "API compatibility gate (breaking-change → SemVer major)",
+      "API compatibility gate (breaking-change \u2192 SemVer major)",
       "kit / coordination-kit",
       "skill-view-check",
       "materialize / receiver-validate"
-    ]
+    ],
+    "authorityRepository": "FS-GG/FS.GG.Coordination.Authority",
+    "authorityRepositoryId": 1351660651,
+    "writerRulesetId": 21872113,
+    "writerRulesetEnforcement": "active",
+    "integrityRulesetId": 21872115,
+    "integrityRulesetEnforcement": "active"
   },
-  "activationPrerequisites": [
-    "published immutable Coordination CLI with rendering-v1 support and verified package SHA-256",
-    "all three dedicated ordinary-v2 secrets are enrolled and read back",
-    "current source-check population and shared Authority binding are read back again"
-  ],
+  "activationPrerequisites": [],
   "forbiddenCredentialReuse": [
     "CALLABLE_ISOLATED_OPERATION_APP_PRIVATE_KEY",
     "V1_ADMISSION_AUTHORIZER_PRIVATE_KEY",
     "V1_ADMISSION_APP_PRIVATE_KEY"
   ],
-  "unchangedGates": ["OpenV2"],
+  "unchangedGates": [
+    "OpenV2"
+  ],
   "migration": {
     "v1Admission": false,
     "receiverStateImport": false
