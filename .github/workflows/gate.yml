@@ -757,6 +757,8 @@ jobs:
         run: |
           python3 scripts/test-release-custody.py
           python3 scripts/test-release-preflight.py
+          python3 scripts/test-release-source-guard.py
+          python3 scripts/test-release-toolchain-identity.py
           python3 scripts/test-nuget-client-archive.py
           bash scripts/apicompat-check.sh --self-test
           bash scripts/test-apicompat-release-status.sh

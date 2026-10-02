@@ -117,6 +117,37 @@ class ReleaseCustodyTests(unittest.TestCase):
             "packages": packages,
         })
 
+    def test_successor_custody_requires_external_sources_and_public_surface(self):
+        repo=SCRIPT.parent.parent
+        plan=json.loads((repo/'eng/release/svg-external-authority-0.32.0.json').read_text())
+        custody.validate_plan(plan)
+        with tempfile.TemporaryDirectory() as folder:
+            archives=Path(folder)
+            libraries=[p['id'] for p in plan['packages'] if p['kind']=='library']
+            for package in plan['packages']:
+                entries={'lib/net10.0/value.dll': b'fixture'}
+                dependencies=[]
+                if package['kind']=='bom': dependencies=[(name,'[0.32.0]') for name in libraries]
+                if package['kind']=='template': entries.update({name:b'fixture' for name in plan['releaseChecks']['generatedTemplateEntries']})
+                if package['id']==plan['releaseChecks']['svgPackage']:
+                    entries.update({name:b'fixture' for name in plan['releaseChecks']['fableEntries']})
+                    entries['api-surface/SvgBrowser.fsi']=' '.join(plan['releaseChecks']['svgSurfaceMarkers']).encode()
+                    svg_entries=entries.copy()
+                    svg_path=archives/(package['id']+'.0.32.0.nupkg')
+                self.archive(archives/(package['id']+'.0.32.0.nupkg'),package['id'],'0.32.0',entries,dependencies=dependencies)
+            records=lambda: [custody.archive_record(p) for p in archives.glob('*.nupkg')]
+            custody.verify_release_shape(plan, records(), archives, 'a'*40)
+            for mutation in ['missing-fs','missing-fsi','missing-surface','missing-archive']:
+                with self.subTest(mutation=mutation):
+                    entries=svg_entries.copy()
+                    if mutation=='missing-fs': entries.pop('fable/SvgExternalSessionHost.fs')
+                    if mutation=='missing-fsi': entries.pop('fable/SvgExternalSessionHost.fsi')
+                    if mutation=='missing-surface': entries['api-surface/SvgBrowser.fsi']=entries['api-surface/SvgBrowser.fsi'].replace(b'SvgExternalSessionHost',b'')
+                    self.archive(svg_path,plan['releaseChecks']['svgPackage'],'0.32.0',entries)
+                    actual=records()
+                    if mutation=='missing-archive': actual=actual[:-1]
+                    with self.assertRaises(custody.CustodyError): custody.verify_release_shape(plan,actual,archives,'a'*40)
+
     def test_workflow_retains_before_push_and_never_deletes_release_tags(self):
         repo = SCRIPT.parent.parent
         release = (repo / ".github/workflows/release.yml").read_text(encoding="utf-8")

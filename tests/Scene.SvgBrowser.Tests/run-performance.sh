@@ -11,9 +11,9 @@ packages="$work/packages"
 tools="$work/tools"
 mkdir -p "$feed" "$packages" "$tools" "$(dirname "$output")"
 
-dotnet pack "$repo/src/Scene/Scene.fsproj" -c Release -o "$feed" -p:Version=0.31.0
-dotnet pack "$repo/src/KeyboardInput/KeyboardInput.fsproj" -c Release -o "$feed" -p:Version=0.31.0
-dotnet pack "$repo/src/Scene.SvgBrowser/Scene.SvgBrowser.fsproj" -c Release -o "$feed" -p:Version=0.31.0
+dotnet pack "$repo/src/Scene/Scene.fsproj" -c Release -o "$feed" -p:Version=0.32.0
+dotnet pack "$repo/src/KeyboardInput/KeyboardInput.fsproj" -c Release -o "$feed" -p:Version=0.32.0
+dotnet pack "$repo/src/Scene.SvgBrowser/Scene.SvgBrowser.fsproj" -c Release -o "$feed" -p:Version=0.32.0
 cp -R "$repo/tests/Scene.SvgBrowser.Tests" "$work/Browser"
 cp "$repo/tests/Scene.PortableConsumers/DocumentRoundTrip.fs" "$work/Browser/DocumentRoundTrip.fs"
 rm -rf "$work/Browser/node_modules" "$work/Browser/dist" "$work/Browser/generated"

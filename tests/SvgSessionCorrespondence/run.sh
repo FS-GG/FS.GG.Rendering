@@ -9,9 +9,9 @@ work="$(mktemp -d "${TMPDIR:-/tmp}/svg-session-correspondence.XXXXXX")"
 trap 'rm -rf "$work"' EXIT
 mkdir -p "$work/feed" "$work/packages" "$work/tools"
 dotnet pack "$game_root/src/Game.Core/FS.GG.Game.Core.fsproj" -c Release -o "$work/feed" -p:Version=0.16.0 >/dev/null
-dotnet pack "$repo/src/Scene/Scene.fsproj" -c Release -o "$work/feed" -p:Version=0.31.0 >/dev/null
-dotnet pack "$repo/src/KeyboardInput/KeyboardInput.fsproj" -c Release -o "$work/feed" -p:Version=0.31.0 >/dev/null
-dotnet pack "$repo/src/Scene.SvgBrowser/Scene.SvgBrowser.fsproj" -c Release -o "$work/feed" -p:Version=0.31.0 >/dev/null
+dotnet pack "$repo/src/Scene/Scene.fsproj" -c Release -o "$work/feed" -p:Version=0.32.0 >/dev/null
+dotnet pack "$repo/src/KeyboardInput/KeyboardInput.fsproj" -c Release -o "$work/feed" -p:Version=0.32.0 >/dev/null
+dotnet pack "$repo/src/Scene.SvgBrowser/Scene.SvgBrowser.fsproj" -c Release -o "$work/feed" -p:Version=0.32.0 >/dev/null
 cp -R "$repo/tests/SvgSessionCorrespondence" "$work/Correspondence"
 cat > "$work/NuGet.Config" <<CONFIG
 <configuration><packageSources><clear/><add key="candidate" value="$work/feed"/><add key="nuget" value="https://api.nuget.org/v3/index.json"/></packageSources><packageSourceMapping><packageSource key="candidate"><package pattern="FS.GG.*"/></packageSource><packageSource key="nuget"><package pattern="*"/></packageSource></packageSourceMapping></configuration>

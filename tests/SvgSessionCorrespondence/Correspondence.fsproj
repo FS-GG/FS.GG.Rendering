@@ -9,6 +9,6 @@
     <Compile Include="Program.fs" />
     <PackageReference Include="Fable.Core" Version="5.3.0" />
     <PackageReference Include="FS.GG.Game.Core" Version="0.16.0" />
-    <PackageReference Include="FS.GG.UI.Scene.SvgBrowser" Version="0.31.0" />
+    <PackageReference Include="FS.GG.UI.Scene.SvgBrowser" Version="0.32.0" />
   </ItemGroup>
 </Project>
