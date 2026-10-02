@@ -175,6 +175,15 @@ class SelectedAttemptTests(unittest.TestCase):
         with self.assertRaises(SystemExit):self.validate(self.binding())
         self.assertTrue(self.validate(self.binding(ready=True))['attemptReady'])
 
+    def test_original_producer_wrong_version_refuses_before_acquisition(self):
+        with patch.object(guard, 'acquire_selected', side_effect=AssertionError('archive acquisition forbidden')), patch.object(guard.preflight, 'request', side_effect=AssertionError('network forbidden')):
+            for version in ['0.31.0', '0.33.0', 'v0.32.0']:
+                with self.subTest(version=version), self.assertRaises(SystemExit) as failure:
+                    guard.validate(ROOT, guard.PRODUCER, PLAN, version)
+                self.assertIn('requested version', str(failure.exception))
+            with self.assertRaises(SystemExit):
+                self.validate(self.binding(ready=True), source='a'*40)
+
     def test_wrong_selected_tuple_or_missing_native_proof_refuses(self):
         for key,value in [('producerSha','a'*40),('producerArtifact',0),('producerRun',0),('outerSha256','0'*64),('outerSizeBytes',1),('custodySha256','0'*64),('planSha256','0'*64),('version','0.31.0'),('githubEffectiveWrite','proven')]:
             with self.subTest(key=key),self.assertRaises(SystemExit):self.validate(self.binding(lambda doc:doc.update({key:value}),True))
@@ -192,6 +201,10 @@ class SelectedAttemptTests(unittest.TestCase):
         self.assertNotIn('actions/artifacts?name=',publisher);self.assertNotIn('sort_by(.created_at)',publisher)
         self.assertNotIn('--source-sha "$GITHUB_SHA"',publisher)
         self.assertIn('!inputs.preflight-only && inputs.bound-attempt',publisher)
+        self.assertLess(text.index('--source-sha "$source_sha" --version "$version"'), text.index('--attempt-binding --acquire-bound-artifacts'))
+        self.assertLess(publisher.index('--attempt-binding --acquire-bound-artifacts'), publisher.index('Verify the version to publish is the version the guard validated'))
+        self.assertLess(publisher.index('Verify the version to publish is the version the guard validated'), publisher.index('Verify custody before any release-shaped check'))
+        self.assertLess(publisher.index('Verify custody before any release-shaped check'), publisher.index('dotnet nuget push'))
         self.assertIn('test "$(git rev-parse "$tag^{commit}")" = "$PRODUCER_SHA"',publisher)
         self.assertLess(publisher.index('--acquire-bound-artifacts'),publisher.index('NuGet login (OIDC'))
         self.assertLess(publisher.index('release-nuget-verify-key.fsx'),publisher.index('Replay original custody bytes to GitHub'))

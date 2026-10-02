@@ -887,8 +887,8 @@ let feature209VersionCoherenceTests =
             // string and the job published another — untagged, and invisible to template-dispatch.yml, which
             // fires only on `fs-gg-ui-template/v*`.
             //
-            // The binding step closes that. What makes it load-bearing is its POSITION: a check that runs after
-            // the pack, or after either `dotnet nuget push`, cannot unpublish anything. Assert the order.
+            // The selected attempt replays immutable original archives. Its source guard binds the trigger
+            // before acquisition; version and custody checks must still precede either feed mutation.
             test "release.yml: publish-packages binds the published version to the guard's subject, before publishing" {
                 let yml = File.ReadAllText(repo ".github/workflows/release.yml")
 
@@ -911,18 +911,25 @@ let feature209VersionCoherenceTests =
                     "steps.ver.outputs.push == 'true'"
                     "a pack-only dry run publishes nothing and is exempt"
 
-                // Position: before the template pack (which stamps $VER into the package) and before every push.
-                Expect.isGreaterThan
-                    (idx "dotnet pack .template.package")
-                    verify
-                    "the version must be validated before it is stamped into a package"
+                let sourceGuard = idx "--source-sha \"$source_sha\" --version \"$version\""
+                let acquisition = idx "--attempt-binding --acquire-bound-artifacts"
+                let custody = idx "Verify custody before any release-shaped check"
+                Expect.isGreaterThan sourceGuard -1 "the source guard must bind the trigger version"
+                Expect.isGreaterThan acquisition sourceGuard "source/version admission must precede original archive acquisition"
+                Expect.isGreaterThan verify acquisition "the publisher verifies the resolved version of the acquired set"
+                Expect.isGreaterThan custody verify "original custody verification follows the resolved-version check"
+
+                let publisher = yml.Substring(idx "  publish-packages:")
+                Expect.stringContains publisher "--source-sha \"$PRODUCER_SHA\"" "custody must belong to the original producer"
+                Expect.isFalse (publisher.Contains("dotnet pack", StringComparison.Ordinal)) "the publisher must never manufacture replacement versions"
+                Expect.isFalse (publisher.Contains("release-pack.sh", StringComparison.Ordinal)) "original bytes cannot fall back to source packing"
 
                 let firstPush = idx "dotnet nuget push"
-                Expect.isGreaterThan firstPush verify "a check after the first push cannot unpublish it"
+                Expect.isGreaterThan firstPush custody "version and original custody checks must precede the first push"
 
                 Expect.isGreaterThan
                     (yml.LastIndexOf("dotnet nuget push", StringComparison.Ordinal))
-                    verify
+                    custody
                     "…nor after the last (nuget.org dual-publish, ADR-0012)"
             }
 
