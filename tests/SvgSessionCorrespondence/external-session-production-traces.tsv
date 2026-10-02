@@ -1,59 +1,83 @@
-scenario	index	generation	epoch	status	accepted	pending	queued	outcome	effect1	effect2
-callbackFailureThenQueuedReplacement	0	0	0	0	-1	false	false	0	0	0
-callbackFailureThenQueuedReplacement	1	1	1	1	-1	false	false	0	6	0
-callbackFailureThenQueuedReplacement	2	1	1	1	-1	true	false	0	2	0
-callbackFailureThenQueuedReplacement	3	1	1	1	-1	true	true	0	10	0
-callbackFailureThenQueuedReplacement	4	1	1	1	-1	true	false	5	5	2
-cancelledThenQueuedReplacement	0	0	0	0	-1	false	false	0	0	0
-cancelledThenQueuedReplacement	1	1	1	1	-1	false	false	0	6	0
-cancelledThenQueuedReplacement	2	1	1	1	-1	true	false	0	2	0
-cancelledThenQueuedReplacement	3	1	1	1	-1	true	true	0	10	0
-cancelledThenQueuedReplacement	4	1	1	1	-1	true	false	4	5	2
-disposeCancelsAndTerminates	0	0	0	0	-1	false	false	0	0	0
-disposeCancelsAndTerminates	1	1	1	1	-1	false	false	0	6	0
-disposeCancelsAndTerminates	2	1	1	1	-1	true	false	0	2	0
-disposeCancelsAndTerminates	3	1	1	2	-1	false	false	0	1	9
-generationExhaustionRefusesWrap	0	0	0	0	-1	false	false	0	0	0
-generationExhaustionRefusesWrap	1	1	1	1	-1	false	false	0	6	0
-generationExhaustionRefusesWrap	2	2	1	1	-1	false	false	0	6	0
-generationExhaustionRefusesWrap	3	3	1	1	-1	false	false	0	6	0
-generationExhaustionRefusesWrap	4	3	1	1	-1	false	false	0	8	0
-invalidateCancels	0	0	0	0	-1	false	false	0	0	0
-invalidateCancels	1	1	1	1	-1	false	false	0	6	0
-invalidateCancels	2	1	1	1	-1	true	false	0	2	0
-invalidateCancels	3	2	1	1	-1	false	false	0	1	0
-lostThenQueuedReplacement	0	0	0	0	-1	false	false	0	0	0
-lostThenQueuedReplacement	1	1	1	1	-1	false	false	0	6	0
-lostThenQueuedReplacement	2	1	1	1	-1	true	false	0	2	0
-lostThenQueuedReplacement	3	1	1	1	-1	true	true	0	10	0
-lostThenQueuedReplacement	4	1	1	1	-1	true	false	3	5	2
-newEpochRestartsBaseline	0	0	0	0	-1	false	false	0	0	0
-newEpochRestartsBaseline	1	1	1	1	-1	false	false	0	6	0
-newEpochRestartsBaseline	2	1	1	1	-1	true	false	0	2	0
-newEpochRestartsBaseline	3	1	1	1	2	false	false	1	3	0
-newEpochRestartsBaseline	4	2	2	1	-1	false	false	0	6	0
-normalFlow	0	0	0	0	-1	false	false	0	0	0
-normalFlow	1	1	1	1	-1	false	false	0	6	0
-normalFlow	2	1	1	1	-1	true	false	0	2	0
-normalFlow	3	1	1	1	1	false	false	1	3	0
-presentationCallbackFailureIsExplicit	0	0	0	0	-1	false	false	0	0	0
-presentationCallbackFailureIsExplicit	1	1	1	1	-1	false	false	0	6	0
-presentationCallbackFailureIsExplicit	2	1	1	1	-1	true	false	0	2	0
-presentationCallbackFailureIsExplicit	3	1	1	1	2	false	false	1	3	0
-presentationCallbackFailureIsExplicit	4	1	1	1	2	false	false	5	5	0
-queuedAfterRevisionRejection	0	0	0	0	-1	false	false	0	0	0
-queuedAfterRevisionRejection	1	1	1	1	-1	false	false	0	6	0
-queuedAfterRevisionRejection	2	1	1	1	-1	true	false	0	2	0
-queuedAfterRevisionRejection	3	1	1	1	2	false	false	1	3	0
-queuedAfterRevisionRejection	4	1	1	1	2	true	false	1	2	0
-queuedAfterRevisionRejection	5	1	1	1	2	true	true	1	10	0
-queuedAfterRevisionRejection	6	1	1	1	2	true	false	2	4	2
-sameEpochPreservesBaseline	0	0	0	0	-1	false	false	0	0	0
-sameEpochPreservesBaseline	1	1	1	1	-1	false	false	0	6	0
-sameEpochPreservesBaseline	2	1	1	1	-1	true	false	0	2	0
-sameEpochPreservesBaseline	3	1	1	1	2	false	false	1	3	0
-sameEpochPreservesBaseline	4	2	1	1	2	false	false	0	6	0
-staleEpochCannotApply	0	0	0	0	-1	false	false	0	0	0
-staleEpochCannotApply	1	1	1	1	-1	false	false	0	6	0
-staleEpochCannotApply	2	1	1	1	-1	true	false	0	2	0
-staleEpochCannotApply	3	1	1	1	-1	true	false	2	4	0
+scenario	index	generation	epoch	status	accepted	nextAcq	pendingAcq	queued	outcomeKind	outcomeAcq	outcomeEpoch	outcomeRevision	rejection	e1kind	e1generation	e1acq	e1epoch	e1revision	e1aux	e2kind	e2generation	e2acq	e2epoch	e2revision	e2aux
+acquisitionExhaustionRefusesWrap	0	0	0	0	-1	0	-1	0	0	-1	0	-1	0	0	-1	-1	0	-1	-1	0	-1	-1	0	-1	-1
+acquisitionExhaustionRefusesWrap	1	1	1	1	-1	0	-1	0	0	-1	0	-1	0	6	1	-1	1	-1	0	0	-1	-1	0	-1	-1
+acquisitionExhaustionRefusesWrap	2	1	1	1	-1	1	0	0	0	-1	0	-1	0	2	1	0	1	-1	-1	0	-1	-1	0	-1	-1
+acquisitionExhaustionRefusesWrap	3	1	1	1	1	1	-1	0	1	0	1	1	0	3	1	0	1	1	-1	0	-1	-1	0	-1	-1
+acquisitionExhaustionRefusesWrap	4	1	1	1	1	2	1	0	1	0	1	1	0	2	1	1	1	-1	-1	0	-1	-1	0	-1	-1
+acquisitionExhaustionRefusesWrap	5	1	1	1	2	2	-1	0	1	1	1	2	0	3	1	1	1	2	-1	0	-1	-1	0	-1	-1
+acquisitionExhaustionRefusesWrap	6	1	1	1	2	3	2	0	1	1	1	2	0	2	1	2	1	-1	-1	0	-1	-1	0	-1	-1
+acquisitionExhaustionRefusesWrap	7	1	1	1	3	3	-1	0	1	2	1	3	0	3	1	2	1	3	-1	0	-1	-1	0	-1	-1
+acquisitionExhaustionRefusesWrap	8	1	1	1	3	4	3	0	1	2	1	3	0	2	1	3	1	-1	-1	0	-1	-1	0	-1	-1
+acquisitionExhaustionRefusesWrap	9	1	1	1	4	4	-1	0	1	3	1	4	0	3	1	3	1	4	-1	0	-1	-1	0	-1	-1
+acquisitionExhaustionRefusesWrap	10	1	1	1	4	4	-1	0	1	3	1	4	0	11	-1	4	0	-1	-1	0	-1	-1	0	-1	-1
+callbackFailureIsExplicit	0	0	0	0	-1	0	-1	0	0	-1	0	-1	0	0	-1	-1	0	-1	-1	0	-1	-1	0	-1	-1
+callbackFailureIsExplicit	1	1	1	1	-1	0	-1	0	0	-1	0	-1	0	6	1	-1	1	-1	0	0	-1	-1	0	-1	-1
+callbackFailureIsExplicit	2	1	1	1	-1	1	0	0	0	-1	0	-1	0	2	1	0	1	-1	-1	0	-1	-1	0	-1	-1
+callbackFailureIsExplicit	3	1	1	1	2	1	-1	0	1	0	1	2	0	3	1	0	1	2	-1	0	-1	-1	0	-1	-1
+callbackFailureIsExplicit	4	1	1	1	2	1	-1	0	5	0	0	-1	0	5	1	0	1	2	5	0	-1	-1	0	-1	-1
+currentRejectionDrainsQueued	0	0	0	0	-1	0	-1	0	0	-1	0	-1	0	0	-1	-1	0	-1	-1	0	-1	-1	0	-1	-1
+currentRejectionDrainsQueued	1	1	1	1	-1	0	-1	0	0	-1	0	-1	0	6	1	-1	1	-1	0	0	-1	-1	0	-1	-1
+currentRejectionDrainsQueued	2	1	1	1	-1	1	0	0	0	-1	0	-1	0	2	1	0	1	-1	-1	0	-1	-1	0	-1	-1
+currentRejectionDrainsQueued	3	1	1	1	2	1	-1	0	1	0	1	2	0	3	1	0	1	2	-1	0	-1	-1	0	-1	-1
+currentRejectionDrainsQueued	4	1	1	1	2	2	1	0	1	0	1	2	0	2	1	1	1	-1	-1	0	-1	-1	0	-1	-1
+currentRejectionDrainsQueued	5	1	1	1	2	2	1	1	1	0	1	2	0	10	1	1	1	-1	-1	0	-1	-1	0	-1	-1
+currentRejectionDrainsQueued	6	1	1	1	2	3	2	0	2	-1	0	-1	4	4	1	1	1	2	4	2	1	2	1	-1	-1
+disposeCancelsAndTerminates	0	0	0	0	-1	0	-1	0	0	-1	0	-1	0	0	-1	-1	0	-1	-1	0	-1	-1	0	-1	-1
+disposeCancelsAndTerminates	1	1	1	1	-1	0	-1	0	0	-1	0	-1	0	6	1	-1	1	-1	0	0	-1	-1	0	-1	-1
+disposeCancelsAndTerminates	2	1	1	1	-1	1	0	0	0	-1	0	-1	0	2	1	0	1	-1	-1	0	-1	-1	0	-1	-1
+disposeCancelsAndTerminates	3	1	1	2	-1	1	-1	0	0	-1	0	-1	0	1	1	0	1	-1	-1	9	1	-1	0	-1	-1
+duplicateCannotDrainNext	0	0	0	0	-1	0	-1	0	0	-1	0	-1	0	0	-1	-1	0	-1	-1	0	-1	-1	0	-1	-1
+duplicateCannotDrainNext	1	1	1	1	-1	0	-1	0	0	-1	0	-1	0	6	1	-1	1	-1	0	0	-1	-1	0	-1	-1
+duplicateCannotDrainNext	2	1	1	1	-1	1	0	0	0	-1	0	-1	0	2	1	0	1	-1	-1	0	-1	-1	0	-1	-1
+duplicateCannotDrainNext	3	1	1	1	1	1	-1	0	1	0	1	1	0	3	1	0	1	1	-1	0	-1	-1	0	-1	-1
+duplicateCannotDrainNext	4	1	1	1	1	2	1	0	1	0	1	1	0	2	1	1	1	-1	-1	0	-1	-1	0	-1	-1
+duplicateCannotDrainNext	5	1	1	1	1	2	1	0	2	-1	0	-1	3	4	1	0	1	1	3	0	-1	-1	0	-1	-1
+duplicateCannotDrainNext	6	1	1	1	2	2	-1	0	1	1	1	2	0	3	1	1	1	2	-1	0	-1	-1	0	-1	-1
+generationExhaustionRefusesWrap	0	0	0	0	-1	0	-1	0	0	-1	0	-1	0	0	-1	-1	0	-1	-1	0	-1	-1	0	-1	-1
+generationExhaustionRefusesWrap	1	1	1	1	-1	0	-1	0	0	-1	0	-1	0	6	1	-1	1	-1	0	0	-1	-1	0	-1	-1
+generationExhaustionRefusesWrap	2	2	1	1	-1	0	-1	0	0	-1	0	-1	0	6	2	-1	1	-1	1	0	-1	-1	0	-1	-1
+generationExhaustionRefusesWrap	3	3	1	1	-1	0	-1	0	0	-1	0	-1	0	6	3	-1	1	-1	1	0	-1	-1	0	-1	-1
+generationExhaustionRefusesWrap	4	3	1	1	-1	0	-1	0	0	-1	0	-1	0	8	3	-1	0	-1	-1	0	-1	-1	0	-1	-1
+invalidateCancelsExactRequest	0	0	0	0	-1	0	-1	0	0	-1	0	-1	0	0	-1	-1	0	-1	-1	0	-1	-1	0	-1	-1
+invalidateCancelsExactRequest	1	1	1	1	-1	0	-1	0	0	-1	0	-1	0	6	1	-1	1	-1	0	0	-1	-1	0	-1	-1
+invalidateCancelsExactRequest	2	1	1	1	-1	1	0	0	0	-1	0	-1	0	2	1	0	1	-1	-1	0	-1	-1	0	-1	-1
+invalidateCancelsExactRequest	3	2	1	1	-1	1	-1	0	0	-1	0	-1	0	1	1	0	1	-1	-1	0	-1	-1	0	-1	-1
+lateCompletionAfterLostCannotApply	0	0	0	0	-1	0	-1	0	0	-1	0	-1	0	0	-1	-1	0	-1	-1	0	-1	-1	0	-1	-1
+lateCompletionAfterLostCannotApply	1	1	1	1	-1	0	-1	0	0	-1	0	-1	0	6	1	-1	1	-1	0	0	-1	-1	0	-1	-1
+lateCompletionAfterLostCannotApply	2	1	1	1	-1	1	0	0	0	-1	0	-1	0	2	1	0	1	-1	-1	0	-1	-1	0	-1	-1
+lateCompletionAfterLostCannotApply	3	1	1	1	-1	1	0	1	0	-1	0	-1	0	10	1	0	1	-1	-1	0	-1	-1	0	-1	-1
+lateCompletionAfterLostCannotApply	4	1	1	1	-1	2	1	0	3	0	0	-1	0	5	1	0	1	-1	3	2	1	1	1	-1	-1
+lateCompletionAfterLostCannotApply	5	1	1	1	-1	2	1	0	2	-1	0	-1	3	4	1	0	1	2	3	0	-1	-1	0	-1	-1
+lostThenQueuedReplacement	0	0	0	0	-1	0	-1	0	0	-1	0	-1	0	0	-1	-1	0	-1	-1	0	-1	-1	0	-1	-1
+lostThenQueuedReplacement	1	1	1	1	-1	0	-1	0	0	-1	0	-1	0	6	1	-1	1	-1	0	0	-1	-1	0	-1	-1
+lostThenQueuedReplacement	2	1	1	1	-1	1	0	0	0	-1	0	-1	0	2	1	0	1	-1	-1	0	-1	-1	0	-1	-1
+lostThenQueuedReplacement	3	1	1	1	-1	1	0	1	0	-1	0	-1	0	10	1	0	1	-1	-1	0	-1	-1	0	-1	-1
+lostThenQueuedReplacement	4	1	1	1	-1	2	1	0	3	0	0	-1	0	5	1	0	1	-1	3	2	1	1	1	-1	-1
+newEpochRestartsBaseline	0	0	0	0	-1	0	-1	0	0	-1	0	-1	0	0	-1	-1	0	-1	-1	0	-1	-1	0	-1	-1
+newEpochRestartsBaseline	1	1	1	1	-1	0	-1	0	0	-1	0	-1	0	6	1	-1	1	-1	0	0	-1	-1	0	-1	-1
+newEpochRestartsBaseline	2	1	1	1	-1	1	0	0	0	-1	0	-1	0	2	1	0	1	-1	-1	0	-1	-1	0	-1	-1
+newEpochRestartsBaseline	3	1	1	1	2	1	-1	0	1	0	1	2	0	3	1	0	1	2	-1	0	-1	-1	0	-1	-1
+newEpochRestartsBaseline	4	2	2	1	-1	1	-1	0	0	-1	0	-1	0	6	2	-1	2	-1	0	0	-1	-1	0	-1	-1
+normalFlow	0	0	0	0	-1	0	-1	0	0	-1	0	-1	0	0	-1	-1	0	-1	-1	0	-1	-1	0	-1	-1
+normalFlow	1	1	1	1	-1	0	-1	0	0	-1	0	-1	0	6	1	-1	1	-1	0	0	-1	-1	0	-1	-1
+normalFlow	2	1	1	1	-1	1	0	0	0	-1	0	-1	0	2	1	0	1	-1	-1	0	-1	-1	0	-1	-1
+normalFlow	3	1	1	1	1	1	-1	0	1	0	1	1	0	3	1	0	1	1	-1	0	-1	-1	0	-1	-1
+oldFailureCannotDrainReplacement	0	0	0	0	-1	0	-1	0	0	-1	0	-1	0	0	-1	-1	0	-1	-1	0	-1	-1	0	-1	-1
+oldFailureCannotDrainReplacement	1	1	1	1	-1	0	-1	0	0	-1	0	-1	0	6	1	-1	1	-1	0	0	-1	-1	0	-1	-1
+oldFailureCannotDrainReplacement	2	1	1	1	-1	1	0	0	0	-1	0	-1	0	2	1	0	1	-1	-1	0	-1	-1	0	-1	-1
+oldFailureCannotDrainReplacement	3	1	1	1	-1	1	0	1	0	-1	0	-1	0	10	1	0	1	-1	-1	0	-1	-1	0	-1	-1
+oldFailureCannotDrainReplacement	4	1	1	1	-1	2	1	0	3	0	0	-1	0	5	1	0	1	-1	3	2	1	1	1	-1	-1
+oldFailureCannotDrainReplacement	5	1	1	1	-1	2	1	0	2	-1	0	-1	3	4	1	0	1	-1	3	0	-1	-1	0	-1	-1
+sameEpochPreservesBaseline	0	0	0	0	-1	0	-1	0	0	-1	0	-1	0	0	-1	-1	0	-1	-1	0	-1	-1	0	-1	-1
+sameEpochPreservesBaseline	1	1	1	1	-1	0	-1	0	0	-1	0	-1	0	6	1	-1	1	-1	0	0	-1	-1	0	-1	-1
+sameEpochPreservesBaseline	2	1	1	1	-1	1	0	0	0	-1	0	-1	0	2	1	0	1	-1	-1	0	-1	-1	0	-1	-1
+sameEpochPreservesBaseline	3	1	1	1	2	1	-1	0	1	0	1	2	0	3	1	0	1	2	-1	0	-1	-1	0	-1	-1
+sameEpochPreservesBaseline	4	2	1	1	2	1	-1	0	0	-1	0	-1	0	6	2	-1	1	-1	1	0	-1	-1	0	-1	-1
+staleEpochCannotApply	0	0	0	0	-1	0	-1	0	0	-1	0	-1	0	0	-1	-1	0	-1	-1	0	-1	-1	0	-1	-1
+staleEpochCannotApply	1	1	1	1	-1	0	-1	0	0	-1	0	-1	0	6	1	-1	1	-1	0	0	-1	-1	0	-1	-1
+staleEpochCannotApply	2	1	1	1	-1	1	0	0	0	-1	0	-1	0	2	1	0	1	-1	-1	0	-1	-1	0	-1	-1
+staleEpochCannotApply	3	1	1	1	-1	1	0	0	2	-1	0	-1	2	4	1	0	2	1	2	0	-1	-1	0	-1	-1
+staleGenerationCannotApply	0	0	0	0	-1	0	-1	0	0	-1	0	-1	0	0	-1	-1	0	-1	-1	0	-1	-1	0	-1	-1
+staleGenerationCannotApply	1	1	1	1	-1	0	-1	0	0	-1	0	-1	0	6	1	-1	1	-1	0	0	-1	-1	0	-1	-1
+staleGenerationCannotApply	2	1	1	1	-1	1	0	0	0	-1	0	-1	0	2	1	0	1	-1	-1	0	-1	-1	0	-1	-1
+staleGenerationCannotApply	3	1	1	1	-1	1	0	0	2	-1	0	-1	1	4	0	0	1	1	1	0	-1	-1	0	-1	-1

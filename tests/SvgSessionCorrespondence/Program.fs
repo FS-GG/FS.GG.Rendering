@@ -121,199 +121,136 @@ apply SvgSessionPolicyObservation.Dispose
 
 let externalOutput = ResizeArray<string>()
 
-let externalState name state effects =
-    let effect =
-        effects
-        |> List.map (function
-            | SvgExternalSessionEffect.CancelAcquisition _ -> "cancel"
-            | SvgExternalSessionEffect.RequestPresentation _ -> "request"
-            | SvgExternalSessionEffect.ApplyPresentation _ -> "apply"
-            | SvgExternalSessionEffect.PresentationCoalesced _ -> "coalesce"
-            | SvgExternalSessionEffect.PresentationRejected _ -> "reject"
-            | SvgExternalSessionEffect.AcquisitionFailed _ -> "failed"
-            | SvgExternalSessionEffect.EpochBound _ -> "bound"
-            | SvgExternalSessionEffect.Disconnected -> "disconnected"
-            | SvgExternalSessionEffect.GenerationExhausted -> "exhausted"
-            | SvgExternalSessionEffect.Disposed -> "disposed")
-        |> String.concat ","
+let externalOption formatter =
+    function
+    | Some value -> formatter value
+    | None -> "-"
 
-    let optionText formatter =
-        function
-        | Some value -> formatter value
-        | None -> "none"
+let externalEpoch = externalOption id
+let externalRevision = externalOption string
+let externalAcquisition = externalOption string
+let externalBoolean value = if value then "true" else "false"
 
-    let epoch = state.Epoch |> optionText id
-    let revision = state.AcceptedRevision |> optionText string
-    let boolean value = if value then "true" else "false"
+let externalOutcome =
+    externalOption (function
+        | SvgExternalPresentationOutcome.Applied(acquisition, epoch, revision) ->
+            $"applied:{acquisition}:{epoch}:{revision}"
+        | SvgExternalPresentationOutcome.Rejected reason -> $"rejected:{reason}"
+        | SvgExternalPresentationOutcome.Failed(failure, acquisition) ->
+            $"failed:{failure}:{externalAcquisition acquisition}")
 
-    let outcome =
-        state.LastOutcome
-        |> optionText (function
-            | SvgExternalPresentationOutcome.Applied(epoch, revision) -> $"applied-{epoch}-{revision}"
-            | SvgExternalPresentationOutcome.Rejected reason -> $"rejected-{reason}"
-            | SvgExternalPresentationOutcome.Failed failure -> $"failed-{failure}")
+let externalEffect =
+    function
+    | SvgExternalSessionEffect.CancelAcquisition(generation, acquisition, epoch) ->
+        $"cancel:{generation}:{acquisition}:{externalEpoch epoch}"
+    | SvgExternalSessionEffect.RequestPresentation(generation, acquisition, epoch) ->
+        $"request:{generation}:{acquisition}:{epoch}"
+    | SvgExternalSessionEffect.ApplyPresentation(generation, acquisition, epoch, revision) ->
+        $"apply:{generation}:{acquisition}:{epoch}:{revision}"
+    | SvgExternalSessionEffect.PresentationCoalesced(generation, acquisition, epoch) ->
+        $"coalesce:{generation}:{acquisition}:{epoch}"
+    | SvgExternalSessionEffect.PresentationRejected(reason, generation, acquisition, epoch, revision) ->
+        $"reject:{reason}:{externalAcquisition generation}:{externalAcquisition acquisition}:{externalEpoch epoch}:{externalRevision revision}"
+    | SvgExternalSessionEffect.AcquisitionFailed(failure, generation, acquisition, epoch, revision) ->
+        $"failed:{failure}:{generation}:{acquisition}:{epoch}:{externalRevision revision}"
+    | SvgExternalSessionEffect.EpochBound(generation, epoch, preserved) ->
+        $"bound:{generation}:{epoch}:{externalBoolean preserved}"
+    | SvgExternalSessionEffect.Disconnected generation -> $"disconnected:{generation}"
+    | SvgExternalSessionEffect.GenerationExhausted generation -> $"generation-exhausted:{generation}"
+    | SvgExternalSessionEffect.AcquisitionIdExhausted acquisition -> $"acquisition-exhausted:{acquisition}"
+    | SvgExternalSessionEffect.Disposed generation -> $"disposed:{generation}"
+
+let externalState name index state effects =
+    let effectsText = effects |> List.map externalEffect |> String.concat ","
 
     externalOutput.Add(
-        $"{name}:{state.MountGeneration}:{epoch}:{state.Status}:{revision}:{boolean state.AcquisitionPending}:{boolean state.PresentationQueued}:{outcome}:{effect}"
+        $"{name}:{index}:{state.MountGeneration}:{externalEpoch state.Epoch}:{state.Status}:{externalRevision state.AcceptedRevision}:{state.NextAcquisitionId}:{externalAcquisition state.PendingAcquisitionId}:{externalBoolean state.AcquisitionPending}:{externalBoolean state.PresentationQueued}:{externalOutcome state.LastOutcome}:{effectsText}"
     )
 
 let externalRun name observations =
     let mutable state = SvgExternalSessionPolicy.initialize ()
-    externalState $"{name}-0" state []
+    externalState name 0 state []
 
     observations
     |> List.iteri (fun index observation ->
-        let next, emitted = SvgExternalSessionPolicy.update observation state
+        let next, effects = SvgExternalSessionPolicy.update observation state
         state <- next
-        externalState $"{name}-{index + 1}" state emitted)
+        externalState name (index + 1) state effects)
 
     state
 
-let bindA = SvgExternalSessionObservation.BindEpoch "1"
+let bind epoch =
+    SvgExternalSessionObservation.BindEpoch epoch
+
 let demand = SvgExternalSessionObservation.DemandPresentation
 
+let complete generation acquisition epoch revision =
+    SvgExternalSessionObservation.CompletePresentation(generation, acquisition, epoch, revision)
+
+let fail generation acquisition epoch =
+    SvgExternalSessionObservation.FailAcquisition(generation, acquisition, epoch, SvgExternalCompletionFailure.Lost)
+
+externalRun "normal" [ bind "1"; demand; complete 1UL 0UL "1" 1UL ] |> ignore
+
 externalRun
-    "normal"
+    "duplicate"
     [
-        bindA
+        bind "1"
         demand
-        SvgExternalSessionObservation.CompletePresentation(1UL, "1", 1UL)
+        complete 1UL 0UL "1" 1UL
+        demand
+        complete 1UL 0UL "1" 1UL
+        complete 1UL 1UL "1" 2UL
     ]
 |> ignore
 
 externalRun
-    "same-epoch"
+    "current-rejection"
     [
-        bindA
+        bind "1"
         demand
-        SvgExternalSessionObservation.CompletePresentation(1UL, "1", 2UL)
-        bindA
+        complete 1UL 0UL "1" 2UL
+        demand
+        demand
+        complete 1UL 1UL "1" 2UL
     ]
 |> ignore
+
+externalRun "old-failure" [ bind "1"; demand; demand; fail 1UL 0UL "1"; fail 1UL 0UL "1" ]
+|> ignore
+
+externalRun "late-completion" [ bind "1"; demand; demand; fail 1UL 0UL "1"; complete 1UL 0UL "1" 2UL ]
+|> ignore
+
+externalRun "same-epoch" [ bind "1"; demand; complete 1UL 0UL "1" 2UL; bind "1" ]
+|> ignore
+
+externalRun "new-epoch" [ bind "1"; demand; complete 1UL 0UL "1" 2UL; bind "2" ]
+|> ignore
+
+externalRun "stale-generation" [ bind "1"; demand; complete 0UL 0UL "1" 1UL ]
+|> ignore
+
+externalRun "stale-epoch" [ bind "1"; demand; complete 1UL 0UL "2" 1UL ]
+|> ignore
+
+externalRun "lost" [ bind "1"; demand; demand; fail 1UL 0UL "1" ] |> ignore
 
 externalRun
-    "new-epoch"
+    "callback"
     [
-        bindA
+        bind "1"
         demand
-        SvgExternalSessionObservation.CompletePresentation(1UL, "1", 2UL)
-        SvgExternalSessionObservation.BindEpoch "2"
+        complete 1UL 0UL "1" 2UL
+        SvgExternalSessionObservation.PresentationCallbackFailed(0UL, "1", 2UL)
     ]
 |> ignore
 
-externalRun
-    "stale-epoch"
-    [
-        bindA
-        demand
-        SvgExternalSessionObservation.CompletePresentation(1UL, "2", 1UL)
-    ]
+externalRun "invalidate" [ bind "1"; demand; SvgExternalSessionObservation.InvalidatePresentation ]
 |> ignore
 
-let rejection =
-    externalRun
-        "queued-rejection"
-        [
-            bindA
-            demand
-            SvgExternalSessionObservation.CompletePresentation(1UL, "1", 2UL)
-            demand
-            demand
-            SvgExternalSessionObservation.CompletePresentation(1UL, "1", 1UL)
-        ]
-
-externalRun
-    "lost"
-    [
-        bindA
-        demand
-        demand
-        SvgExternalSessionObservation.FailAcquisition(1UL, "1", SvgExternalCompletionFailure.Lost)
-    ]
+externalRun "dispose" [ bind "1"; demand; SvgExternalSessionObservation.Dispose ]
 |> ignore
-
-externalRun
-    "cancelled"
-    [
-        bindA
-        demand
-        demand
-        SvgExternalSessionObservation.FailAcquisition(1UL, "1", SvgExternalCompletionFailure.Cancelled)
-    ]
-|> ignore
-
-externalRun
-    "callback-failed"
-    [
-        bindA
-        demand
-        demand
-        SvgExternalSessionObservation.FailAcquisition(1UL, "1", SvgExternalCompletionFailure.CallbackFailed)
-    ]
-|> ignore
-
-externalRun
-    "presentation-callback-failed"
-    [
-        bindA
-        demand
-        SvgExternalSessionObservation.CompletePresentation(1UL, "1", 2UL)
-        SvgExternalSessionObservation.PresentationCallbackFailed("1", 2UL)
-    ]
-|> ignore
-
-externalRun "invalidate" [ bindA; demand; SvgExternalSessionObservation.InvalidatePresentation ]
-|> ignore
-
-let disposed =
-    externalRun "dispose" [ bindA; demand; SvgExternalSessionObservation.Dispose ]
-
-let mutable exhausted = SvgExternalSessionPolicy.initialize ()
-externalState "exhaustion-0" exhausted []
-
-for index in 1..3 do
-    let next, effects =
-        exhausted
-        |> SvgExternalSessionPolicy.update (SvgExternalSessionObservation.BindEpoch "1")
-
-    exhausted <- next
-    externalState $"exhaustion-{index}" exhausted effects
-
-exhausted <-
-    { exhausted with
-        MountGeneration = UInt64.MaxValue
-    }
-
-let exhaustedState, exhaustedEffects =
-    exhausted
-    |> SvgExternalSessionPolicy.update (SvgExternalSessionObservation.BindEpoch "1")
-
-externalState "exhaustion-4" exhaustedState exhaustedEffects
-
-// Real production traces kill controls that remove one accepted guard at a time.
-let revisionGuardHeld =
-    rejection.AcceptedRevision = Some 2UL && rejection.AcquisitionPending
-
-let stale =
-    externalRun
-        "epoch-guard-source"
-        [
-            bindA
-            demand
-            SvgExternalSessionObservation.CompletePresentation(1UL, "2", 1UL)
-        ]
-
-let epochGuardHeld = stale.AcceptedRevision.IsNone && stale.AcquisitionPending
-
-let disposeGuardHeld =
-    let after, effects =
-        disposed
-        |> SvgExternalSessionPolicy.update SvgExternalSessionObservation.DemandPresentation
-
-    not after.AcquisitionPending && effects.IsEmpty
-
-if not revisionGuardHeld || not epochGuardHeld || not disposeGuardHeld then
-    failwith "an unchanged bad-input trace crossed an external presentation guard"
 
 let externalText = String.concat "|" externalOutput
 output.Add($"external={externalText}")

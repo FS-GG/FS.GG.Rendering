@@ -13,489 +13,376 @@ let private connected epoch =
     |> step (SvgExternalSessionObservation.BindEpoch epoch)
     |> fst
 
-type private ModelProjection =
-    {
-        Generation: int
-        Epoch: int
-        Status: int
-        Accepted: int64
-        Pending: bool
-        Queued: bool
-        Outcome: int
-        Effect1: int
-        Effect2: int
-    }
+let private demand state =
+    state |> step SvgExternalSessionObservation.DemandPresentation
 
-let private modelStatus =
-    function
-    | SvgExternalSessionStatus.Disconnected -> 0
-    | SvgExternalSessionStatus.Connected -> 1
-    | SvgExternalSessionStatus.Disposed -> 2
-
-let private modelOutcome =
-    function
-    | None -> 0
-    | Some(SvgExternalPresentationOutcome.Applied _) -> 1
-    | Some(SvgExternalPresentationOutcome.Rejected _) -> 2
-    | Some(SvgExternalPresentationOutcome.Failed SvgExternalCompletionFailure.Lost) -> 3
-    | Some(SvgExternalPresentationOutcome.Failed SvgExternalCompletionFailure.Cancelled) -> 4
-    | Some(SvgExternalPresentationOutcome.Failed SvgExternalCompletionFailure.CallbackFailed) -> 5
-
-let private modelEffects effects =
-    let codes =
-        effects
-        |> List.map (function
-            | SvgExternalSessionEffect.CancelAcquisition _ -> 1
-            | SvgExternalSessionEffect.RequestPresentation _ -> 2
-            | SvgExternalSessionEffect.ApplyPresentation _ -> 3
-            | SvgExternalSessionEffect.PresentationRejected _ -> 4
-            | SvgExternalSessionEffect.AcquisitionFailed _ -> 5
-            | SvgExternalSessionEffect.EpochBound _ -> 6
-            | SvgExternalSessionEffect.Disconnected -> 7
-            | SvgExternalSessionEffect.GenerationExhausted -> 8
-            | SvgExternalSessionEffect.Disposed -> 9
-            | SvgExternalSessionEffect.PresentationCoalesced _ -> 10)
-
-    match codes with
-    | [] -> 0, 0
-    | [ first ] -> first, 0
-    | [ first; second ] -> first, second
-    | _ -> failwithf "unbounded production effect sequence: %A" codes
-
-let private projectState state effects =
-    let effect1, effect2 = modelEffects effects
-
-    {
-        Generation =
-            if state.MountGeneration = UInt64.MaxValue then
-                3
-            else
-                int state.MountGeneration
-        Epoch = state.Epoch |> Option.map int |> Option.defaultValue 0
-        Status = modelStatus state.Status
-        Accepted = state.AcceptedRevision |> Option.map int64 |> Option.defaultValue -1L
-        Pending = state.AcquisitionPending
-        Queued = state.PresentationQueued
-        Outcome = modelOutcome state.LastOutcome
-        Effect1 = effect1
-        Effect2 = effect2
-    }
-
-let private correspondenceScenarios =
-    let bind epoch =
-        SvgExternalSessionObservation.BindEpoch(string epoch)
-
-    let complete epoch revision =
-        SvgExternalSessionObservation.CompletePresentation(1UL, string epoch, uint64 revision)
-
-    let failure value =
-        SvgExternalSessionObservation.FailAcquisition(1UL, "1", value)
-
-    [
-        "normalFlow", [ bind 1; SvgExternalSessionObservation.DemandPresentation; complete 1 1 ], false
-        "sameEpochPreservesBaseline",
-        [
-            bind 1
-            SvgExternalSessionObservation.DemandPresentation
-            complete 1 2
-            bind 1
-        ],
-        false
-        "newEpochRestartsBaseline",
-        [
-            bind 1
-            SvgExternalSessionObservation.DemandPresentation
-            complete 1 2
-            bind 2
-        ],
-        false
-        "staleEpochCannotApply", [ bind 1; SvgExternalSessionObservation.DemandPresentation; complete 2 1 ], false
-        "queuedAfterRevisionRejection",
-        [
-            bind 1
-            SvgExternalSessionObservation.DemandPresentation
-            complete 1 2
-            SvgExternalSessionObservation.DemandPresentation
-            SvgExternalSessionObservation.DemandPresentation
-            complete 1 1
-        ],
-        false
-        "lostThenQueuedReplacement",
-        [
-            SvgExternalSessionObservation.BindEpoch "1"
-            SvgExternalSessionObservation.DemandPresentation
-            SvgExternalSessionObservation.DemandPresentation
-            failure SvgExternalCompletionFailure.Lost
-        ],
-        false
-        "cancelledThenQueuedReplacement",
-        [
-            SvgExternalSessionObservation.BindEpoch "1"
-            SvgExternalSessionObservation.DemandPresentation
-            SvgExternalSessionObservation.DemandPresentation
-            failure SvgExternalCompletionFailure.Cancelled
-        ],
-        false
-        "callbackFailureThenQueuedReplacement",
-        [
-            SvgExternalSessionObservation.BindEpoch "1"
-            SvgExternalSessionObservation.DemandPresentation
-            SvgExternalSessionObservation.DemandPresentation
-            failure SvgExternalCompletionFailure.CallbackFailed
-        ],
-        false
-        "presentationCallbackFailureIsExplicit",
-        [
-            bind 1
-            SvgExternalSessionObservation.DemandPresentation
-            complete 1 2
-            SvgExternalSessionObservation.PresentationCallbackFailed("1", 2UL)
-        ],
-        false
-        "invalidateCancels",
-        [
-            bind 1
-            SvgExternalSessionObservation.DemandPresentation
-            SvgExternalSessionObservation.InvalidatePresentation
-        ],
-        false
-        "disposeCancelsAndTerminates",
-        [
-            bind 1
-            SvgExternalSessionObservation.DemandPresentation
-            SvgExternalSessionObservation.Dispose
-        ],
-        false
-        "generationExhaustionRefusesWrap", [ bind 1; bind 1; bind 1; bind 1 ], true
-    ]
-
-let private loadModelTraces () =
-    let path =
-        Path.Combine(__SOURCE_DIRECTORY__, "..", "SvgSessionCorrespondence", "external-session-production-traces.tsv")
-
-    File.ReadAllLines path
-    |> Array.skip 1
-    |> Array.map (fun line ->
-        let fields = line.Split '\t'
-
-        fields[0],
-        int fields[1],
-        {
-            Generation = int fields[2]
-            Epoch = int fields[3]
-            Status = int fields[4]
-            Accepted = int64 fields[5]
-            Pending = bool.Parse fields[6]
-            Queued = bool.Parse fields[7]
-            Outcome = int fields[8]
-            Effect1 = int fields[9]
-            Effect2 = int fields[10]
-        })
-    |> Array.groupBy (fun (name, _, _) -> name)
-    |> Map.ofArray
+let private complete generation acquisition epoch revision state =
+    state
+    |> step (SvgExternalSessionObservation.CompletePresentation(generation, acquisition, epoch, revision))
 
 [<Tests>]
 let tests =
     testList
         "SVG external-authority presentation policy"
         [
-            test "all extracted Quint states and ordered effects match the production reducer" {
-                let expected = loadModelTraces ()
-
-                for name, observations, saturateBeforeLast in correspondenceScenarios do
-                    let observed = ResizeArray<ModelProjection>()
-                    let mutable state = SvgExternalSessionPolicy.initialize ()
-                    observed.Add(projectState state [])
-
-                    observations
-                    |> List.iteri (fun index observation ->
-                        if saturateBeforeLast && index = observations.Length - 1 then
-                            state <-
-                                { state with
-                                    MountGeneration = UInt64.MaxValue
-                                }
-
-                        let next, effects = SvgExternalSessionPolicy.update observation state
-                        state <- next
-                        observed.Add(projectState state effects))
-
-                    let model =
-                        expected[name]
-                        |> Array.sortBy (fun (_, index, _) -> index)
-                        |> Array.map (fun (_, _, projection) -> projection)
-
-                    Expect.sequenceEqual observed model $"every state/effect projection matches canonical trace {name}"
-            }
-
-            test "epoch and mount generation are independent and revision is monotonic" {
-                let bound = connected "authority-a"
-                Expect.equal bound.MountGeneration 1UL "binding retires the unbound mount"
-                Expect.equal bound.Epoch (Some "authority-a") "the authority epoch is opaque"
-
-                let pending, request =
-                    bound |> step SvgExternalSessionObservation.DemandPresentation
-
-                Expect.equal
-                    request
-                    [ SvgExternalSessionEffect.RequestPresentation(1UL, "authority-a") ]
-                    "one acquisition starts"
-
-                let applied, effects =
-                    pending
-                    |> step (SvgExternalSessionObservation.CompletePresentation(1UL, "authority-a", 8UL))
+            test "first acquisition carries independent generation epoch and acquisition identity" {
+                let pending, effects = connected "a" |> demand
+                Expect.equal pending.MountGeneration 1UL "mount generation is local"
+                Expect.equal pending.PendingAcquisitionId (Some 0UL) "the request has its own identity"
+                Expect.equal pending.NextAcquisitionId 1UL "the next identity advances before the callback"
 
                 Expect.equal
                     effects
-                    [ SvgExternalSessionEffect.ApplyPresentation("authority-a", 8UL) ]
-                    "current projection applies"
+                    [ SvgExternalSessionEffect.RequestPresentation(1UL, 0UL, "a") ]
+                    "all ownership is emitted"
 
-                Expect.equal applied.AcceptedRevision (Some 8UL) "revision is retained"
-                Expect.isFalse applied.AcquisitionPending "the slot is released"
+                let applied, applyEffects = pending |> complete 1UL 0UL "a" 8UL
+
+                Expect.equal
+                    applyEffects
+                    [ SvgExternalSessionEffect.ApplyPresentation(1UL, 0UL, "a", 8UL) ]
+                    "apply retains request identity"
+
+                Expect.equal applied.AcceptedRevision (Some 8UL) "revision is accepted"
+                Expect.equal applied.PendingAcquisitionId None "the exact slot is released"
+
+                Expect.equal
+                    applied.LastOutcome
+                    (Some(SvgExternalPresentationOutcome.Applied(0UL, "a", 8UL)))
+                    "outcome retains payload"
+            }
+
+            test "old duplicate cannot drain the next acquisition in the same mount and epoch" {
+                let request1, _ = connected "a" |> demand
+                let settled1, _ = request1 |> complete 1UL 0UL "a" 1UL
+                let request2, request2Effects = settled1 |> demand
+
+                Expect.equal
+                    request2Effects
+                    [ SvgExternalSessionEffect.RequestPresentation(1UL, 1UL, "a") ]
+                    "request two is distinct"
+
+                let afterDuplicate, duplicateEffects = request2 |> complete 1UL 0UL "a" 1UL
+                Expect.equal afterDuplicate.PendingAcquisitionId (Some 1UL) "old request cannot consume request two"
+
+                Expect.equal
+                    duplicateEffects
+                    [
+                        SvgExternalSessionEffect.PresentationRejected(
+                            "stale-acquisition:some:1:0",
+                            Some 1UL,
+                            Some 0UL,
+                            Some "a",
+                            Some 1UL
+                        )
+                    ]
+                    "old identity is explicit"
+
+                let settled2, apply2 = afterDuplicate |> complete 1UL 1UL "a" 2UL
+
+                Expect.equal
+                    apply2
+                    [ SvgExternalSessionEffect.ApplyPresentation(1UL, 1UL, "a", 2UL) ]
+                    "genuine request two still settles"
+
+                Expect.equal settled2.AcceptedRevision (Some 2UL) "newer presentation applies"
+            }
+
+            test "rejected current completion releases its own slot and drains one queued demand" {
+                let request1, _ = connected "a" |> demand
+                let first, _ = request1 |> complete 1UL 0UL "a" 8UL
+                let request2, _ = first |> demand
+                let queued, _ = request2 |> demand
+                let next, effects = queued |> complete 1UL 1UL "a" 8UL
+
+                Expect.equal
+                    effects
+                    [
+                        SvgExternalSessionEffect.PresentationRejected(
+                            "non-increasing-revision:8:8",
+                            Some 1UL,
+                            Some 1UL,
+                            Some "a",
+                            Some 8UL
+                        )
+                        SvgExternalSessionEffect.RequestPresentation(1UL, 2UL, "a")
+                    ]
+                    "reject precedes replacement"
+
+                Expect.equal next.PendingAcquisitionId (Some 2UL) "replacement has a fresh identity"
+                Expect.isFalse next.PresentationQueued "one queue slot was drained"
+            }
+
+            test "old failure after lost acquisition cannot retire its replacement" {
+                let request1, _ = connected "a" |> demand
+                let queued, _ = request1 |> demand
+
+                let request2, failed =
+                    queued
+                    |> step (
+                        SvgExternalSessionObservation.FailAcquisition(1UL, 0UL, "a", SvgExternalCompletionFailure.Lost)
+                    )
+
+                Expect.equal
+                    failed
+                    [
+                        SvgExternalSessionEffect.AcquisitionFailed(
+                            SvgExternalCompletionFailure.Lost,
+                            1UL,
+                            0UL,
+                            "a",
+                            None
+                        )
+                        SvgExternalSessionEffect.RequestPresentation(1UL, 1UL, "a")
+                    ]
+                    "lost truth precedes replacement"
+
+                let unchanged, stale =
+                    request2
+                    |> step (
+                        SvgExternalSessionObservation.FailAcquisition(1UL, 0UL, "a", SvgExternalCompletionFailure.Lost)
+                    )
+
+                Expect.equal unchanged.PendingAcquisitionId (Some 1UL) "late failure cannot consume replacement"
+
+                Expect.equal
+                    stale
+                    [
+                        SvgExternalSessionEffect.PresentationRejected(
+                            "stale-acquisition:some:1:0",
+                            Some 1UL,
+                            Some 0UL,
+                            Some "a",
+                            None
+                        )
+                    ]
+                    "late failure is rejected"
+
+                let afterLateCompletion, late = unchanged |> complete 1UL 0UL "a" 99UL
+
+                Expect.equal
+                    afterLateCompletion.PendingAcquisitionId
+                    (Some 1UL)
+                    "late increasing completion cannot consume replacement"
+
+                Expect.equal afterLateCompletion.AcceptedRevision None "late projection cannot apply"
+
+                Expect.equal
+                    late
+                    [
+                        SvgExternalSessionEffect.PresentationRejected(
+                            "stale-acquisition:some:1:0",
+                            Some 1UL,
+                            Some 0UL,
+                            Some "a",
+                            Some 99UL
+                        )
+                    ]
+                    "late completion is rejected by identity"
             }
 
             test "same epoch reconnect preserves baseline and new epoch resets it" {
-                let pending, _ =
-                    connected "a" |> step SvgExternalSessionObservation.DemandPresentation
-
-                let applied, _ =
-                    pending
-                    |> step (SvgExternalSessionObservation.CompletePresentation(1UL, "a", 41UL))
+                let request, _ = connected "a" |> demand
+                let applied, _ = request |> complete 1UL 0UL "a" 41UL
 
                 let same, sameEffects =
                     applied |> step (SvgExternalSessionObservation.BindEpoch "a")
 
-                Expect.equal same.AcceptedRevision (Some 41UL) "same authority keeps its baseline"
-                Expect.equal sameEffects [ SvgExternalSessionEffect.EpochBound(2UL, "a", true) ] "reconnect is explicit"
+                Expect.equal same.AcceptedRevision (Some 41UL) "same authority keeps baseline"
+
+                Expect.equal
+                    sameEffects
+                    [ SvgExternalSessionEffect.EpochBound(2UL, "a", true) ]
+                    "same epoch is explicit"
 
                 let changed, changedEffects =
                     same |> step (SvgExternalSessionObservation.BindEpoch "b")
 
-                Expect.equal changed.AcceptedRevision None "a distinct authority starts its own baseline"
-                Expect.equal changed.MountGeneration 3UL "local mount changes independently"
+                Expect.equal changed.AcceptedRevision None "new authority starts its baseline"
+                Expect.equal changed.NextAcquisitionId 1UL "request identity remains monotonic across mounts"
 
                 Expect.equal
                     changedEffects
                     [ SvgExternalSessionEffect.EpochBound(3UL, "b", false) ]
-                    "replacement is explicit"
+                    "new epoch is explicit"
             }
 
-            test "burst coalescing owns one acquisition and one replaceable presentation" {
-                let pending, _ =
-                    connected "a" |> step SvgExternalSessionObservation.DemandPresentation
-
-                let queued, first = pending |> step SvgExternalSessionObservation.DemandPresentation
-
-                let bounded, second =
-                    queued |> step SvgExternalSessionObservation.DemandPresentation
+            test "stale generation and epoch preserve current acquisition" {
+                let pending, _ = connected "a" |> demand
+                let staleGeneration, generationEffects = pending |> complete 0UL 0UL "a" 1UL
+                Expect.equal staleGeneration.PendingAcquisitionId (Some 0UL) "generation mismatch is inert"
 
                 Expect.equal
-                    first
-                    [ SvgExternalSessionEffect.PresentationCoalesced(1UL, "a") ]
-                    "first burst queues one replacement"
-
-                Expect.equal second first "later demand replaces the same queue slot"
-
-                Expect.equal
-                    bounded
-                    { pending with
-                        PresentationQueued = true
-                    }
-                    "state differs from pending only by queue ownership"
-
-                Expect.isTrue bounded.AcquisitionPending "only one acquisition is active"
-                Expect.isTrue bounded.PresentationQueued "only one replacement is retained"
-            }
-
-            test "rejected current completion releases the slot and requests its queued replacement" {
-                let pending, _ =
-                    connected "a" |> step SvgExternalSessionObservation.DemandPresentation
-
-                let first, _ =
-                    pending
-                    |> step (SvgExternalSessionObservation.CompletePresentation(1UL, "a", 8UL))
-
-                let pendingAgain, _ = first |> step SvgExternalSessionObservation.DemandPresentation
-
-                let queued, _ =
-                    pendingAgain |> step SvgExternalSessionObservation.DemandPresentation
-
-                let rejected, effects =
-                    queued
-                    |> step (SvgExternalSessionObservation.CompletePresentation(1UL, "a", 8UL))
-
-                Expect.equal
-                    effects
+                    generationEffects
                     [
-                        SvgExternalSessionEffect.PresentationRejected "non-increasing-revision"
-                        SvgExternalSessionEffect.RequestPresentation(1UL, "a")
+                        SvgExternalSessionEffect.PresentationRejected(
+                            "stale-generation:1:0",
+                            Some 0UL,
+                            Some 0UL,
+                            Some "a",
+                            Some 1UL
+                        )
                     ]
-                    "rejection cannot strand the queued valid demand"
+                    "generation values are retained"
 
-                Expect.isTrue rejected.AcquisitionPending "the replacement now owns the slot"
-                Expect.isFalse rejected.PresentationQueued "the queue was drained"
-            }
-
-            test "stale mount epoch duplicate and unsolicited replies never consume current ownership" {
-                let pending, _ =
-                    connected "a" |> step SvgExternalSessionObservation.DemandPresentation
-
-                for observation, reason in
-                    [
-                        SvgExternalSessionObservation.CompletePresentation(0UL, "a", 1UL), "stale-generation"
-                        SvgExternalSessionObservation.CompletePresentation(1UL, "old", 1UL), "stale-epoch"
-                    ] do
-                    let unchanged, effects = pending |> step observation
-                    Expect.isTrue unchanged.AcquisitionPending "a stale reply does not release the current request"
-                    Expect.equal effects [ SvgExternalSessionEffect.PresentationRejected reason ] "reason is closed"
-
-                let accepted, _ =
-                    pending
-                    |> step (SvgExternalSessionObservation.CompletePresentation(1UL, "a", 3UL))
-
-                let duplicate, duplicateEffects =
-                    accepted
-                    |> step (SvgExternalSessionObservation.CompletePresentation(1UL, "a", 3UL))
-
-                Expect.equal duplicate.AcceptedRevision (Some 3UL) "duplicate cannot alter presentation"
+                let staleEpoch, epochEffects = pending |> complete 1UL 0UL "old" 1UL
+                Expect.equal staleEpoch.PendingAcquisitionId (Some 0UL) "epoch mismatch is inert"
 
                 Expect.equal
-                    duplicateEffects
-                    [ SvgExternalSessionEffect.PresentationRejected "unsolicited-completion" ]
-                    "no slot means unsolicited"
+                    epochEffects
+                    [
+                        SvgExternalSessionEffect.PresentationRejected(
+                            "stale-epoch:some:a:old",
+                            Some 1UL,
+                            Some 0UL,
+                            Some "old",
+                            Some 1UL
+                        )
+                    ]
+                    "epoch values are retained"
             }
 
-            test "lost and cancelled acquisitions are explicit and drain queued demand" {
+            test "burst owns one acquisition and one replaceable queued presentation" {
+                let pending, _ = connected "a" |> demand
+                let queued, first = pending |> demand
+                let bounded, second = queued |> demand
+                let expected = [ SvgExternalSessionEffect.PresentationCoalesced(1UL, 0UL, "a") ]
+                Expect.equal first expected "first burst queues replacement"
+                Expect.equal second expected "later burst replaces same queue slot"
+                Expect.equal bounded.PendingAcquisitionId (Some 0UL) "one acquisition remains"
+                Expect.isTrue bounded.PresentationQueued "one replacement remains"
+            }
+
+            test "lost cancelled and callback-failed acquisitions drain with fresh identity" {
                 for failure in
                     [
                         SvgExternalCompletionFailure.Lost
                         SvgExternalCompletionFailure.Cancelled
                         SvgExternalCompletionFailure.CallbackFailed
                     ] do
-                    let pending, _ =
-                        connected "a" |> step SvgExternalSessionObservation.DemandPresentation
-
-                    let queued, _ = pending |> step SvgExternalSessionObservation.DemandPresentation
+                    let pending, _ = connected "a" |> demand
+                    let queued, _ = pending |> demand
 
                     let next, effects =
                         queued
-                        |> step (SvgExternalSessionObservation.FailAcquisition(1UL, "a", failure))
+                        |> step (SvgExternalSessionObservation.FailAcquisition(1UL, 0UL, "a", failure))
 
                     Expect.equal
                         effects
                         [
-                            SvgExternalSessionEffect.AcquisitionFailed failure
-                            SvgExternalSessionEffect.RequestPresentation(1UL, "a")
+                            SvgExternalSessionEffect.AcquisitionFailed(failure, 1UL, 0UL, "a", None)
+                            SvgExternalSessionEffect.RequestPresentation(1UL, 1UL, "a")
                         ]
-                        "failure truth precedes replacement"
+                        "failure precedes fresh request"
+
+                    Expect.equal next.PendingAcquisitionId (Some 1UL) "replacement identity advances"
 
                     Expect.equal
                         next.LastOutcome
-                        (Some(SvgExternalPresentationOutcome.Failed failure))
-                        "failure is observable"
+                        (Some(SvgExternalPresentationOutcome.Failed(failure, Some 0UL)))
+                        "failure owns its acquisition"
             }
 
-            test "presentation callback failure is a production reducer transition" {
-                let pending, _ =
-                    connected "a" |> step SvgExternalSessionObservation.DemandPresentation
-
-                let accepted, _ =
-                    pending
-                    |> step (SvgExternalSessionObservation.CompletePresentation(1UL, "a", 8UL))
+            test "presentation callback failure retains accepted authority truth" {
+                let pending, _ = connected "a" |> demand
+                let accepted, _ = pending |> complete 1UL 0UL "a" 8UL
 
                 let failed, effects =
                     accepted
-                    |> step (SvgExternalSessionObservation.PresentationCallbackFailed("a", 8UL))
+                    |> step (SvgExternalSessionObservation.PresentationCallbackFailed(0UL, "a", 8UL))
 
                 Expect.equal
                     effects
                     [
-                        SvgExternalSessionEffect.AcquisitionFailed SvgExternalCompletionFailure.CallbackFailed
+                        SvgExternalSessionEffect.AcquisitionFailed(
+                            SvgExternalCompletionFailure.CallbackFailed,
+                            1UL,
+                            0UL,
+                            "a",
+                            Some 8UL
+                        )
                     ]
                     "callback failure is explicit"
 
+                Expect.equal failed.AcceptedRevision (Some 8UL) "callback cannot rewrite authority"
+
                 Expect.equal
                     failed.LastOutcome
-                    (Some(SvgExternalPresentationOutcome.Failed SvgExternalCompletionFailure.CallbackFailed))
-                    "the reducer retains failure truth"
-
-                Expect.equal failed.AcceptedRevision (Some 8UL) "a callback cannot rewrite authority revision"
-                Expect.isFalse failed.AcquisitionPending "a settled callback cannot acquire a second slot"
+                    (Some(SvgExternalPresentationOutcome.Failed(SvgExternalCompletionFailure.CallbackFailed, Some 0UL)))
+                    "failure retains identity"
             }
 
-            test "invalidation cancels before replacement and preserves authority baseline" {
-                let pending, _ =
-                    connected "a" |> step SvgExternalSessionObservation.DemandPresentation
+            test "invalidation disconnect and disposal cancel exact ownership in order" {
+                let pending, _ = connected "a" |> demand
 
-                let queued, _ = pending |> step SvgExternalSessionObservation.DemandPresentation
-
-                let invalidated, effects =
-                    queued |> step SvgExternalSessionObservation.InvalidatePresentation
-
-                Expect.equal effects [ SvgExternalSessionEffect.CancelAcquisition 1UL ] "owned work is cancelled first"
-                Expect.equal invalidated.MountGeneration 2UL "presentation identity advances"
-                Expect.equal invalidated.Epoch (Some "a") "authority identity does not change"
-                Expect.isFalse invalidated.AcquisitionPending "no acquisition survives"
-                Expect.isFalse invalidated.PresentationQueued "no replacement survives"
-            }
-
-            test "disconnect replacement and disposal retain ordered bounded truth" {
-                let pending, _ =
-                    connected "a" |> step SvgExternalSessionObservation.DemandPresentation
-
-                let disconnected, effects = pending |> step SvgExternalSessionObservation.Disconnect
+                let invalidated, invalidation =
+                    pending |> step SvgExternalSessionObservation.InvalidatePresentation
 
                 Expect.equal
-                    effects
+                    invalidation
+                    [ SvgExternalSessionEffect.CancelAcquisition(1UL, 0UL, Some "a") ]
+                    "invalidation cancels exact request"
+
+                Expect.equal invalidated.MountGeneration 2UL "mount advances"
+
+                let active, _ = invalidated |> demand
+
+                let disconnected, disconnect =
+                    active |> step SvgExternalSessionObservation.Disconnect
+
+                Expect.equal
+                    disconnect
                     [
-                        SvgExternalSessionEffect.CancelAcquisition 1UL
-                        SvgExternalSessionEffect.Disconnected
+                        SvgExternalSessionEffect.CancelAcquisition(2UL, 1UL, Some "a")
+                        SvgExternalSessionEffect.Disconnected 3UL
                     ]
-                    "disconnect cancels before notification"
+                    "cancel precedes disconnect"
 
-                let replaced, bind =
-                    disconnected |> step (SvgExternalSessionObservation.BindEpoch "b")
-
-                Expect.equal
-                    bind
-                    [ SvgExternalSessionEffect.EpochBound(3UL, "b", false) ]
-                    "replacement has a new local mount"
-
-                let active, _ = replaced |> step SvgExternalSessionObservation.DemandPresentation
-                let disposed, disposal = active |> step SvgExternalSessionObservation.Dispose
+                let rebound, _ = disconnected |> step (SvgExternalSessionObservation.BindEpoch "a")
+                let finalRequest, _ = rebound |> demand
+                let disposed, disposal = finalRequest |> step SvgExternalSessionObservation.Dispose
 
                 Expect.equal
                     disposal
                     [
-                        SvgExternalSessionEffect.CancelAcquisition 3UL
-                        SvgExternalSessionEffect.Disposed
+                        SvgExternalSessionEffect.CancelAcquisition(4UL, 2UL, Some "a")
+                        SvgExternalSessionEffect.Disposed 4UL
                     ]
-                    "dispose cancels before terminal notification"
+                    "cancel precedes dispose"
 
-                Expect.equal disposed.Status SvgExternalSessionStatus.Disposed "disposed is terminal"
-
-                Expect.equal
-                    (disposed |> step SvgExternalSessionObservation.DemandPresentation)
-                    (disposed, [])
-                    "late demand is inert"
-
-                Expect.equal
-                    (disposed |> step SvgExternalSessionObservation.Dispose)
-                    (disposed, [])
-                    "dispose is idempotent"
+                Expect.equal disposed.Status SvgExternalSessionStatus.Disposed "terminal state is explicit"
+                Expect.equal (disposed |> demand) (disposed, []) "late demand is inert"
             }
 
-            test "generation exhaustion refuses replacement without wrap" {
-                let exhausted =
+            test "generation and acquisition identity exhaustion refuse wrap" {
+                let generationExhausted =
                     { connected "a" with
                         MountGeneration = UInt64.MaxValue
+                        PendingAcquisitionId = Some 7UL
                         AcquisitionPending = true
-                        PresentationQueued = true
                     }
 
-                let unchanged, effects =
-                    exhausted |> step (SvgExternalSessionObservation.BindEpoch "b")
+                let unchangedGeneration, generationEffects =
+                    generationExhausted |> step (SvgExternalSessionObservation.BindEpoch "b")
 
-                Expect.equal unchanged exhausted "exhaustion never aliases old work"
-                Expect.equal effects [ SvgExternalSessionEffect.GenerationExhausted ] "refusal is explicit"
+                Expect.equal unchangedGeneration generationExhausted "generation never wraps"
+
+                Expect.equal
+                    generationEffects
+                    [ SvgExternalSessionEffect.GenerationExhausted UInt64.MaxValue ]
+                    "generation refusal carries value"
+
+                let acquisitionExhausted =
+                    { connected "a" with
+                        NextAcquisitionId = UInt64.MaxValue
+                    }
+
+                let unchangedAcquisition, acquisitionEffects = acquisitionExhausted |> demand
+                Expect.equal unchangedAcquisition acquisitionExhausted "acquisition identity never wraps"
+
+                Expect.equal
+                    acquisitionEffects
+                    [ SvgExternalSessionEffect.AcquisitionIdExhausted UInt64.MaxValue ]
+                    "identity refusal carries value"
             }
         ]

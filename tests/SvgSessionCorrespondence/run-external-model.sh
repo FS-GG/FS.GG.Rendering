@@ -16,23 +16,27 @@ if not m: raise SystemExit('canonical external-session Quint fence missing')
 pathlib.Path(sys.argv[2]).write_text(m.group(1)+'\n')
 PY
 "$quint" typecheck "$work/externalSession.qnt" > "$work/typecheck.log"
+match='normalFlow|duplicateCannotDrainNext|currentRejectionDrainsQueued|oldFailureCannotDrainReplacement|lateCompletionAfterLostCannotApply|sameEpochPreservesBaseline|newEpochRestartsBaseline|staleGenerationCannotApply|staleEpochCannotApply|lostThenQueuedReplacement|callbackFailureIsExplicit|invalidateCancelsExactRequest|disposeCancelsAndTerminates|generationExhaustionRefusesWrap|acquisitionExhaustionRefusesWrap'
 "$quint" test "$work/externalSession.qnt" --main externalSessionTest --backend typescript \
-  --match 'normalFlow|sameEpochPreservesBaseline|newEpochRestartsBaseline|staleEpochCannotApply|queuedAfterRevisionRejection|lostThenQueuedReplacement|cancelledThenQueuedReplacement|callbackFailureThenQueuedReplacement|presentationCallbackFailureIsExplicit|invalidateCancels|disposeCancelsAndTerminates|generationExhaustionRefusesWrap' \
+  --match "$match" \
   --out-itf "$work/{test}_{seq}.itf.json" --out "$work/test.json"
 count="$(find "$work" -name '*.itf.json' -type f | wc -l)"
-[[ "$count" == 12 ]] || { echo "expected twelve directed ITFs, found $count" >&2; exit 1; }
+[[ "$count" == 15 ]] || { echo "expected fifteen directed ITFs, found $count" >&2; exit 1; }
 python3 - "$work" "$repo/tests/SvgSessionCorrespondence/external-session-production-traces.tsv" <<'PY'
 import glob, json, os, pathlib, sys
 work, expected_path = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
-keys = ['generation','epoch','status','accepted','pending','queued','outcome','effect1','effect2']
+keys = ['generation','epoch','status','accepted','nextAcq','pendingAcq','queued',
+        'outcomeKind','outcomeAcq','outcomeEpoch','outcomeRevision','rejection',
+        'e1kind','e1generation','e1acq','e1epoch','e1revision','e1aux',
+        'e2kind','e2generation','e2acq','e2epoch','e2revision','e2aux']
 rows = ['scenario\tindex\t' + '\t'.join(keys)]
 for path in sorted(work.glob('*.itf.json')):
-    name = path.name.split('_', 1)[0]
+    name = path.name.rsplit('_', 1)[0]
     for item in json.loads(path.read_text())['states']:
         state = item['state']
         def value(key):
             raw = state[key]
-            return raw['#bigint'] if isinstance(raw, dict) else str(raw).lower()
+            return raw['#bigint'] if isinstance(raw, dict) else ('1' if raw else '0')
         rows.append(name + '\t' + str(item['#meta']['index']) + '\t' + '\t'.join(value(key) for key in keys))
 actual = '\n'.join(rows) + '\n'
 if actual != expected_path.read_text():

@@ -14,13 +14,20 @@ The product supplies an opaque epoch and a revision that increases within that e
 let host = SvgExternalSessionHost<string> callbacks
 host.BindEpoch authorityEpoch
 host.DemandPresentation()
-let mount = host.Observe().State.MountGeneration
-host.CompletePresentation(mount, authorityEpoch, authorityRevision, svgProjection)
+let pending = host.Observe().State
+host.CompletePresentation(
+    pending.MountGeneration,
+    pending.PendingAcquisitionId.Value,
+    authorityEpoch,
+    authorityRevision,
+    svgProjection
+)
 ```
 
 A reconnect to the same epoch keeps its revision baseline. A different epoch resets the baseline after the
-old local mount is invalidated. Product commands and accepted or rejected receipts bypass this presentation
-queue and remain ordered at the product gateway.
+old local mount is invalidated. Every request has a monotonic acquisition identity, so a delayed completion
+cannot consume a later request in the same mount and epoch. Product commands and accepted or rejected
+receipts bypass this presentation queue and remain ordered at the product gateway.
 
 `FS.GG.UI.Scene.SvgBrowser` is the Fable/browser adapter for the supported
 `FS.GG.UI.Scene` subset. It maintains a retained SVG root, routes pointer and
