@@ -99,6 +99,9 @@ let mutable performanceCameraStep = 0
 let mutable performanceChangedObject = -1
 let sessionEvents = ResizeArray<string>()
 let mutable sessionHost: SvgSessionHost<string> option = None
+let externalEvents = ResizeArray<string>()
+let externalGateway = ResizeArray<string>()
+let mutable externalHost: SvgExternalSessionHost<string> option = None
 let animationEvents = ResizeArray<string>()
 let mutable animationHost: SvgAnimationHost option = None
 
@@ -310,6 +313,43 @@ let sessionObservation () =
             "disposed" ==> value.IsDisposed
             "sceneRevision" ==> host.Value.State.Scene.Revision
             "events" ==> sessionEvents.ToArray()
+        ]
+
+let externalCallbacks =
+    {
+        RequestPresentation = fun generation epoch -> externalEvents.Add($"request:{generation}:{epoch}")
+        ApplyPresentation =
+            fun epoch revision projection ->
+                host.Value.Dispatch(
+                    RetainedInteractionMessage.ReplaceScene(retained (int revision) (30.0 + float revision))
+                )
+                |> ignore
+
+                externalEvents.Add($"apply:{epoch}:{revision}:{projection}")
+        CancelAcquisition = fun generation -> externalEvents.Add($"cancel:{generation}")
+        EpochBound = fun generation epoch preserved -> externalEvents.Add($"bind:{generation}:{epoch}:{preserved}")
+        Disconnected = fun () -> externalEvents.Add("disconnect")
+        Dispose = fun () -> externalEvents.Add("dispose")
+    }
+
+let externalObservation () =
+    let value = externalHost.Value.Observe()
+    let state = value.State
+
+    createObj
+        [
+            "generation" ==> float state.MountGeneration
+            "epoch" ==> (state.Epoch |> Option.map box |> Option.toObj)
+            "status" ==> string state.Status
+            "revision"
+            ==> (state.AcceptedRevision |> Option.map (float >> box) |> Option.toObj)
+            "queued" ==> state.PresentationQueued
+            "listeners" ==> value.OwnedListenerCount
+            "requests" ==> value.OwnedRequestCount
+            "disposed" ==> value.IsDisposed
+            "sceneRevision" ==> host.Value.State.Scene.Revision
+            "events" ==> externalEvents.ToArray()
+            "gateway" ==> externalGateway.ToArray()
         ]
 
 let errorName =
@@ -1106,6 +1146,43 @@ let api =
             ==> fun () ->
                 (sessionHost.Value :> IDisposable).Dispose()
                 sessionObservation ()
+            "externalMount"
+            ==> fun (epoch: string) ->
+                externalHost |> Option.iter (fun value -> (value :> IDisposable).Dispose())
+                externalEvents.Clear()
+                externalGateway.Clear()
+                externalHost <- Some(new SvgExternalSessionHost<string>(externalCallbacks))
+                externalHost.Value.BindEpoch epoch
+                externalObservation ()
+            "externalObserve" ==> fun () -> externalObservation ()
+            "externalDemand"
+            ==> fun () ->
+                externalHost.Value.DemandPresentation()
+                externalObservation ()
+            "externalComplete"
+            ==> fun generation epoch revision projection ->
+                externalHost.Value.CompletePresentation(uint64 generation, epoch, uint64 revision, projection)
+                externalObservation ()
+            "externalFail"
+            ==> fun generation epoch ->
+                externalHost.Value.FailAcquisition(uint64 generation, epoch, SvgExternalCompletionFailure.Lost)
+                externalObservation ()
+            "externalBind"
+            ==> fun epoch ->
+                externalHost.Value.BindEpoch epoch
+                externalObservation ()
+            "externalCommand"
+            ==> fun command ->
+                externalGateway.Add($"command:{command}")
+                externalObservation ()
+            "externalReceipt"
+            ==> fun accepted command ->
+                externalGateway.Add($"receipt:{accepted}:{command}")
+                externalObservation ()
+            "externalDispose"
+            ==> fun () ->
+                (externalHost.Value :> IDisposable).Dispose()
+                externalObservation ()
         ]
 
 [<Emit("window.svgFoundation = $0")>]

@@ -119,4 +119,202 @@ apply (SvgSessionPolicyObservation.Frame 1200.0)
 apply (SvgSessionPolicyObservation.CompleteProjection(0UL, 99UL))
 apply SvgSessionPolicyObservation.Dispose
 
+let externalOutput = ResizeArray<string>()
+
+let externalState name state effects =
+    let effect =
+        effects
+        |> List.map (function
+            | SvgExternalSessionEffect.CancelAcquisition _ -> "cancel"
+            | SvgExternalSessionEffect.RequestPresentation _ -> "request"
+            | SvgExternalSessionEffect.ApplyPresentation _ -> "apply"
+            | SvgExternalSessionEffect.PresentationCoalesced _ -> "coalesce"
+            | SvgExternalSessionEffect.PresentationRejected _ -> "reject"
+            | SvgExternalSessionEffect.AcquisitionFailed _ -> "failed"
+            | SvgExternalSessionEffect.EpochBound _ -> "bound"
+            | SvgExternalSessionEffect.Disconnected -> "disconnected"
+            | SvgExternalSessionEffect.GenerationExhausted -> "exhausted"
+            | SvgExternalSessionEffect.Disposed -> "disposed")
+        |> String.concat ","
+
+    let optionText formatter =
+        function
+        | Some value -> formatter value
+        | None -> "none"
+
+    let epoch = state.Epoch |> optionText id
+    let revision = state.AcceptedRevision |> optionText string
+    let boolean value = if value then "true" else "false"
+
+    let outcome =
+        state.LastOutcome
+        |> optionText (function
+            | SvgExternalPresentationOutcome.Applied(epoch, revision) -> $"applied-{epoch}-{revision}"
+            | SvgExternalPresentationOutcome.Rejected reason -> $"rejected-{reason}"
+            | SvgExternalPresentationOutcome.Failed failure -> $"failed-{failure}")
+
+    externalOutput.Add(
+        $"{name}:{state.MountGeneration}:{epoch}:{state.Status}:{revision}:{boolean state.AcquisitionPending}:{boolean state.PresentationQueued}:{outcome}:{effect}"
+    )
+
+let externalRun name observations =
+    let mutable state = SvgExternalSessionPolicy.initialize ()
+    externalState $"{name}-0" state []
+
+    observations
+    |> List.iteri (fun index observation ->
+        let next, emitted = SvgExternalSessionPolicy.update observation state
+        state <- next
+        externalState $"{name}-{index + 1}" state emitted)
+
+    state
+
+let bindA = SvgExternalSessionObservation.BindEpoch "1"
+let demand = SvgExternalSessionObservation.DemandPresentation
+
+externalRun
+    "normal"
+    [
+        bindA
+        demand
+        SvgExternalSessionObservation.CompletePresentation(1UL, "1", 1UL)
+    ]
+|> ignore
+
+externalRun
+    "same-epoch"
+    [
+        bindA
+        demand
+        SvgExternalSessionObservation.CompletePresentation(1UL, "1", 2UL)
+        bindA
+    ]
+|> ignore
+
+externalRun
+    "new-epoch"
+    [
+        bindA
+        demand
+        SvgExternalSessionObservation.CompletePresentation(1UL, "1", 2UL)
+        SvgExternalSessionObservation.BindEpoch "2"
+    ]
+|> ignore
+
+externalRun
+    "stale-epoch"
+    [
+        bindA
+        demand
+        SvgExternalSessionObservation.CompletePresentation(1UL, "2", 1UL)
+    ]
+|> ignore
+
+let rejection =
+    externalRun
+        "queued-rejection"
+        [
+            bindA
+            demand
+            SvgExternalSessionObservation.CompletePresentation(1UL, "1", 2UL)
+            demand
+            demand
+            SvgExternalSessionObservation.CompletePresentation(1UL, "1", 1UL)
+        ]
+
+externalRun
+    "lost"
+    [
+        bindA
+        demand
+        demand
+        SvgExternalSessionObservation.FailAcquisition(1UL, "1", SvgExternalCompletionFailure.Lost)
+    ]
+|> ignore
+
+externalRun
+    "cancelled"
+    [
+        bindA
+        demand
+        demand
+        SvgExternalSessionObservation.FailAcquisition(1UL, "1", SvgExternalCompletionFailure.Cancelled)
+    ]
+|> ignore
+
+externalRun
+    "callback-failed"
+    [
+        bindA
+        demand
+        demand
+        SvgExternalSessionObservation.FailAcquisition(1UL, "1", SvgExternalCompletionFailure.CallbackFailed)
+    ]
+|> ignore
+
+externalRun
+    "presentation-callback-failed"
+    [
+        bindA
+        demand
+        SvgExternalSessionObservation.CompletePresentation(1UL, "1", 2UL)
+        SvgExternalSessionObservation.PresentationCallbackFailed("1", 2UL)
+    ]
+|> ignore
+
+externalRun "invalidate" [ bindA; demand; SvgExternalSessionObservation.InvalidatePresentation ]
+|> ignore
+
+let disposed =
+    externalRun "dispose" [ bindA; demand; SvgExternalSessionObservation.Dispose ]
+
+let mutable exhausted = SvgExternalSessionPolicy.initialize ()
+externalState "exhaustion-0" exhausted []
+
+for index in 1..3 do
+    let next, effects =
+        exhausted
+        |> SvgExternalSessionPolicy.update (SvgExternalSessionObservation.BindEpoch "1")
+
+    exhausted <- next
+    externalState $"exhaustion-{index}" exhausted effects
+
+exhausted <-
+    { exhausted with
+        MountGeneration = UInt64.MaxValue
+    }
+
+let exhaustedState, exhaustedEffects =
+    exhausted
+    |> SvgExternalSessionPolicy.update (SvgExternalSessionObservation.BindEpoch "1")
+
+externalState "exhaustion-4" exhaustedState exhaustedEffects
+
+// Real production traces kill controls that remove one accepted guard at a time.
+let revisionGuardHeld =
+    rejection.AcceptedRevision = Some 2UL && rejection.AcquisitionPending
+
+let stale =
+    externalRun
+        "epoch-guard-source"
+        [
+            bindA
+            demand
+            SvgExternalSessionObservation.CompletePresentation(1UL, "2", 1UL)
+        ]
+
+let epochGuardHeld = stale.AcceptedRevision.IsNone && stale.AcquisitionPending
+
+let disposeGuardHeld =
+    let after, effects =
+        disposed
+        |> SvgExternalSessionPolicy.update SvgExternalSessionObservation.DemandPresentation
+
+    not after.AcquisitionPending && effects.IsEmpty
+
+if not revisionGuardHeld || not epochGuardHeld || not disposeGuardHeld then
+    failwith "an unchanged bad-input trace crossed an external presentation guard"
+
+let externalText = String.concat "|" externalOutput
+output.Add($"external={externalText}")
 printfn "%s" (String.concat "|" output)

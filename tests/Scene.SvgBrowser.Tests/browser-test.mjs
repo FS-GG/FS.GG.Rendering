@@ -79,6 +79,7 @@ let observations;
 let documentEvidence;
 let browserMatrixEvidence;
 let sessionEvidence;
+let externalSessionEvidence;
 let animationEvidence;
 try {
   await page.goto(`http://127.0.0.1:${address.port}/`, { waitUntil: "networkidle" });
@@ -131,6 +132,42 @@ try {
     throw new Error(`session disposal leaked resources: ${JSON.stringify(disposedSession)}`);
   }
   sessionEvidence = { mounted: mountedSession, cadence, paused: pausedSession, stepped: steppedSession, projected: projectedSession, replaced: replacedSession, stale: staleSession, reset: resetSession, suspended: suspendedSession, disposed: disposedSession };
+  const externalMounted = await page.evaluate(() => window.svgFoundation.externalMount("opaque-a"));
+  if (externalMounted.listeners !== 2 || externalMounted.requests !== 0 || externalMounted.status !== "Connected" || externalMounted.events.some((value) => value.startsWith("advance:") || value === "pause" || value === "reset")) {
+    throw new Error(`external presentation acquired authority-clock behavior: ${JSON.stringify(externalMounted)}`);
+  }
+  const externalBurst = await page.evaluate(() => { window.svgFoundation.externalDemand(); window.svgFoundation.externalDemand(); window.svgFoundation.externalDemand(); window.svgFoundation.externalCommand("select"); window.svgFoundation.externalReceipt(false, "select"); return window.svgFoundation.externalObserve(); });
+  if (externalBurst.requests !== 1 || !externalBurst.queued || externalBurst.gateway.join("|") !== "command:select|receipt:false:select") {
+    throw new Error(`external burst or ordered gateway composition was unbounded: ${JSON.stringify(externalBurst)}`);
+  }
+  const externalGeneration = externalBurst.generation;
+  const externalApplied = await page.evaluate(({ generation }) => window.svgFoundation.externalComplete(generation, "opaque-a", 11, "external-11"), { generation: externalGeneration });
+  if (externalApplied.revision !== 11 || externalApplied.requests !== 1 || externalApplied.sceneRevision !== 11 || !externalApplied.events.includes("apply:opaque-a:11:external-11")) {
+    throw new Error(`external projection did not apply then drain the queued demand: ${JSON.stringify(externalApplied)}`);
+  }
+  const sameEpoch = await page.evaluate(() => window.svgFoundation.externalBind("opaque-a"));
+  if (sameEpoch.revision !== 11 || sameEpoch.generation === externalGeneration || !sameEpoch.events.some((value) => value.endsWith(":opaque-a:true"))) {
+    throw new Error(`same-epoch reconnect lost its revision baseline: ${JSON.stringify(sameEpoch)}`);
+  }
+  await page.evaluate(() => window.svgFoundation.externalDemand());
+  const oldGeneration = sameEpoch.generation;
+  const replacedEpoch = await page.evaluate(() => window.svgFoundation.externalBind("opaque-b"));
+  const staleExternal = await page.evaluate(({ oldGeneration }) => window.svgFoundation.externalComplete(oldGeneration, "opaque-a", 99, "stale"), { oldGeneration });
+  if (replacedEpoch.revision !== null || staleExternal.events.includes("apply:opaque-a:99:stale") || staleExternal.sceneRevision === 99) {
+    throw new Error(`epoch replacement accepted stale presentation: ${JSON.stringify(staleExternal)}`);
+  }
+  await page.evaluate(() => { window.svgFoundation.externalDemand(); window.dispatchEvent(new Event("blur")); });
+  const blurredExternal = await page.evaluate(() => window.svgFoundation.externalObserve());
+  if (blurredExternal.requests !== 0 || blurredExternal.events.some((value) => value === "pause" || value.startsWith("advance:"))) {
+    throw new Error(`external blur affected engine authority or retained acquisition: ${JSON.stringify(blurredExternal)}`);
+  }
+  const disposedExternal = await page.evaluate(() => window.svgFoundation.externalDispose());
+  await page.evaluate(() => window.svgFoundation.externalDemand());
+  const lateExternal = await page.evaluate(() => window.svgFoundation.externalObserve());
+  if (!disposedExternal.disposed || disposedExternal.listeners !== 0 || disposedExternal.requests !== 0 || lateExternal.events.length !== disposedExternal.events.length) {
+    throw new Error(`external disposal leaked or accepted late scheduling: ${JSON.stringify({ disposedExternal, lateExternal })}`);
+  }
+  externalSessionEvidence = { mounted: externalMounted, burst: externalBurst, applied: externalApplied, sameEpoch, replacedEpoch, stale: staleExternal, blurred: blurredExternal, disposed: disposedExternal, late: lateExternal };
   const mountedAnimation = await page.evaluate(() => { const value = window.svgFoundation.animationMount(); return window.svgFoundation.animationMotion(false); });
   if (mountedAnimation.listeners !== 2 || mountedAnimation.frames !== 0 || mountedAnimation.active !== 0 || mountedAnimation.status !== "Running") {
     throw new Error(`animation mount ownership failed: ${JSON.stringify(mountedAnimation)}`);
@@ -629,6 +666,7 @@ const evidence = {
     retainedRootAndLayersAcrossRevision: true, staleRevisionRefused: true, mountDisposeCycles: 12,
     finalOwnedListenerCount: observations.listeners, scheduledFrameCount: observations.frames,
     sessionHost: sessionEvidence,
+    externalSessionHost: externalSessionEvidence,
     animationHost: animationEvidence,
   },
   browserMatrix: browserMatrixEvidence,

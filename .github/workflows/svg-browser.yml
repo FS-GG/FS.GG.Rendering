@@ -11,6 +11,7 @@ on:
       - 'readiness/svg-scene-02-5/**'
       - 'readiness/svg-scene-02-6/**'
       - 'models/svg-foundation/**'
+      - 'models/svg-runtime/**'
       - 'tests/Scene.Tests/SvgFoundationRetainedTests.fs'
       - 'tests/Scene.PortableConsumers/**'
       - 'Directory.Build.props'
@@ -29,6 +30,7 @@ on:
       - 'readiness/svg-scene-02-5/**'
       - 'readiness/svg-scene-02-6/**'
       - 'models/svg-foundation/**'
+      - 'models/svg-runtime/**'
       - 'tests/Scene.Tests/SvgFoundationRetainedTests.fs'
       - 'tests/Scene.PortableConsumers/**'
       - 'Directory.Build.props'
@@ -71,6 +73,21 @@ jobs:
       - name: Restore browser harness packages
         working-directory: tests/Scene.SvgBrowser.Tests
         run: npm ci
+      - name: Provision exact external-session Quint tool
+        run: |
+          mkdir -p "$RUNNER_TEMP/svg-external-tools"
+          curl --fail --location --silent --show-error \
+            https://github.com/quint-co/quint/releases/download/v0.32.0/quint-linux-amd64 \
+            --output "$RUNNER_TEMP/svg-external-tools/quint"
+          echo '939b64095b706017f2f202c6f99c860c40be7c31bddc2b98557316e50f42cd7f  '"$RUNNER_TEMP/svg-external-tools/quint" | sha256sum --check --strict
+          chmod 0755 "$RUNNER_TEMP/svg-external-tools/quint"
+      - name: Check external-session model, reducer and guard controls
+        env:
+          QUINT_BIN: ${{ runner.temp }}/svg-external-tools/quint
+        run: |
+          dotnet test tests/Scene.SvgBrowser.Policy.Tests/Scene.SvgBrowser.Policy.Tests.fsproj -c Release
+          bash tests/SvgSessionCorrespondence/run-external-model.sh
+          bash tests/SvgSessionCorrespondence/run-external-mutants.sh
       - name: Install Chromium, Firefox, WebKit and system dependencies
         working-directory: tests/Scene.SvgBrowser.Tests
         run: npx playwright-core install --with-deps chromium firefox webkit

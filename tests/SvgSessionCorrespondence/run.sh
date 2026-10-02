@@ -18,7 +18,7 @@ cat > "$work/NuGet.Config" <<CONFIG
 CONFIG
 export NUGET_PACKAGES="$work/packages"
 dotnet restore "$work/Correspondence/Correspondence.fsproj" --configfile "$work/NuGet.Config" >/dev/null
-dotnet build "$work/Correspondence/Correspondence.fsproj" --no-restore >/dev/null
+dotnet build "$work/Correspondence/Correspondence.fsproj" --no-restore --nologo
 dotnet_output="$(dotnet run --project "$work/Correspondence/Correspondence.fsproj" --no-build | tail -1)"
 dotnet tool install fable --version 5.17.0 --tool-path "$work/tools" --configfile "$work/NuGet.Config" >/dev/null
 "$work/tools/fable" "$work/Correspondence/Correspondence.fsproj" --outDir "$work/js" --lang JavaScript --noCache >/dev/null
