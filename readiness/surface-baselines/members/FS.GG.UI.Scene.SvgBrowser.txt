@@ -152,6 +152,68 @@ FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserHost.MountNamespace : System.String 
 FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserHost.ObserveFonts() : Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgBrowser.SvgBrowserFontObservation>
 FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserHost.Replace(FS.GG.UI.Scene.SvgDocument) : Microsoft.FSharp.Core.FSharpResult<Microsoft.FSharp.Core.Unit, FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserError>
 FS.GG.UI.Scene.SvgBrowser.SvgDocumentBrowserHost.Root : Browser.Types.Element [get]
+FS.GG.UI.Scene.SvgBrowser.SvgExternalCompletionFailure+Tags.CallbackFailed : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgExternalCompletionFailure+Tags.Cancelled : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgExternalCompletionFailure+Tags.Lost : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgExternalPresentationOutcome+Tags.Applied : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgExternalPresentationOutcome+Tags.Failed : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgExternalPresentationOutcome+Tags.Rejected : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionCallbacks`1.ApplyPresentation : FSharpFunc<System.String, FSharpFunc<System.UInt64, FSharpFunc<projection, Microsoft.FSharp.Core.Unit>>> [get]
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionCallbacks`1.CancelAcquisition : Microsoft.FSharp.Core.FSharpFunc<System.UInt64, Microsoft.FSharp.Core.FSharpFunc<System.UInt64, Microsoft.FSharp.Core.Unit>> [get]
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionCallbacks`1.Disconnected : Microsoft.FSharp.Core.FSharpFunc<Microsoft.FSharp.Core.Unit, Microsoft.FSharp.Core.Unit> [get]
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionCallbacks`1.Dispose : Microsoft.FSharp.Core.FSharpFunc<Microsoft.FSharp.Core.Unit, Microsoft.FSharp.Core.Unit> [get]
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionCallbacks`1.EpochBound : Microsoft.FSharp.Core.FSharpFunc<System.UInt64, Microsoft.FSharp.Core.FSharpFunc<System.String, Microsoft.FSharp.Core.FSharpFunc<System.Boolean, Microsoft.FSharp.Core.Unit>>> [get]
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionCallbacks`1.RequestPresentation : Microsoft.FSharp.Core.FSharpFunc<System.UInt64, Microsoft.FSharp.Core.FSharpFunc<System.UInt64, Microsoft.FSharp.Core.FSharpFunc<System.String, Microsoft.FSharp.Core.Unit>>> [get]
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionCallbacks`1.new(Microsoft.FSharp.Core.FSharpFunc<System.UInt64, Microsoft.FSharp.Core.FSharpFunc<System.UInt64, Microsoft.FSharp.Core.FSharpFunc<System.String, Microsoft.FSharp.Core.Unit>>>, FSharpFunc<System.String, FSharpFunc<System.UInt64, FSharpFunc<projection, Microsoft.FSharp.Core.Unit>>>, Microsoft.FSharp.Core.FSharpFunc<System.UInt64, Microsoft.FSharp.Core.FSharpFunc<System.UInt64, Microsoft.FSharp.Core.Unit>>, Microsoft.FSharp.Core.FSharpFunc<System.UInt64, Microsoft.FSharp.Core.FSharpFunc<System.String, Microsoft.FSharp.Core.FSharpFunc<System.Boolean, Microsoft.FSharp.Core.Unit>>>, Microsoft.FSharp.Core.FSharpFunc<Microsoft.FSharp.Core.Unit, Microsoft.FSharp.Core.Unit>, Microsoft.FSharp.Core.FSharpFunc<Microsoft.FSharp.Core.Unit, Microsoft.FSharp.Core.Unit>)
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionEffect+Tags.AcquisitionFailed : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionEffect+Tags.AcquisitionIdExhausted : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionEffect+Tags.ApplyPresentation : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionEffect+Tags.CancelAcquisition : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionEffect+Tags.Disconnected : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionEffect+Tags.Disposed : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionEffect+Tags.EpochBound : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionEffect+Tags.GenerationExhausted : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionEffect+Tags.PresentationCoalesced : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionEffect+Tags.PresentationRejected : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionEffect+Tags.RequestPresentation : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionHostObservation.CallbackFailureObserved : System.Boolean [get]
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionHostObservation.CancellationSettlementUnknown : System.Boolean [get]
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionHostObservation.IsDisposed : System.Boolean [get]
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionHostObservation.OwnedListenerCount : System.Int32 [get]
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionHostObservation.OwnedRequestCount : System.Int32 [get]
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionHostObservation.State : FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionState [get]
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionHostObservation.new(FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionState, System.Int32, System.Int32, System.Boolean, System.Boolean, System.Boolean)
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionHost`1.BindEpoch(System.String) : System.Void
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionHost`1.CompletePresentation(System.UInt64, System.UInt64, System.String, System.UInt64, projection) : System.Void
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionHost`1.DemandPresentation() : System.Void
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionHost`1.Disconnect() : System.Void
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionHost`1.FailAcquisition(System.UInt64, System.UInt64, System.String, FS.GG.UI.Scene.SvgBrowser.SvgExternalCompletionFailure) : System.Void
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionHost`1.InvalidatePresentation() : System.Void
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionHost`1.Observe() : FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionHostObservation
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionHost`1.new(SvgExternalSessionCallbacks<projection>)
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionObservation+Tags.BindEpoch : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionObservation+Tags.CompletePresentation : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionObservation+Tags.DemandPresentation : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionObservation+Tags.Disconnect : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionObservation+Tags.Dispose : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionObservation+Tags.FailAcquisition : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionObservation+Tags.InvalidatePresentation : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionObservation+Tags.PresentationCallbackFailed : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionPolicy.initialize() : FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionState
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionPolicy.update(FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionObservation, FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionState) : System.Tuple<FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionState, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionEffect>>
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionState.AcceptedRevision : Microsoft.FSharp.Core.FSharpOption<System.UInt64> [get]
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionState.AcquisitionPending : System.Boolean [get]
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionState.Epoch : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionState.LastOutcome : Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.SvgBrowser.SvgExternalPresentationOutcome> [get]
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionState.MountGeneration : System.UInt64 [get]
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionState.NextAcquisitionId : System.UInt64 [get]
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionState.PendingAcquisitionId : Microsoft.FSharp.Core.FSharpOption<System.UInt64> [get]
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionState.PresentationQueued : System.Boolean [get]
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionState.Status : FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionStatus [get]
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionState.new(System.UInt64, Microsoft.FSharp.Core.FSharpOption<System.String>, FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionStatus, Microsoft.FSharp.Core.FSharpOption<System.UInt64>, System.UInt64, Microsoft.FSharp.Core.FSharpOption<System.UInt64>, System.Boolean, System.Boolean, Microsoft.FSharp.Core.FSharpOption<FS.GG.UI.Scene.SvgBrowser.SvgExternalPresentationOutcome>)
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionStatus+Tags.Connected : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionStatus+Tags.Disconnected : System.Int32
+FS.GG.UI.Scene.SvgBrowser.SvgExternalSessionStatus+Tags.Disposed : System.Int32
 FS.GG.UI.Scene.SvgBrowser.SvgFontResourceHost.Diagnostic : Microsoft.FSharp.Core.FSharpOption<System.String> [get]
 FS.GG.UI.Scene.SvgBrowser.SvgFontResourceHost.Ready : System.Boolean [get]
 FS.GG.UI.Scene.SvgBrowser.SvgGamepadSnapshot.Buttons : Microsoft.FSharp.Collections.FSharpList<System.Boolean> [get]
