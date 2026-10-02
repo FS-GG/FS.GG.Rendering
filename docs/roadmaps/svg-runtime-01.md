@@ -70,6 +70,13 @@ and lose/win/restart behavior while excluding Studio modules. Public pins remain
   0.4.0-preview.1. Existing dependency locks describe that graph and unchanged external
   dependencies; no candidate restore or lock regeneration has been claimed.
 
+  The independent Rendering.Skills content package also prepares patch candidate 0.2.1
+  because the delivered symbology recipe pins changed; its per-file manifest digest is
+  regenerated from owner source bytes. It is outside the 19-member UI coherent set and
+  remains unpublished pending its own authority and installed consumer join. Front-door
+  generated fragments describe source coordinates; public 0.31.0 remains explicit outside
+  those regions.
+
   Static preflight reuses roster, custody and ApiCompat validators and extends finite
   negative fixtures before costly jobs. It refuses wrong source/version/axes/roster, missing
   external sources/surface, floating release SDK setup and pending publication readiness.
