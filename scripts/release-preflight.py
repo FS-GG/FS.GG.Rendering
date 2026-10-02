@@ -422,17 +422,17 @@ def main() -> int:
             "githubPackages": {
                 "credential": "repository GITHUB_TOKEN",
                 "principal": f"{args.github_repository} Actions as {args.github_username}",
-                "scope": f"{args.github_repository}:packages:write",
-                "proof": "the publishing principal restored the known baseline through the supported NuGet client and its authenticated version indexes proved all target versions absent",
+                "scope": "authenticated read observations; effective all-package writer grants UNKNOWN",
+                "proof": "baseline archive read and authenticated target version-index observations only; active/deleted REST census retained separately",
             },
-            "nugetOrg": "id-token:write job grant; NuGet/login completed before this script",
+            "nugetOrg": "OIDC token exchange completed; effective selected-package policy scopes UNKNOWN",
         },
         "mutation": "none",
     }
     args.receipt.parent.mkdir(parents=True, exist_ok=True)
     args.receipt.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n")
     print(
-        f"release-preflight: PASS · source {args.source_sha} · {len(ids)} packages absent on both feeds · "
+        f"release-preflight: PASS · source {args.source_sha} · {len(ids)} target archive/index observations absent · "
         "authenticated GitHub baseline read 200 · no tags · no mutation"
     )
     return 0

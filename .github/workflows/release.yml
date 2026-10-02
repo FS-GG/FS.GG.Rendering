@@ -451,7 +451,7 @@ jobs:
             --token-env GITHUB_TOKEN \
             --cache artifacts/preflight/github-baseline-cache \
             --receipt artifacts/preflight/github-baseline-nuget-client.json
-      - name: Prove exact source, ordered tags, permissions, and absent identities
+      - name: Prove exact source, ordered tags, baseline read, and target index observations
         shell: bash
         env:
           FSGG_HISTORICAL_PUBLISH_TOKEN: ${{ github.token }}
@@ -492,6 +492,25 @@ jobs:
           name: rendering-release-preflight-${{ steps.source.outputs.sha }}-${{ inputs.version }}
           path: artifacts/preflight/release-preflight.json
           if-no-files-found: error
+          retention-days: 90
+
+      - name: Check finite typed census refusal controls
+        run: dotnet fsi --exec scripts/test-release-package-census.fsx
+      - name: Collect selected active and deleted versions with the genuine Actions principal
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          dotnet fsi --exec scripts/release-package-census.fsx \
+            --preflight-receipt artifacts/preflight/release-preflight.json \
+            --plan eng/release/svg-external-authority-0.32.0.json \
+            --receipt artifacts/preflight/release-package-census.json
+      - name: Retain read census including unavailable outcomes
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: rendering-package-census-${{ steps.source.outputs.sha }}-${{ inputs.version }}
+          path: artifacts/preflight/release-package-census.json
+          if-no-files-found: warn
           retention-days: 90
 
   publish-packages:
