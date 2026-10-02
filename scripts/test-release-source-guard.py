@@ -183,6 +183,10 @@ class SelectedAttemptTests(unittest.TestCase):
         with self.assertRaises(SystemExit):self.validate(self.binding(ready=True),source='a'*40)
 
     def test_actual_publisher_workflow_preserves_identity_order_and_no_regeneration(self):
+        gate=(ROOT/'.github/workflows/gate.yml').read_text()
+        api_gate=gate.split('  api-compatibility-gate:',1)[1].split('\n  # #241',1)[0]
+        immutable_fetch='git fetch --no-tags --depth=1 origin '+guard.PRODUCER
+        self.assertLess(api_gate.index(immutable_fetch),api_gate.index('python3 scripts/test-release-source-guard.py'))
         text=(ROOT/'.github/workflows/release.yml').read_text();publisher=text.split('  publish-packages:',1)[1]
         self.assertNotIn('release-pack.sh',publisher);self.assertNotIn('locked-restore',publisher)
         self.assertNotIn('actions/artifacts?name=',publisher);self.assertNotIn('sort_by(.created_at)',publisher)
