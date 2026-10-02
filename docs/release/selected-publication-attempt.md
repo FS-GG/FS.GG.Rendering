@@ -1,0 +1,63 @@
+# Selected0.32 publication attempt
+
+The original source730 plan remains `publicationReady:false` and its bytes remain the subject of
+custody SHA verification. The executor-owned `svg-external-authority-0.32.0-attempt.json` separately
+defines eligibility to attempt publication. Its current `attemptReady:false` prohibits all publisher effects. Native Templates proof is
+`qualified-source-candidate`; protected Templates source delivery/admission remains pending. Source delivery does not establish publication readiness.
+
+Root may populate that binding only after independent native qualification readback. The binding
+selects the original successful run37046893526/artifact11244853996 by exact source, outer native
+digest/size, plan digest and custody digest. Missing, expired or changed artifacts stop acquisition;
+this publisher has no regeneration or packing fallback. Producer730 is used for all custody checks
+and every release tag must resolve to730. The workflow executor SHA is recorded separately.
+
+A selected native attempt independently authenticates the bound Templates qualification artifact,
+its literal caller/checkout join, actual180 Provider assertions and4 successful cases per Chromium,
+Firefox and WebKit with zero unexpected/skipped/flaky results. It validates original19 custody,
+retains original bytes, runs the existing release validators, mints the normal OIDC NuGet credential
+and performs19 verification GETs against existing0.31 package IDs. Only HTTP200 for all19 permits
+eligibility. Headers remain on the original NuGet host; redirects, response-body logging, keys in
+helper arguments/URLs/receipts and verification-key creation are prohibited. Read preflight can
+collect these scope observations without admitting a publisher.
+
+A fresh authenticated Actions census covers all19 active/deleted version collections. GitHub
+writer access remains `unknown-before-attempt`. Occupied IDs may resume only when the supported
+client returns the same retained payload; occupied but invisible IDs cannot become pushes. Fresh
+public probes compare before the organization feed can mutate. Unknown, authorization failure
+or payload mismatch stops the affected attempt.
+
+The existing order remains organization feed first, full readback and payload comparison, then
+public NuGet with the same archives and existing propagation retries. Acknowledgements and actual
+matching readbacks establish observations; a read-only role census cannot prove effective write.
+Append-only sanitized per-ID publisher observations and original archives are always retained on
+failure. Those observations are diagnostic, not a new retry authority. Resume re-probes the same
+original bytes and never recreates a missing selected candidate.
+
+## Source preflight
+
+Static source/actual workflow controls catch changed producer/plan/artifact identity, unknown native
+qualification, missing19 scope observations, wrong effect ordering, repacking fallback and missing
+partial retention. Pure typed controls cover the stateless19-request check and eligibility facts.
+This reuses the existing ordered probe/compare/push/readback protocol; no new state protocol/model
+is introduced. Engineering source window is30 minutes, followed by focused compilation under the
+integrator's resource grant. Runner savings and billed minutes are unmeasured.
+
+One offline command is `python3 scripts/test-release-source-guard.py`; typed checks are
+`dotnet fsi --exec scripts/test-release-nuget-verify-key.fsx` with exact SDK10.0.401. No native authority
+or publication success is inferred from mocked controls. Ordinary coherent native gates remain.
+
+## Authenticated native reference evidence
+
+Root authenticated full run37062172958/artifact11250403662 at exact Templatesd90c55e and Rendering
+caller09a8f6a. The30089-byte native evidence digest is
+`59eee748707f2b7490bc1d29eda9579af9ec19ba583d41b143bc7f1a44b7ef4d`. Provider180 and allthree
+normal browser families4/4/4 passed with zero skips/flaky/failed, joined independently to original730
+bytes. The binding records that evidence as a source candidate while `attemptReady` remains false.
+Genuine current NuGet19-ID authorization and fresh publisher census remain unobserved here.
+
+Offline14 source/effect-boundary tests and11 existing custody tests pass. OfficialSDK10.0.401 FSI
+compiled mock19-ID/header/redirect and typed eligibility controls; the actual wrapper compiles and
+refuses missing credential environment with exit3 before HTTP. Compilation corrected explicit string
+annotations for JsonElement overloads. A mock executable shebang setup recursion was contained to its
+owned Python group, repaired with an explicit interpreter/timeout and then passed; no CLR or package
+effect occurred in that fixture. Single-CLR qualification restored the two permanent baseline processes.

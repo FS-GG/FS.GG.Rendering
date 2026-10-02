@@ -1,0 +1,26 @@
+{
+  "schema": "fsgg.rendering.publication-attempt/v1",
+  "attemptReady": false,
+  "githubEffectiveWrite": "unknown-before-attempt",
+  "producerSha": "730923fe9d27174e879566f21dab14a1b03d761a",
+  "planPath": "eng/release/svg-external-authority-0.32.0.json",
+  "planSha256": "6accaeb58e4cf8f4f5fea49dffbdcdbd8fa4bae4cd6387949cd7fe0df4f31b69",
+  "producerRun": 37046893526,
+  "producerArtifact": 11244853996,
+  "outerSha256": "58a80ec49db26b36b3f873694053df1e0eb4c3fb5bac503c8905ac2547bdb4d7",
+  "outerSizeBytes": 14790371,
+  "custodySha256": "35d4c23fbd811c810987277aa1e28d2b35e605f0c9106e5385f1cb7080dc1ad9",
+  "version": "0.32.0",
+  "baselineVersion": "0.31.0",
+  "qualification": {
+    "status": "qualified-source-candidate",
+    "templatesSha": "d90c55e768afc2fbed14a3c6e234fa346f61da41",
+    "callerSha": "09a8f6a11877a30087ac67d147c9ad4d73db7ecc",
+    "run": 37062172958,
+    "artifact": 11250403662,
+    "outerSha256": "59eee748707f2b7490bc1d29eda9579af9ec19ba583d41b143bc7f1a44b7ef4d",
+    "outerSizeBytes": 30089,
+    "rootReadbackSha256": "cc905e3101a7bd247d7dad1782ff2cc03d1246426d70bfdc97c01f92bc8f92a8",
+    "qualificationSha256": "d79308c467adbde7c8a79cd07929a8e0ea8bdbd5d010d0e97bf65a5da7317947"
+  }
+}
