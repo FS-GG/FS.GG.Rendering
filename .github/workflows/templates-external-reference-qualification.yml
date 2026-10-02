@@ -30,7 +30,7 @@ jobs:
   qualify:
     needs: static
     name: Original producer archive preflight or explicit full reference gate
-    uses: FS-GG/FS.GG.Templates/.github/workflows/fable-external-reference-source.yml@ce146e07d2154c7868a3d36254f70a3899c26c48
+    uses: FS-GG/FS.GG.Templates/.github/workflows/fable-external-reference-source.yml@d90c55e768afc2fbed14a3c6e234fa346f61da41
     with:
-      templates-source: ce146e07d2154c7868a3d36254f70a3899c26c48
+      templates-source: d90c55e768afc2fbed14a3c6e234fa346f61da41
       preflight-only: ${{ github.event_name == 'pull_request' || inputs.preflight-only }}
