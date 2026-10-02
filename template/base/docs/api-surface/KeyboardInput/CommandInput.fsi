@@ -168,6 +168,7 @@ type InputProfileDiagnostic =
 /// <summary>Validates catalogs and compiles ordered binding profiles.</summary>
 [<RequireQualifiedAccess>]
 module CommandInput =
+
     /// <summary>Validates raw declarations, applies ordered overrides, and validates the effective result.</summary>
     /// <param name="catalog">The product catalog and host policy.</param>
     /// <param name="profile">The untrusted ordered profile.</param>
@@ -179,6 +180,7 @@ module CommandInput =
     val gestureId: gesture: InputGesture -> string
     /// <summary>The modifier set with every modifier inactive.</summary>
     val noModifiers: InputModifiers
+
     /// <summary>Migrates a v1 key map as logical-key defaults without changing its reader or inventing overrides.</summary>
     /// <param name="profileId">Identity for the migrated profile.</param>
     /// <param name="contextId">Context assigned to every migrated binding.</param>

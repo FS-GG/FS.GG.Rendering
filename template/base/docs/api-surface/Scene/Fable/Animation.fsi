@@ -219,6 +219,7 @@ module AnimationClip =
 
 /// Public contract module exposed by this FS.GG.UI package.
 module AnimationState =
+
     /// Adds the delta to `Elapsed` (capped at `Duration`) and recomputes
     /// `Current` via easing `Start`→`Target`.
     val advance: delta: TimeSpan -> state: AnimationState<'a> -> AnimationState<'a>

@@ -50,6 +50,7 @@ module SvgWorkspaceCommands =
     val gestureText: gesture: InputGesture -> string
     /// <summary>Every currently available row for live help.</summary>
     val helpRows: rows: SvgWorkspaceCommandRow list -> SvgWorkspaceCommandRow list
+
     /// <summary>Available rows whose metadata declares a palette alternative.</summary>
     val paletteRows: rows: SvgWorkspaceCommandRow list -> SvgWorkspaceCommandRow list
     /// <summary>Available rows with at least one pointer alternative.</summary>

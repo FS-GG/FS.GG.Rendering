@@ -70,6 +70,7 @@ type SvgGeometryResult =
 
 [<RequireQualifiedAccess>]
 module SvgArt =
+
     val align:
         alignment: SvgArtAlignment -> ids: string list -> document: SvgDocument -> Result<SvgDocument, SvgArtError>
 
@@ -91,7 +92,9 @@ module SvgArt =
         id: string -> gradient: SvgGradientDefinition -> document: SvgDocument -> Result<SvgDocument, SvgArtError>
 
     val removePathPoint: elementId: string -> index: int -> document: SvgDocument -> Result<SvgDocument, SvgArtError>
+
     val reorder: id: string -> order: SvgArtSiblingOrder -> document: SvgDocument -> Result<SvgDocument, SvgArtError>
+
     val replacePath: elementId: string -> path: PathSpec -> document: SvgDocument -> Result<SvgDocument, SvgArtError>
     val rotate: ids: string list -> degrees: float -> document: SvgDocument -> Result<SvgDocument, SvgArtError>
     val scale: ids: string list -> x: float -> y: float -> document: SvgDocument -> Result<SvgDocument, SvgArtError>

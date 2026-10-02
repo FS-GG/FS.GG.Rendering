@@ -51,6 +51,7 @@ module SvgScene =
 
     /// The only scene-envelope version accepted by this API.
     val schema: string
+
     /// Serialize a validated envelope into a bounded deterministic wire value.
     val serialize: value: SvgSceneEnvelope -> Result<string, SvgDocumentIssue list>
 
