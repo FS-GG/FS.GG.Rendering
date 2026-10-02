@@ -106,7 +106,8 @@ jobs:
           fi
           version="${INPUT_VERSION:-${EVENT_TAG#v}}"
           authority=()
-          [[ "$SOURCE_ONLY" == 'true' ]] || authority+=(--require-publication-ready)
+          # Read-only preflight gathers evidence needed for readiness; all effectful calls still require it.
+          [[ "$SOURCE_ONLY" == 'true' || "$PREFLIGHT_ONLY" == 'true' ]] || authority+=(--require-publication-ready)
           python3 scripts/release-source-guard.py \
             --plan eng/release/svg-external-authority-0.32.0.json \
             --source-sha "$source_sha" --version "$version" "${authority[@]}"
