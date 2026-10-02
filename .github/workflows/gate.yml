@@ -745,6 +745,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Fetch immutable producer plan for release guard controls
+        # The selected-attempt controls compare the original raw plan bytes. The depth-1
+        # checkout does not contain that producer; fetch only its immutable commit.
+        run: git fetch --no-tags --depth=1 origin 730923fe9d27174e879566f21dab14a1b03d761a
+
       - name: Set up .NET
         uses: actions/setup-dotnet@v6
         with:

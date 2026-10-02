@@ -46,6 +46,10 @@ on:
         type: boolean
         required: false
         default: false
+      bound-attempt:
+        description: Use the executor-owned immutable producer730 attempt binding; prerequisites must be joined
+        type: boolean
+        default: false
       source-sha:
         description: "Exact candidate source SHA to bind during a non-publishing preflight. Defaults to the called SHA."
         type: string
@@ -66,6 +70,10 @@ on:
         description: "Authenticate and prove collision state only; never pack, tag, or publish."
         type: boolean
         required: false
+        default: false
+      bound-attempt:
+        description: Use the executor-owned immutable producer730 attempt binding; prerequisites must be joined
+        type: boolean
         default: false
       source-sha:
         description: "Exact candidate source SHA whose release axes are inspected without executing candidate bytes."
@@ -95,19 +103,28 @@ jobs:
           REQUESTED_SOURCE: ${{ inputs.source-sha }}
           PREFLIGHT_ONLY: ${{ inputs.preflight-only }}
           SOURCE_ONLY: ${{ inputs.source-only }}
+          BOUND_ATTEMPT: ${{ inputs.bound-attempt }}
         shell: bash
         run: |
           set -euo pipefail
           source_sha="${REQUESTED_SOURCE:-$GITHUB_SHA}"
           [[ "$source_sha" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::source-sha must be exact lowercase 40-hex"; exit 1; }
           if [[ "$source_sha" != "$GITHUB_SHA" ]]; then
-            [[ "$PREFLIGHT_ONLY" == 'true' ]] || { echo "::error::native qualification must use the checked-out source"; exit 1; }
+            [[ "$PREFLIGHT_ONLY" == 'true' || "$BOUND_ATTEMPT" == 'true' ]] || { echo "::error::native qualification must use the checked-out source or admitted producer binding"; exit 1; }
             git fetch --no-tags origin "$source_sha"
+          fi
+          if [[ "$BOUND_ATTEMPT" == true ]]; then
+            [[ "$source_sha" == 730923fe9d27174e879566f21dab14a1b03d761a ]] || exit 3
           fi
           version="${INPUT_VERSION:-${EVENT_TAG#v}}"
           authority=()
           # Read-only preflight gathers evidence needed for readiness; all effectful calls still require it.
           [[ "$SOURCE_ONLY" == 'true' || "$PREFLIGHT_ONLY" == 'true' ]] || authority+=(--require-publication-ready)
+          if [[ "$BOUND_ATTEMPT" == true ]]; then
+            [[ "$SOURCE_ONLY" != true ]] || { echo "::error::bound attempt cannot regenerate a source candidate"; exit 3; }
+            authority+=(--attempt-binding)
+            [[ "$PREFLIGHT_ONLY" != true ]] || authority+=(--attempt-preflight)
+          fi
           python3 scripts/release-source-guard.py \
             --plan eng/release/svg-external-authority-0.32.0.json \
             --source-sha "$source_sha" --version "$version" "${authority[@]}"
@@ -152,6 +169,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ inputs.bound-attempt && '730923fe9d27174e879566f21dab14a1b03d761a' || github.sha }}
           # The Feature 209 coherence mirror in Package.Tests re-derives the verdict from the
           # fs-gg-ui/v* snapshot tags (git tag --list). Default shallow checkout has no tags ⇒ the
           # guard fails CLOSED ("tags must be visible (fetch-depth: 0)"). Fetch full history + tags.
@@ -244,6 +262,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ inputs.bound-attempt && '730923fe9d27174e879566f21dab14a1b03d761a' || github.sha }}
           fetch-depth: 0
       - uses: actions/setup-dotnet@v6
         with:
@@ -433,7 +452,8 @@ jobs:
           git fetch --no-tags origin "$source_sha"
           git cat-file -e "$source_sha^{commit}"
           echo "sha=$source_sha" >> "$GITHUB_OUTPUT"
-      - name: NuGet login preflight (OIDC only; key is not used)
+      - name: NuGet login preflight (OIDC only; existing-ID verification GETs)
+        id: nuget-preflight-login
         uses: NuGet/login@v1
         with:
           user: ${{ secrets.NUGET_USER || 'Paradigma11' }}
@@ -504,6 +524,24 @@ jobs:
             --preflight-receipt artifacts/preflight/release-preflight.json \
             --plan eng/release/svg-external-authority-0.32.0.json \
             --receipt artifacts/preflight/release-package-census.json
+      - name: Verify all19 existing-ID NuGet scopes without publication
+        env:
+          NUGET_API_KEY: ${{ steps.nuget-preflight-login.outputs.NUGET_API_KEY }}
+          FSGG_NUGET_SCOPE_ONLY: 'true'
+        run: |
+          set -euo pipefail
+          git show "${{ steps.source.outputs.sha }}:eng/release/svg-external-authority-0.32.0.json" > artifacts/preflight/producer-plan.json
+          dotnet fsi --exec scripts/test-release-nuget-verify-key.fsx
+          dotnet fsi --exec scripts/release-nuget-verify-key.fsx --plan artifacts/preflight/producer-plan.json \
+            --receipt artifacts/preflight/nuget-key-scope.json --qualification unused --census unused
+      - name: Retain sanitized verify-key observations including refusal
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: rendering-nuget-key-scope-${{ steps.source.outputs.sha }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/preflight/nuget-key-scope.json
+          if-no-files-found: warn
+          retention-days: 90
       - name: Retain read census including unavailable outcomes
         if: always()
         uses: actions/upload-artifact@v7
@@ -524,7 +562,7 @@ jobs:
       github.repository == 'FS-GG/FS.GG.Rendering' &&
       !inputs.source-only &&
       !inputs.validate-only &&
-      !inputs.preflight-only
+      !inputs.preflight-only && inputs.bound-attempt
     # Only publish a set that passed the release-only consumption checks above.
     needs: [release-source-guard, package-tests, template-product-tests]
     permissions:
@@ -532,8 +570,24 @@ jobs:
       actions: read    # recover retained custody from an earlier interrupted attempt at this source/version
       packages: write
       id-token: write   # ADR-0013: mint the GitHub OIDC token for nuget.org Trusted Publishing
+    env:
+      PRODUCER_SHA: 730923fe9d27174e879566f21dab14a1b03d761a
+      PRODUCER_PLAN: artifacts/attempt/producer-plan.json
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Initialize sanitized attempt observations before tool or archive qualification
+        run: |
+          python3 - <<'PYATTEMPT'
+          import json, os
+          from pathlib import Path
+          from datetime import datetime, timezone
+          root=Path('artifacts/attempt');root.mkdir(parents=True,exist_ok=True)
+          receipt={'schema':'fsgg.rendering.publisher-attempt-start/v1','producerSha':os.environ['PRODUCER_SHA'],'executorSha':os.environ['GITHUB_SHA'],'run':os.environ['GITHUB_RUN_ID'],'attempt':os.environ['GITHUB_RUN_ATTEMPT'],'utc':datetime.now(timezone.utc).isoformat(),'githubEffectiveWrite':'unknown-before-attempt','nugetScope':'not-yet-observed','publication':'not-yet-observed','noPackageVersionMutationAtStart':True}
+          (root/'attempt-start.json').write_text(json.dumps(receipt,sort_keys=True)+'\n')
+          PYATTEMPT
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.401'
@@ -545,23 +599,6 @@ jobs:
           name: rendering-release-toolchain-${{ github.job }}-${{ github.sha }}
           path: artifacts/toolchain/${{ github.job }}.json
           if-no-files-found: error
-
-      # ADR-0067 §9 phase 4 (FS-GG/.github#1747) — THIS IS THE JOB THAT PUBLISHES, AND IT IS THE ONE
-      # WHERE OMITTING THE GENERATE IS WORST. `dotnet pack .template.package/…` globs `..\**\*` from
-      # the repo root, and `.template.config/template.json` vendors the REPO-ROOT `.agents/skills/`
-      # (`include: ["speckit-*/**"]`). That root is a generated view now, absent in a fresh checkout,
-      # and pack does NOT fail on a missing glob — it ships a smaller package. MEASURED on a bare clone
-      # of the retirement commit, 2026-07-28, by packing both ways and reading the nupkg:
-      #
-      #   with the view generated   -> 1914 entries, 70 under content/.agents/skills/, 50 skill dirs
-      #   without it                -> 1843 entries,  0 under content/.agents/skills/
-      #
-      # A consumer installing the second one gets `[Error][MV012] Source '.agents/skills/' in template
-      # does not exist` and the template does not load AT ALL. That is a broken published artifact
-      # produced by a green publish, so the step goes here rather than being left to the gate that only
-      # predicts this job. MSBuild's `**` DOES traverse the view symlink — that was measured, not
-      # assumed, and it is the only reason a generate is sufficient. See `.github/actions/skill-view`.
-      - uses: ./.github/actions/skill-view
 
       # `github.event_name` CANNOT identify a `workflow_call` run: a called workflow reports the
       # CALLER's event. `release-tags.yml` is `push: branches: [main]`, so a call from it arrives here
@@ -600,40 +637,24 @@ jobs:
           echo "version=$ver" >> "$GITHUB_OUTPUT"
           echo "Coherent-set version: $ver"
 
-      # SVG-PREVIEW-A.1 — a publish retry may NEVER rebuild a version whose first feed was already
-      # mutated. Find custody retained by an earlier attempt at this exact source+version and verify
-      # it before doing anything else. No match means this is the first attempt and packing is still
-      # allowed; a matching but invalid artifact fails closed. If retention has expired after a partial
-      # publication, the recovery rule is a NEW coherent version, never guessed/recreated bytes.
-      - name: Recover retained immutable custody when this release was attempted before
+      # This attempt selects original source730 bytes by exact native artifact identity.
+      # Missing, expired or substituted custody is STOP; publisher never packs.
+      - name: Download selected original archives and genuine native Templates proof (no regeneration)
         id: custody
-        shell: bash
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VER: ${{ steps.ver.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          name="rendering-release-custody-${GITHUB_SHA}-${VER}"
-          id="$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${name}" \
-            --jq '.artifacts | map(select(.expired == false)) | sort_by(.created_at) | last | .id // empty')"
-          mkdir -p artifacts/packages
-          if [[ -z "$id" ]]; then
-            echo "recovered=false" >> "$GITHUB_OUTPUT"
-            echo "artifact-name=$name" >> "$GITHUB_OUTPUT"
-            echo "No retained custody found; this is the first pack attempt for $GITHUB_SHA / $VER."
-            exit 0
-          fi
-          zip="$RUNNER_TEMP/release-custody.zip"
-          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${id}/zip" > "$zip"
-          unzip -q "$zip" -d artifacts/packages
-          python3 scripts/release-custody.py verify \
-            --plan eng/release/svg-external-authority-0.32.0.json \
-            --archives artifacts/packages \
-            --manifest artifacts/packages/release-custody.json \
-            --source-sha "$GITHUB_SHA"
+          git fetch --no-tags origin "$PRODUCER_SHA"
+          python3 scripts/release-source-guard.py --attempt-binding --acquire-bound-artifacts \
+            --source-sha "$PRODUCER_SHA" --plan eng/release/svg-external-authority-0.32.0.json --version 0.32.0
           echo "recovered=true" >> "$GITHUB_OUTPUT"
-          echo "artifact-name=$name" >> "$GITHUB_OUTPUT"
-          echo "Recovered authenticated original archives from Actions artifact $id."
+          echo "artifact-name=rendering-original730-custody-${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_OUTPUT"
+          # Existing producer tags may never be moved to this executor.
+          for tag in fs-gg-ui/v0.32.0 fs-gg-ui-template/v0.32.0 v0.32.0; do
+            git fetch --no-tags origin "refs/tags/$tag:refs/tags/$tag"
+            test "$(git rev-parse "$tag^{commit}")" = "$PRODUCER_SHA"
+          done
 
       # The guard's subject and this job's object must be ONE STRING.
       #
@@ -671,49 +692,16 @@ jobs:
           fi
           echo "✓ publishing $VER == repo <Version> ($fsproj) — the version package-tests validated in the release lane"
 
-      # TWO decoupled axes (registry fs-gg-ui-template: version=framework pin vs package-version=tag):
-      #   * the FRAMEWORK set FS.GG.UI.* is versioned by the template PIN ($(FsGgUiVersion)) — pack+push
-      #     it at the pin so a template-only release (pin != $VER) does NOT republish framework members
-      #     at the template version (that produced the orphaned FS.GG.UI.* 0.1.60/0.1.61 packages that
-      #     no product pins). Custody readback makes replay idempotent; on a framework release pin == $VER.
-      #   * the TEMPLATE package FS.GG.UI.Template is versioned by the release tag $VER.
-      # .template.package is NOT a slnx member, so the two packs never overlap; the template pins
-      # FS.GG.UI.* at $(FsGgUiVersion)=pin, so template@$VER coherently depends on framework@pin.
-      # 559 — the packages this job PUSHES are built on top of a cold, locked, config-pinned restore, the
-      # same one the gate does since #482. This is the last restore before bytes reach a public feed: if
-      # the committed lock files only resolve because a package was already sitting on the runner, that
-      # is exactly the lock file consumers cannot restore, and warming it here is how it would ship.
-      - name: Restore (locked, cold; first pack only)
-        if: steps.custody.outputs.recovered != 'true'
-        uses: ./.github/actions/locked-restore
-        with:
-          target: FS.GG.Rendering.slnx
-
-      # As in `template-product-tests`: the packs below deliberately re-restore rather than take
-      # `--no-restore`, because `-p:Version` must be in effect DURING restore for pack to convert each
-      # ProjectReference into a package dependency at the right version. It is warm and feed-free — the
-      # action's cold NUGET_PACKAGES is already populated — and it is the correctness of the coherent
-      # set's INTERNAL dependency versions that is at stake, so it is not an optimisation to make here.
-      - name: Pack once and bind the immutable 19-archive custody set
-        if: steps.custody.outputs.recovered != 'true'
-        shell: bash
-        env:
-          VER: ${{ steps.ver.outputs.version }}
-        run: |
-          set -euo pipefail
-          bash scripts/release-pack.sh eng/release/svg-external-authority-0.32.0.json "$GITHUB_SHA" "$VER"
-
       - name: Verify custody before any release-shaped check
         shell: bash
         run: |
           python3 scripts/release-custody.py verify \
-            --plan eng/release/svg-external-authority-0.32.0.json \
+            --plan "$PRODUCER_PLAN" \
             --archives artifacts/packages \
             --manifest artifacts/packages/release-custody.json \
-            --source-sha "$GITHUB_SHA"
+            --source-sha "$PRODUCER_SHA"
 
       - name: Retain original release bytes before any feed mutation
-        if: steps.custody.outputs.recovered != 'true'
         uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.custody.outputs.artifact-name }}
@@ -791,7 +779,35 @@ jobs:
 
       - name: ApiCompat vs public baseline (pass / first publication / unavailable are distinct)
         shell: bash
-        run: scripts/apicompat-check.sh --baseline 0.31.0 --release-plan eng/release/svg-external-authority-0.32.0.json
+        run: scripts/apicompat-check.sh --baseline 0.31.0 --release-plan "$PRODUCER_PLAN"
+
+      - name: NuGet login (OIDC → short-lived nuget.org key)
+        if: steps.ver.outputs.push == 'true'
+        id: nuget-login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ secrets.NUGET_USER || 'Paradigma11' }}
+      - name: Verify fresh existing-ID NuGet scope and complete read census before first writer
+        env:
+          NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
+          FSGG_NUGET_SCOPE_ONLY: 'false'
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          dotnet fsi --exec scripts/test-release-nuget-verify-key.fsx
+          dotnet fsi --exec scripts/release-nuget-verify-key.fsx \
+            --plan "$PRODUCER_PLAN" --receipt artifacts/attempt/nuget-key-scope.json \
+            --qualification artifacts/attempt/qualification-facts.json --census artifacts/attempt/fresh-package-census.json
+          # Refuse public occupied/mismatched payloads before the organization feed can mutate.
+          python3 scripts/release-custody.py list --plan "$PRODUCER_PLAN" --archives artifacts/packages \
+            --manifest artifacts/packages/release-custody.json --source-sha "$PRODUCER_SHA" > artifacts/attempt/roster.tsv
+          while IFS=$'\t' read -r id file; do
+            record probe requested
+            if python3 scripts/release-custody.py probe --plan "$PRODUCER_PLAN" --archives artifacts/packages \
+              --manifest artifacts/packages/release-custody.json --source-sha "$PRODUCER_SHA" --package-id "$id" \
+              --url-template 'https://api.nuget.org/v3-flatcontainer/{id_lower}/{version}/{filename}'; then :
+            else rc=$?; [[ "$rc" == 4 ]] || exit "$rc"; fi
+          done < artifacts/attempt/roster.tsv
 
       - name: Replay original custody bytes to GitHub Packages and read them back
         if: steps.ver.outputs.push == 'true'
@@ -801,9 +817,12 @@ jobs:
           VER: ${{ steps.ver.outputs.version }}
         run: |
           set -euo pipefail
+          record() { python3 scripts/release-source-guard.py --record-event --event-feed github --event-package "${id:-unknown}" --event-stage "$1" --event-result "$2"; }
+          trap 'record interrupted failed' ERR
           while IFS=$'\t' read -r id file; do
+            record probe requested
             if python3 scripts/nuget-client-archive.py probe \
-              --plan eng/release/svg-external-authority-0.32.0.json \
+              --plan "$PRODUCER_PLAN" \
               --package-id "$id" --version "$VER" \
               --username "$GITHUB_ACTOR" --token-env GITHUB_TOKEN \
               --cache artifacts/github-replay-cache; then
@@ -811,20 +830,29 @@ jobs:
               python3 scripts/release-custody.py compare \
                 --local "artifacts/packages/$file" \
                 --remote "artifacts/github-replay-cache/$lower/$VER/$lower.$VER.nupkg"
+              record compare matched
               echo "$id already exists with the retained payload; replay not needed."
             else
               rc=$?
-              [[ "$rc" == 4 ]] || exit "$rc"
+              [[ "$rc" == 4 ]] || { record probe refused; exit "$rc"; }
+              python3 - "$id" <<'PYCENSUS'
+          import json, sys
+          from pathlib import Path
+          census=json.loads(Path('artifacts/attempt/fresh-package-census.json').read_text())
+          row=next(p for p in census['packages'] if p['id']==sys.argv[1])
+          assert row['githubPackages']['verdict']=='ABSENT', 'occupied census requires visible identical payload; no push'
+          PYCENSUS
+              record probe absent
+              record push requested
               dotnet nuget push "artifacts/packages/$file" \
                 --source https://nuget.pkg.github.com/FS-GG/index.json \
                 --api-key "$GITHUB_TOKEN"
+              record push acknowledged
             fi
-          done < <(python3 scripts/release-custody.py list \
-            --plan eng/release/svg-external-authority-0.32.0.json --archives artifacts/packages \
-            --manifest artifacts/packages/release-custody.json --source-sha "$GITHUB_SHA")
+          done < artifacts/attempt/roster.tsv
 
           python3 scripts/nuget-client-archive.py restore \
-            --plan eng/release/svg-external-authority-0.32.0.json --version "$VER" \
+            --plan "$PRODUCER_PLAN" --version "$VER" \
             --username "$GITHUB_ACTOR" --token-env GITHUB_TOKEN \
             --cache artifacts/github-readback-cache \
             --attempts 12 --retry-delay 10 \
@@ -834,67 +862,77 @@ jobs:
             python3 scripts/release-custody.py compare \
               --local "artifacts/packages/$file" \
               --remote "artifacts/github-readback-cache/$lower/$VER/$lower.$VER.nupkg"
-          done < <(python3 scripts/release-custody.py list \
-            --plan eng/release/svg-external-authority-0.32.0.json --archives artifacts/packages \
-            --manifest artifacts/packages/release-custody.json --source-sha "$GITHUB_SHA")
+          done < artifacts/attempt/roster.tsv
+          id=all19; record readback matched
 
       # Dual-publish the BYTE-IDENTICAL coherent set to public nuget.org (ADR-0012 §1–§5) via Trusted
       # Publishing / OIDC (ADR-0013 — no stored key). Runs AFTER the org-feed push (gated ordering,
       # ADR-0012 §4): if that step fails the job stops before this one. NuGet/login mints a single-use
       # key from the org's Trusted Publishing policy (fs-gg-rendering-release); until the policy exists
       # it 401s and fails the release loud. Same artifacts/packages/*.nupkg — no re-pack (§3).
-      - name: NuGet login (OIDC → short-lived nuget.org key)
-        if: steps.ver.outputs.push == 'true'
-        id: nuget-login
-        uses: NuGet/login@v1
-        with:
-          user: ${{ secrets.NUGET_USER || 'Paradigma11' }}
       - name: Replay the same original custody bytes to nuget.org and read them back
         if: steps.ver.outputs.push == 'true'
         shell: bash
         run: |
           set -euo pipefail
+          record() { python3 scripts/release-source-guard.py --record-event --event-feed nuget --event-package "${id:-unknown}" --event-stage "$1" --event-result "$2"; }
+          trap 'record interrupted failed' ERR
           while IFS=$'\t' read -r id file; do
+            record probe requested
             if python3 scripts/release-custody.py probe \
-              --plan eng/release/svg-external-authority-0.32.0.json --archives artifacts/packages \
-              --manifest artifacts/packages/release-custody.json --source-sha "$GITHUB_SHA" \
+              --plan "$PRODUCER_PLAN" --archives artifacts/packages \
+              --manifest artifacts/packages/release-custody.json --source-sha "$PRODUCER_SHA" \
               --package-id "$id" \
               --url-template 'https://api.nuget.org/v3-flatcontainer/{id_lower}/{version}/{filename}'; then
+              record compare matched
               echo "$id already exists with the retained payload; replay not needed."
             else
               rc=$?
-              [[ "$rc" == 4 ]] || exit "$rc"
+              [[ "$rc" == 4 ]] || { record probe refused; exit "$rc"; }
+              record probe absent
+              record push requested
               dotnet nuget push "artifacts/packages/$file" \
                 --source https://api.nuget.org/v3/index.json \
                 --api-key "${{ steps.nuget-login.outputs.NUGET_API_KEY }}" \
                 --skip-duplicate
+              record push acknowledged
             fi
-          done < <(python3 scripts/release-custody.py list \
-            --plan eng/release/svg-external-authority-0.32.0.json --archives artifacts/packages \
-            --manifest artifacts/packages/release-custody.json --source-sha "$GITHUB_SHA")
+          done < artifacts/attempt/roster.tsv
 
           while IFS=$'\t' read -r id _; do
             visible=false
             for attempt in {1..180}; do
               if python3 scripts/release-custody.py probe \
-                --plan eng/release/svg-external-authority-0.32.0.json --archives artifacts/packages \
-                --manifest artifacts/packages/release-custody.json --source-sha "$GITHUB_SHA" \
+                --plan "$PRODUCER_PLAN" --archives artifacts/packages \
+                --manifest artifacts/packages/release-custody.json --source-sha "$PRODUCER_SHA" \
                 --package-id "$id" \
                 --url-template 'https://api.nuget.org/v3-flatcontainer/{id_lower}/{version}/{filename}'; then
+                record readback matched
                 visible=true
                 break
               else
                 rc=$?
-                [[ "$rc" == 4 ]] || exit "$rc"
+                [[ "$rc" == 4 ]] || { record probe refused; exit "$rc"; }
               fi
               if [[ "$attempt" == 180 ]]; then
                 echo "::error::$id was accepted by nuget.org but its flat-container archive was not visible after 180 attempts."
+                record readback failed
                 exit 4
               fi
               echo "Waiting for nuget.org propagation: $id ($attempt/180)"
               sleep 10
             done
             [[ "$visible" == true ]]
-          done < <(python3 scripts/release-custody.py list \
-            --plan eng/release/svg-external-authority-0.32.0.json --archives artifacts/packages \
-            --manifest artifacts/packages/release-custody.json --source-sha "$GITHUB_SHA")
+          done < artifacts/attempt/roster.tsv
+
+      - name: Always retain original bytes and sanitized partial publisher outcomes
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: rendering-publication-attempt-producer730-executor-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          if-no-files-found: warn
+          retention-days: 90
+          compression-level: 0
+          path: |
+            artifacts/packages/
+            artifacts/attempt/
