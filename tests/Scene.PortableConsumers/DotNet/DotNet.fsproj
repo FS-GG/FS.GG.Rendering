@@ -12,6 +12,6 @@
     <Compile Include="WorkspaceCorrespondence.fs" />
     <Compile Include="AnimationCorrespondence.fs" />
     <Compile Include="Program.fs" />
-    <PackageReference Include="FS.GG.UI.Scene" Version="0.31.0" />
+    <PackageReference Include="FS.GG.UI.Scene" Version="0.32.0" />
   </ItemGroup>
 </Project>

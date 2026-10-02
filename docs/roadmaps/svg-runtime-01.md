@@ -58,3 +58,47 @@ The exact candidate gates passed generated authoring, input and runtime players 
 WebKit, Orca/AT-SPI, package consumers, installed typed receivers and repository composition. The continuous
 player exercises real semantic keyboard, pointer, touch and gamepad movement, authoritative pause/step/reset
 and lose/win/restart behavior while excluding Studio modules. Public pins remained unchanged.
+
+
+## FABLE-ADOPT-01.4 — External authority successor release
+
+- [ ] **.4-P1 — Rendering 0.32.0 publisher source preparation — route: routine.**
+  Source starts at accepted external host commit `097e228388375bf27a03ac008627e4a038686c53`.
+  The successor plan selects all 17 libraries, BOM and UI.Template, exact release axes and
+  isolated candidate-consumer pins at 0.32.0, baseline 0.31.0, and delivered external host
+  `.fs`/`.fsi` entries plus its public surface marker. The development graph version stays
+  0.4.0-preview.1. Existing dependency locks describe that graph and unchanged external
+  dependencies; no candidate restore or lock regeneration has been claimed.
+
+  The independent Rendering.Skills content package also prepares patch candidate 0.2.1
+  because the delivered symbology recipe pins changed; its per-file manifest digest is
+  regenerated from owner source bytes. It is outside the 19-member UI coherent set and
+  remains unpublished pending its own authority and installed consumer join. Front-door
+  generated fragments describe source coordinates; public 0.31.0 remains explicit outside
+  those regions.
+
+  Static preflight reuses roster, custody and ApiCompat validators and extends finite
+  negative fixtures before costly jobs. It refuses wrong source/version/axes/roster, missing
+  external sources/surface, floating release SDK setup and pending publication readiness.
+  Source-only calls skip publication credentials and feed work while retaining native
+  package/generated-consumer checks, then pack the full 19-archive set through the same
+  first-pack script as the publisher and retain source-labelled immutable custody. SDK 10.0.401 setup is followed by loaded host/SDK/F#
+  identity evidence. The existing transaction and retry semantics are unchanged; a new
+  Quint pipeline model is deferred. Initial static assessment cap: 30 minutes. Engineering
+  effort, runner savings and latency savings have not been measured. Native .NET/browser,
+  actual package/lock resolution and required coherent CI remain pending root admission.
+
+- [ ] **.4-P2 — Protected coherent publication.**
+  `publicationReady: false` keeps effects closed. Candidate 0.32.0 is neither reserved nor
+  proven absent. Genuine Rendering grants and complete identity evidence must join before
+  enabling the existing publisher. A NuGet version index does not prove deleted-version
+  absence; Templates' active/deleted census remains UNKNOWN403 and retains its own owner.
+  WASM-only NuGet authorization does not cover Rendering. Publication must retain original
+  custody, publish GitHub Packages first, replay the same bytes to nuget.org and qualify
+  signature-aware payload readback through existing guards.
+
+- [ ] **.4-I1 — Installed public receivers.**
+  Templates and the root own final public pins and fresh public-only direct/SDD/wizard
+  acceptance. This source preparation closes neither installed reference adoption nor
+  FourD/BAR/SC2 native acceptance. Telemetry attempt
+  `shared-render-coherent-publication-source-20261002`: NOTCONFIG, no handle; native usage UNKNOWN.

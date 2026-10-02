@@ -39,8 +39,11 @@ For semantic controls (Button, TextBox, DataGrid…) with Elmish, use
 ## Consume it
 
 <!-- BEGIN GENERATED: fsgg-doc:consume-coordinates (scripts/generate-doc-fragments.fsx — do not hand-edit) -->
-Published as `FS.GG.UI.*` packages on `net10.0` — 17 libraries plus the `FS.GG.UI` BOM metapackage (current framework version `0.31.0`).
+Source release coordinates: `FS.GG.UI.*` packages on `net10.0` — 17 libraries plus the `FS.GG.UI` BOM metapackage (current framework version `0.32.0`).
 <!-- END GENERATED: fsgg-doc:consume-coordinates -->
+
+The published baseline remains `0.31.0`; the [0.32.0 source candidate](eng/release/svg-external-authority-0.32.0.json)
+awaits native qualification and genuine publication authority.
 
 Each release **dual-publishes**
 the byte-identical set to public [nuget.org](https://www.nuget.org/packages?q=FS.GG.UI)

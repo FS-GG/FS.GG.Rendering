@@ -813,6 +813,7 @@ module Viewer =
     val updateRun: msg: ViewerRunMsg -> model: ViewerRunModel -> ViewerRunModel * ViewerRunEffect list
     /// Public contract function exposed by this FS.GG.UI package.
     val defaultDiagnostics: ViewerDiagnosticsOptions
+
     /// Public contract function exposed by this FS.GG.UI package.
     val defaultWindowBehavior: ViewerWindowBehaviorRequest
     /// Public contract function exposed by this FS.GG.UI package.

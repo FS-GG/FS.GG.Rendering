@@ -34,8 +34,24 @@ Three things are worth internalizing up front:
 ## Getting the packages
 
 <!-- BEGIN GENERATED: fsgg-doc:package-coordinates (scripts/generate-doc-fragments.fsx — do not hand-edit) -->
-The libraries are published as `FS.GG.UI.*` packages targeting `net10.0` — current framework version `0.31.0`.
+Source release coordinates: `FS.GG.UI.*` packages targeting `net10.0` — current framework version `0.32.0`.
 <!-- END GENERATED: fsgg-doc:package-coordinates -->
+
+The published baseline remains `0.31.0`. The source coordinates above select the pending
+`0.32.0` candidate and do not establish public availability.
+
+The [0.32.0 successor plan](../eng/release/svg-external-authority-0.32.0.json) prepares all 19
+coherent archives with the external authority SVG host and the published 0.31.0 API baseline.
+It is a source candidate; `publicationReady: false` blocks the tag cutter and effect-bearing
+release calls before credentials or expensive work. Source-only qualification uses `release.yml`
+with `source-only: true` and version `0.32.0`; its existing native consumption checks remain required.
+A readiness change must accompany genuine Rendering identity and publisher-grant evidence for
+all selected package IDs. The flag itself grants no publication authority. Historical 0.31.0
+release plans and retained custody remain unchanged.
+
+Release jobs set up SDK `10.0.401`, then verify the loaded SDK and retain host information,
+loaded F# core identity and SDK compiler hashes before restore/build/pack. Actual execution of
+those jobs is still needed to establish the candidate's toolchain and archive evidence.
 
 Every release **dual-publishes** the byte-identical
 coherent set to public [nuget.org](https://www.nuget.org/packages?q=FS.GG.UI) (via GitHub

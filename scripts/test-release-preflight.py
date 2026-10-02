@@ -40,7 +40,7 @@ class Response:
 class StatusTests(unittest.TestCase):
     def test_preflight_binds_package_roster_to_exact_source(self):
         root = SCRIPT.parent.parent
-        original = json.loads((root / "eng/release/svg-preview-c-0.31.0.json").read_text())
+        original = json.loads((root / "eng/release/svg-external-authority-0.32.0.json").read_text())
         projects = sorted(str(path.relative_to(root)) for path in (root / "src").rglob("*.fsproj"))
         projects.append(".template.package/FS.GG.UI.Template.fsproj")
 
@@ -60,7 +60,7 @@ class StatusTests(unittest.TestCase):
                 elif replacement == "wrong-kind":
                     plan["packages"][1]["kind"] = "bom"
                 elif replacement == "rollback":
-                    plan["baselineVersion"] = "0.32.0"
+                    plan["baselineVersion"] = "0.33.0"
                 elif replacement not in ("valid", "duplicate-json"):
                     plan["packages"][1]["id"] = replacement
                 plan_path = pathlib.Path(folder) / "plan.json"
@@ -70,7 +70,7 @@ class StatusTests(unittest.TestCase):
                 plan_path.write_text(body)
                 args = [
                     str(SCRIPT), "--repo-root", str(root), "--plan", str(plan_path),
-                    "--source-sha", "a" * 40, "--version", "0.31.0",
+                    "--source-sha", "a" * 40, "--version", "0.32.0",
                     "--workflow-sha", "b" * 40, "--github-username", "actor",
                     "--github-repository", "FS-GG/FS.GG.Rendering",
                     "--github-workflow-ref", "FS-GG/FS.GG.Rendering/.github/workflows/release.yml@refs/heads/main",

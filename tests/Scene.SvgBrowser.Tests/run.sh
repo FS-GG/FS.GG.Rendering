@@ -9,9 +9,9 @@ packages="$work/packages"
 tools="$work/tools"
 mkdir -p "$feed" "$packages" "$tools" "$(dirname "$output")"
 
-dotnet pack "$repo/src/Scene/Scene.fsproj" -c Release -o "$feed" -p:Version=0.31.0
-dotnet pack "$repo/src/KeyboardInput/KeyboardInput.fsproj" -c Release -o "$feed" -p:Version=0.31.0
-dotnet pack "$repo/src/Scene.SvgBrowser/Scene.SvgBrowser.fsproj" -c Release -o "$feed" -p:Version=0.31.0
+dotnet pack "$repo/src/Scene/Scene.fsproj" -c Release -o "$feed" -p:Version=0.32.0
+dotnet pack "$repo/src/KeyboardInput/KeyboardInput.fsproj" -c Release -o "$feed" -p:Version=0.32.0
+dotnet pack "$repo/src/Scene.SvgBrowser/Scene.SvgBrowser.fsproj" -c Release -o "$feed" -p:Version=0.32.0
 cp -R "$repo/tests/Scene.SvgBrowser.Tests" "$work/Browser"
 cp "$repo/tests/Scene.PortableConsumers/DocumentRoundTrip.fs" "$work/Browser/DocumentRoundTrip.fs"
 rm -rf "$work/Browser/node_modules" "$work/Browser/dist" "$work/Browser/generated"
@@ -62,7 +62,7 @@ for required in ('fs.gg.ui.scene/', 'fs.gg.ui.keyboardinput/', 'fs.gg.ui.scene.s
 for forbidden in ('skiasharp/', 'fs.gg.ui.skiaviewer/', 'fs.gg.ui.controls.elmish/'):
     if any(name.startswith(forbidden) for name in libraries):
         raise SystemExit(f'browser closure contains forbidden dependency {forbidden}')
-scene=next((root/'feed').glob('FS.GG.UI.Scene.0.31.0.nupkg'))
+scene=next((root/'feed').glob('FS.GG.UI.Scene.0.32.0.nupkg'))
 adapter=next((root/'feed').glob('FS.GG.UI.Scene.SvgBrowser.*.nupkg'))
 keyboard=next((root/'feed').glob('FS.GG.UI.KeyboardInput.*.nupkg'))
 with zipfile.ZipFile(scene) as archive:

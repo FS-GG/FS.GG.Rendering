@@ -83,7 +83,7 @@ let targets: (string * (string * string) list) list =
         [
             ("consume-coordinates",
              sprintf
-                 "Published as `FS.GG.UI.*` packages on `net10.0` — %d libraries plus the `FS.GG.UI` BOM metapackage (current framework version `%s`)."
+                 "Source release coordinates: `FS.GG.UI.*` packages on `net10.0` — %d libraries plus the `FS.GG.UI` BOM metapackage (current framework version `%s`)."
                  libraryCount
                  fsGgUiVersion)
         ]
@@ -91,7 +91,7 @@ let targets: (string * (string * string) list) list =
         [
             ("package-coordinates",
              sprintf
-                 "The libraries are published as `FS.GG.UI.*` packages targeting `net10.0` — current framework version `%s`."
+                 "Source release coordinates: `FS.GG.UI.*` packages targeting `net10.0` — current framework version `%s`."
                  fsGgUiVersion)
             ("library-count",
              sprintf

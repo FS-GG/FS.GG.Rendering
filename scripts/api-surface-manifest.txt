@@ -906,7 +906,7 @@ open   FS.GG.UI.DesignSystem
 +      Types.fsi type ControlEventOrigin
 +      Types.fsi type NavPayload
 +      Types.fsi type ControlEvent
-proseat Types.fsi type ControlEvent ::: Nav: NavPayload option }
+proseat Types.fsi type ControlEvent ::: Nav: NavPayload option
 | /// Feature 184 (US3): the closed typed navigation/interaction outcome, and the single typed
 | /// replacement for the RETIRED stringly `Payload`. Project it with `Types.navText` /
 | /// `Types.navValue` rather than re-deriving a string; non-navigation events leave it `None`.
