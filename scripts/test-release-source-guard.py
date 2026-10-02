@@ -227,6 +227,41 @@ class SelectedAttemptTests(unittest.TestCase):
         self.assertIn('noPackageVersionMutation=true',wrapper)
         self.assertIn('if not(admit facts)',wrapper)
 
+    def test_exact_fsharp_publisher_indices_and_job_scope_mutants(self):
+        fixture=(ROOT/'tests/Package.Tests/Feature209VersionCoherenceTests.fs').read_text().split('test "release.yml: publish-packages binds',1)[1].split('// #517',1)[0]
+        pattern=re.search(r'Regex.Match\(yml, @"([^"]+)"\)',fixture).group(1).replace(r'\z',r'\Z')
+        def literal(name):
+            encoded=re.search(r'let '+name+r' = (?:idx |yml.IndexOf\()("(?:\\.|[^"\\])*")',fixture).group(1)
+            return json.loads(encoded)
+        def evaluate(text):
+            job=re.search(pattern,text);self.assertIsNotNone(job)
+            publisher=job.group(0)
+            values={name:publisher.index(literal(name)) for name in ['verify','acquisition','custody','firstPush']}
+            source=text.index(literal('sourceGuard'))
+            last=publisher.rindex('dotnet nuget push')
+            self.assertLess(source,job.start()+values['acquisition'])
+            self.assertLess(values['acquisition'],values['verify'])
+            self.assertLess(values['verify'],values['custody'])
+            self.assertLess(values['custody'],values['firstPush']);self.assertLess(values['custody'],last)
+            verify_step=publisher[values['verify']:]
+            self.assertIn('.template.package/FS.GG.UI.Template.fsproj',verify_step)
+            self.assertIn("steps.ver.outputs.push == 'true'",verify_step)
+            self.assertIn('--source-sha "$PRODUCER_SHA"',publisher)
+            self.assertNotIn('dotnet pack',publisher);self.assertNotIn('release-pack.sh',publisher)
+            return values
+        text=(ROOT/'.github/workflows/release.yml').read_text()
+        values=evaluate(text)
+        duplicate='  earlier-fixture-job:\n    runs-on: ubuntu-latest\n    steps:\n'+literal('verify')+'\n        run: true\n'
+        def earlier_job(value):return value.replace('  publish-packages:\n',duplicate+'  publish-packages:\n',1)
+        self.assertEqual(values,evaluate(earlier_job(text)))
+        verify=text.index(literal('verify'));custody=text.index(literal('custody'))
+        end=text.index('      - name: Retain original release bytes before any feed mutation',custody)
+        removed=text[:verify]+text[custody:]
+        reversed_steps=text[:verify]+text[custody:end]+text[verify:custody]+text[end:]
+        for label,mutant in [('removed-publisher-guard',removed),('reversed-version-custody',reversed_steps)]:
+            with self.subTest(label=label),self.assertRaises((AssertionError,ValueError)):
+                evaluate(earlier_job(mutant))
+
     def test_partial_observations_sanitize_and_preserve_unknown(self):
         with tempfile.TemporaryDirectory() as d:
             root=Path(d)
