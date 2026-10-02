@@ -279,5 +279,13 @@ class StatusTests(unittest.TestCase):
         self.assertIn("secrets: inherit", validate)
 
 
+
+
+class CensusAuthorityTextTests(unittest.TestCase):
+    def test_read_observations_are_not_writer_authority(self):
+        source = pathlib.Path(__file__).with_name("release-preflight.py").read_text()
+        self.assertIn("effective all-package writer grants UNKNOWN", source)
+        self.assertIn("effective selected-package policy scopes UNKNOWN", source)
+
 if __name__ == "__main__":
     unittest.main()
