@@ -31,6 +31,23 @@ Acceptance evidence:
 The host adds no Game package dependency to the portable Scene layer and no clock, DOM or renderer dependency
 to Game.Core. Candidate package versions remain private pending Preview B.
 
+## FABLE-ADOPT-01.2 — External-authority presentation source
+
+`SvgExternalSessionPolicy` and `SvgExternalSessionHost` add an opt-in presentation boundary for products
+whose simulation authority is external to the browser. The state separates local mount generation from an
+opaque external epoch, gives each request a monotonic acquisition identity, accepts only increasing revisions
+within that epoch, owns at most one acquisition and one replaceable queued presentation, and cancels
+browser-owned work before reconnect, replacement, or disposal. Same-epoch reconnect preserves the accepted
+baseline; a distinct epoch starts a new baseline.
+
+The host emits no simulation advance or native pause, resume, reset, step, or authority-clock effects.
+Commands and settlement receipts stay on the product gateway path and are outside presentation coalescing.
+The source boundary includes pure reducer checks, the literate `models/svg-runtime/external-session.md`
+authority with fifteen directed traces, 82 complete state rows, and four assertion-specific guard controls,
+packed .NET/Fable correspondence, and the existing three-browser fixture. Callback failures and cancellation
+settlement uncertainty remain visible while listener cleanup and reentrant callback fencing preserve actual
+owned-resource truth. Package publication, an installed consumer, and product adoption remain later gates.
+
 ## SVG-RUNTIME-01.5 — Generated continuous player and Preview-B handoff
 
 Game producer repair PR #625 merged as `c6de5b83eaa3d3f14909b42c3f8c3c94558157c9`. Templates PR #471

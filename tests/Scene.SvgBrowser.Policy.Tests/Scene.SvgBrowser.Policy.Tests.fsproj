@@ -6,6 +6,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="PersistencePolicyTests.fs" />
+    <Compile Include="ExternalSessionPolicyTests.fs" />
+    <Compile Include="ExternalSessionModelCorrespondenceTests.fs" />
     <Compile Include="PolicyTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

@@ -13,6 +13,8 @@
     <Compile Include="SvgInputHost.fs" />
     <Compile Include="SvgSessionHost.fsi" />
     <Compile Include="SvgSessionHost.fs" />
+    <Compile Include="SvgExternalSessionHost.fsi" />
+    <Compile Include="SvgExternalSessionHost.fs" />
     <Compile Include="SvgStudio.fsi" />
     <Compile Include="SvgStudio.fs" />
     <Compile Include="SvgAnimationHost.fsi" />

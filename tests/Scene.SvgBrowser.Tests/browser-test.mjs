@@ -79,6 +79,7 @@ let observations;
 let documentEvidence;
 let browserMatrixEvidence;
 let sessionEvidence;
+let externalSessionEvidence;
 let animationEvidence;
 try {
   await page.goto(`http://127.0.0.1:${address.port}/`, { waitUntil: "networkidle" });
@@ -131,6 +132,70 @@ try {
     throw new Error(`session disposal leaked resources: ${JSON.stringify(disposedSession)}`);
   }
   sessionEvidence = { mounted: mountedSession, cadence, paused: pausedSession, stepped: steppedSession, projected: projectedSession, replaced: replacedSession, stale: staleSession, reset: resetSession, suspended: suspendedSession, disposed: disposedSession };
+  const externalMounted = await page.evaluate(() => window.svgFoundation.externalMount("opaque-a"));
+  if (externalMounted.listeners !== 2 || externalMounted.requests !== 0 || externalMounted.status !== "Connected" || externalMounted.events.some((value) => value.startsWith("advance:") || value === "pause" || value === "reset")) {
+    throw new Error(`external presentation acquired authority-clock behavior: ${JSON.stringify(externalMounted)}`);
+  }
+  const externalBurst = await page.evaluate(() => { window.svgFoundation.externalDemand(); window.svgFoundation.externalDemand(); window.svgFoundation.externalDemand(); const root = document.getElementById("fixture"); root.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true, bubbles: true, cancelable: true })); window.svgFoundation.externalReceipt(true, "external.select"); window.svgFoundation.externalReceipt(false, "external.select"); return window.svgFoundation.externalObserve(); });
+  if (externalBurst.requests !== 1 || externalBurst.acquisition !== 0 || !externalBurst.queued || externalBurst.gateway.join("|") !== "command:external.select|receipt:true:external.select|receipt:false:external.select") {
+    throw new Error(`external burst or ordered gateway composition was unbounded: ${JSON.stringify(externalBurst)}`);
+  }
+  const externalGeneration = externalBurst.generation;
+  const externalApplied = await page.evaluate(({ generation }) => window.svgFoundation.externalComplete(generation, 0, "opaque-a", 11, "external-11"), { generation: externalGeneration });
+  if (externalApplied.revision !== 11 || externalApplied.requests !== 1 || externalApplied.acquisition !== 1 || externalApplied.sceneRevision <= externalBurst.sceneRevision || !externalApplied.events.includes("apply:opaque-a:11:external-11")) {
+    throw new Error(`external projection did not apply then drain the queued demand: ${JSON.stringify(externalApplied)}`);
+  }
+  const sameEpoch = await page.evaluate(() => window.svgFoundation.externalBind("opaque-a"));
+  if (sameEpoch.revision !== 11 || sameEpoch.generation === externalGeneration || !sameEpoch.events.some((value) => value.endsWith(":opaque-a:true"))) {
+    throw new Error(`same-epoch reconnect lost its revision baseline: ${JSON.stringify(sameEpoch)}`);
+  }
+  await page.evaluate(() => window.svgFoundation.externalDemand());
+  const oldGeneration = sameEpoch.generation;
+  const replacedEpoch = await page.evaluate(() => window.svgFoundation.externalBind("opaque-b"));
+  const staleExternal = await page.evaluate(({ oldGeneration }) => window.svgFoundation.externalComplete(oldGeneration, 2, "opaque-a", 99, "stale"), { oldGeneration });
+  if (replacedEpoch.revision !== null || staleExternal.events.includes("apply:opaque-a:99:stale") || staleExternal.sceneRevision === 99) {
+    throw new Error(`epoch replacement accepted stale presentation: ${JSON.stringify(staleExternal)}`);
+  }
+  const lowerEpochRevision = await page.evaluate(() => { window.svgFoundation.externalDemand(); const value = window.svgFoundation.externalObserve(); return window.svgFoundation.externalComplete(value.generation, value.acquisition, "opaque-b", 1, "external-b-1"); });
+  if (lowerEpochRevision.revision !== 1 || lowerEpochRevision.sceneRevision <= staleExternal.sceneRevision || !lowerEpochRevision.events.includes("apply:opaque-b:1:external-b-1")) {
+    throw new Error(`new epoch lower authority revision did not update retained DOM through its local presentation revision: ${JSON.stringify(lowerEpochRevision)}`);
+  }
+  await page.evaluate(() => { window.svgFoundation.externalDemand(); window.dispatchEvent(new Event("blur")); });
+  const blurredExternal = await page.evaluate(() => window.svgFoundation.externalObserve());
+  if (blurredExternal.requests !== 0 || blurredExternal.events.some((value) => value === "pause" || value.startsWith("advance:"))) {
+    throw new Error(`external blur affected engine authority or retained acquisition: ${JSON.stringify(blurredExternal)}`);
+  }
+  const disposedExternal = await page.evaluate(() => window.svgFoundation.externalDispose());
+  await page.evaluate(() => window.svgFoundation.externalDemand());
+  const lateExternal = await page.evaluate(() => window.svgFoundation.externalObserve());
+  if (!disposedExternal.disposed || disposedExternal.listeners !== 0 || disposedExternal.requests !== 0 || lateExternal.events.length !== disposedExternal.events.length) {
+    throw new Error(`external disposal leaked or accepted late scheduling: ${JSON.stringify({ disposedExternal, lateExternal })}`);
+  }
+  const cancelThrows = await page.evaluate(() => { window.svgFoundation.externalMountControl("control", "cancel-throws"); window.svgFoundation.externalDemand(); return window.svgFoundation.externalDispose(); });
+  if (!cancelThrows.disposed || cancelThrows.listeners !== 0 || cancelThrows.requests !== 0 || !cancelThrows.callbackFailure || !cancelThrows.cancellationUnknown) {
+    throw new Error(`throwing cancellation hid resource settlement: ${JSON.stringify(cancelThrows)}`);
+  }
+  const disposeThrows = await page.evaluate(() => { window.svgFoundation.externalMountControl("control", "dispose-throws"); return window.svgFoundation.externalDispose(); });
+  if (!disposeThrows.disposed || disposeThrows.listeners !== 0 || !disposeThrows.callbackFailure || disposeThrows.cancellationUnknown) {
+    throw new Error(`throwing dispose callback skipped listener cleanup: ${JSON.stringify(disposeThrows)}`);
+  }
+  const applyDisposes = await page.evaluate(() => { window.svgFoundation.externalMountControl("control", "apply-dispose"); window.svgFoundation.externalDemand(); window.svgFoundation.externalDemand(); return window.svgFoundation.externalComplete(1, 0, "control", 1, "dispose"); });
+  if (!applyDisposes.disposed || applyDisposes.listeners !== 0 || applyDisposes.requests !== 0 || applyDisposes.events.filter((value) => value.startsWith("request:")).length !== 1) {
+    throw new Error(`reentrant apply disposal scheduled retired work: ${JSON.stringify(applyDisposes)}`);
+  }
+  const applyRebinds = await page.evaluate(() => { window.svgFoundation.externalMountControl("control", "apply-rebind"); window.svgFoundation.externalDemand(); window.svgFoundation.externalDemand(); return window.svgFoundation.externalComplete(1, 0, "control", 1, "rebind"); });
+  if (applyRebinds.epoch !== "reentrant" || applyRebinds.requests !== 0 || applyRebinds.events.filter((value) => value.startsWith("request:")).length !== 1) {
+    throw new Error(`reentrant apply replacement scheduled superseded work: ${JSON.stringify(applyRebinds)}`);
+  }
+  const requestCompletes = await page.evaluate(() => { window.svgFoundation.externalMountControl("control", "request-sync-complete"); return window.svgFoundation.externalDemand(); });
+  if (requestCompletes.revision !== 1 || requestCompletes.requests !== 0 || !requestCompletes.events.includes("apply:control:1:sync")) {
+    throw new Error(`synchronous request completion was not serialized: ${JSON.stringify(requestCompletes)}`);
+  }
+  const repeatedDispose = await page.evaluate(() => { const first = window.svgFoundation.externalDispose(); const second = window.svgFoundation.externalDispose(); return { first, second }; });
+  if (repeatedDispose.first.listeners !== 0 || repeatedDispose.second.listeners !== 0 || repeatedDispose.second.events.length !== repeatedDispose.first.events.length) {
+    throw new Error(`repeated disposal changed terminal ownership: ${JSON.stringify(repeatedDispose)}`);
+  }
+  externalSessionEvidence = { mounted: externalMounted, burst: externalBurst, applied: externalApplied, sameEpoch, replacedEpoch, stale: staleExternal, lowerEpochRevision, blurred: blurredExternal, disposed: disposedExternal, late: lateExternal, cancelThrows, disposeThrows, applyDisposes, applyRebinds, requestCompletes, repeatedDispose };
   const mountedAnimation = await page.evaluate(() => { const value = window.svgFoundation.animationMount(); return window.svgFoundation.animationMotion(false); });
   if (mountedAnimation.listeners !== 2 || mountedAnimation.frames !== 0 || mountedAnimation.active !== 0 || mountedAnimation.status !== "Running") {
     throw new Error(`animation mount ownership failed: ${JSON.stringify(mountedAnimation)}`);
@@ -629,6 +694,7 @@ const evidence = {
     retainedRootAndLayersAcrossRevision: true, staleRevisionRefused: true, mountDisposeCycles: 12,
     finalOwnedListenerCount: observations.listeners, scheduledFrameCount: observations.frames,
     sessionHost: sessionEvidence,
+    externalSessionHost: externalSessionEvidence,
     animationHost: animationEvidence,
   },
   browserMatrix: browserMatrixEvidence,

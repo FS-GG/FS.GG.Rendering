@@ -5,6 +5,7 @@ open Browser.Dom
 open Browser.Types
 open Fable.Core
 open Fable.Core.JsInterop
+open FS.GG.UI.KeyboardInput
 open FS.GG.UI.Scene
 open FS.GG.UI.Scene.SvgBrowser
 
@@ -99,6 +100,12 @@ let mutable performanceCameraStep = 0
 let mutable performanceChangedObject = -1
 let sessionEvents = ResizeArray<string>()
 let mutable sessionHost: SvgSessionHost<string> option = None
+let externalEvents = ResizeArray<string>()
+let externalGateway = ResizeArray<string>()
+let mutable externalHost: SvgExternalSessionHost<string> option = None
+let mutable externalInputHost: SvgInputHost option = None
+let mutable externalRenderRevision = 0
+let mutable externalControlMode = "ordinary"
 let animationEvents = ResizeArray<string>()
 let mutable animationHost: SvgAnimationHost option = None
 
@@ -310,6 +317,139 @@ let sessionObservation () =
             "disposed" ==> value.IsDisposed
             "sceneRevision" ==> host.Value.State.Scene.Revision
             "events" ==> sessionEvents.ToArray()
+        ]
+
+let externalCallbacks =
+    {
+        RequestPresentation =
+            fun generation acquisition epoch ->
+                externalEvents.Add($"request:{generation}:{acquisition}:{epoch}")
+
+                if externalControlMode = "request-sync-complete" then
+                    externalHost.Value.CompletePresentation(generation, acquisition, epoch, 1UL, "sync")
+        ApplyPresentation =
+            fun epoch revision projection ->
+                externalRenderRevision <- externalRenderRevision + 1
+
+                host.Value.Dispatch(
+                    RetainedInteractionMessage.ReplaceScene(retained externalRenderRevision (30.0 + float revision))
+                )
+                |> ignore
+
+                externalEvents.Add($"apply:{epoch}:{revision}:{projection}")
+
+                if externalControlMode = "apply-dispose" then
+                    (externalHost.Value :> IDisposable).Dispose()
+                elif externalControlMode = "apply-rebind" then
+                    externalHost.Value.BindEpoch "reentrant"
+        CancelAcquisition =
+            fun generation acquisition ->
+                externalEvents.Add($"cancel:{generation}:{acquisition}")
+
+                if externalControlMode = "cancel-throws" then
+                    failwith "controlled cancellation callback failure"
+        EpochBound = fun generation epoch preserved -> externalEvents.Add($"bind:{generation}:{epoch}:{preserved}")
+        Disconnected = fun () -> externalEvents.Add("disconnect")
+        Dispose =
+            fun () ->
+                externalEvents.Add("dispose")
+
+                if externalControlMode = "dispose-throws" then
+                    failwith "controlled dispose callback failure"
+    }
+
+let mountExternalInput () =
+    externalInputHost |> Option.iter (fun value -> (value :> IDisposable).Dispose())
+
+    let modifiers =
+        { CommandInput.noModifiers with
+            Ctrl = true
+        }
+
+    let command =
+        {
+            Id = "external.select"
+            Label = "External select"
+            Contexts = [ "external" ]
+            AvailabilityKey = None
+            Trigger = CommandTriggerPolicy.OncePerPress
+            Argument = CommandArgumentPolicy.NoArgument
+            Alternatives = [ CommandAlternative.Palette ]
+        }
+
+    let catalog =
+        {
+            Contexts =
+                [
+                    {
+                        Id = "external"
+                        Priority = 1
+                        Exclusive = false
+                        Overlaps = []
+                    }
+                ]
+            Commands = [ command ]
+            ReservedGestures = []
+            AllowTerminalPrefixes = false
+        }
+
+    let profile =
+        {
+            Schema = CommandInput.profileSchema
+            Id = "external-browser"
+            Overrides = []
+            Defaults =
+                [
+                    {
+                        Gesture = InputGesture.KeyChord(InputKeyIdentity.LogicalKey "k", modifiers)
+                        Command = command.Id
+                        Context = "external"
+                    }
+                ]
+        }
+
+    let effective =
+        CommandInput.compile catalog profile
+        |> Result.defaultWith (fun issues -> failwithf "%A" issues)
+
+    externalInputHost <-
+        Some(
+            new SvgInputHost(
+                container,
+                catalog,
+                CommandResolver.init [ "external" ] effective,
+                (fun () -> [ command.Id ]),
+                (function
+                | CommandResolverEffect.InvokeCommand value -> externalGateway.Add($"command:{value.Command}")
+                | _ -> ()),
+                { SvgInputHost.defaultOptions with
+                    PollGamepads = false
+                }
+            )
+        )
+
+let externalObservation () =
+    let value = externalHost.Value.Observe()
+    let state = value.State
+
+    createObj
+        [
+            "generation" ==> float state.MountGeneration
+            "epoch" ==> (state.Epoch |> Option.map box |> Option.toObj)
+            "status" ==> string state.Status
+            "revision"
+            ==> (state.AcceptedRevision |> Option.map (float >> box) |> Option.toObj)
+            "acquisition"
+            ==> (state.PendingAcquisitionId |> Option.map (float >> box) |> Option.toObj)
+            "queued" ==> state.PresentationQueued
+            "listeners" ==> value.OwnedListenerCount
+            "requests" ==> value.OwnedRequestCount
+            "callbackFailure" ==> value.CallbackFailureObserved
+            "cancellationUnknown" ==> value.CancellationSettlementUnknown
+            "disposed" ==> value.IsDisposed
+            "sceneRevision" ==> host.Value.State.Scene.Revision
+            "events" ==> externalEvents.ToArray()
+            "gateway" ==> externalGateway.ToArray()
         ]
 
 let errorName =
@@ -1106,6 +1246,72 @@ let api =
             ==> fun () ->
                 (sessionHost.Value :> IDisposable).Dispose()
                 sessionObservation ()
+            "externalMount"
+            ==> fun (epoch: string) ->
+                externalHost |> Option.iter (fun value -> (value :> IDisposable).Dispose())
+                externalInputHost |> Option.iter (fun value -> (value :> IDisposable).Dispose())
+                externalEvents.Clear()
+                externalGateway.Clear()
+                externalControlMode <- "ordinary"
+                externalRenderRevision <- host.Value.State.Scene.Revision
+                externalHost <- Some(new SvgExternalSessionHost<string>(externalCallbacks))
+                externalHost.Value.BindEpoch epoch
+                mountExternalInput ()
+                externalObservation ()
+            "externalMountControl"
+            ==> fun (epoch: string) (mode: string) ->
+                externalHost |> Option.iter (fun value -> (value :> IDisposable).Dispose())
+                externalInputHost |> Option.iter (fun value -> (value :> IDisposable).Dispose())
+                externalEvents.Clear()
+                externalGateway.Clear()
+                externalControlMode <- mode
+                externalRenderRevision <- host.Value.State.Scene.Revision
+                externalHost <- Some(new SvgExternalSessionHost<string>(externalCallbacks))
+                externalHost.Value.BindEpoch epoch
+                externalObservation ()
+            "externalObserve" ==> fun () -> externalObservation ()
+            "externalDemand"
+            ==> fun () ->
+                externalHost.Value.DemandPresentation()
+                externalObservation ()
+            "externalComplete"
+            ==> fun generation acquisition epoch revision projection ->
+                externalHost.Value.CompletePresentation(
+                    uint64 generation,
+                    uint64 acquisition,
+                    epoch,
+                    uint64 revision,
+                    projection
+                )
+
+                externalObservation ()
+            "externalFail"
+            ==> fun generation acquisition epoch ->
+                externalHost.Value.FailAcquisition(
+                    uint64 generation,
+                    uint64 acquisition,
+                    epoch,
+                    SvgExternalCompletionFailure.Lost
+                )
+
+                externalObservation ()
+            "externalBind"
+            ==> fun epoch ->
+                externalHost.Value.BindEpoch epoch
+                externalObservation ()
+            "externalCommand"
+            ==> fun command ->
+                externalGateway.Add($"command:{command}")
+                externalObservation ()
+            "externalReceipt"
+            ==> fun accepted command ->
+                externalGateway.Add($"receipt:{accepted}:{command}")
+                externalObservation ()
+            "externalDispose"
+            ==> fun () ->
+                (externalHost.Value :> IDisposable).Dispose()
+                (externalInputHost.Value :> IDisposable).Dispose()
+                externalObservation ()
         ]
 
 [<Emit("window.svgFoundation = $0")>]

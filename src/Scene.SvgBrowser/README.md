@@ -6,6 +6,29 @@ backpressure, generation invalidation and disposal while callers interpret its c
 session runtime. A background-tab gap requests explicit recovery, and retained projections must increase
 monotonically within the current generation.
 
+For an engine whose clock and lifecycle live outside the browser, use `SvgExternalSessionHost`. It owns only
+presentation acquisition and browser listeners; it never emits advance, pause, resume, reset, or step effects.
+The product supplies an opaque epoch and a revision that increases within that epoch:
+
+```fsharp
+let host = SvgExternalSessionHost<string> callbacks
+host.BindEpoch authorityEpoch
+host.DemandPresentation()
+let pending = host.Observe().State
+host.CompletePresentation(
+    pending.MountGeneration,
+    pending.PendingAcquisitionId.Value,
+    authorityEpoch,
+    authorityRevision,
+    svgProjection
+)
+```
+
+A reconnect to the same epoch keeps its revision baseline. A different epoch resets the baseline after the
+old local mount is invalidated. Every request has a monotonic acquisition identity, so a delayed completion
+cannot consume a later request in the same mount and epoch. Product commands and accepted or rejected
+receipts bypass this presentation queue and remain ordered at the product gateway.
+
 `FS.GG.UI.Scene.SvgBrowser` is the Fable/browser adapter for the supported
 `FS.GG.UI.Scene` subset. It maintains a retained SVG root, routes pointer and
 keyboard selection through the Scene reducer, and provides camera-aware picking.
