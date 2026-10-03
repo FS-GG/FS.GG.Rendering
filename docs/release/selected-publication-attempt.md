@@ -79,7 +79,9 @@ Root independently confirmed this join and admitted promotion to `qualified`/`at
 [Fresh no-effect run37097094139](https://github.com/FS-GG/FS.GG.Rendering/actions/runs/37097094139)
 at executor9ca2120 completed all19 existing-ID NuGet scope GETs with HTTP200. The complete authenticated
 active/deleted GitHub census reports all19 targets absent; public probes report19 HTTP404 responses.
-Allthree immutable tags bind original730. [Sanitized artifact identities and receipt digests](publication-window-20261003.json)
+The preflight found allthree tags absent; it did not establish tag bindings. Subsequently, the
+root-approved immutable lightweight triple was created in plan order, after inspecting original
+source-only qualification37046893526, and independently read back at original730. [Sanitized artifact identities and receipt digests](publication-window-20261003.json)
 retain the exact readback. These observations admit a bounded attempt; effective GitHub write remains
 unknown before actual acknowledgement and matching readback. The publisher repeats fresh scope/census
 checks before effects and never uses these historical receipts as a retry credential.
@@ -89,3 +91,21 @@ workflow steps execute separate shells, so later writer functions were unavailab
 executable shell regression proves per-ID feed/stage/result arguments without HTTP or credentials.
 All17 source/effect-boundary tests and11 custody tests pass. No package has been repacked or published
 in this source window. Telemetry is not configured; usage remains unknown.
+
+## First admitted publisher attempt
+
+Run37099302757 was cancelled while native gates still ran; its publisher had zero steps. After
+exact original-source tag creation/readback, [run37099405999](https://github.com/FS-GG/FS.GG.Rendering/actions/runs/37099405999)
+passed both native consumption gates, reacquired the fixed originals and native qualification, and
+verified original19 custody. Its clean-checkout FSI probe then failed with NU1101: initializing an
+absent user NuGet.Config as an empty configuration and adding staging disabled implicit public
+nuget.org, leaving external package dependencies unresolved. The wrapper now initializes that missing
+config with the explicit public source before adding retained original-archive staging. Existing
+user configs remain unchanged. An executable shell fixture covers both missing and existing configs.
+
+OIDC login, fresh scope/census and both writer steps were all skipped. There were no feed effects.
+The retained attempt artifact11265388841 has29,617,077 bytes and SHA256
+`f40467cac92c0e2bfbe0bb60868319015d29c7ae8acfc1380c2d68fa68c887ac`. Independent download verified
+that its embedded original.zip still has the fixed producer digest and that all19 archives and the
+custody manifest are byte-identical to the original selected artifact. Publication remains pending;
+a repaired protected executor must repeat all real guards. The18 focused source tests pass.

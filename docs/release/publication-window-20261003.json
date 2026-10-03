@@ -31,7 +31,7 @@
     "outerSizeBytes": 1178,
     "receiptSha256": "792de4b8b9a288aa47cfd585e49c70b83775d5bb847bf693d7e3297bfedc8415",
     "publicAbsent": 19,
-    "tagsBoundToProducer": 3
+    "tagsAbsent": 3
   },
   "templatesProtectedMerge": "908da309c9a52490cf914c3f2d5ce1eaf1188b2e",
   "templatesQualifiedTree": "2c611f36ae4241c5a4566b403bea5727dbb99d85",
@@ -51,5 +51,44 @@
   "telemetry": {
     "coverage": "not-configured",
     "usage": "unknown"
-  }
+  },
+  "tagReadback": {
+    "producerSha": "730923fe9d27174e879566f21dab14a1b03d761a",
+    "objectType": "commit",
+    "tags": [
+      "fs-gg-ui/v0.32.0",
+      "fs-gg-ui-template/v0.32.0",
+      "v0.32.0"
+    ],
+    "verified": true,
+    "authority": "original native release qualification37046893526 and root-approved exact immutable tag creation",
+    "effectOrder": "after no-effect preflight37097094139; before fresh publisher37099405999"
+  },
+  "publisherAttempts": [
+    {
+      "run": 37099302757,
+      "disposition": "cancelled-before-publisher",
+      "publisherSteps": 0,
+      "feedEffects": false
+    },
+    {
+      "run": 37099405999,
+      "executorSha": "150f79978b7d1f4053c6745106b6fd392c80ea9f",
+      "disposition": "failed-before-writers",
+      "nativePackageConsumption": "passed",
+      "nativeGeneratedProduct": "passed",
+      "failedStep": "Packed template clean-checkout FSI contract (#1010)",
+      "cause": "missing user NuGet config initialized without explicit public source; staging source suppressed implicit nuget.org",
+      "oidcLogin": "skipped",
+      "githubWriter": "skipped",
+      "nugetWriter": "skipped",
+      "feedEffects": false,
+      "retainedArtifact": 11265388841,
+      "retainedOuterSizeBytes": 29617077,
+      "retainedOuterSha256": "f40467cac92c0e2bfbe0bb60868319015d29c7ae8acfc1380c2d68fa68c887ac",
+      "retainedOriginalZipSha256": "58a80ec49db26b36b3f873694053df1e0eb4c3fb5bac503c8905ac2547bdb4d7",
+      "retainedOriginalArchivesExact": 19,
+      "custodyVerified": true
+    }
+  ]
 }
