@@ -23,6 +23,12 @@ custody = importlib.util.module_from_spec(spec)
 sys.modules[spec.name] = custody
 spec.loader.exec_module(custody)
 TAGS = ['fs-gg-ui/v0.32.0','fs-gg-ui-template/v0.32.0','v0.32.0']
+PHASE = 'arguments'
+
+def phase(value):
+    global PHASE
+    PHASE=value
+    print('retained API mirror phase: '+value,file=sys.stderr)
 
 def git(*args):
     return subprocess.check_output(['git','-C',str(ROOT),*args],stderr=subprocess.DEVNULL,text=True).strip()
@@ -71,26 +77,31 @@ def main():
     parser.add_argument('--receipt',type=Path,required=True)
     parser.add_argument('--verify',action='store_true')
     args=parser.parse_args()
+    phase('candidate-checkout')
     if not re.fullmatch('[0-9a-f]{40}',args.candidate_sha) or git('rev-parse','HEAD') != args.candidate_sha:
         raise ValueError('retained mirror exact candidate refused')
     if args.verify:
+        phase('retained-custody-reverification')
         binding,source_tree,_=verify_local(args.candidate_sha)
         receipt=json.loads(args.receipt.read_text())
         expected={'schema':'fsgg.rendering.retained-api-mirror/v1','candidateSha':args.candidate_sha,'candidateTree':git('rev-parse',args.candidate_sha+'^{tree}'),'producerSha':guard.PRODUCER,'sourceTree':source_tree,'producerTree':git('rev-parse',guard.PRODUCER+'^{tree}'),'custodySha256':guard.CUSTODY,'planSha256':guard.PLAN_HASH,'outerSha256':guard.OUTER,'mode':'retained-original','publicationAcceptance':False,'installedAcceptance':False,'mutation':'none'}
         if any(receipt.get(key)!=value for key,value in expected.items()) or not decide(receipt.get('publicStatuses',[])):
             raise ValueError('retained mirror receipt refused')
         return
+    phase('pin-and-tags')
     pin=(ROOT/'template/base/Directory.Packages.props').read_text()
     if '<FsGgUiVersion>0.32.0</FsGgUiVersion>' not in pin:
         print('retained-feed=');return
     present=[bool(subprocess.run(['git','rev-parse','--verify','refs/tags/'+tag],cwd=ROOT,capture_output=True).returncode==0) for tag in TAGS]
     if not any(present):print('retained-feed=');return
     if not all(present):raise ValueError('retained mirror partial tag triple refused')
+    phase('immutable-plan')
     raw_plan=guard.source_bytes(ROOT,guard.PRODUCER,'eng/release/svg-external-authority-0.32.0.json')
     if hashlib.sha256(raw_plan).hexdigest()!=guard.PLAN_HASH:
         raise ValueError('retained mirror original plan digest refused')
     plan=json.loads(raw_plan)
     probe=ROOT/'artifacts/mirror/public-probes';probe.mkdir(parents=True,exist_ok=True)
+    phase('public-readbacks')
     statuses=[]
     for row in plan['packages']:
         filename=row['id'].lower()+'.0.32.0.nupkg'
@@ -100,7 +111,9 @@ def main():
     if not pending:
         for target in probe.glob('*.nupkg'):target.unlink()
         print('retained-feed=');return
+    phase('candidate-source-join')
     binding,_=source_facts(args.candidate_sha)
+    phase('authenticated-original-acquisition')
     subprocess.run([sys.executable,str(ROOT/'scripts/release-source-guard.py'),'--attempt-binding','--acquire-bound-artifacts','--source-sha',guard.PRODUCER,'--plan',binding['planPath'],'--version','0.32.0'],cwd=ROOT,capture_output=True,check=True,timeout=120)
     archives=ROOT/'artifacts/packages'
     for row,status in zip(plan['packages'],statuses):
@@ -108,6 +121,7 @@ def main():
             target=probe/(row['id'].lower()+'.0.32.0.nupkg')
             with contextlib.redirect_stdout(io.StringIO()):custody.compare_archive(archives/(row['id']+'.0.32.0.nupkg'),target)
             target.unlink()
+    phase('retained-custody-reverification')
     _,source_tree,_=verify_local(args.candidate_sha)
     args.receipt.parent.mkdir(parents=True,exist_ok=True)
     args.receipt.write_text(json.dumps({'schema':'fsgg.rendering.retained-api-mirror/v1','mode':'retained-original','candidateSha':args.candidate_sha,'candidateTree':git('rev-parse',args.candidate_sha+'^{tree}'),'workflowRef':os.environ.get('GITHUB_WORKFLOW_REF','local-readback'),'run':os.environ.get('GITHUB_RUN_ID','local-readback'),'producerSha':guard.PRODUCER,'sourceTree':source_tree,'producerTree':git('rev-parse',guard.PRODUCER+'^{tree}'),'custodySha256':guard.CUSTODY,'planSha256':guard.PLAN_HASH,'outerSha256':guard.OUTER,'publicStatuses':statuses,'publicationAcceptance':False,'installedAcceptance':False,'mutation':'none'},sort_keys=True)+'\n')
@@ -116,4 +130,4 @@ def main():
 if __name__=='__main__':
     try:main()
     except (ValueError,OSError,KeyError,subprocess.SubprocessError,custody.CustodyError):
-        sys.exit('retained API mirror qualification unavailable/refused')
+        sys.exit('retained API mirror qualification unavailable/refused at '+PHASE)

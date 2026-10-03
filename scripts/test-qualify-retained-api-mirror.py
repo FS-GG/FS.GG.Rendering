@@ -6,6 +6,8 @@ import sys
 import unittest
 import json
 import tempfile
+import os
+import subprocess
 from unittest.mock import patch
 sys.dont_write_bytecode=True
 spec=importlib.util.spec_from_file_location('mirror',Path(__file__).with_name('qualify-retained-api-mirror.py'))
@@ -54,6 +56,30 @@ class RetainedMirrorTests(unittest.TestCase):
                 for key,value in [('candidateSha','d'*40),('candidateTree','d'*40),('sourceTree','d'*40),('custodySha256','d'*64),('publicationAcceptance',True),('installedAcceptance',True),('publicStatuses',[200]*19),('publicStatuses',[404]*18+[403])]:
                     bad={**good,key:value};receipt.write_text(json.dumps(bad))
                     with self.subTest(key=key,value=value),self.assertRaises(ValueError):mirror.main()
+
+    def test_actual_workflow_passes_head_even_when_native_sha_is_merge_context(self):
+        root=Path(__file__).resolve().parent.parent
+        text=(root/'.github/workflows/gate.yml').read_text()
+        step=text.split('      - name: Qualify explicit original730 tagged recovery mirror input (read only)',1)[1].split('      - name:',1)[0]
+        self.assertNotIn('          GITHUB_SHA:',step)
+        script=step.split('        run: |\n',1)[1]
+        script='\n'.join(line[10:] for line in script.splitlines())
+        with tempfile.TemporaryDirectory() as folder:
+            temp=Path(folder);capture=temp/'captured';output=temp/'output';helper=temp/'python3'
+            helper.write_text('#!/usr/bin/env bash\nprintf "%s\\n" "$@" > "$CAPTURE"\n')
+            helper.chmod(0o700)
+            env={**os.environ,'PATH':str(temp)+os.pathsep+os.environ['PATH'],'CAPTURE':str(capture),'GITHUB_OUTPUT':str(output),'GITHUB_SHA':'b'*40,'FSGG_MIRROR_CANDIDATE_SHA':'a'*40}
+            result=subprocess.run(['bash','-c',script],env=env,capture_output=True,text=True,timeout=5)
+            self.assertEqual(0,result.returncode,result.stderr)
+            args=capture.read_text().splitlines()
+            self.assertEqual('a'*40,args[args.index('--candidate-sha')+1])
+            self.assertNotIn('b'*40,args)
+
+    def test_executor_identity_preserves_checkout_and_native_merge_separately(self):
+        with patch.object(mirror.guard.preflight,'git',return_value='a'*40),patch.dict(os.environ,{'GITHUB_SHA':'b'*40}):
+            self.assertEqual({'executorSha':'a'*40,'workflowContextSha':'b'*40},mirror.guard.executor_identity(mirror.ROOT))
+        with patch.object(mirror.guard.preflight,'git',return_value='a'*40),patch.dict(os.environ,{'GITHUB_SHA':'unknown'}),self.assertRaises(SystemExit):
+            mirror.guard.executor_identity(mirror.ROOT)
 
     def test_actual_workflow_reads_originals_before_expensive_work_with_no_writer_permissions(self):
         root=Path(__file__).resolve().parent.parent

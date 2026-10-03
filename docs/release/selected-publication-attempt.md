@@ -140,7 +140,7 @@ pinned packages with zero rewrites. No package is repacked and no publication/in
 claimed. The source gate still performs its own native build/tests and real ApiCompat; no coherent run
 is cancelled or reused from an offline mock.
 
-Pipeline preflight choice: static actual-workflow ordering and five offline refusal/disposition
+Pipeline preflight choice: static actual-workflow ordering and seven offline refusal/disposition
 fixtures, reusing existing artifact/custody authority. This is a stateless read-input selection;
 custom protocol modeling is deferred because there is no new retry or effect-order state machine.
 Source investment is capped at30 minutes, native read-only acquisition at180 seconds, and FSI
@@ -150,3 +150,19 @@ not inferred from this local measurement. The local command is
 `--select-original730`, the exact candidate and a receipt destination. Local read-only acquisition
 observed19 public HTTP404s and reverified original custody. Runner savings and billed minutes remain
 unmeasured; repeated native source/publication gates remain authoritative.
+
+Native run37102531892 passed actual ApiCompat but refused the early candidate join. The configured
+step tried to set reserved `GITHUB_SHA` to the PR head while checking out that head. The
+[runner exports native context variables over step environment before script execution](https://github.com/actions/runner/blob/main/src/Runner.Worker/Handlers/ScriptHandler.cs),
+and [GitHub reserves those default names](https://docs.github.com/en/actions/reference/workflows-and-actions/variables);
+the PR context SHA describes its synthetic merge, not the checked-out candidate. The wrapper now
+passes a dedicated `FSGG_MIRROR_CANDIDATE_SHA`. Acquisition records its executor from actual git HEAD
+and preserves the native `workflowContextSha` separately. Main publisher identity remains unchanged.
+
+An executable actual-step fixture supplies different candidate/merge SHAs and proves the candidate
+is passed without overwriting native context. A typed identity fixture proves both are preserved
+and unknown values refuse. Stable credential-free phase diagnostics identify future refusal boundaries
+without printing responses, headers or credentials. All57 Python tests pass. A genuine local read-only
+acquisition with deliberately distinct checkout/context identities verified the originals and candidate
+join; this proves local behavior, not the hosted Actions token's access. Both selected artifacts belong
+to the Rendering caller repository, and the next exact-head native gate must establish hosted access.

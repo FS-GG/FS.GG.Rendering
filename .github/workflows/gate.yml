@@ -90,12 +90,12 @@ jobs:
         id: retained-api-mirror
         env:
           GH_TOKEN: ${{ github.token }}
-          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          FSGG_MIRROR_CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           set -euo pipefail
           python3 scripts/test-qualify-retained-api-mirror.py
           timeout 180 python3 scripts/qualify-retained-api-mirror.py --select-original730 \
-            --candidate-sha "$GITHUB_SHA" --receipt artifacts/mirror/qualified.json >> "$GITHUB_OUTPUT"
+            --candidate-sha "$FSGG_MIRROR_CANDIDATE_SHA" --receipt artifacts/mirror/qualified.json >> "$GITHUB_OUTPUT"
 
       - name: Retain selected mirror qualification and immutable original input
         if: always()
