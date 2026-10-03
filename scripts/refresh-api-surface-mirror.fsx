@@ -190,6 +190,35 @@ let pins =
 /// repos on their own axes ($(FsGgGameVersion)/$(FsGgAudioVersion)), this repo builds no project for
 /// them, and a bump of those pins is a CONSUMER bump onto something already published. The feed is the
 /// only honest source for them, and it can answer.
+// Tagged publication recovery uses only the explicitly selected immutable original archives.
+// This read-only qualification never establishes public-feed or installed-consumer acceptance.
+let retainedReleaseFeed =
+    match Environment.GetEnvironmentVariable "FS_GG_RETAINED_API_MIRROR_FEED" with
+    | null
+    | "" -> None
+    | feed ->
+        let expected = Path.Combine(repoRoot, "artifacts", "packages")
+        if feed <> expected then fail "retained release feed is not the selected original archive directory"
+        let candidate = Environment.GetEnvironmentVariable "FS_GG_RETAINED_API_MIRROR_CANDIDATE"
+        let psi = ProcessStartInfo("python3")
+        psi.WorkingDirectory <- repoRoot
+        psi.RedirectStandardOutput <- true
+        psi.RedirectStandardError <- true
+        [ Path.Combine(repoRoot, "scripts", "qualify-retained-api-mirror.py")
+          "--select-original730"; "--candidate-sha"; candidate
+          "--receipt"; Path.Combine(repoRoot, "artifacts", "mirror", "qualified.json"); "--verify" ]
+        |> List.iter psi.ArgumentList.Add
+        use custodyProcess = Process.Start psi
+        let output = custodyProcess.StandardOutput.ReadToEndAsync()
+        let errors = custodyProcess.StandardError.ReadToEndAsync()
+        if not (custodyProcess.WaitForExit(30000)) then
+            custodyProcess.Kill(true)
+            fail "retained release mirror custody revalidation timed out"
+        output.GetAwaiter().GetResult() |> ignore
+        errors.GetAwaiter().GetResult() |> ignore
+        if custodyProcess.ExitCode <> 0 then fail "retained release mirror candidate/source/tag/custody join refused"
+        Some feed
+
 let releaseWindowProjects: Map<string, string> =
     let pin = pins |> Map.find "FS.GG.UI.Scene"
 
@@ -198,7 +227,7 @@ let releaseWindowProjects: Map<string, string> =
         | Ok value -> value
         | Error e -> fail e
 
-    if not pending then
+    if not pending && retainedReleaseFeed.IsNone then
         Map.empty
     else
         let projects = ReleaseWindow.packableProjects repoRoot
@@ -212,7 +241,9 @@ let releaseWindowProjects: Map<string, string> =
 /// Requiring every expected id/version here keeps the transient source honest: an absent or stale
 /// local feed is red, never a reason to fall back to unpublished nuget.org or hand-read a source tree.
 let releaseLocalFeed =
-    if releaseWindowProjects.IsEmpty then
+    if retainedReleaseFeed.IsSome then
+        retainedReleaseFeed
+    elif releaseWindowProjects.IsEmpty then
         None
     else
         match Environment.GetEnvironmentVariable "FS_GG_PRODUCT_LOCAL_FEED" with
@@ -957,7 +988,9 @@ let formatGenerated (relativePath: string) (content: string) =
 
 // Say it out loud. A run that silently swapped its own inputs would be indistinguishable from one that
 // read the feed, and the whole argument for the swap is that it happens on exactly one commit.
-if not releaseWindowProjects.IsEmpty then
+if retainedReleaseFeed.IsSome then
+    printfn "RETAINED RELEASE QUALIFICATION: exact candidate source matches original730; restoring custody-verified originals. Public publication and installed acceptance remain pending."
+elif not releaseWindowProjects.IsEmpty then
     printfn
         "RELEASE WINDOW: <FsGgUiVersion> %s is ahead of its snapshot tags, so nuget.org cannot serve it yet — reading %d package(s) from the exact-head local feed that release.yml packs at that pin. %d external pin(s) still restore from nuget.org."
         (pins |> Map.find (releaseWindowProjects |> Map.toList |> List.head |> fst))

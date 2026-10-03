@@ -117,3 +117,36 @@ across the five Python release suites and both ApiCompat shell status/classifier
 is source fixture repair, not an API compatibility verdict. Native ApiCompat must still pass on the
 repaired exact head. The two non-required publication jobs report actual missing0.32 public packages
 and NU1102 consumer pins; those remain honest pending-publication findings until actual feed readbacks.
+
+## Tagged recovery source qualification
+
+Run37100863160 compared17 actual API baselines with zero breaks, indeterminate or unavailable results,
+and all17 deterministic .NET test suites passed. Its later mirror restore failed NU1102 because the
+exact0.32 tags closed the pre-tag local-feed window while the public version was still unpublished.
+
+The required source gate now explicitly selects original730 for that tagged recovery window before
+costly qualification. It authenticates the original run/artifact and native Templates proof through
+the existing acquisition guard. A pending public version permits retained-feed qualification only
+when the exact checkout SHA, clean entire `src` subtree, package/build/SDK pins, original plan and
+source tree, allthree producer tags, outer archives, native qualification digest and19 custody agree.
+Changed source/API or unknown/missing/mismatched inputs refuse before the coherent workload. Present
+public payloads are compared to originals; all19 public packages present returns to ordinary public
+qualification before retained-artifact acquisition, so normal post-publication checks do not depend
+on historical artifact retention. External package pins always use their public feed.
+
+FSI revalidates the exact candidate receipt/source/tag/custody join with a30-second bound before it
+restores the fixed original archives. Actual SDK10.0.401 mirror qualification checked98 files from21
+pinned packages with zero rewrites. No package is repacked and no publication/installed acceptance is
+claimed. The source gate still performs its own native build/tests and real ApiCompat; no coherent run
+is cancelled or reused from an offline mock.
+
+Pipeline preflight choice: static actual-workflow ordering and five offline refusal/disposition
+fixtures, reusing existing artifact/custody authority. This is a stateless read-input selection;
+custom protocol modeling is deferred because there is no new retry or effect-order state machine.
+Source investment is capped at30 minutes, native read-only acquisition at180 seconds, and FSI
+revalidation at30 seconds. The warm actual full mirror check took45.63 seconds; runner savings are
+not inferred from this local measurement. The local command is
+`python3 scripts/test-qualify-retained-api-mirror.py`; the genuine acquisition command explicitly names
+`--select-original730`, the exact candidate and a receipt destination. Local read-only acquisition
+observed19 public HTTP404s and reverified original custody. Runner savings and billed minutes remain
+unmeasured; repeated native source/publication gates remain authoritative.
