@@ -3,7 +3,10 @@ set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 output="${1:?qualification evidence output path is required}"
-sdd_version=1.7.0
+# Existing direct callers retain the exact historical release conformance route.
+source "$root/tests/svg-foundation/retained-sdd-selection.sh"
+select_retained_sdd "${2:-historical-1.7}"
+[[ $# -le 2 ]] || { echo 'svg-retained-qualification: unexpected arguments' >&2; exit 1; }
 public_source=https://api.nuget.org/v3/index.json
 package_source="${FSGG_SDD_PACKAGE_SOURCE:-$public_source}"
 quint_sha=939b64095b706017f2f202c6f99c860c40be7c31bddc2b98557316e50f42cd7f
@@ -48,7 +51,7 @@ done
 [[ -n "$cli" && -x "$cli" ]] || fail 'public SDD installation failed after three attempts'
 installed_version="$($cli --version)"
 echo "svg-retained-qualification: installed-cli-version=$installed_version source=$package_source"
-grep -F "$sdd_version" <<<"$installed_version" >/dev/null || fail "installed SDD identity mismatch: $installed_version"
+require_retained_sdd_identity "$installed_version" || fail "installed SDD identity mismatch: $installed_version"
 
 export HTTP_PROXY=http://127.0.0.1:1
 export HTTPS_PROXY=http://127.0.0.1:1
@@ -81,6 +84,10 @@ author_once() {
     cat "$destination-inspect.json" >&2
     fail "installed SDD inspect failed for $destination"
   fi
+  jq -e --arg identity "FS.GG.SDD.Artifacts/$installed_version" \
+    '.packageIdentity == $identity and .profileIdentity == "fsgg-quint-profile/2"' \
+    "$destination/readiness/svg-qual-01-2/typed-authority.json" >/dev/null \
+    || fail 'authored authority package/profile identity mismatch'
   echo "svg-retained-qualification: offline author+inspect passed for $destination"
 }
 
@@ -91,8 +98,14 @@ find "$scratch/author-a/readiness/svg-qual-01-2" "$scratch/author-b/readiness/sv
   | xargs -0 -r dotnet fantomas
 diff -ru "$scratch/author-a/readiness/svg-qual-01-2" "$scratch/author-b/readiness/svg-qual-01-2" >/dev/null \
   || fail 'two offline installed author runs diverged'
-diff -ru "$root/readiness/svg-qual-01-2" "$scratch/author-a/readiness/svg-qual-01-2" >/dev/null \
-  || fail 'committed extracted authority is stale'
+if [[ "$sdd_selection" == historical-1.7 ]]; then
+  diff -ru "$root/readiness/svg-qual-01-2" "$scratch/author-a/readiness/svg-qual-01-2" >/dev/null \
+    || fail 'committed extracted authority is stale'
+else
+  python3 "$root/tests/svg-foundation/compare-retained-authority.py" \
+    "$root/readiness/svg-qual-01-2" "$scratch/author-a/readiness/svg-qual-01-2" \
+    || fail 'current extracted authority diverged beyond the selected package identity'
+fi
 
 qnt="$scratch/author-a/readiness/svg-qual-01-2/quint/retainedInteraction.qnt"
 "$QUINT_BIN" typecheck "$qnt" > "$scratch/quint-typecheck.log"
@@ -159,9 +172,13 @@ grep -F 'typedSdd.v2.compilationFailed' "$scratch/stale-action.json" >/dev/null 
 [[ ! -e "$scratch/stale-action/readiness/svg-qual-01-2/typed-authority.json" ]] || fail 'stale-action refusal wrote authority'
 
 tree_sha="$(cd "$root/readiness/svg-qual-01-2" && find . -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1)"
+generated_tree_sha="$(cd "$scratch/author-a/readiness/svg-qual-01-2" && find . -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1)"
+authority_output="${output}.authority"
+[[ ! -e "$authority_output" ]] || fail "authority output already exists: $authority_output"
 mkdir -p "$(dirname "$output")"
-jq -n --arg source "$package_source" --arg tree "$tree_sha" --arg corpus "$(sha "$root/models/svg-foundation/retained-interaction.traces.tsv")" \
+cp -R "$scratch/author-a/readiness/svg-qual-01-2" "$authority_output"
+jq -n --arg version "$installed_version" --arg artifactsIdentity "$(jq -r .packageIdentity "$scratch/author-a/readiness/svg-qual-01-2/typed-authority.json")" --arg selection "$sdd_selection" --arg generatedTree "$generated_tree_sha" --arg authorityOutput "$authority_output" --arg source "$package_source" --arg tree "$tree_sha" --arg corpus "$(sha "$root/models/svg-foundation/retained-interaction.traces.tsv")" \
   --arg documentCorpus "$(sha "$root/models/svg-foundation/document-interaction.traces.tsv")" \
   --arg quint "$quint_sha" --arg lmt "$lmt_sha" \
-  '{schema:"fsgg.svg-retained-installed-qualification/v1",sdd:{package:"FS.GG.SDD.Cli",version:"1.7.0",source:$source},profile:"fsgg-quint-profile/2",offlineAuthorInspect:"passed",deterministicExtraction:"passed",committedEvidenceTreeSha256:$tree,boundedModel:{tests:"passed",retained:{run:"passed",steps:12,traces:16,seed:"0x0123456789abcdef",corpusSha256:$corpus},documentAmendment:{run:"passed",steps:12,traces:16,seed:"0x1023456789abcdef",corpusSha256:$documentCorpus}},staleRangeRefusal:"passed",staleActionRefusal:"passed",tools:{quint:{version:"0.32.0",sha256:$quint},lmt:{sha256:$lmt}}}' > "$output"
+  '{schema:"fsgg.svg-retained-installed-qualification/v1",sdd:{package:"FS.GG.SDD.Cli",version:$version,source:$source,selection:$selection,artifactsPackageIdentity:$artifactsIdentity},profile:"fsgg-quint-profile/2",offlineAuthorInspect:"passed",deterministicExtraction:"passed",committedEvidenceTreeSha256:$tree,generatedEvidenceTreeSha256:$generatedTree,generatedAuthorityPath:$authorityOutput,boundedModel:{tests:"passed",retained:{run:"passed",steps:12,traces:16,seed:"0x0123456789abcdef",corpusSha256:$corpus},documentAmendment:{run:"passed",steps:12,traces:16,seed:"0x1023456789abcdef",corpusSha256:$documentCorpus}},staleRangeRefusal:"passed",staleActionRefusal:"passed",tools:{quint:{version:"0.32.0",sha256:$quint},lmt:{sha256:$lmt}}}' > "$output"
 echo "svg-retained-qualification: installed-sdd=$sdd_version offline=passed deterministic=passed model-traces=passed stale-bindings=passed evidence=$output"

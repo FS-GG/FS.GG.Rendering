@@ -46,6 +46,8 @@ jobs:
         uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Check closed compiler selection and historical evidence guards
+        run: bash tests/svg-foundation/test-retained-sdd-selection.sh
       - name: Set up .NET
         uses: actions/setup-dotnet@v6
         with:
@@ -72,7 +74,7 @@ jobs:
             https://raw.githubusercontent.com/driusan/lmt/62fe18f2f6a6e11c158ff2b2209e1082a4fcd59c/main.go \
             --output "$RUNNER_TEMP/svg-retained-tools/main.go"
           echo '88bc47acae2c26919ab96a5cafa80b12fac762092c57840a2baad1afcc7feda3  '"$RUNNER_TEMP/svg-retained-tools/main.go" | sha256sum --check --strict
-          # SDD CLI 1.7.0 profile 2 accepts the exact lmt object built with Go 1.24.1.
+          # Preserve the exact qualified profile-2 lmt object built with Go 1.24.1.
           qualified_go="$(GOTOOLCHAIN=go1.24.1 go env GOROOT)/bin/go"
           test "$("$qualified_go" version)" = 'go version go1.24.1 linux/amd64'
           (
@@ -86,11 +88,11 @@ jobs:
         run: |
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
           /usr/bin/unshare --user --map-root-user --net -- /usr/bin/true
-      - name: Qualify public installed SDD authority
+      - name: Qualify current public installed SDD 2.1.0 authority
         env:
           QUINT_BIN: ${{ runner.temp }}/svg-retained-tools/quint
           LMT_BIN: ${{ runner.temp }}/svg-retained-tools/lmt
-        run: bash tests/svg-foundation/qualify-retained-profile.sh "$RUNNER_TEMP/svg-retained-qualification.json"
+        run: bash tests/svg-foundation/qualify-retained-profile.sh "$RUNNER_TEMP/svg-retained-qualification.json" current-2.1
       - name: Exercise real reducer correspondence
         run: dotnet test tests/Scene.Tests/Scene.Tests.fsproj --filter 'SVG foundation retained scene'
       - name: Replay model traces through packed consumers
@@ -106,7 +108,9 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: svg-retained-qualification
-          path: ${{ runner.temp }}/svg-retained-qualification.json
+          path: |
+            ${{ runner.temp }}/svg-retained-qualification.json
+            ${{ runner.temp }}/svg-retained-qualification.json.authority/**
           if-no-files-found: warn
       - name: Upload reducer replay receipt
         if: always()
