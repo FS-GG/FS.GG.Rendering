@@ -1,0 +1,55 @@
+{
+  "schema": "fsgg.rendering.publication-window-readback/v1",
+  "date": "2026-10-03",
+  "sourceSha": "730923fe9d27174e879566f21dab14a1b03d761a",
+  "executorSha": "9ca2120a0ae777b91af398c6770de6efcca24888",
+  "run": 37097094139,
+  "attempt": 1,
+  "mutation": "none",
+  "publicationObserved": false,
+  "installedAcceptance": false,
+  "githubEffectiveWrite": "unknown-before-attempt",
+  "nugetScopes": {
+    "artifact": 11264273980,
+    "outerSha256": "1da48c67d0aa50f9a2c3708e3c3b2b2013d61e0c49a99f1c93b20d0e7734d0f9",
+    "outerSizeBytes": 797,
+    "receiptSha256": "b58543556245d0b04aa72bdf13879e55d2bfa1be262857df43756d139c9735eb",
+    "authorized": 19,
+    "rosterSha256": "99405bbaa7415317ea4edfad0fdfdcc14da1f43812889330c58246f0188e5a10"
+  },
+  "census": {
+    "artifact": 11263849905,
+    "outerSha256": "db31138dd430b7fbc9575b4d0b7d1459ae96bc94c85b25b3224a87bdc8e38fb2",
+    "outerSizeBytes": 2907,
+    "receiptSha256": "cd0811a611c04f91a688e6f63ce14f18e046ac52ffdc2cc281bc5545f9eecfe3",
+    "completeActiveDeleted": 19,
+    "absent": 19
+  },
+  "preflight": {
+    "artifact": 11264169087,
+    "outerSha256": "4b7ccbd3a3eb6d253ad254cad60f91c85c4b976eeba7f6105c92fc1c108b851d",
+    "outerSizeBytes": 1178,
+    "receiptSha256": "792de4b8b9a288aa47cfd585e49c70b83775d5bb847bf693d7e3297bfedc8415",
+    "publicAbsent": 19,
+    "tagsBoundToProducer": 3
+  },
+  "templatesProtectedMerge": "908da309c9a52490cf914c3f2d5ce1eaf1188b2e",
+  "templatesQualifiedTree": "2c611f36ae4241c5a4566b403bea5727dbb99d85",
+  "nativeQualification": {
+    "run": 37062172958,
+    "artifact": 11250403662,
+    "providerPassed": 180,
+    "browserPassed": [
+      4,
+      4,
+      4
+    ],
+    "unexpected": 0,
+    "skipped": 0,
+    "flaky": 0
+  },
+  "telemetry": {
+    "coverage": "not-configured",
+    "usage": "unknown"
+  }
+}
