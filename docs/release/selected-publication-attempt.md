@@ -2,8 +2,9 @@
 
 The original source730 plan remains `publicationReady:false` and its bytes remain the subject of
 custody SHA verification. The executor-owned `svg-external-authority-0.32.0-attempt.json` separately
-defines eligibility to attempt publication. Its current `attemptReady:false` prohibits all publisher effects. Native Templates proof is
-`qualified-source-candidate`; protected Templates source delivery/admission remains pending. Source delivery does not establish publication readiness.
+defines eligibility to attempt publication. Its current `attemptReady:true` admits only the fixed original-byte attempt after the joined
+readbacks below. Native Templates proof is `qualified`; publication success and installed acceptance
+remain false until actual feed and consumer readbacks establish them.
 
 Root may populate that binding only after independent native qualification readback. The binding
 selects the original successful run37046893526/artifact11244853996 by exact source, outer native
@@ -46,13 +47,13 @@ One offline command is `python3 scripts/test-release-source-guard.py`; typed che
 `dotnet fsi --exec scripts/test-release-nuget-verify-key.fsx` with exact SDK10.0.401. No native authority
 or publication success is inferred from mocked controls. Ordinary coherent native gates remain.
 
-## Authenticated native reference evidence
+## Historical authenticated native reference evidence
 
 Root authenticated full run37062172958/artifact11250403662 at exact Templatesd90c55e and Rendering
 caller09a8f6a. The30089-byte native evidence digest is
 `59eee748707f2b7490bc1d29eda9579af9ec19ba583d41b143bc7f1a44b7ef4d`. Provider180 and allthree
 normal browser families4/4/4 passed with zero skips/flaky/failed, joined independently to original730
-bytes. The binding records that evidence as a source candidate while `attemptReady` remains false.
+bytes. At that source window, the binding recorded a source candidate while `attemptReady` remained false.
 Genuine current NuGet19-ID authorization and fresh publisher census remain unobserved here.
 
 Offline14 source/effect-boundary tests and11 existing custody tests pass. OfficialSDK10.0.401 FSI
@@ -61,3 +62,30 @@ refuses missing credential environment with exit3 before HTTP. Compilation corre
 annotations for JsonElement overloads. A mock executable shebang setup recursion was contained to its
 owned Python group, repaired with an explicit interpreter/timeout and then passed; no CLR or package
 effect occurred in that fixture. Single-CLR qualification restored the two permanent baseline processes.
+
+## Joined publication window, 2026-10-03
+
+Independent acquisition verified original artifact11244853996 at14,790,371 bytes and outer SHA256
+`58a80ec49db26b36b3f873694053df1e0eb4c3fb5bac503c8905ac2547bdb4d7`, original custody
+`35d4c23fbd811c810987277aa1e28d2b35e605f0c9106e5385f1cb7080dc1ad9`, and all19 retained archives.
+The original plan remains byte-identical and `publicationReady:false`; only the executor binding changes.
+
+Independent native qualification revalidated artifact11250403662, its exact outer digest/size,
+actual180 Provider checks and4/4/4 Chromium/Firefox/WebKit reports with zero unexpected/skipped/flaky
+results against original archives. Templates protected merge908da309 has the same tree
+`2c611f36ae4241c5a4566b403bea5727dbb99d85` as the qualified d90c55e source candidate.
+Root independently confirmed this join and admitted promotion to `qualified`/`attemptReady:true`.
+
+[Fresh no-effect run37097094139](https://github.com/FS-GG/FS.GG.Rendering/actions/runs/37097094139)
+at executor9ca2120 completed all19 existing-ID NuGet scope GETs with HTTP200. The complete authenticated
+active/deleted GitHub census reports all19 targets absent; public probes report19 HTTP404 responses.
+Allthree immutable tags bind original730. [Sanitized artifact identities and receipt digests](publication-window-20261003.json)
+retain the exact readback. These observations admit a bounded attempt; effective GitHub write remains
+unknown before actual acknowledgement and matching readback. The publisher repeats fresh scope/census
+checks before effects and never uses these historical receipts as a retry credential.
+
+The pre-writer public-probe step now defines its own sanitized `record` function and error trap:
+workflow steps execute separate shells, so later writer functions were unavailable there. A focused
+executable shell regression proves per-ID feed/stage/result arguments without HTTP or credentials.
+All17 source/effect-boundary tests and11 custody tests pass. No package has been repacked or published
+in this source window. Telemetry is not configured; usage remains unknown.

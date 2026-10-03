@@ -157,6 +157,8 @@ class SourceGuardTests(unittest.TestCase):
 class SelectedAttemptTests(unittest.TestCase):
     def binding(self, mutate=None, ready=False):
         value=json.loads((ROOT/guard.ATTEMPT).read_text())
+        value['attemptReady']=False
+        value['qualification']['status']='qualified-source-candidate'
         if ready:
             value['attemptReady']=True
             value['qualification'].update(status='qualified',callerSha='a'*40,run=1,artifact=2,outerSha256='b'*64,outerSizeBytes=100)
@@ -216,6 +218,22 @@ class SelectedAttemptTests(unittest.TestCase):
         for body in [publisher.split('Replay original custody bytes to GitHub',1)[1],publisher.split('Replay the same original custody bytes',1)[1]]:
             self.assertLess(body.index('probe'),body.index('dotnet nuget push'))
             self.assertIn('[[ "$rc" == 4 ]]',body)
+
+    def test_public_probe_has_its_own_shell_diagnostic_function(self):
+        text=(ROOT/'.github/workflows/release.yml').read_text()
+        step=text.split('      - name: Verify fresh existing-ID NuGet scope and complete read census before first writer',1)[1].split('      - name:',1)[0]
+        script=step.split('        run: |\n',1)[1]
+        script='\n'.join(line[10:] for line in script.splitlines())
+        # Each workflow step runs a separate shell; functions in later writer steps cannot help.
+        prefix=script.split('while IFS=',1)[0]
+        function=next(line for line in prefix.splitlines() if line.startswith('record()'))
+        with tempfile.TemporaryDirectory() as folder:
+            temp=Path(folder); helper=temp/'python3';capture=temp/'captured'
+            helper.write_text('#!/usr/bin/env bash\nprintf "%s\\n" "$@" > "$CAPTURE"\n')
+            helper.chmod(0o700)
+            result=subprocess.run(['bash','-c',function+'\nid=FS.GG.UI.Scene\nrecord probe requested'],env={**os.environ,'PATH':str(temp)+os.pathsep+os.environ['PATH'],'CAPTURE':str(capture)},capture_output=True,text=True,timeout=5)
+            self.assertEqual(0,result.returncode,result.stderr)
+            self.assertEqual(['scripts/release-source-guard.py','--record-event','--event-feed','nuget','--event-package','FS.GG.UI.Scene','--event-stage','probe','--event-result','requested'],capture.read_text().splitlines())
 
     def test_verify_key_secret_and_redirect_boundaries(self):
         helper=(ROOT/'scripts/NuGetVerifyKey.fs').read_text();wrapper=(ROOT/'scripts/release-nuget-verify-key.fsx').read_text()

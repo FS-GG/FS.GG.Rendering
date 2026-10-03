@@ -1,6 +1,6 @@
 {
   "schema": "fsgg.rendering.publication-attempt/v1",
-  "attemptReady": false,
+  "attemptReady": true,
   "githubEffectiveWrite": "unknown-before-attempt",
   "producerSha": "730923fe9d27174e879566f21dab14a1b03d761a",
   "planPath": "eng/release/svg-external-authority-0.32.0.json",
@@ -13,7 +13,7 @@
   "version": "0.32.0",
   "baselineVersion": "0.31.0",
   "qualification": {
-    "status": "qualified-source-candidate",
+    "status": "qualified",
     "templatesSha": "d90c55e768afc2fbed14a3c6e234fa346f61da41",
     "callerSha": "09a8f6a11877a30087ac67d147c9ad4d73db7ecc",
     "run": 37062172958,

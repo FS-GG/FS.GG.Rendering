@@ -798,6 +798,8 @@ jobs:
           dotnet fsi --exec scripts/release-nuget-verify-key.fsx \
             --plan "$PRODUCER_PLAN" --receipt artifacts/attempt/nuget-key-scope.json \
             --qualification artifacts/attempt/qualification-facts.json --census artifacts/attempt/fresh-package-census.json
+          record() { python3 scripts/release-source-guard.py --record-event --event-feed nuget --event-package "${id:-unknown}" --event-stage "$1" --event-result "$2"; }
+          trap 'record interrupted failed' ERR
           # Refuse public occupied/mismatched payloads before the organization feed can mutate.
           python3 scripts/release-custody.py list --plan "$PRODUCER_PLAN" --archives artifacts/packages \
             --manifest artifacts/packages/release-custody.json --source-sha "$PRODUCER_SHA" > artifacts/attempt/roster.tsv
