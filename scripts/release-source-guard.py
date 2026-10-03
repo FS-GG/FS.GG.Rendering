@@ -154,6 +154,15 @@ def validate_qualification_payload(root: Path, binding: dict, read, archives: Pa
     return counts,providers
 
 
+def executor_identity(root: Path) -> dict:
+    # Native PR GITHUB_SHA describes its synthetic merge context; checkout HEAD is the subject.
+    executor = preflight.git(root, 'rev-parse', 'HEAD')
+    context = os.environ['GITHUB_SHA']
+    if not preflight.SHA.fullmatch(executor) or not preflight.SHA.fullmatch(context):
+        preflight.fail('selected reader executor/context identity refused')
+    return {'executorSha': executor, 'workflowContextSha': context}
+
+
 def acquire_selected(root: Path, binding: dict) -> None:
     # GET only; GH_TOKEN is inherited through the environment, never an argument or receipt.
     if os.environ.get('GITHUB_REPOSITORY')!='FS-GG/FS.GG.Rendering': preflight.fail('selected reader context refused')
@@ -191,7 +200,7 @@ def acquire_selected(root: Path, binding: dict) -> None:
         counts,providers=validate_qualification_payload(root,binding,read,archives)
     facts={'originalCustodyVerified':True,'nativeTemplatesQualified':True,'providerPassed':providers,'browserPassed':counts,'browserUnexpected':0,'browserSkipped':0,'browserFlaky':0,'githubEffectiveWrite':'unknown-before-attempt'}
     (out/'qualification-facts.json').write_text(json.dumps(facts,sort_keys=True)+'\n')
-    (out/'input-binding.json').write_text(json.dumps({'producerSha':PRODUCER,'executorSha':os.environ['GITHUB_SHA'],'run':os.environ['GITHUB_RUN_ID'],'attempt':os.environ['GITHUB_RUN_ATTEMPT'],'originalPlanSha256':PLAN_HASH,'outerSha256':OUTER,'custodySha256':CUSTODY,'qualification':q,'publication':'not-yet-observed'},sort_keys=True)+'\n')
+    (out/'input-binding.json').write_text(json.dumps({'producerSha':PRODUCER,**executor_identity(root),'run':os.environ['GITHUB_RUN_ID'],'attempt':os.environ['GITHUB_RUN_ATTEMPT'],'originalPlanSha256':PLAN_HASH,'outerSha256':OUTER,'custodySha256':CUSTODY,'qualification':q,'publication':'not-yet-observed'},sort_keys=True)+'\n')
 
 def record_event(root: Path, feed: str, package: str, stage: str, outcome: str) -> None:
     ids=[p['id'] for p in json.loads(preflight.source_text(root,PRODUCER,'eng/release/svg-external-authority-0.32.0.json'))['packages']]

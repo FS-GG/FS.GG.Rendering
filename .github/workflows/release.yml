@@ -736,7 +736,7 @@ jobs:
           user_config="$HOME/.nuget/NuGet/NuGet.Config"
           if [[ ! -f "$user_config" ]]; then
             mkdir -p "$(dirname "$user_config")"
-            printf '%s\n' '<?xml version="1.0" encoding="utf-8"?>' '<configuration />' > "$user_config"
+            printf '%s\n' '<?xml version="1.0" encoding="utf-8"?>' '<configuration><packageSources><add key="nuget.org" value="https://api.nuget.org/v3/index.json" /></packageSources></configuration>' > "$user_config"
           fi
           dotnet nuget add source "$(pwd)/artifacts/packages" \
             --name release-staging \

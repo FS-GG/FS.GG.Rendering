@@ -79,7 +79,9 @@ Root independently confirmed this join and admitted promotion to `qualified`/`at
 [Fresh no-effect run37097094139](https://github.com/FS-GG/FS.GG.Rendering/actions/runs/37097094139)
 at executor9ca2120 completed all19 existing-ID NuGet scope GETs with HTTP200. The complete authenticated
 active/deleted GitHub census reports all19 targets absent; public probes report19 HTTP404 responses.
-Allthree immutable tags bind original730. [Sanitized artifact identities and receipt digests](publication-window-20261003.json)
+The preflight found allthree tags absent; it did not establish tag bindings. Subsequently, the
+root-approved immutable lightweight triple was created in plan order, after inspecting original
+source-only qualification37046893526, and independently read back at original730. [Sanitized artifact identities and receipt digests](publication-window-20261003.json)
 retain the exact readback. These observations admit a bounded attempt; effective GitHub write remains
 unknown before actual acknowledgement and matching readback. The publisher repeats fresh scope/census
 checks before effects and never uses these historical receipts as a retry credential.
@@ -89,3 +91,78 @@ workflow steps execute separate shells, so later writer functions were unavailab
 executable shell regression proves per-ID feed/stage/result arguments without HTTP or credentials.
 All17 source/effect-boundary tests and11 custody tests pass. No package has been repacked or published
 in this source window. Telemetry is not configured; usage remains unknown.
+
+## First admitted publisher attempt
+
+Run37099302757 was cancelled while native gates still ran; its publisher had zero steps. After
+exact original-source tag creation/readback, [run37099405999](https://github.com/FS-GG/FS.GG.Rendering/actions/runs/37099405999)
+passed both native consumption gates, reacquired the fixed originals and native qualification, and
+verified original19 custody. Its clean-checkout FSI probe then failed with NU1101: initializing an
+absent user NuGet.Config as an empty configuration and adding staging disabled implicit public
+nuget.org, leaving external package dependencies unresolved. The wrapper now initializes that missing
+config with the explicit public source before adding retained original-archive staging. Existing
+user configs remain unchanged. An executable shell fixture covers both missing and existing configs.
+
+OIDC login, fresh scope/census and both writer steps were all skipped. There were no feed effects.
+The retained attempt artifact11265388841 has29,617,077 bytes and SHA256
+`f40467cac92c0e2bfbe0bb60868319015d29c7ae8acfc1380c2d68fa68c887ac`. Independent download verified
+that its embedded original.zip still has the fixed producer digest and that all19 archives and the
+custody manifest are byte-identical to the original selected artifact. Publication remains pending;
+a repaired protected executor must repeat all real guards. The18 focused source tests pass.
+
+Native source PR1376 run37100293000 exposed a stale custody fixture requiring literal
+`<configuration />`; it stopped the required API job before ApiCompat ran. The assertion now requires
+the explicit public source, alongside the executable missing/existing config regression. All50 tests
+across the five Python release suites and both ApiCompat shell status/classifier fixtures pass. This
+is source fixture repair, not an API compatibility verdict. Native ApiCompat must still pass on the
+repaired exact head. The two non-required publication jobs report actual missing0.32 public packages
+and NU1102 consumer pins; those remain honest pending-publication findings until actual feed readbacks.
+
+## Tagged recovery source qualification
+
+Run37100863160 compared17 actual API baselines with zero breaks, indeterminate or unavailable results,
+and all17 deterministic .NET test suites passed. Its later mirror restore failed NU1102 because the
+exact0.32 tags closed the pre-tag local-feed window while the public version was still unpublished.
+
+The required source gate now explicitly selects original730 for that tagged recovery window before
+costly qualification. It authenticates the original run/artifact and native Templates proof through
+the existing acquisition guard. A pending public version permits retained-feed qualification only
+when the exact checkout SHA, clean entire `src` subtree, package/build/SDK pins, original plan and
+source tree, allthree producer tags, outer archives, native qualification digest and19 custody agree.
+Changed source/API or unknown/missing/mismatched inputs refuse before the coherent workload. Present
+public payloads are compared to originals; all19 public packages present returns to ordinary public
+qualification before retained-artifact acquisition, so normal post-publication checks do not depend
+on historical artifact retention. External package pins always use their public feed.
+
+FSI revalidates the exact candidate receipt/source/tag/custody join with a30-second bound before it
+restores the fixed original archives. Actual SDK10.0.401 mirror qualification checked98 files from21
+pinned packages with zero rewrites. No package is repacked and no publication/installed acceptance is
+claimed. The source gate still performs its own native build/tests and real ApiCompat; no coherent run
+is cancelled or reused from an offline mock.
+
+Pipeline preflight choice: static actual-workflow ordering and seven offline refusal/disposition
+fixtures, reusing existing artifact/custody authority. This is a stateless read-input selection;
+custom protocol modeling is deferred because there is no new retry or effect-order state machine.
+Source investment is capped at30 minutes, native read-only acquisition at180 seconds, and FSI
+revalidation at30 seconds. The warm actual full mirror check took45.63 seconds; runner savings are
+not inferred from this local measurement. The local command is
+`python3 scripts/test-qualify-retained-api-mirror.py`; the genuine acquisition command explicitly names
+`--select-original730`, the exact candidate and a receipt destination. Local read-only acquisition
+observed19 public HTTP404s and reverified original custody. Runner savings and billed minutes remain
+unmeasured; repeated native source/publication gates remain authoritative.
+
+Native run37102531892 passed actual ApiCompat but refused the early candidate join. The configured
+step tried to set reserved `GITHUB_SHA` to the PR head while checking out that head. The
+[runner exports native context variables over step environment before script execution](https://github.com/actions/runner/blob/main/src/Runner.Worker/Handlers/ScriptHandler.cs),
+and [GitHub reserves those default names](https://docs.github.com/en/actions/reference/workflows-and-actions/variables);
+the PR context SHA describes its synthetic merge, not the checked-out candidate. The wrapper now
+passes a dedicated `FSGG_MIRROR_CANDIDATE_SHA`. Acquisition records its executor from actual git HEAD
+and preserves the native `workflowContextSha` separately. Main publisher identity remains unchanged.
+
+An executable actual-step fixture supplies different candidate/merge SHAs and proves the candidate
+is passed without overwriting native context. A typed identity fixture proves both are preserved
+and unknown values refuse. Stable credential-free phase diagnostics identify future refusal boundaries
+without printing responses, headers or credentials. All57 Python tests pass. A genuine local read-only
+acquisition with deliberately distinct checkout/context identities verified the originals and candidate
+join; this proves local behavior, not the hosted Actions token's access. Both selected artifacts belong
+to the Rendering caller repository, and the next exact-head native gate must establish hosted access.

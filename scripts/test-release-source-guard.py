@@ -219,6 +219,35 @@ class SelectedAttemptTests(unittest.TestCase):
             self.assertLess(body.index('probe'),body.index('dotnet nuget push'))
             self.assertIn('[[ "$rc" == 4 ]]',body)
 
+    def test_fresh_fsi_probe_config_keeps_public_dependencies_and_original_staging(self):
+        import xml.etree.ElementTree as ET
+        text=(ROOT/'.github/workflows/release.yml').read_text()
+        step=text.split('      - name: Packed template clean-checkout FSI contract (#1010)',1)[1].split('      - name:',1)[0]
+        script=step.split('        run: |\n',1)[1]
+        script='\n'.join(line[10:] for line in script.splitlines())
+        config_block=script.split('user_config="$HOME/.nuget/NuGet/NuGet.Config"',1)[1].split('name="FsiContractProbe"',1)[0]
+        with tempfile.TemporaryDirectory() as folder:
+            temp=Path(folder);config=temp/'NuGet.Config';capture=temp/'capture'
+            helper=temp/'dotnet'
+            helper.write_text('#!/usr/bin/env bash\nprintf "%s\\n" "$@" > "$CAPTURE"\n')
+            helper.chmod(0o700)
+            env={**os.environ,'PATH':str(temp)+os.pathsep+os.environ['PATH'],'CAPTURE':str(capture)}
+            command='user_config='+str(config)+'\n'+config_block
+            result=subprocess.run(['bash','-c',command],env=env,capture_output=True,text=True,timeout=5)
+            self.assertEqual(0,result.returncode,result.stderr)
+            sources=ET.fromstring(config.read_text()).find('packageSources')
+            self.assertEqual({'nuget.org':'https://api.nuget.org/v3/index.json'},{entry.get('key'):entry.get('value') for entry in sources})
+            args=capture.read_text().splitlines()
+            self.assertEqual(['nuget','add','source'],args[:3])
+            self.assertTrue(args[3].endswith('/artifacts/packages'))
+            self.assertIn('release-staging',args)
+            self.assertIn(str(config),args)
+            existing='<configuration><packageSources><add key="custom" value="/owned/feed" /></packageSources></configuration>'
+            config.write_text(existing)
+            result=subprocess.run(['bash','-c',command],env=env,capture_output=True,text=True,timeout=5)
+            self.assertEqual(0,result.returncode,result.stderr)
+            self.assertEqual(existing,config.read_text())
+
     def test_public_probe_has_its_own_shell_diagnostic_function(self):
         text=(ROOT/'.github/workflows/release.yml').read_text()
         step=text.split('      - name: Verify fresh existing-ID NuGet scope and complete read census before first writer',1)[1].split('      - name:',1)[0]
