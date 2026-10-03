@@ -3,8 +3,9 @@
 The original source730 plan remains `publicationReady:false` and its bytes remain the subject of
 custody SHA verification. The executor-owned `svg-external-authority-0.32.0-attempt.json` separately
 defines eligibility to attempt publication. Its current `attemptReady:true` admits only the fixed original-byte attempt after the joined
-readbacks below. Native Templates proof is `qualified`; publication success and installed acceptance
-remain false until actual feed and consumer readbacks establish them.
+readbacks below. Native Templates proof is `qualified`; actual publication run37106323610 succeeded
+and both-feed readbacks match the original19 archives. Installed acceptance remains false until
+separate fresh consumer qualification establishes it.
 
 Root may populate that binding only after independent native qualification readback. The binding
 selects the original successful run37046893526/artifact11244853996 by exact source, outer native
@@ -166,3 +167,47 @@ without printing responses, headers or credentials. All57 Python tests pass. A g
 acquisition with deliberately distinct checkout/context identities verified the originals and candidate
 join; this proves local behavior, not the hosted Actions token's access. Both selected artifacts belong
 to the Rendering caller repository, and the next exact-head native gate must establish hosted access.
+
+## Observed both-feed publication
+
+Protected Rendering source24e0bdcc30864f62fa8c5f59a58eff021065d71a (same tree as qualified
+candidate6ade59ec) executed [release37106323610](https://github.com/FS-GG/FS.GG.Rendering/actions/runs/37106323610).
+Static source, package consumption, generated product, clean-checkout FSI and public-baseline API
+gates passed. Fresh scope verification returned HTTP200 for all19 existing IDs, and the complete
+active/deleted GitHub census established all19 absent before either writer. The three immutable
+lightweight release tags were independently read back at original producer730.
+
+Both writers acknowledged all19 original archives. The journal records complete organization and
+public readbacks with no failed/refused/interrupted event. Organization-feed supported-client
+readback hashes equal the original archive hashes exactly. Independent public downloads returned
+HTTP200 for all19 and matched every normalized payload entry; all19 public archives carry NuGet
+repository signatures, so their raw ZIP hashes are recorded separately. The historical producer
+plan, original archive bytes, original qualification and earlier failed/no-effect attempts are retained.
+
+Native artifact11268895451 is29,741,214 bytes with SHA256
+`828f11eca47a4b4c3a46018c7ba01017afcc173ee440148789e925d10a18c806`.
+The append-only journal SHA256 is
+`d59f706342064d2504c4d104f9aca40f73d1c030c54133866cd7df01f8443240`;
+the independent public19 readback receipt SHA256 is
+`3c3a8f945dfaa1d0c7b174e87af8067e666aea99eeb687499f122680d344975b`.
+Full guard and readback digests are in [window evidence](publication-window-20261003.json).
+Publication is observed; installed product/provider acceptance and downstream adoption remain
+separate pending gates. Telemetry coverage remains not configured and usage is unknown.
+
+### Cold public installed smoke
+
+A fresh isolated template hive installed `FS.GG.UI.Template::0.32.0` from public nuget.org, then
+generated a lifecycle-none app outside the checkout. An empty private public-only package cache
+restored13 Rendering libraries at0.32.0 in13.13 seconds. A subsequent locked restore passed in0.66
+seconds, the single generated app built in2.07 seconds, and its emitted assembly-load script passed
+in0.56 seconds under the private official SDK10.0.401 FSI host. The host's official netstandard2.0
+FSharp.Core SHA256 is `7516a966abc789eab916e95d429bf3a49e996257069d97f7f3eb5d47373fa72b`.
+No repository/full-solution build or archive repack ran. The initial probe assumed a product NuGet
+config existed; that failure is retained, and the corrected probe used an explicit public-only config
+outside the product. Full installed Provider/browser acceptance and downstream adoption remain pending.
+
+The additional local organization-feed supported-client restore failed closed with HTTP403/NU1301
+under the workspace credential in8.88 seconds. That credential is distinct from the native publisher
+principal whose supported-client readback verified all19 original archive hashes. No authentication
+policy was weakened; the failed local observation is retained alongside the successful native evidence.
+Ephemeral credential configuration was removed by the readback helper.
