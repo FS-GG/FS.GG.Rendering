@@ -109,3 +109,11 @@ The retained attempt artifact11265388841 has29,617,077 bytes and SHA256
 that its embedded original.zip still has the fixed producer digest and that all19 archives and the
 custody manifest are byte-identical to the original selected artifact. Publication remains pending;
 a repaired protected executor must repeat all real guards. The18 focused source tests pass.
+
+Native source PR1376 run37100293000 exposed a stale custody fixture requiring literal
+`<configuration />`; it stopped the required API job before ApiCompat ran. The assertion now requires
+the explicit public source, alongside the executable missing/existing config regression. All50 tests
+across the five Python release suites and both ApiCompat shell status/classifier fixtures pass. This
+is source fixture repair, not an API compatibility verdict. Native ApiCompat must still pass on the
+repaired exact head. The two non-required publication jobs report actual missing0.32 public packages
+and NU1102 consumer pins; those remain honest pending-publication findings until actual feed readbacks.
