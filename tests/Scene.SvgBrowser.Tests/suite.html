@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>SVG browser control suite</title></head>
+<body>
+  <h1>SVG browser control suite</h1>
+  <p>Open this URL → Run all → Download results. Results download to your browser's download folder.</p>
+  <p>Existing control specimens. Typical duration: under 2 minutes; maximum 12 minutes. This suite reports update CPU and frame cadence. Hardware acceleration, driver and GPU timing are unknown.</p>
+  <button id="run" disabled>Run all</button> <button id="resume" disabled>Resume checkpoint</button>
+  <button id="download" disabled>Download results</button>
+  <p id="progress" role="status" aria-live="polite">Checking immutable artifact…</p>
+  <pre id="results"></pre>
+  <div id="case"></div>
+  <script type="module" src="/suite-runner.js"></script>
+</body>
+</html>
