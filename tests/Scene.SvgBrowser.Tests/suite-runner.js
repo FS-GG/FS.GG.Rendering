@@ -1,3 +1,4 @@
+import { documentReconciliationControl } from "./document-reconciliation-control.js";
 import { suiteContract, validateRebuild, validateLifecycle, validateExcessive, summarize } from "./suite-contract.js";
 import { hash } from "./fixture-hash.js";
 
@@ -67,6 +68,7 @@ async function withFrame(entry) {
       require(observed.semanticId === "alpha" && observed.events.length > 0, "Animation semantic target/samples missing");
       return { coldLoadMilliseconds, intervals, summary: summarize(intervals), observed, disposed };
     }
+    if (entry.kind === "document-reconciliation") return { coldLoadMilliseconds, ...documentReconciliationControl(w) };
     f.performanceMount(entry.kind === "lifecycle" || entry.kind === "excessive-document" ? "ordinary" : entry.kind);
     if (entry.kind === "excessive-document") { const refusal = f.performanceExcessiveDocument(); validateExcessive(refusal); return { coldLoadMilliseconds, refusal }; }
     if (entry.kind === "lifecycle") {

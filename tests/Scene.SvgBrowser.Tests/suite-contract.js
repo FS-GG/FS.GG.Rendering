@@ -1,10 +1,10 @@
 // Existing specimens are controls; realistic licensed glyphs join milestone .3.
 export const suiteContract = {
-  version: "svg-coherence-container-controls/1",
+  version: "svg-coherence-container-controls/2",
   fixture: "historical control workloads; shared symbol is a single circle",
   representativeAsset: { status: "pending-milestone-.1/.3", sha256: null, complexity: null },
   method: { warmups: 5, samples: 30, repetitions: 3, continuousMilliseconds: 1000, lifecycleCycles: 20, caseTimeoutMilliseconds: 30000 },
-  cases: ["ordinary", "dense", "extent-near", "extent-far", "gallery", "lifecycle", "excessive-document", "animation"],
+  cases: ["ordinary", "dense", "extent-near", "extent-far", "gallery", "lifecycle", "excessive-document", "animation", "document-reconciliation"],
   timing: "browser update CPU and rAF cadence only; no pixel presentation or GPU claim",
 };
 

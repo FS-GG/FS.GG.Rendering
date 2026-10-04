@@ -501,6 +501,11 @@ let mountDocumentFixture () =
     | Error error -> failwithf "document mount failed: %A" error
     | Ok value -> documentHost <- Some value
 
+let disposeDocumentFixture () =
+    documentHost |> Option.iter (fun value -> (value :> IDisposable).Dispose())
+    documentHost <- None
+    documentContainer.querySelectorAll("svg").length
+
 let documentError =
     function
     | Ok() -> null
@@ -1053,6 +1058,8 @@ let api =
                         "frames" ==> value.ScheduledFrameCount
                     ]
             "transitionCount" ==> fun () -> transitions.Count
+            "documentMount" ==> mountDocumentFixture
+            "documentDispose" ==> disposeDocumentFixture
             "documentExport" ==> fun () -> documentHost.Value.ExportedSvg
             "documentFonts"
             ==> fun () ->
