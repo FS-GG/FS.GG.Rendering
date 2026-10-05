@@ -27,4 +27,10 @@ The later [10% motion and count-250 software qualification](../reports/svg-spars
 adds eighteen accepted records using the same compiled producer implementations. It retains
 individual tail regressions, the unsupported expanded count-250 representation and both fixture
 failures. All nine paired medians improve, but count-250 update CPU still exceeds 16.67 ms.
-Allocation/stage evidence, further contract decisions and the owning .3/.4 milestones remain open.
+Further coverage, contract decisions and the owning .3/.4 milestones remain open.
+
+The [post-optimization composition stage and sampled-allocation report](../reports/svg-stage-allocation-20261005.md)
+records validation/export as the largest instrumented CPU span at count 250 shared. A separately
+accepted whole-fixture sampling window distinguishes export chains from oracle/hash work and
+preserves three capture refusals. It establishes scoped diagnostics, with no total-allocation/GC
+claim or selected cache/API architecture; the owning .3/.4 milestones remain open.
