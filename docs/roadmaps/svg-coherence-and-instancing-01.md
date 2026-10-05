@@ -22,3 +22,9 @@ against the merged attribute guard, with private licensed fixtures excluded from
 The report retains the shared driver failure and its accepted readonly supplement, expanded
 exit 0, exact evidence identities and limitations. This source qualification does not close the
 owning milestone or establish GPU, frame-budget, publication or product-adoption acceptance.
+
+The later [10% motion and count-250 software qualification](../reports/svg-sparse-motion-count-20261005.md)
+adds eighteen accepted records using the same compiled producer implementations. It retains
+individual tail regressions, the unsupported expanded count-250 representation and both fixture
+failures. All nine paired medians improve, but count-250 update CPU still exceeds 16.67 ms.
+Allocation/stage evidence, further contract decisions and the owning .3/.4 milestones remain open.
