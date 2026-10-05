@@ -14,3 +14,11 @@ simulation authority. Consumer migration follows the existing
 [FABLE-ADOPT-01 sequence](https://github.com/FS-GG/.github/blob/main/docs/roadmaps/2026-10-01-staged-fable-game-adoption.md).
 S.I.R. is a read-only characterization source. Host browser/GPU qualification remains the consolidated
 .7 session after .1–.6 preparation; inventory does not require runtime or host execution.
+
+The bounded [.4 aligned-child candidate](../reports/svg-aligned-child-source-20261005.md)
+preserves the structural-change fallback and passed baseline/candidate seventeen-case native
+browser suites. Matched software shared/expanded diagnostics show scoped CPU improvement
+against the merged attribute guard, with private licensed fixtures excluded from producer payloads.
+The report retains the shared driver failure and its accepted readonly supplement, expanded
+exit 0, exact evidence identities and limitations. This source qualification does not close the
+owning milestone or establish GPU, frame-budget, publication or product-adoption acceptance.

@@ -540,6 +540,40 @@ let changedDocument () =
         Children = PortableDocumentFixture.document.Children |> List.map replace
     }
 
+// Small retained-document cases isolate child topology from the gallery workload.
+let reconciliationDocument mode =
+    let leaf id node =
+        {
+            Id = id
+            SemanticId = Some id
+            Visible = true
+            Transform = SvgAffine.identity
+            ClipId = None
+            MaskId = None
+            Presentation = None
+            Content = SvgElementContent.SceneLeaf { Nodes = [ node ] }
+        }
+
+    let box id = leaf id (rectangle 10.0 10.0 20.0 20.0 (color 70uy 130uy 220uy))
+    let circle id = leaf id (SceneNode.Circle({ X = 20.0; Y = 20.0 }, 10.0, color 220uy 80uy 60uy))
+    let translated offset = SceneNode.Translate((offset, 0.0), { Nodes = [ rectangle 10.0 10.0 20.0 20.0 (color 70uy 130uy 220uy) ] })
+    let children =
+        match mode with
+        | "reverse" -> [ box "control-c"; box "control-b"; box "control-a" ]
+        | "insert" -> [ box "control-first"; box "control-a"; box "control-middle"; box "control-b"; box "control-c"; box "control-last" ]
+        | "remove-first" -> [ box "control-b"; box "control-c" ]
+        | "remove-middle" -> [ box "control-a"; box "control-c" ]
+        | "remove-last" -> [ box "control-a"; box "control-b" ]
+        | "tag" -> [ circle "control-a"; box "control-b"; box "control-c" ]
+        | "unkeyed" | "unkeyed-changed" ->
+            let offsets = if mode = "unkeyed" then [ 0.0; 5.0 ] else [ 7.0; 2.0 ]
+            let element = box "control-unkeyed"
+            [ { element with Content = SvgElementContent.SceneLeaf { Nodes = offsets |> List.map translated } } ]
+        | "original" -> [ box "control-a"; box "control-b"; box "control-c" ]
+        | _ -> invalidArg "mode" "Unknown reconciliation control."
+
+    { PortableDocumentFixture.document with Children = children }
+
 let performanceDocument kind selection cameraStep changedObject =
     let objectCount =
         if kind = "dense" then 200
@@ -1079,6 +1113,8 @@ let api =
             ==> fun () -> documentHost.Value.Replace(reorderedDocument ()) |> documentError
             "replaceChangedDocument"
             ==> fun () -> documentHost.Value.Replace(changedDocument ()) |> documentError
+            "replaceReconciliationDocument"
+            ==> fun mode -> documentHost.Value.Replace(reconciliationDocument mode) |> documentError
             "replaceOriginalDocument"
             ==> fun () -> documentHost.Value.Replace(PortableDocumentFixture.document) |> documentError
             "documentHit"
