@@ -420,6 +420,215 @@ try {
     retainedReplacement: retainedDocument,
     exportedSvg: documentContract.exported,
   };
+  // Full-byte digests frozen by actual pre-change Fable execution, before prefix factoring.
+  const prefixExpected = [
+  {
+    "name": "gallery",
+    "serializedSha256": "91948c47a8245b063c8a32c5861ece90c71446d8a41bbf63f98bd748b21dcdca",
+    "svgSha256": "6a4591362d98ea820035c6e004e258482f90af5fe8061b595a8e3876490fae38"
+  },
+  {
+    "name": "ascii-id",
+    "serializedSha256": "eda3bff9f260d3396de1a5baa4493ed372393ee922937cd92c612386748422a7",
+    "svgSha256": "d930505e5ba566bafffdab4a64446d005cb0541f55fd059505613d8d9e145a23"
+  },
+  {
+    "name": "escaped-punctuation",
+    "serializedSha256": "9cb301ec1730ce8ef92308fdf74c32969b659f98ef04875bcf633695c6116951",
+    "svgSha256": "5ad13ffcbea0e7a08786d3279a7486a57bf0ed252bdb7aafff415134c31a50c4"
+  },
+  {
+    "name": "unicode-id",
+    "serializedSha256": "8a54a31ad81dcfbcfbe272d99eec6c9a5231bcf4f0574e51276d8b13283aeb1c",
+    "svgSha256": "0d76f8155764f52f503084966a826680763e83bf46d5c520d799b71441dad316"
+  },
+  {
+    "name": "namespace-a",
+    "serializedSha256": "2c55ca1a8ae84c5413e76adef809fc9dddb711d4db4653b98b2a95f983dc1bb4",
+    "svgSha256": "d61b5fc6d7382605de7645f896403d9ef722aadab848f73d0fec3335fb49ddaf"
+  },
+  {
+    "name": "namespace-b",
+    "serializedSha256": "2c55ca1a8ae84c5413e76adef809fc9dddb711d4db4653b98b2a95f983dc1bb4",
+    "svgSha256": "2aaa6b2549aca1df34d6803c84d085d370b2cb25f4b6510892c188628f54c007"
+  },
+  {
+    "name": "document-a",
+    "serializedSha256": "2c55ca1a8ae84c5413e76adef809fc9dddb711d4db4653b98b2a95f983dc1bb4",
+    "svgSha256": "f4596bbbea6dea2f8119bdb27ded54061815bd02c0a0f4e2e69673930c077316"
+  },
+  {
+    "name": "document-b",
+    "serializedSha256": "fd000a0b56e81317b70a7cf0ee69314286dfc139ff227357d84621bae9d3d755",
+    "svgSha256": "1a536cc4b6a296a935903fe24f0bbeeba171712eea717357043f5f3112dcba70"
+  },
+  {
+    "name": "definition-replaced",
+    "serializedSha256": "e9dd57d245ae1dbef4ce2985396347caf1534f22785c01c5838ff1d9c4fabce8",
+    "svgSha256": "c1015202ee14ec42ab139574dedc998d6843abb65d1e93be0aacea94aaf096e8"
+  },
+  {
+    "name": "reference-changed",
+    "serializedSha256": "21352ccadc2e1aeff6b6c42f232240813f6964f423f22d6b8ccb44f34a898a15",
+    "svgSha256": "9f26771da92ac20910ceaa997c0fadfe070bff1e12fe3dce51d638518e82de32"
+  },
+  {
+    "name": "reference-removed",
+    "serializedSha256": "aed6e9dc17e20b85b66bdf9d57bba66963bdb25cb1269c36515d2bba30d1dd96",
+    "svgSha256": "c90d6a62ffe352ef6de3f99b521bb93134bc4493a641a95c9316282af2c28983"
+  },
+  {
+    "name": "interleave-a-first",
+    "serializedSha256": "2c55ca1a8ae84c5413e76adef809fc9dddb711d4db4653b98b2a95f983dc1bb4",
+    "svgSha256": "d61b5fc6d7382605de7645f896403d9ef722aadab848f73d0fec3335fb49ddaf"
+  },
+  {
+    "name": "interleave-b",
+    "serializedSha256": "fd000a0b56e81317b70a7cf0ee69314286dfc139ff227357d84621bae9d3d755",
+    "svgSha256": "c7ba03084d0481d6c4b5deaeddb6757cb51a59c47c33145c1b8ebdacbf842697"
+  },
+  {
+    "name": "interleave-a-again",
+    "serializedSha256": "2c55ca1a8ae84c5413e76adef809fc9dddb711d4db4653b98b2a95f983dc1bb4",
+    "svgSha256": "d61b5fc6d7382605de7645f896403d9ef722aadab848f73d0fec3335fb49ddaf"
+  },
+  {
+    "name": "gallery-second-document",
+    "serializedSha256": "6e64ad706729cc9267521117178cf0d537408eee4f1b555a5792a895ca32790c",
+    "svgSha256": "e77d863b711994e34b27de2a117aa677be7ea1fa24557dff91b9dfbe0cf68619"
+  },
+  {
+    "name": "invalid-blank-namespace",
+    "serializedSha256": "2c55ca1a8ae84c5413e76adef809fc9dddb711d4db4653b98b2a95f983dc1bb4",
+    "svgSha256": "c0259da567fde755eb0feea735f352a2be968958ccf459046edc0a05407196a5"
+  },
+  {
+    "name": "invalid-blank-document",
+    "serializedSha256": "5ee49b9eaef4ba18b89439ead8dee9372ed3932660eb13933957172853044e8b",
+    "svgSha256": "5ee49b9eaef4ba18b89439ead8dee9372ed3932660eb13933957172853044e8b"
+  },
+  {
+    "name": "invalid-both-blank",
+    "serializedSha256": "5ee49b9eaef4ba18b89439ead8dee9372ed3932660eb13933957172853044e8b",
+    "svgSha256": "2e310bd2f1278c399fedcbc7564add9289fe61ee85cc0023bb2346d475aed04d"
+  },
+  {
+    "name": "invalid-duplicate",
+    "serializedSha256": "2a81c7c1c473839bc711ba3210901380e276badd021262e6012cd3d0e04772c3",
+    "svgSha256": "2a81c7c1c473839bc711ba3210901380e276badd021262e6012cd3d0e04772c3"
+  },
+  {
+    "name": "invalid-missing-reference",
+    "serializedSha256": "99a43d5380e50d7fef98c891f4128977db792cb6552ec4b2947812f068fb6e69",
+    "svgSha256": "99a43d5380e50d7fef98c891f4128977db792cb6552ec4b2947812f068fb6e69"
+  },
+  {
+    "name": "invalid-wrong-reference-kind",
+    "serializedSha256": "65b240eefeabd3b0e103c755697d18f54e921f5f4eee4aa875597b8404f812a6",
+    "svgSha256": "65b240eefeabd3b0e103c755697d18f54e921f5f4eee4aa875597b8404f812a6"
+  },
+  {
+    "name": "invalid-cycle",
+    "serializedSha256": "a997cb82763cea0f440259295f9a357ec24ed70d80c65b8407cd08a7ce27cf31",
+    "svgSha256": "a997cb82763cea0f440259295f9a357ec24ed70d80c65b8407cd08a7ce27cf31"
+  }
+];
+  const prefixObservations = await page.evaluate(() => window.svgFoundation.prefixCompatibility());
+  const prefixDigest = (value) => createHash("sha256").update(value).digest("hex");
+  function checkPrefixBytes(name, value) {
+    const expected = prefixExpected.find((row) => row.name === name);
+    if (!expected || prefixDigest(value) !== expected.svgSha256) throw new Error(`prefix-svg-byte-drift:${name}`);
+  }
+  if (prefixObservations.length !== 22 || new Set(prefixObservations.map((row) => row.name)).size !== 22) throw new Error("prefix-corpus-population");
+  for (const row of prefixObservations) {
+    const expected = prefixExpected.find((value) => value.name === row.name);
+    if (!expected || prefixDigest(row.serialized) !== expected.serializedSha256) throw new Error(`prefix-serialized-byte-drift:${row.name}`);
+    checkPrefixBytes(row.name, row.svg);
+  }
+  let stalePrefixRejected = false;
+  try { checkPrefixBytes("namespace-b", prefixObservations.find((row) => row.name === "namespace-a").svg); }
+  catch (error) { if (error.message !== "prefix-svg-byte-drift:namespace-b") throw error; stalePrefixRejected = true; }
+  if (!stalePrefixRejected) throw new Error("prefix-stale-namespace-control");
+  const prefixLive = await page.evaluate(() => {
+    const api = window.svgFoundation;
+    const container = document.querySelector("#document-fixture");
+    function root() { return container.querySelector("svg"); }
+    function references() {
+      const value = root();
+      const ids = [...value.querySelectorAll("[id]")].map((node) => node.id);
+      if (new Set(ids).size !== ids.length) throw new Error("prefix-duplicate-dom-id");
+      for (const use of value.querySelectorAll("use")) {
+        const href = use.getAttribute("href") || use.getAttributeNS("http://www.w3.org/1999/xlink", "href");
+        if (!href || !href.startsWith("#") || !value.querySelector(`[id='${CSS.escape(href.slice(1))}']`)) throw new Error("prefix-local-reference");
+      }
+    }
+    const exports = [];
+    api.prefixMount("document-a");
+    const retained = root();
+    const first = api.prefixState();
+    const html = retained.outerHTML;
+    for (const name of ["invalid-blank-document", "invalid-duplicate", "invalid-missing-reference", "invalid-wrong-reference-kind", "invalid-cycle"]) {
+      const refusal = api.prefixReplace(name);
+      const after = api.prefixState();
+      if (!refusal || root() !== retained || after.document !== first.document || after.exportedSvg !== first.exportedSvg || retained.outerHTML !== html) throw new Error(`prefix-invalid-not-atomic:${name}`);
+    }
+    const originalSet = Element.prototype.setAttribute;
+    const originalSetNS = Element.prototype.setAttributeNS;
+    const originalAppend = Node.prototype.appendChild;
+    const originalInsert = Node.prototype.insertBefore;
+    let unchangedWrites = 0;
+    let ownedMoves = 0;
+    Element.prototype.setAttribute = function (name, value) {
+      if (retained.contains(this) && this.getAttribute(name) === String(value)) unchangedWrites++;
+      return originalSet.call(this, name, value);
+    };
+    Element.prototype.setAttributeNS = function (namespace, name, value) {
+      if (retained.contains(this) && this.getAttributeNS(namespace, name.split(":").at(-1)) === String(value)) unchangedWrites++;
+      return originalSetNS.call(this, namespace, name, value);
+    };
+    Node.prototype.appendChild = function (child) {
+      if (retained.contains(this) && child.parentNode === this) ownedMoves++;
+      return originalAppend.call(this, child);
+    };
+    Node.prototype.insertBefore = function (child, before) {
+      if (retained.contains(this) && child.parentNode === this) ownedMoves++;
+      return originalInsert.call(this, child, before);
+    };
+    try {
+      if (api.prefixReplace("document-a") !== null) throw new Error("prefix-unchanged-replace");
+    } finally {
+      Element.prototype.setAttribute = originalSet;
+      Element.prototype.setAttributeNS = originalSetNS;
+      Node.prototype.appendChild = originalAppend;
+      Node.prototype.insertBefore = originalInsert;
+    }
+    if (unchangedWrites !== 0 || ownedMoves !== 0) throw new Error(`prefix-unchanged-work:${unchangedWrites}/${ownedMoves}`);
+    for (const name of ["document-a", "definition-replaced", "reference-changed", "document-b", "reference-removed", "document-a"]) {
+      if (api.prefixReplace(name) !== null) throw new Error(`prefix-replace:${name}`);
+      if (root() !== retained) throw new Error(`prefix-root-replaced:${name}`);
+      references();
+      exports.push({ name, svg: "ok:" + api.prefixState().exportedSvg });
+    }
+    const use = root().querySelector("use");
+    const old = use.getAttribute("href");
+    use.setAttribute("href", "#missing-prefix-control");
+    let wrongReferenceRejected = false;
+    try { references(); } catch (error) { if (error.message !== "prefix-local-reference") throw error; wrongReferenceRejected = true; }
+    finally { use.setAttribute("href", old); }
+    references();
+    for (const name of ["namespace-a", "namespace-b", "unicode-id", "escaped-punctuation", "namespace-a"]) {
+      api.prefixMount(name);
+      if (container.querySelectorAll("svg").length !== 1) throw new Error("prefix-owned-root-count");
+      references();
+      exports.push({ name, svg: "ok:" + api.prefixState().exportedSvg });
+    }
+    if (api.documentDispose() !== 0 || container.querySelector("svg")) throw new Error("prefix-disposal");
+    api.documentMount();
+    return { exports, wrongReferenceRejected, invalidAtomicity: true, ownedMountCycles: 5, unchangedWrites, ownedMoves };
+  });
+  if (!prefixLive.wrongReferenceRejected) throw new Error("prefix-reference-negative-control");
+  for (const row of prefixLive.exports) checkPrefixBytes(row.name, row.svg);
+  documentEvidence.prefixCompatibility = { corpus: 22, prechangeRuntime: "Fable 5.17.0", fullByteDigests: true, stalePrefixRejected, ...prefixLive };
   const root = page.locator("[data-scene-root-id='svg-foundation-root']");
   const box = await root.boundingBox();
   if (!box) throw new Error("SVG root has no rendered bounds");

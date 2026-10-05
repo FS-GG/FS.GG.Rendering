@@ -37,11 +37,80 @@ let private document definitions children =
         Children = children
     }
 
+// Frozen by actual unchanged-producer .NET 10.0.12 execution before factoring.
+// The independent Fable baseline is checked separately by the browser consumer.
+let private prefixPrechangeDigests =
+    [
+        "gallery", "91948c47a8245b063c8a32c5861ece90c71446d8a41bbf63f98bd748b21dcdca", "6a4591362d98ea820035c6e004e258482f90af5fe8061b595a8e3876490fae38"
+        "ascii-id", "eda3bff9f260d3396de1a5baa4493ed372393ee922937cd92c612386748422a7", "d930505e5ba566bafffdab4a64446d005cb0541f55fd059505613d8d9e145a23"
+        "escaped-punctuation", "9cb301ec1730ce8ef92308fdf74c32969b659f98ef04875bcf633695c6116951", "5ad13ffcbea0e7a08786d3279a7486a57bf0ed252bdb7aafff415134c31a50c4"
+        "unicode-id", "8a54a31ad81dcfbcfbe272d99eec6c9a5231bcf4f0574e51276d8b13283aeb1c", "0d76f8155764f52f503084966a826680763e83bf46d5c520d799b71441dad316"
+        "namespace-a", "2c55ca1a8ae84c5413e76adef809fc9dddb711d4db4653b98b2a95f983dc1bb4", "d61b5fc6d7382605de7645f896403d9ef722aadab848f73d0fec3335fb49ddaf"
+        "namespace-b", "2c55ca1a8ae84c5413e76adef809fc9dddb711d4db4653b98b2a95f983dc1bb4", "2aaa6b2549aca1df34d6803c84d085d370b2cb25f4b6510892c188628f54c007"
+        "document-a", "2c55ca1a8ae84c5413e76adef809fc9dddb711d4db4653b98b2a95f983dc1bb4", "f4596bbbea6dea2f8119bdb27ded54061815bd02c0a0f4e2e69673930c077316"
+        "document-b", "fd000a0b56e81317b70a7cf0ee69314286dfc139ff227357d84621bae9d3d755", "1a536cc4b6a296a935903fe24f0bbeeba171712eea717357043f5f3112dcba70"
+        "definition-replaced", "e9dd57d245ae1dbef4ce2985396347caf1534f22785c01c5838ff1d9c4fabce8", "c1015202ee14ec42ab139574dedc998d6843abb65d1e93be0aacea94aaf096e8"
+        "reference-changed", "21352ccadc2e1aeff6b6c42f232240813f6964f423f22d6b8ccb44f34a898a15", "9f26771da92ac20910ceaa997c0fadfe070bff1e12fe3dce51d638518e82de32"
+        "reference-removed", "aed6e9dc17e20b85b66bdf9d57bba66963bdb25cb1269c36515d2bba30d1dd96", "c90d6a62ffe352ef6de3f99b521bb93134bc4493a641a95c9316282af2c28983"
+        "interleave-a-first", "2c55ca1a8ae84c5413e76adef809fc9dddb711d4db4653b98b2a95f983dc1bb4", "d61b5fc6d7382605de7645f896403d9ef722aadab848f73d0fec3335fb49ddaf"
+        "interleave-b", "fd000a0b56e81317b70a7cf0ee69314286dfc139ff227357d84621bae9d3d755", "c7ba03084d0481d6c4b5deaeddb6757cb51a59c47c33145c1b8ebdacbf842697"
+        "interleave-a-again", "2c55ca1a8ae84c5413e76adef809fc9dddb711d4db4653b98b2a95f983dc1bb4", "d61b5fc6d7382605de7645f896403d9ef722aadab848f73d0fec3335fb49ddaf"
+        "gallery-second-document", "6e64ad706729cc9267521117178cf0d537408eee4f1b555a5792a895ca32790c", "e77d863b711994e34b27de2a117aa677be7ea1fa24557dff91b9dfbe0cf68619"
+        "invalid-blank-namespace", "2c55ca1a8ae84c5413e76adef809fc9dddb711d4db4653b98b2a95f983dc1bb4", "c0259da567fde755eb0feea735f352a2be968958ccf459046edc0a05407196a5"
+        "invalid-blank-document", "5ee49b9eaef4ba18b89439ead8dee9372ed3932660eb13933957172853044e8b", "5ee49b9eaef4ba18b89439ead8dee9372ed3932660eb13933957172853044e8b"
+        "invalid-both-blank", "5ee49b9eaef4ba18b89439ead8dee9372ed3932660eb13933957172853044e8b", "2e310bd2f1278c399fedcbc7564add9289fe61ee85cc0023bb2346d475aed04d"
+        "invalid-duplicate", "2a81c7c1c473839bc711ba3210901380e276badd021262e6012cd3d0e04772c3", "2a81c7c1c473839bc711ba3210901380e276badd021262e6012cd3d0e04772c3"
+        "invalid-missing-reference", "99a43d5380e50d7fef98c891f4128977db792cb6552ec4b2947812f068fb6e69", "99a43d5380e50d7fef98c891f4128977db792cb6552ec4b2947812f068fb6e69"
+        "invalid-wrong-reference-kind", "65b240eefeabd3b0e103c755697d18f54e921f5f4eee4aa875597b8404f812a6", "65b240eefeabd3b0e103c755697d18f54e921f5f4eee4aa875597b8404f812a6"
+        "invalid-cycle", "a997cb82763cea0f440259295f9a357ec24ed70d80c65b8407cd08a7ce27cf31", "a997cb82763cea0f440259295f9a357ec24ed70d80c65b8407cd08a7ce27cf31"
+    ]
+
+let private prefixDigest (value: string) =
+    value
+    |> Text.Encoding.UTF8.GetBytes
+    |> Security.Cryptography.SHA256.HashData
+    |> Convert.ToHexString
+    |> fun value -> value.ToLowerInvariant()
+
 [<Tests>]
 let tests =
     testList
         "SVG document and affine contract"
         [
+            test "export prefix bytes match the frozen pre-change .NET producer" {
+                let actual = prefixCompatibilityObservations ()
+                Expect.equal actual.Length prefixPrechangeDigests.Length "every fixed success and refusal is checked"
+                for ((name, serialized, svg), (expectedName, serializedDigest, svgDigest)) in List.zip actual prefixPrechangeDigests do
+                    Expect.equal name expectedName "fixed corpus order"
+                    Expect.equal (prefixDigest serialized) serializedDigest (name + " complete serialized bytes")
+                    Expect.equal (prefixDigest svg) svgDigest (name + " complete export or ordered issue bytes")
+            }
+
+            test "export prefix corpus captures pre-change runtime bytes" {
+                let observations = prefixCompatibilityObservations ()
+                Expect.equal observations.Length 22 "fixed successful and refusal corpus population"
+                let ascii = observations |> List.find (fun (name, _, _) -> name = "ascii-id") |> fun (_, _, svg) -> svg
+                Expect.stringContains ascii "id=\"fsgg-006d-0064-0073\"" "independent m/d/s lowercase hexadecimal ID"
+                let interleaved name =
+                    observations |> List.find (fun (label, _, _) -> label = name) |> fun (_, _, svg) -> svg
+                Expect.equal (interleaved "interleave-a-first") (interleaved "interleave-a-again") "interleaved exports retain call-local scope"
+
+                // This opt-in capture is used once on the unchanged producer, before
+                // candidate checks bind immutable runtime-specific byte expectations.
+                let output = Environment.GetEnvironmentVariable "FSGG_SVG_PREFIX_CAPTURE" |> Option.ofObj
+                match output with
+                | Some output when not (String.IsNullOrWhiteSpace output) ->
+                    Expect.isTrue (IO.Path.IsPathRooted output) "capture path is explicit and absolute"
+                    Expect.isFalse (IO.File.Exists output) "pre-change capture is once-only"
+                    let encoded (value: string) = Convert.ToBase64String(Text.Encoding.UTF8.GetBytes value)
+                    let text =
+                        observations
+                        |> List.map (fun (name, serialized, svg) -> $"{name}\t{encoded serialized}\t{encoded svg}")
+                        |> String.concat "\n"
+                    IO.File.WriteAllText(output, text + "\n", Text.UTF8Encoding(false))
+                | _ -> ()
+            }
+
             test "composition applies local before parent using independent arithmetic" {
                 let parent = SvgAffine.translate 10.0 20.0
                 let local = SvgAffine.rotateDegrees 90.0

@@ -515,6 +515,34 @@ let documentError =
         |> List.map (fun issue -> $"{issue.Code}:{issue.Location}")
         |> String.concat ","
 
+// Runtime-specific byte controls and live ownership checks use the same fixed corpus.
+let prefixCase name =
+    PortableDocumentFixture.prefixCompatibilityCorpus ()
+    |> List.find (fun (label, _, _) -> label = name)
+
+let mountPrefix name =
+    let _, mountNamespace, document = prefixCase name
+    documentHost |> Option.iter (fun value -> (value :> IDisposable).Dispose())
+    documentHost <- None
+
+    match SvgBrowser.mountDocument documentContainer mountNamespace document with
+    | Error error -> failwithf "prefix control mount failed: %A" error
+    | Ok value -> documentHost <- Some value
+
+let replacePrefix name =
+    let _, _, document = prefixCase name
+    documentHost.Value.Replace(document) |> documentError
+
+let prefixState () =
+    let value = documentHost.Value
+    createObj [ "document" ==> value.Document; "exportedSvg" ==> value.ExportedSvg ]
+
+let prefixCompatibility () =
+    PortableDocumentFixture.prefixCompatibilityObservations ()
+    |> List.map (fun (name, serialized, svg) ->
+        createObj [ "name" ==> name; "serialized" ==> serialized; "svg" ==> svg ])
+    |> List.toArray
+
 let invalidDocument () =
     let duplicate = PortableDocumentFixture.document.Children.Head
 
@@ -1092,6 +1120,10 @@ let api =
                         "frames" ==> value.ScheduledFrameCount
                     ]
             "transitionCount" ==> fun () -> transitions.Count
+            "prefixCompatibility" ==> prefixCompatibility
+            "prefixMount" ==> mountPrefix
+            "prefixReplace" ==> replacePrefix
+            "prefixState" ==> prefixState
             "documentMount" ==> mountDocumentFixture
             "documentDispose" ==> disposeDocumentFixture
             "documentExport" ==> fun () -> documentHost.Value.ExportedSvg

@@ -34,3 +34,12 @@ records validation/export as the largest instrumented CPU span at count 250 shar
 accepted whole-fixture sampling window distinguishes export chains from oracle/hash work and
 preserves three capture refusals. It establishes scoped diagnostics, with no total-allocation/GC
 claim or selected cache/API architecture; the owning .3/.4 milestones remain open.
+
+The [export-local prefix qualification](../reports/svg-export-prefix-20261005.md)
+records the next bounded .4 candidate: six shared-symbol250 software records and
+22 public prefix-corpus cases, with median paired CPU reduction25.70% and retained
+individual maximum regressions. Namespace/document encoding stays local to one
+export; frozen .NET/Fable corpora preserve runtime-specific bytes and refusals.
+The accepted development run exceeded2GiB but fit its authorized8GiB allowance.
+This source candidate leaves the owning .3/.4, publication, installed adoption and
+late host GPU qualification open.

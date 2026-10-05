@@ -361,3 +361,98 @@ let verifyRoundTrip runtime =
                 ->
                 failwith $"{runtime} SVG export omitted selected definitions"
             | Ok svg -> serialized, svg
+
+// The prefix corpus is independent of gallery geometry and captures each runtime's
+// pre-change bytes before the producer optimization is qualified.
+let prefixDocument documentId definitionId instanceId width =
+    let shape =
+        leaf
+            "definition-child"
+            { Nodes = [ SceneNode.Rectangle((0.0, 0.0, width, 3.0), color 12uy 34uy 56uy 255uy) ] }
+            None
+
+    let instance id x =
+        { leaf id { Nodes = [] } None with
+            Transform = SvgAffine.translate x 0.0
+            Content = SvgElementContent.SymbolInstance(definitionId, Some(rect 0.0 0.0 10.0 10.0))
+        }
+
+    {
+        Schema = SvgDocument.schema
+        Id = documentId
+        ViewBox = rect 0.0 0.0 40.0 20.0
+        Definitions =
+            [
+                {
+                    Id = definitionId
+                    Content = SvgDefinitionContent.Symbol(Some(rect 0.0 0.0 10.0 10.0), [ shape ])
+                }
+            ]
+        Children = [ instance instanceId 0.0; instance "second-instance" 15.0 ]
+    }
+
+let prefixCompatibilityCorpus () =
+    let first = prefixDocument "document-a" "shared-definition" "first-instance" 2.0
+    let second = { first with Id = "document-b" }
+    let replacement = prefixDocument "document-a" "shared-definition" "first-instance" 4.0
+    let changedReference = prefixDocument "document-a" "changed-definition" "first-instance" 2.0
+    let removed = { first with Definitions = []; Children = [] }
+    let duplicate = { first with Children = [ first.Children.Head; first.Children.Head ] }
+    let missing = { first with Definitions = [] }
+    let wrongKind =
+        { first with
+            Definitions =
+                [
+                    {
+                        Id = "shared-definition"
+                        Content = SvgDefinitionContent.Clip(SvgCoordinateUnits.UserSpaceOnUse, [])
+                    }
+                ]
+        }
+    let cyclic =
+        { first with
+            Definitions =
+                [
+                    {
+                        Id = "shared-definition"
+                        Content = SvgDefinitionContent.Symbol(None, [ first.Children.Head ])
+                    }
+                ]
+        }
+
+    [
+        "gallery", "portable-fixture", document
+        "ascii-id", "m", prefixDocument "d" "s" "i" 2.0
+        "escaped-punctuation", "mount<&\"'", prefixDocument "document<&\"'" "symbol<&\"'" "instance<&\"'" 2.0
+        "unicode-id", "mount-Ω🚀", prefixDocument "document-é🚀" "symbol-中🚀" "instance-Δ🚀" 2.0
+        "namespace-a", "prefix-a", first
+        "namespace-b", "prefix-b", first
+        "document-a", "prefix-shared", first
+        "document-b", "prefix-shared", second
+        "definition-replaced", "prefix-shared", replacement
+        "reference-changed", "prefix-shared", changedReference
+        "reference-removed", "prefix-shared", removed
+        "interleave-a-first", "prefix-a", first
+        "interleave-b", "prefix-b", second
+        "interleave-a-again", "prefix-a", first
+        "gallery-second-document", "portable-fixture", { document with Id = "portable-document-second" }
+        "invalid-blank-namespace", " ", first
+        "invalid-blank-document", "prefix-a", { first with Id = " " }
+        "invalid-both-blank", " ", { first with Id = " " }
+        "invalid-duplicate", "prefix-a", duplicate
+        "invalid-missing-reference", "prefix-a", missing
+        "invalid-wrong-reference-kind", "prefix-a", wrongKind
+        "invalid-cycle", "prefix-a", cyclic
+    ]
+
+let prefixCompatibilityObservations () =
+    let resultText (result: Result<string, SvgDocumentIssue list>) =
+        match result with
+        | Ok value -> "ok:" + value
+        | Error issues ->
+            "error:"
+            + (issues |> List.map (fun issue -> $"{issue.Code}:{issue.Location}:{issue.Message}") |> String.concat "\n")
+
+    prefixCompatibilityCorpus ()
+    |> List.map (fun (name, mountNamespace, candidate) ->
+        name, resultText (SvgDocument.serialize candidate), resultText (SvgDocument.exportSvg mountNamespace candidate))

@@ -1729,14 +1729,6 @@ module SvgDocument =
     let private svgMatrix (value: SvgAffine) =
         $"matrix({svgNumber value.A} {svgNumber value.B} {svgNumber value.C} {svgNumber value.D} {svgNumber value.E} {svgNumber value.F})"
 
-    let private encodedId (mountNamespace: string) (documentId: string) (localId: string) =
-        let encode (value: string) =
-            value
-            |> Seq.map (fun character -> (int character).ToString("x4", CultureInfo.InvariantCulture))
-            |> String.concat ""
-
-        $"fsgg-{encode mountNamespace}-{encode documentId}-{encode localId}"
-
     let private appendAttribute (output: StringBuilder) (name: string) (value: string) =
         output.Append(' ').Append(name).Append("=\"").Append(xmlEscape value).Append('"')
         |> ignore
@@ -1821,8 +1813,14 @@ module SvgDocument =
                 let body = StringBuilder()
                 let mutable generatedGradient = 0
 
-                let id local =
-                    encodedId mountNamespace document.Id local
+                let encode (value: string) =
+                    value
+                    |> Seq.map (fun character -> (int character).ToString("x4", CultureInfo.InvariantCulture))
+                    |> String.concat ""
+
+                let idPrefix = $"fsgg-{encode mountNamespace}-{encode document.Id}-"
+
+                let id local = idPrefix + encode local
 
                 let url local = $"url(#{id local})"
 
