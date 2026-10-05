@@ -42,7 +42,7 @@ Source DOM counts at the initial preflight are 350 for 100 shared instances, 4,9
 
 The software browser was cached full Chrome 153.0.8010.12, executable SHA-256 `8c599d43aec53f2460a31ae2f4af6bd863f8258b34ff519564bc5d4726bfaa1e`, with `--disable-gpu`. The rAF p50s were 33.3 versus 16.7 ms for count-100 shared, approximately 183.3 versus 166.7 for count-100 expanded, and 66.7–66.8 versus 16.7 for count-250 shared. These callback timestamps include fixture work outside the update CPU span and are not physical display presentation or a frame-budget guarantee. In particular, the 250-instance candidate's 20.0–20.2 ms median CPU exceeds 16.67 ms.
 
-Module/font bootstrap is recorded separately from asset mount and steady-state Replace CPU. Warm-operation counts remain available, but individual warm CPU samples were not serialized. No allocation/GC or post-optimization composition stage fractions were measured. Separate 1% and 10% windows do not prove statistical equality or motion-percentage scaling; earlier rifleman stage fractions cannot be transferred to this composition.
+Module/font bootstrap is recorded separately from asset mount and steady-state Replace CPU. Warm-operation counts remain available, but individual warm CPU samples were not serialized. Those comparison windows measured no allocation/GC or post-optimization composition stage fractions; the later [separate stage and sampled-allocation windows](svg-stage-allocation-20261005.md) retain their own scope and limits. Separate 1% and 10% windows do not prove statistical equality or motion-percentage scaling; earlier rifleman stage fractions cannot be transferred to this composition.
 
 ## Preserved refusals and fixture repairs
 
