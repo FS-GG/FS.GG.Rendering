@@ -14,10 +14,11 @@ def validate(text):
     assert "preflight-only: ${{ github.event_name == 'pull_request' || inputs.preflight-only }}" in text
     assert 'type: boolean\n        default: true' in text
     assert '    needs: static' in text
-    assert uses[0] == '4eff52b27933c69a9ab4e276b3a29032d279b7e0', 'selected protected Templates source required'
+    assert uses[0] == 'b2fb539b2707d52fc323fddf0570fafa1449e13d', 'selected protected Templates source required'
+    assert re.findall(r'^      rendering-input-source: (.+)$', text, re.M) == ['public'], 'selected public Rendering input required'
     return uses[0]
 head=validate(source)
-mutations=[source.replace('templates-source: '+head,'templates-source: '+'0'*40),source.replace('@'+head,'@main'),source.replace('templates-source: '+head,'templates-source: ${{ github.sha }}'),source.replace('contents: read','contents: write'),source+'\nsecrets: inherit\n',source.replace('default: true','default: false'),source.replace("github.event_name == 'pull_request' || inputs.preflight-only",'inputs.preflight-only'),source+'\nconcurrency: shared\n',source.replace(head,'0'*40)]
+mutations=[source.replace('      rendering-input-source: public\n',''),source.replace('rendering-input-source: public','rendering-input-source: candidate'),source.replace('rendering-input-source: public','rendering-input-source: unknown'),source.replace('templates-source: '+head,'templates-source: '+'0'*40),source.replace('@'+head,'@main'),source.replace('templates-source: '+head,'templates-source: ${{ github.sha }}'),source.replace('contents: read','contents: write'),source+'\nsecrets: inherit\n',source.replace('default: true','default: false'),source.replace("github.event_name == 'pull_request' || inputs.preflight-only",'inputs.preflight-only'),source+'\nconcurrency: shared\n',source.replace(head,'0'*40)]
 for mutation in mutations:
     try: validate(mutation)
     except AssertionError: pass
