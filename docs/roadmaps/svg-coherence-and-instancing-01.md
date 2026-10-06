@@ -104,6 +104,56 @@ This enables the selected bound-attempt source gate; it neither dispatches the
 publisher nor asserts effective GitHub package write access. The original
 producer plan, candidate archives and receiver coordinates remain unchanged.
 
+Readiness source [#1393](https://github.com/FS-GG/FS.GG.Rendering/pull/1393)
+merged at `7768f12c132d2a23e71bd92e9348479daf0b1330`. Final tag-trigger review
+identified a separate publication blocker: a human or App-token push of
+`fs-gg-ui-template/v0.32.1` runs the original producer's `template-dispatch.yml`
+before publication. Its version guard does not check either feed. The template
+tag can therefore notify Templates and open a pin-bump PR prematurely. The
+`v0.32.1` trigger instead fails the old producer's immutable readiness guard
+before native jobs. Ordered tags alone do not remove the notification race.
+
+The bounded repair adds a manual, selected-producer path to the existing
+[`release-tags.yml`](../../.github/workflows/release-tags.yml). Its read-only
+plan precedes a tag-only job using the repository `GITHUB_TOKEN`, whose tag pushes
+do not launch the old producer's push workflows. Both jobs require the reviewed
+executor to equal the event SHA, workflow SHA, checkout HEAD and freshly read
+protected main on `release-tags.yml@refs/heads/main`. They reuse the accepted
+candidate/receiver identity and `attemptReady` validators without changing the
+publisher's separate `release.yml` executor fence. The immutable producer still
+has `publicationReady=false`.
+
+Before mutation the helper probes all three remote refs. Only an absent triple,
+an exact matching ordered prefix, or the complete matching triple is admitted.
+Every tag names original producer `6c9f766fdd91483c2de6f061e75589e94852a265`;
+matching tags are preserved, conflicts or vanished observations stop the sequence,
+and source/main identities and the full triple are reconciled before each tag.
+Each acknowledgement is immediately followed by exact readback. Unknown push
+outcomes permit one bounded read-only observation and stop; they never cause an
+automatic retry, force push, deletion or next tag. These observations cannot make
+cross-ref races atomic. The original push-main graph remains unchanged; manual
+dispatch cannot reach its native validation, publication or notification jobs.
+
+Pipeline preflight uses the existing subject validators, static checks of the
+actual job graph, and injected tag-race/transport controls. A separate model is
+deferred: this single three-ref path can exercise its bounded transitions directly
+without another maintained plan. The initial focused check budget is 30 minutes;
+the reusable offline command is `python3 scripts/test-selected-producer-tags.py`,
+also run by the read-only job before tag authority. Known-bad dependencies, executor
+and subject identities, conflicting refs, lost acknowledgements and moved main
+must refuse dependent effects. It installs no tools and runs no CLR/native jobs.
+Hosted setup costs and avoided CI savings are unknown; this is a correctness
+control, not a measured savings claim.
+
+Local source validation passed 18 focused controls in 1.42 seconds (1.50 seconds
+including Python startup), the existing 27 release-source controls and seven
+historical API mirror controls. An available YAML parser confirmed that the
+original push jobs retain their complete definitions except for the plan's event
+exclusion. Routine eligibility fixtures and whitespace checks passed. This is
+source validation only; no tag operation, native replay or feed effect was run.
+
+The tag repair still requires protected source delivery and the immediate Unified
+projection before operation admission. Its future executor SHA remains unselected.
 After protected delivery, the programme integrator must select the final executor
 SHA and supply it as `expected-executor-sha`; the earlier preflight executor cannot
 stand in for the new source. Ordered tags must identify the immutable producer,
@@ -113,6 +163,17 @@ native consumption checks and existing typed eligibility. GitHub effective write
 remains `unknown-before-attempt` until actual acknowledgement and readback.
 The publisher retains GitHub Packages first, nuget.org second, identical original
 bytes, and observation before replay after partial or unknown effects.
+
+Suppressed tag events also mean notification must be explicit. Only after accepted
+publication and readback of all 19 packages on both feeds may the integrator admit
+the existing `template-dispatch.yml` `workflow_dispatch` at
+`fs-gg-ui-template/v0.32.1`, with no inputs, after rechecking that tag's producer.
+That tag ref passes the existing derivation guard and calls the pinned App sender;
+a dispatch at `main` fails derivation. No new sender or premature direct POST is
+needed. Reconcile current receiver source before notification: the observed
+Templates `4eff52b27933c69a9ab4e276b3a29032d279b7e0` route opens a pin-bump PR,
+while `.github` `d97ad7eb485979afbc4fabfe8282971d8c4261c9` feed-autofix is audit-only.
+Actual notification and published receiver adoption remain separately unobserved.
 
 No fresh or existing workspace changes through this readiness source promotion.
 Coherent publication, published receiver adoption, owning .3/.4 milestones and
