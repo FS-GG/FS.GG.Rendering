@@ -63,6 +63,22 @@ name: release-tags
 on:
   push:
     branches: [main]
+  # Selected retained producers use only the two tag jobs below. GITHUB_TOKEN suppresses
+  # push-triggered release/template dispatch; publication and notification remain separate admissions.
+  workflow_dispatch:
+    inputs:
+      expected-executor-sha:
+        description: "Exact reviewed protected executor SHA (filled after this workflow merges)."
+        required: true
+        type: string
+      source-sha:
+        description: "Original qualified producer: 6c9f766fdd91483c2de6f061e75589e94852a265."
+        required: true
+        type: string
+      version:
+        description: "Selected coherent version: 0.32.1."
+        required: true
+        type: string
 
 # NEVER cancel a cut in flight. `cancel-in-progress: true` here could interrupt the workflow between
 # `git push origin fs-gg-ui-template/v<pkg>` and `git push origin v<pkg>`, leaving a half-cut triple.
@@ -75,6 +91,69 @@ permissions:
   contents: read
 
 jobs:
+  selected-tag-plan:
+    name: Check selected producer tags (read only)
+    if: github.repository == 'FS-GG/FS.GG.Rendering' && github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    permissions:
+      contents: read
+    env:
+      FSGG_EXPECTED_EXECUTOR_SHA: ${{ inputs.expected-executor-sha }}
+      SELECTED_SOURCE_SHA: ${{ inputs.source-sha }}
+      SELECTED_VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check tag ordering and refusal controls without effects
+        run: timeout --kill-after=10s 60s python3 scripts/test-selected-producer-tags.py
+      - name: Validate selected identities and all three remote refs
+        run: >-
+          timeout --kill-after=10s 270s python3 scripts/selected-producer-tags.py
+          --mode check --source-sha "$SELECTED_SOURCE_SHA" --version "$SELECTED_VERSION"
+      - name: Retain selected tag plan
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: selected-producer-tags-plan-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/selected-producer-tags/check.json
+          if-no-files-found: error
+
+  selected-tag-cut:
+    name: Cut only selected producer tags
+    needs: selected-tag-plan
+    if: github.repository == 'FS-GG/FS.GG.Rendering' && github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    permissions:
+      contents: write
+    env:
+      FSGG_EXPECTED_EXECUTOR_SHA: ${{ inputs.expected-executor-sha }}
+      SELECTED_SOURCE_SHA: ${{ inputs.source-sha }}
+      SELECTED_VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          # Default repository GITHUB_TOKEN only. Its tag pushes do not launch the
+          # old producer's template-dispatch or release workflows. Never substitute an App/PAT.
+          persist-credentials: true
+      - name: Reconcile and cut the immutable producer triple
+        run: >-
+          timeout --kill-after=10s 270s python3 scripts/selected-producer-tags.py
+          --mode cut --source-sha "$SELECTED_SOURCE_SHA" --version "$SELECTED_VERSION"
+      - name: Retain per-tag acknowledgement and readback
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: selected-producer-tags-cut-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/selected-producer-tags/cut.json
+          if-no-files-found: error
+
   # #681 — PLAN. Decide what this commit owes, and prove it is SAFE to cut — but push NOTHING.
   #
   # This job used to be `cut`, and it both decided and pushed. Splitting it is the whole fix: a tag
@@ -85,7 +164,7 @@ jobs:
     name: Plan the release (what to cut, and may we)
     runs-on: ubuntu-latest
     # Forks never cut tags or publish (mirrors release.yml / template-dispatch.yml).
-    if: github.repository == 'FS-GG/FS.GG.Rendering'
+    if: github.repository == 'FS-GG/FS.GG.Rendering' && github.event_name == 'push'
     permissions:
       contents: read    # #681: this job no longer pushes, so it no longer needs write.
     outputs:
