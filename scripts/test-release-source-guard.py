@@ -23,7 +23,13 @@ PLAN = 'eng/release/svg-external-authority-0.32.0.json'
 class SourceGuardTests(unittest.TestCase):
     def validate(self, mutate=None, version='0.32.0', sha='a'*40, require_ready=False):
         def source(_root, _sha, path):
-            value = (ROOT/path).read_text()
+            # Historical 0.32.0 validation keeps its actual producer's delivered axes.
+            # Current successor axes are independently exercised below.
+            historical_axes = {'template/base/Directory.Packages.props',
+                               '.template.package/FS.GG.UI.Template.fsproj',
+                               'template/product-skills/fs-gg-symbology/reference.fsx'}
+            value = (guard.source_bytes(ROOT, guard.PRODUCER, path).decode()
+                     if path in historical_axes else (ROOT/path).read_text())
             return mutate(path, value) if mutate else value
         def git(_root, *args):
             if args[0] == 'ls-tree':
@@ -153,6 +159,88 @@ class SourceGuardTests(unittest.TestCase):
         self.assertIn('release-pack.sh',candidate)
         self.assertIn('rendering-source-candidate-${{ github.sha }}-0.32.0',candidate)
         self.assertIn('--baseline 0.31.0',candidate)
+
+class InertSuccessorTests(unittest.TestCase):
+    PLAN = 'eng/release/svg-export-prefix-0.32.1.json'
+
+    def validate(self, mutation=None, ready=False, plan_path=None):
+        def source(_root, _sha, path):
+            value = (ROOT/path).read_text()
+            return mutation(path, value) if mutation else value
+        def git(_root, *args):
+            if args[0] == 'ls-tree':
+                return '\n'.join(str(f.relative_to(ROOT)) for f in (ROOT/'src').rglob('*.fsproj')) + '\n.template.package/FS.GG.UI.Template.fsproj'
+            return 'b'*40 if args[0] == 'rev-parse' else ''
+        with patch.object(guard.preflight, 'source_text', side_effect=source), patch.object(guard.preflight, 'git', side_effect=git):
+            return guard.validate(ROOT, 'a'*40, plan_path or self.PLAN, '0.32.1', ready)
+
+    def test_complete_successor_is_source_only(self):
+        actual = self.validate()
+        self.assertEqual(('0.32.1', '0.32.0', 19, 'pass'),
+                         tuple(actual[k] for k in ('version', 'baselineVersion', 'rosterCount', 'result')))
+        self.assertIn('no publication authority', actual['scope'])
+
+    def test_successor_effect_and_readiness_mutants_refuse(self):
+        for ready, claimed in [(True, False), (False, True), (True, True)]:
+            def mutate(path, value):
+                if path == self.PLAN:
+                    doc = json.loads(value); doc['publicationReady'] = claimed; return json.dumps(doc)
+                return value
+            with self.subTest(ready=ready, claimed=claimed), self.assertRaises(SystemExit), patch.object(guard, 'acquire_selected', side_effect=AssertionError('acquisition forbidden')), patch.object(guard.preflight, 'request', side_effect=AssertionError('network forbidden')):
+                self.validate(mutate, ready)
+
+    def test_successor_wrong_tuple_axes_and_roster_refuse(self):
+        for field, value in [('version', '0.32.2'), ('baselineVersion', '0.31.0'),
+                             ('tags', ['v0.32.1']), ('packages', []), ('sdkVersion', '10.0.x')]:
+            def mutate(path, text):
+                if path == self.PLAN:
+                    doc=json.loads(text); doc[field]=value; return json.dumps(doc)
+                return text
+            with self.subTest(field=field), self.assertRaises(SystemExit): self.validate(mutate)
+        for axis in ['template/base/Directory.Packages.props', '.template.package/FS.GG.UI.Template.fsproj',
+                     'template/product-skills/fs-gg-symbology/reference.fsx']:
+            with self.subTest(axis=axis), self.assertRaises(SystemExit):
+                self.validate(lambda path, value: value.replace('0.32.1', '0.32.0') if path == axis else value)
+        with self.assertRaises(SystemExit):
+            self.validate(lambda path, value: value, plan_path=PLAN)
+
+    def test_actual_committed_successor_and_original_producer(self):
+        # Real Git source reads: candidate source-only acceptance, historic original
+        # acceptance, and cross-selection refusal. No restore, network or CLR.
+        head = guard.preflight.git(ROOT, 'rev-parse', 'HEAD')
+        self.assertEqual('pass', guard.validate(ROOT, head, self.PLAN, '0.32.1')['result'])
+        self.assertEqual('pass', guard.validate(ROOT, guard.PRODUCER, PLAN, '0.32.0')['result'])
+        with self.assertRaises(SystemExit): guard.validate(ROOT, head, PLAN, '0.32.0')
+        with self.assertRaises(SystemExit): guard.validate(ROOT, head, self.PLAN, '0.32.1', True)
+
+    def test_actual_current_workflow_entry_refuses_before_next_effect(self):
+        head = guard.preflight.git(ROOT, 'rev-parse', 'HEAD')
+        release = (ROOT/'.github/workflows/release.yml').read_text()
+        block = re.search(r'^  release-source-guard:\n(.*?)(?=^  [a-z-]+:)', release, re.M|re.S).group(1)
+        script = block.split('        run: |\n', 1)[1]
+        script = '\n'.join(line[10:] for line in script.splitlines() if line.strip())
+        with tempfile.TemporaryDirectory() as folder:
+            marker = Path(folder)/'effect-reached'
+            env = {**os.environ, 'GITHUB_SHA': head, 'REQUESTED_SOURCE': '',
+                   'BOUND_ATTEMPT': 'false', 'EVENT_TAG': '', 'EFFECT_MARKER': str(marker)}
+            # Execute the actual shell entry and actual guard. Every current route
+            # refuses the successor before a following effect sentinel can execute.
+            for source, preflight, version, tag in [('true','false','0.32.1',''),
+                    ('false','true','0.32.1',''), ('false','false','0.32.1',''),
+                    ('false','false','','v0.32.1'), ('true','false','0.32.0','')]:
+                env.update(SOURCE_ONLY=source, PREFLIGHT_ONLY=preflight, INPUT_VERSION=version, EVENT_TAG=tag)
+                result = subprocess.run(['bash', '-c', script+'\nprintf reached > "$EFFECT_MARKER"'],
+                                        cwd=ROOT, env=env, capture_output=True, text=True, timeout=10)
+                with self.subTest(source=source, preflight=preflight, version=version, tag=tag):
+                    self.assertNotEqual(0, result.returncode)
+                    self.assertFalse(marker.exists(), result.stdout+result.stderr)
+                    self.assertIn('::error::', result.stderr+result.stdout)
+            tags = (ROOT/'.github/workflows/release-tags.yml').read_text()
+            command = re.search(r'run: (python3 scripts/release-source-guard.py[^\n]+)', tags).group(1)
+            result = subprocess.run(['bash', '-ec', command+'\nprintf reached > "$EFFECT_MARKER"'],
+                                    cwd=ROOT, env=env, capture_output=True, text=True, timeout=10)
+            self.assertNotEqual(0, result.returncode)
+            self.assertFalse(marker.exists())
 
 class SelectedAttemptTests(unittest.TestCase):
     def binding(self, mutate=None, ready=False):

@@ -43,3 +43,24 @@ export; frozen .NET/Fable corpora preserve runtime-specific bytes and refusals.
 The accepted development run exceeded2GiB but fit its authorized8GiB allowance.
 This source candidate leaves the owning .3/.4, publication, installed adoption and
 late host GPU qualification open.
+
+The accepted prefix source merged in [#1389](https://github.com/FS-GG/FS.GG.Rendering/pull/1389)
+at `f133cb9f979cb4d5053e67c72ac7a6041524fc31`. The next source preparation selects
+[`svg-export-prefix-0.32.1.json`](../../eng/release/svg-export-prefix-0.32.1.json):
+the same 19-member coherent set, baseline0.32.0 and SDK10.0.401. Only delivered
+template and recipe axes move; the local0.4.0-preview.1 source/sample axis stays separate.
+
+This is inert StageA preparation. The exact successor plan is valid for source
+inspection, but `publicationReady` must remain false and effect validation refuses
+even a true readiness assertion. The original0.32.0 publisher, attempt, producer,
+archive pins and workflow paths are unchanged. Their actual workflow entry refuses
+this successor before package, preflight or tag jobs. No0.32.1 workflow dispatch is
+selected by this change. StageB must join the existing source-only/preflight routes
+and controls before a source-custody run; do not land this version bump alone and
+leave the repository in the version guard's pending-tag window.
+
+Actual0.32.1 producer/run/archive custody, installed Templates receiver proof and
+publisher authority remain unbound. Future attempt literals can be supplied only
+from that genuine evidence. Existing both-feed order, exact original-byte custody,
+source/executor separation and partial-effect recovery remain required. This is
+neither publication nor installed adoption and does not close .3/.4 or the GPU batch.
