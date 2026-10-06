@@ -234,7 +234,7 @@ class InertSuccessorTests(unittest.TestCase):
                 with self.subTest(source=source, preflight=preflight, version=version, tag=tag):
                     self.assertNotEqual(0, result.returncode)
                     self.assertFalse(marker.exists(), result.stdout+result.stderr)
-                    self.assertIn('::error::', result.stderr+result.stdout)
+                    self.assertIn('release-preflight:', result.stderr+result.stdout)
             tags = (ROOT/'.github/workflows/release-tags.yml').read_text()
             command = re.search(r'run: (python3 scripts/release-source-guard.py[^\n]+)', tags).group(1)
             result = subprocess.run(['bash', '-ec', command+'\nprintf reached > "$EFFECT_MARKER"'],
