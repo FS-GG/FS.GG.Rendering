@@ -1,6 +1,6 @@
 {
   "schema": "fsgg.rendering.publication-attempt/v1",
-  "attemptReady": false,
+  "attemptReady": true,
   "githubEffectiveWrite": "unknown-before-attempt",
   "producerSha": "6c9f766fdd91483c2de6f061e75589e94852a265",
   "planPath": "eng/release/svg-export-prefix-0.32.1.json",
