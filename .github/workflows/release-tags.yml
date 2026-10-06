@@ -102,7 +102,7 @@ jobs:
           fetch-depth: 0
 
       - name: Validate successor release source before .NET qualification
-        run: python3 scripts/release-source-guard.py --plan eng/release/svg-external-authority-0.32.0.json --source-sha "$GITHUB_SHA" --require-publication-ready
+        run: python3 scripts/release-source-guard.py --plan eng/release/svg-export-prefix-0.32.1.json --source-sha "$GITHUB_SHA" --require-publication-ready
 
       - uses: actions/setup-dotnet@v6
         with:

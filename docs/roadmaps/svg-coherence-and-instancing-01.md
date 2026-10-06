@@ -50,14 +50,24 @@ at `f133cb9f979cb4d5053e67c72ac7a6041524fc31`. The next source preparation selec
 the same 19-member coherent set, baseline0.32.0 and SDK10.0.401. Only delivered
 template and recipe axes move; the local0.4.0-preview.1 source/sample axis stays separate.
 
-This is inert StageA preparation. The exact successor plan is valid for source
-inspection, but `publicationReady` must remain false and effect validation refuses
-even a true readiness assertion. The original0.32.0 publisher, attempt, producer,
-archive pins and workflow paths are unchanged. Their actual workflow entry refuses
-this successor before package, preflight or tag jobs. No0.32.1 workflow dispatch is
-selected by this change. StageB must join the existing source-only/preflight routes
-and controls before a source-custody run; do not land this version bump alone and
-leave the repository in the version guard's pending-tag window.
+Stages A/B now join the existing source-only candidate and read-only preflight
+routes to the selected 0.32.1 plan. They retain the original workflow names,
+permissions, SDK, custody checks and authority boundaries. The exact successor
+source tuple can pass static inspection, but effect validation refuses even a true
+readiness assertion. Automatic tag preparation therefore stops before .NET or tags.
+Only an explicit source-only dispatch may reach the candidate pack; this source
+change is not that operation selection.
+
+Historical bound attempts keep their original 0.32.0 plan, producer, archive and
+publisher literals. Read-only baseline/census selection follows the chosen plan;
+the successor NuGet scope observation additionally joins the genuine same-run
+preflight receipt. It records source identity with no publication producer binding.
+The original full-publisher eligibility branch remains restricted to original custody.
+
+Before landing or allocating source qualification, retain the normal coherent gate
+and assess the pending-tag window: a version bump does not itself make 0.32.1
+available to receivers, and later non-bump revisions cannot assume pending-tag
+waivers. No tag, feed, candidate or receiver evidence is synthesized to bypass it.
 
 Actual0.32.1 producer/run/archive custody, installed Templates receiver proof and
 publisher authority remain unbound. Future attempt literals can be supplied only

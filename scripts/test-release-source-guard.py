@@ -157,8 +157,8 @@ class SourceGuardTests(unittest.TestCase):
         self.assertNotIn('id-token: write',candidate)
         self.assertNotIn('NuGet/login',candidate)
         self.assertIn('release-pack.sh',candidate)
-        self.assertIn('rendering-source-candidate-${{ github.sha }}-0.32.0',candidate)
-        self.assertIn('--baseline 0.31.0',candidate)
+        self.assertIn('rendering-source-candidate-${{ github.sha }}-0.32.1',candidate)
+        self.assertIn('--baseline 0.32.0',candidate)
 
 class InertSuccessorTests(unittest.TestCase):
     PLAN = 'eng/release/svg-export-prefix-0.32.1.json'
@@ -213,7 +213,7 @@ class InertSuccessorTests(unittest.TestCase):
         with self.assertRaises(SystemExit): guard.validate(ROOT, head, PLAN, '0.32.0')
         with self.assertRaises(SystemExit): guard.validate(ROOT, head, self.PLAN, '0.32.1', True)
 
-    def test_actual_current_workflow_entry_refuses_before_next_effect(self):
+    def test_actual_current_workflow_entry_admits_only_source_and_readonly_modes(self):
         head = guard.preflight.git(ROOT, 'rev-parse', 'HEAD')
         release = (ROOT/'.github/workflows/release.yml').read_text()
         block = re.search(r'^  release-source-guard:\n(.*?)(?=^  [a-z-]+:)', release, re.M|re.S).group(1)
@@ -223,24 +223,60 @@ class InertSuccessorTests(unittest.TestCase):
             marker = Path(folder)/'effect-reached'
             env = {**os.environ, 'GITHUB_SHA': head, 'REQUESTED_SOURCE': '',
                    'BOUND_ATTEMPT': 'false', 'EVENT_TAG': '', 'EFFECT_MARKER': str(marker)}
-            # Execute the actual shell entry and actual guard. Every current route
-            # refuses the successor before a following effect sentinel can execute.
+            # Execute the actual shell entry and actual guard. Source/preflight may
+            # pass this static boundary; publisher/tag calls must stop before it.
             for source, preflight, version, tag in [('true','false','0.32.1',''),
                     ('false','true','0.32.1',''), ('false','false','0.32.1',''),
                     ('false','false','','v0.32.1'), ('true','false','0.32.0','')]:
+                marker.unlink(missing_ok=True)
                 env.update(SOURCE_ONLY=source, PREFLIGHT_ONLY=preflight, INPUT_VERSION=version, EVENT_TAG=tag)
                 result = subprocess.run(['bash', '-c', script+'\nprintf reached > "$EFFECT_MARKER"'],
                                         cwd=ROOT, env=env, capture_output=True, text=True, timeout=10)
                 with self.subTest(source=source, preflight=preflight, version=version, tag=tag):
-                    self.assertNotEqual(0, result.returncode)
-                    self.assertFalse(marker.exists(), result.stdout+result.stderr)
-                    self.assertIn('release-preflight:', result.stderr+result.stdout)
+                    allowed = version=='0.32.1' and (source=='true' or preflight=='true')
+                    self.assertEqual(allowed, result.returncode==0, result.stdout+result.stderr)
+                    self.assertEqual(allowed, marker.exists(), result.stdout+result.stderr)
+                    if not allowed: self.assertIn('release-preflight:', result.stderr+result.stdout)
+            marker.unlink(missing_ok=True)
             tags = (ROOT/'.github/workflows/release-tags.yml').read_text()
             command = re.search(r'run: (python3 scripts/release-source-guard.py[^\n]+)', tags).group(1)
             result = subprocess.run(['bash', '-ec', command+'\nprintf reached > "$EFFECT_MARKER"'],
                                     cwd=ROOT, env=env, capture_output=True, text=True, timeout=10)
             self.assertNotEqual(0, result.returncode)
             self.assertFalse(marker.exists())
+
+class SuccessorRouteTests(unittest.TestCase):
+    def test_selected_routes_join_without_changing_publisher_authority(self):
+        release = (ROOT/'.github/workflows/release.yml').read_text()
+        blocks = dict(re.findall(r'^  ([a-z-]+):\n(.*?)(?=^  [a-z-]+:|\Z)', release, re.M|re.S))
+        admission = blocks['release-source-guard']
+        self.assertIn('plan=eng/release/svg-export-prefix-0.32.1.json', admission)
+        self.assertIn('plan=eng/release/svg-external-authority-0.32.0.json', admission)
+        self.assertIn('--plan "$plan"', admission)
+        self.assertIn('[[ "$source_sha" == '+guard.PRODUCER+' ]]', admission)
+        candidate = blocks['source-package-custody']
+        self.assertIn('release-pack.sh eng/release/svg-export-prefix-0.32.1.json "$GITHUB_SHA" 0.32.1', candidate)
+        preflight = blocks['publication-preflight']
+        self.assertIn("inputs.bound-attempt && '0.31.0' || '0.32.0'", preflight)
+        self.assertEqual(3, preflight.count('--plan "$RELEASE_PLAN"'))
+        self.assertIn('--version "$RELEASE_BASELINE"', preflight)
+        self.assertIn('fs.gg.ui.scene/$RELEASE_BASELINE/fs.gg.ui.scene.$RELEASE_BASELINE.nupkg', preflight)
+        self.assertIn('git show "${{ steps.source.outputs.sha }}:$RELEASE_PLAN"', preflight)
+        self.assertIn('--qualification artifacts/preflight/release-preflight.json', preflight)
+        self.assertIn("FSGG_NUGET_SCOPE_ONLY: 'true'", preflight)
+        self.assertIn('FSGG_NUGET_SCOPE_SOURCE: ${{ steps.source.outputs.sha }}', preflight)
+        publisher = blocks['publish-packages']
+        self.assertIn('!inputs.preflight-only && inputs.bound-attempt', publisher)
+        self.assertIn('PRODUCER_SHA: '+guard.PRODUCER, publisher)
+        self.assertIn('--plan eng/release/svg-external-authority-0.32.0.json --version 0.32.0', publisher)
+        self.assertNotIn('0.32.1', publisher)
+        script = (ROOT/'scripts/release-nuget-verify-key.fsx').read_text()
+        self.assertIn('not(successor && scopeOnly)', script)
+        self.assertLess(script.index('not(successor && scopeOnly)'), script.index('GetEnvironmentVariable("NUGET_API_KEY")'))
+        self.assertLess(script.index('scopeSourceFromReceipt'), script.index('GetEnvironmentVariable("NUGET_API_KEY")'))
+        self.assertLess(script.index('if scopeOnly then exit 0'), script.index('GetEnvironmentVariable("GITHUB_TOKEN")'))
+        self.assertIn('producerSha=(if successor then null else "'+guard.PRODUCER+'")', script)
+        self.assertIn('sourceSha=scopeSource', script)
 
 class SelectedAttemptTests(unittest.TestCase):
     def binding(self, mutate=None, ready=False):

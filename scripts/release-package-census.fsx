@@ -37,10 +37,15 @@ try
     let previousWorkflow = root.GetProperty("workflow")
     if field previousWorkflow "repository" <> Repository || field previousWorkflow "ref" <> workflowRef || field previousWorkflow "runId" <> env "GITHUB_RUN_ID" then fail "census-prior-context-refused"
     let planPath = value "--plan"
-    if planPath <> "eng/release/svg-external-authority-0.32.0.json" then fail "census-plan-path-refused"
+    let selected =
+        match planPath with
+        | "eng/release/svg-external-authority-0.32.0.json" -> "0.32.0", "0.31.0"
+        | "eng/release/svg-export-prefix-0.32.1.json" -> "0.32.1", "0.32.0"
+        | _ -> fail "census-plan-path-refused"
     let planBytes = System.Text.Encoding.UTF8.GetBytes(git ["show"; source+":"+planPath])
     use plan = parse planBytes
-    if field plan.RootElement "version" <> version then fail "census-version-refused"
+    if field plan.RootElement "version" <> version ||
+       (version, field plan.RootElement "baselineVersion") <> selected then fail "census-version-refused"
     let packages = plan.RootElement.GetProperty("packages").EnumerateArray() |> Seq.map (fun p -> field p "id") |> Seq.toList
     if packages <> strings root "roster" || root.GetProperty("rosterCount").GetInt32() <> 19 then fail "census-plan-roster-refused"
     let token = env "GITHUB_TOKEN"
