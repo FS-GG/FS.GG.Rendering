@@ -23,10 +23,11 @@
   <Target Name="CurateFableCompatibilityView"
           AfterTargets="CreateFablePackageFiles">
     <ItemGroup>
-      <_PackageFiles Remove="@(_PackageFiles)" />
+      <!-- Replace only the SDK Fable source view; retain declared package content. -->
+      <_PackageFiles Remove="@(Compile);$(MSBuildProjectFullPath)" />
       <_PackageFiles Include="Types.fsi;Types.fs;RetainedSvg.fsi;RetainedSvg.fs;SpatialWorkingSet.fsi;SpatialWorkingSet.fs;SvgDocument.fsi;SvgDocument.fs;SvgAuthoring.fsi;SvgAuthoring.fs;SvgScene.fsi;SvgScene.fs;SvgArt.fsi;SvgArt.fs;SvgWorkspace.fsi;SvgWorkspace.fs;Animation.fsi;Animation.fs">
         <Pack>true</Pack>
-        <PackagePath>fable/%(Filename)%(Extension)</PackagePath>
+        <PackagePath>fable/</PackagePath>
         <BuildAction>None</BuildAction>
       </_PackageFiles>
       <_PackageFiles Include="Fable/FS.GG.UI.Scene.fsproj">
