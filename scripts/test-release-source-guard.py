@@ -277,6 +277,8 @@ class SuccessorRouteTests(unittest.TestCase):
         self.assertLess(script.index('if scopeOnly then exit 0'), script.index('GetEnvironmentVariable("GITHUB_TOKEN")'))
         self.assertIn('producerSha=(if successor then null else "'+guard.PRODUCER+'")', script)
         self.assertIn('sourceSha=scopeSource', script)
+        self.assertEqual(2, release.count('dotnet fsi --define:DEBUG --exec scripts/test-release-nuget-verify-key.fsx'))
+        self.assertNotIn('dotnet fsi --exec scripts/test-release-nuget-verify-key.fsx', release)
 
 class SelectedAttemptTests(unittest.TestCase):
     def binding(self, mutate=None, ready=False):

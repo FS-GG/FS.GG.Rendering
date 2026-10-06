@@ -538,7 +538,7 @@ jobs:
         run: |
           set -euo pipefail
           git show "${{ steps.source.outputs.sha }}:$RELEASE_PLAN" > artifacts/preflight/producer-plan.json
-          dotnet fsi --exec scripts/test-release-nuget-verify-key.fsx
+          dotnet fsi --define:DEBUG --exec scripts/test-release-nuget-verify-key.fsx
           dotnet fsi --exec scripts/release-nuget-verify-key.fsx --plan artifacts/preflight/producer-plan.json \
             --receipt artifacts/preflight/nuget-key-scope.json --qualification artifacts/preflight/release-preflight.json --census unused
       - name: Retain sanitized verify-key observations including refusal
@@ -801,7 +801,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          dotnet fsi --exec scripts/test-release-nuget-verify-key.fsx
+          dotnet fsi --define:DEBUG --exec scripts/test-release-nuget-verify-key.fsx
           dotnet fsi --exec scripts/release-nuget-verify-key.fsx \
             --plan "$PRODUCER_PLAN" --receipt artifacts/attempt/nuget-key-scope.json \
             --qualification artifacts/attempt/qualification-facts.json --census artifacts/attempt/fresh-package-census.json
