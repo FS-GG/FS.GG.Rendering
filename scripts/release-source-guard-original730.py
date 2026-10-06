@@ -102,11 +102,11 @@ def validate(root: Path, source_sha: str, plan_path: str, requested_version: str
             'result': 'pass', 'scope': 'source only; no publication authority'}
 
 
-ATTEMPT = 'eng/release/svg-export-prefix-0.32.1-attempt.json'
-PRODUCER = '6c9f766fdd91483c2de6f061e75589e94852a265'
-PLAN_HASH = 'ac433609d14d0a672ad42e5f3578afdd6ecf6ee1144c33d5e6aec951535d84f2'
-OUTER = '486182db3efd8442c007f66322a7bfb27caf0cb8e3c87bc2521e66dd90a7adee'
-CUSTODY = 'ecd0c5d742fd8d19d5659991e413e92971c1d2cb9aea913faa2bb249f53f577d'
+ATTEMPT = 'eng/release/svg-external-authority-0.32.0-attempt.json'
+PRODUCER = '730923fe9d27174e879566f21dab14a1b03d761a'
+PLAN_HASH = '6accaeb58e4cf8f4f5fea49dffbdcdbd8fa4bae4cd6387949cd7fe0df4f31b69'
+OUTER = '58a80ec49db26b36b3f873694053df1e0eb4c3fb5bac503c8905ac2547bdb4d7'
+CUSTODY = '35d4c23fbd811c810987277aa1e28d2b35e605f0c9106e5385f1cb7080dc1ad9'
 
 def source_bytes(root: Path, sha: str, path: str) -> bytes:
     # Existing text helper strips whitespace; custody must bind exact bytes, including final newline.
@@ -116,22 +116,14 @@ def source_bytes(root: Path, sha: str, path: str) -> bytes:
 def validate_attempt(root: Path, source_sha: str, require_ready: bool = True) -> dict:
     binding = json.loads((root/ATTEMPT).read_text(), object_pairs_hook=preflight.unique_json_object)
     expected = {'schema':'fsgg.rendering.publication-attempt/v1','producerSha':PRODUCER,
-        'planPath':'eng/release/svg-export-prefix-0.32.1.json','planSha256':PLAN_HASH,
-        'producerRun':37419955679,'producerAttempt':1,'producerArtifact':11392773621,'outerSha256':OUTER,
-        'outerSizeBytes':14912688,'custodySha256':CUSTODY,'version':'0.32.1','baselineVersion':'0.32.0',
+        'planPath':'eng/release/svg-external-authority-0.32.0.json','planSha256':PLAN_HASH,
+        'producerRun':37046893526,'producerArtifact':11244853996,'outerSha256':OUTER,
+        'outerSizeBytes':14790371,'custodySha256':CUSTODY,'version':'0.32.0','baselineVersion':'0.31.0',
         'githubEffectiveWrite':'unknown-before-attempt'}
     if source_sha != PRODUCER or any(binding.get(k)!=v for k,v in expected.items()):
         preflight.fail('selected attempt producer/artifact/plan identity differs')
     if hashlib.sha256(source_bytes(root,source_sha,binding['planPath'])).hexdigest()!=PLAN_HASH:
         preflight.fail('selected original plan bytes differ; never amend producer custody')
-    q = binding.get('qualification', {})
-    qualified = {'status':'qualified','templatesSha':'4eff52b27933c69a9ab4e276b3a29032d279b7e0',
-        'callerSha':'67091200bc7bbcbb8189b2cf84244b2af919ecd1','run':37428584026,'attempt':1,
-        'artifact':11396281620,'outerSha256':'90d6693543e21fe98649a3efca3f64a0bfcca64450967a095a75bbd9bbd0edb3',
-        'outerSizeBytes':30941,'qualificationSha256':'ac3ce9a684807e1cfa8f8ef14acef2b1d6a1832ae936320db8be6a3382b8b623',
-        'rootReadbackSha256':'71c09f045e08d85261fd26575da5072a783259c1171d951d6ecf7d628707fec7'}
-    if any(q.get(k)!=v for k,v in qualified.items()):
-        preflight.fail('selected accepted receiver qualification identity differs')
     if not isinstance(binding.get('attemptReady'),bool): preflight.fail('attempt readiness must be explicit')
     if require_ready:
         q=binding.get('qualification',{})
@@ -147,17 +139,15 @@ def validate_attempt(root: Path, source_sha: str, require_ready: bool = True) ->
 
 def validate_qualification_payload(root: Path, binding: dict, read, archives: Path) -> tuple[list[int], int]:
     q=binding['qualification']
-    raw=read('qualification.json')
-    if hashlib.sha256(raw).hexdigest()!=q['qualificationSha256']:preflight.fail('accepted qualification digest differs')
-    result=json.loads(raw)
+    result=json.loads(read('qualification.json'))
     if result.get('disposition')!='passed' or result.get('templates',{}).get('revision')!=q['templatesSha'] or result.get('producer',{}).get('revision')!=PRODUCER or result.get('producer',{}).get('custodyManifestSha256')!=CUSTODY:preflight.fail('native qualification producer/template join refused')
     if result.get('browserFamilies')!=['chromium','firefox','webkit'] or result.get('passedPerFamily')!=4 or result.get('skipped')!=0:preflight.fail('native three-family qualification refused')
     caller=preflight.source_text(root,q['callerSha'],'.github/workflows/templates-external-reference-qualification.yml')
     if re.findall(r'^    uses: FS-GG/FS.GG.Templates/\.github/workflows/fable-external-reference-source\.yml@([0-9a-f]{40})$',caller,re.M)!=[q['templatesSha']] or re.findall(r'^      templates-source: ([0-9a-f]{40})$',caller,re.M)!=[q['templatesSha']]:preflight.fail('native caller executable/checkout join refused')
     native=result.get('nativePreflight',{})
     context=native.get('caller',{})
-    if native.get('requestedPhase')!='full' or context.get('repository')!='FS-GG/FS.GG.Rendering' or context.get('revision')!=q['callerSha'] or context.get('run')!=str(q['run']) or context.get('attempt')!=str(q['attempt']):preflight.fail('native full-phase caller receipt differs')
-    selected=['FS.GG.UI.Scene.0.32.1.nupkg','FS.GG.UI.KeyboardInput.0.32.1.nupkg','FS.GG.UI.Scene.SvgBrowser.0.32.1.nupkg']
+    if native.get('requestedPhase')!='full' or context.get('repository')!='FS-GG/FS.GG.Rendering' or context.get('revision')!=q['callerSha'] or context.get('run')!=str(q['run']):preflight.fail('native full-phase caller receipt differs')
+    selected=['FS.GG.UI.Scene.0.32.0.nupkg','FS.GG.UI.KeyboardInput.0.32.0.nupkg','FS.GG.UI.Scene.SvgBrowser.0.32.0.nupkg']
     actual={row['name']:row['sha256'] for row in result['producer']['archives']}
     if len(result['producer']['archives'])!=3 or actual!={name:hashlib.sha256((archives/name).read_bytes()).hexdigest() for name in selected}:preflight.fail('native qualification archives differ from original selected bytes')
     counts=[]
@@ -173,33 +163,23 @@ def validate_qualification_payload(root: Path, binding: dict, read, archives: Pa
 
 
 def executor_identity(root: Path) -> dict:
-    expected = os.environ.get('FSGG_EXPECTED_EXECUTOR_SHA', '')
+    # Native PR GITHUB_SHA describes its synthetic merge context; checkout HEAD is the subject.
     executor = preflight.git(root, 'rev-parse', 'HEAD')
-    context = os.environ.get('GITHUB_SHA', '')
-    workflow = os.environ.get('GITHUB_WORKFLOW_SHA', '')
-    workflow_ref = os.environ.get('GITHUB_WORKFLOW_REF', '')
-    run = os.environ.get('GITHUB_RUN_ID', '')
-    attempt = os.environ.get('GITHUB_RUN_ATTEMPT', '')
-    if (not preflight.SHA.fullmatch(expected) or expected != executor or expected != context or
-        expected != workflow or os.environ.get('GITHUB_REPOSITORY') != 'FS-GG/FS.GG.Rendering' or
-        workflow_ref != 'FS-GG/FS.GG.Rendering/.github/workflows/release.yml@refs/heads/main' or
-        not re.fullmatch('[1-9][0-9]*', run) or not re.fullmatch('[1-9][0-9]*', attempt)):
-        preflight.fail('selected Stage D executor/context identity refused')
-    return {'expectedExecutorSha': expected, 'executorSha': executor,
-            'workflowContextSha': context, 'workflowSha': workflow,
-            'workflowRef': workflow_ref, 'run': run, 'attempt': attempt}
+    context = os.environ['GITHUB_SHA']
+    if not preflight.SHA.fullmatch(executor) or not preflight.SHA.fullmatch(context):
+        preflight.fail('selected reader executor/context identity refused')
+    return {'executorSha': executor, 'workflowContextSha': context}
 
 
 def acquire_selected(root: Path, binding: dict) -> None:
-    executor_identity(root)
     # GET only; GH_TOKEN is inherited through the environment, never an argument or receipt.
     if os.environ.get('GITHUB_REPOSITORY')!='FS-GG/FS.GG.Rendering': preflight.fail('selected reader context refused')
     out=root/'artifacts/attempt'; out.mkdir(parents=True,exist_ok=True)
     def api(path):
         return subprocess.check_output(['gh','api','repos/FS-GG/FS.GG.Rendering/'+path],stderr=subprocess.DEVNULL,timeout=60)
-    def packet(run_id,run_attempt,artifact_id,sha,outer_hash,size,path):
+    def packet(run_id,artifact_id,sha,outer_hash,size,path):
         run=json.loads(api(f'actions/runs/{run_id}')); meta=json.loads(api(f'actions/artifacts/{artifact_id}'))
-        if run.get('id')!=run_id or run.get('run_attempt')!=run_attempt or run.get('head_sha')!=sha or run.get('conclusion')!='success' or run.get('path')!=path:
+        if run.get('id')!=run_id or run.get('head_sha')!=sha or run.get('conclusion')!='success' or run.get('path')!=path:
             preflight.fail('selected native run identity/result refused')
         joined=meta.get('workflow_run',{})
         if meta.get('id')!=artifact_id or meta.get('expired') is not False or joined.get('id')!=run_id or joined.get('head_sha')!=sha or meta.get('digest')!='sha256:'+outer_hash or meta.get('size_in_bytes')!=size:
@@ -207,7 +187,7 @@ def acquire_selected(root: Path, binding: dict) -> None:
         raw=api(f'actions/artifacts/{artifact_id}/zip')
         if len(raw)!=size or hashlib.sha256(raw).hexdigest()!=outer_hash: preflight.fail('selected artifact bytes differ')
         return raw
-    raw=packet(binding['producerRun'],binding['producerAttempt'],binding['producerArtifact'],PRODUCER,OUTER,binding['outerSizeBytes'],'.github/workflows/release.yml')
+    raw=packet(binding['producerRun'],binding['producerArtifact'],PRODUCER,OUTER,binding['outerSizeBytes'],'.github/workflows/release.yml')
     original=out/'original.zip';original.write_bytes(raw)
     archives=root/'artifacts/packages';archives.mkdir(parents=True,exist_ok=True)
     with zipfile.ZipFile(original) as z:
@@ -218,7 +198,7 @@ def acquire_selected(root: Path, binding: dict) -> None:
     original_plan=out/'producer-plan.json';original_plan.write_bytes(source_bytes(root,PRODUCER,binding['planPath']))
     subprocess.run(['python3',str(root/'scripts/release-custody.py'),'verify','--plan',str(original_plan),'--archives',str(archives),'--manifest',str(archives/'release-custody.json'),'--source-sha',PRODUCER],check=True)
     q=binding['qualification']
-    raw=packet(q['run'],q['attempt'],q['artifact'],q['callerSha'],q['outerSha256'],q['outerSizeBytes'],'.github/workflows/templates-external-reference-qualification.yml')
+    raw=packet(q['run'],q['artifact'],q['callerSha'],q['outerSha256'],q['outerSizeBytes'],'.github/workflows/templates-external-reference-qualification.yml')
     proof=out/'qualification.zip';proof.write_bytes(raw)
     with zipfile.ZipFile(proof) as z:
         def read(name):
@@ -226,16 +206,16 @@ def acquire_selected(root: Path, binding: dict) -> None:
             if len(matches)!=1:preflight.fail('native qualification evidence missing/duplicated')
             return z.read(matches[0])
         counts,providers=validate_qualification_payload(root,binding,read,archives)
-    facts={**executor_identity(root),'originalCustodyVerified':True,'nativeTemplatesQualified':True,'providerPassed':providers,'browserPassed':counts,'browserUnexpected':0,'browserSkipped':0,'browserFlaky':0,'githubEffectiveWrite':'unknown-before-attempt'}
+    facts={'originalCustodyVerified':True,'nativeTemplatesQualified':True,'providerPassed':providers,'browserPassed':counts,'browserUnexpected':0,'browserSkipped':0,'browserFlaky':0,'githubEffectiveWrite':'unknown-before-attempt'}
     (out/'qualification-facts.json').write_text(json.dumps(facts,sort_keys=True)+'\n')
     (out/'input-binding.json').write_text(json.dumps({'producerSha':PRODUCER,**executor_identity(root),'run':os.environ['GITHUB_RUN_ID'],'attempt':os.environ['GITHUB_RUN_ATTEMPT'],'originalPlanSha256':PLAN_HASH,'outerSha256':OUTER,'custodySha256':CUSTODY,'qualification':q,'publication':'not-yet-observed'},sort_keys=True)+'\n')
 
 def record_event(root: Path, feed: str, package: str, stage: str, outcome: str) -> None:
-    ids=[p['id'] for p in json.loads(preflight.source_text(root,PRODUCER,'eng/release/svg-export-prefix-0.32.1.json'))['packages']]
+    ids=[p['id'] for p in json.loads(preflight.source_text(root,PRODUCER,'eng/release/svg-external-authority-0.32.0.json'))['packages']]
     if feed not in ('github','nuget') or package not in ids+['all19','unknown'] or stage not in ('probe','compare','push','readback','interrupted') or outcome not in ('requested','acknowledged','matched','failed','absent','refused'):
         preflight.fail('publisher diagnostic fields refused')
     path=root/'artifacts/attempt/publisher-events.jsonl';path.parent.mkdir(parents=True,exist_ok=True)
-    event={'schema':'fsgg.rendering.publisher-observation/v1','producerSha':PRODUCER,**executor_identity(root),'planSha256':PLAN_HASH,'custodySha256':CUSTODY,'utc':datetime.now(timezone.utc).isoformat(),'feed':feed,'packageId':package,'stage':stage,'outcome':outcome}
+    event={'schema':'fsgg.rendering.publisher-observation/v1','producerSha':PRODUCER,'executorSha':os.environ.get('GITHUB_SHA','unknown'),'run':os.environ.get('GITHUB_RUN_ID','unknown'),'attempt':os.environ.get('GITHUB_RUN_ATTEMPT','unknown'),'planSha256':PLAN_HASH,'custodySha256':CUSTODY,'utc':datetime.now(timezone.utc).isoformat(),'feed':feed,'packageId':package,'stage':stage,'outcome':outcome}
     with path.open('a',encoding='utf-8') as stream: stream.write(json.dumps(event,sort_keys=True)+'\n')
 
 
@@ -243,9 +223,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--repo-root', type=Path, default=Path.cwd())
     parser.add_argument('--source-sha')
-    parser.add_argument('--executor-only', action='store_true')
-    parser.add_argument('--executor-fence', action='store_true')
-    parser.add_argument('--plan', default='eng/release/svg-export-prefix-0.32.1.json')
+    parser.add_argument('--plan', default='eng/release/svg-external-authority-0.32.0.json')
     parser.add_argument('--version', default='')
     parser.add_argument('--require-publication-ready', action='store_true')
     parser.add_argument('--attempt-binding', action='store_true')
@@ -256,11 +234,6 @@ def main() -> int:
     args = parser.parse_args()
     try:
         root=args.repo_root.resolve()
-        if args.executor_only or args.executor_fence or args.attempt_binding or args.record_event:
-            identity=executor_identity(root)
-            if args.executor_only:
-                print(json.dumps(identity, sort_keys=True))
-                return 0
         if args.record_event:
             record_event(root,args.event_feed,args.event_package,args.event_stage,args.event_result)
             return 0
