@@ -575,9 +575,16 @@ class ExecutorFenceTests(unittest.TestCase):
     def test_original_guard_and_successor_readiness_are_independent(self):
         self.assertEqual('eef83507eadf5dbcafd0e2dfbce40d39ed4a8e52b9e7e9793b9bc5610e2fb8bd',hashlib.sha256(SCRIPT.read_bytes()).hexdigest())
         binding=json.loads((ROOT/self.subject.ATTEMPT).read_text())
-        self.assertFalse(binding['attemptReady'])
-        self.assertFalse(self.subject.validate_attempt(ROOT,self.subject.PRODUCER,False)['attemptReady'])
-        with self.assertRaises(SystemExit): self.subject.validate_attempt(ROOT,self.subject.PRODUCER)
+        self.assertTrue(binding['attemptReady'])
+        self.assertTrue(self.subject.validate_attempt(ROOT,self.subject.PRODUCER)['attemptReady'])
+        original_plan=self.subject.source_bytes(ROOT,self.subject.PRODUCER,binding['planPath'])
+        self.assertFalse(json.loads(original_plan)['publicationReady'])
+        pending=copy.deepcopy(binding);pending['attemptReady']=False
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);target=root/self.subject.ATTEMPT;target.parent.mkdir(parents=True);target.write_text(json.dumps(pending))
+            with patch.object(self.subject,'source_bytes',return_value=original_plan):
+                self.assertFalse(self.subject.validate_attempt(root,self.subject.PRODUCER,False)['attemptReady'])
+                with self.assertRaises(SystemExit):self.subject.validate_attempt(root,self.subject.PRODUCER)
         for field,value in [('producerAttempt',2),('producerRun',1),('producerArtifact',1),
                             ('outerSha256','0'*64),('custodySha256','0'*64)]:
             changed=copy.deepcopy(binding);changed[field]=value

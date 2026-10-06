@@ -50,19 +50,12 @@ at `f133cb9f979cb4d5053e67c72ac7a6041524fc31`. The next source preparation selec
 the same 19-member coherent set, baseline0.32.0 and SDK10.0.401. Only delivered
 template and recipe axes move; the local0.4.0-preview.1 source/sample axis stays separate.
 
-Stages A/B now join the existing source-only candidate and read-only preflight
-routes to the selected 0.32.1 plan. They retain the original workflow names,
-permissions, SDK, custody checks and authority boundaries. The exact successor
-source tuple can pass static inspection, but effect validation refuses even a true
-readiness assertion. Automatic tag preparation therefore stops before .NET or tags.
-Only an explicit source-only dispatch may reach the candidate pack; this source
-change is not that operation selection.
-
-Historical bound attempts keep their original 0.32.0 plan, producer, archive and
-publisher literals. Read-only baseline/census selection follows the chosen plan;
-the successor NuGet scope observation additionally joins the genuine same-run
-preflight receipt. It records source identity with no publication producer binding.
-The original full-publisher eligibility branch remains restricted to original custody.
+Stages A/B joined the existing source-only candidate and read-only preflight
+routes to the selected 0.32.1 plan, preserving workflow names, permissions, SDK
+and custody checks. The original producer plan remains `publicationReady=false`.
+Unbound publication and automatic tag preparation still refuse before native
+execution or tag mutation. The archived 0.32.0 guard and its original-producer
+mirror retain their historical identities independently of the successor attempt.
 
 The current version guard derives pending tags from a version ahead of its tag
 lanes, including later repair commits. This preserves the normal required source
@@ -73,14 +66,54 @@ receivers. No tag, feed, candidate or receiver evidence is synthesized to bypass
 The [bounded release-source qualification](../reports/svg-release-source-qualification-20261006.md)
 passed all five local F# commands at `b4326e3a6dca9c372beb4d9f7a6be807538a4212`,
 including an actual assertion-negative control and both pre-transport wrapper
-refusals. The failed preceding sentinel compile remains retained. This closes the
-local F# source gap only; required hosted checks and protected Stage A/B delivery
-remain separate. Stage C then produces the exact 19-package candidate and binds a
-successor of the existing Templates receiver route. Stage D cannot bind or admit a
-publisher until that candidate and genuine receiver evidence exist.
+refusals. The failed preceding sentinel compile remains retained. This closed the
+local F# source gap; the later protected source and operation evidence below
+establish the subsequent stages separately.
 
-Actual0.32.1 producer/run/archive custody, installed Templates receiver proof and
-publisher authority remain unbound. Future attempt literals can be supplied only
-from that genuine evidence. Existing both-feed order, exact original-byte custody,
-source/executor separation and partial-effect recovery remain required. This is
-neither publication nor installed adoption and does not close .3/.4 or the GPU batch.
+Stage C retained the original 19-package candidate from producer
+`6c9f766fdd91483c2de6f061e75589e94852a265` in
+[run 37419955679, attempt 1](https://github.com/FS-GG/FS.GG.Rendering/actions/runs/37419955679),
+artifact `11392773621`. The programme integrator accepted its original archive
+and custody hashes. The full
+[Templates receiver run 37428584026, attempt 1](https://github.com/FS-GG/FS.GG.Rendering/actions/runs/37428584026)
+then qualified that candidate with four passing cases in each of Chromium,
+Firefox and WebKit, plus 180 Provider checks. This establishes installed candidate
+qualification; published-package adoption remains open.
+
+[Stage D source binding #1392](https://github.com/FS-GG/FS.GG.Rendering/pull/1392)
+merged at `01bc86518f3ab0c9c842a1ddc660c4d5326bc6f8`. Its executor guard requires
+the explicitly selected SHA to equal checkout HEAD, workflow SHA and event SHA
+on the existing `release.yml@refs/heads/main` route. The programme integrator
+accepted the 15 actual offline F# boundary cases and existing eligibility checks;
+those controls establish executor refusal behavior, not feed authority.
+
+The subsequent
+[read-only preflight 37442136920, attempt 1](https://github.com/FS-GG/FS.GG.Rendering/actions/runs/37442136920)
+ran at that executor against the original producer. The programme integrator
+accepted the five original receipt archives and seven payloads: exact executor
+and source joins, SDK 10.0.401 and loaded F# identities, supported-client baseline
+restore, complete active/deleted census for all 19 target versions, and 19 NuGet
+existing-ID scope checks returning HTTP 200. The raw diagnostic download URL's
+403 remains recorded separately from the successful supported-client restore.
+NuGet scope was observed at 09:30:05–09:30:07 UTC on 2026-10-06; no credential
+expiry is recorded, and artifact retention does not extend credential validity.
+
+The [existing attempt binding](../../eng/release/svg-export-prefix-0.32.1-attempt.json)
+now sets `attemptReady=true` on the strength of these accepted prerequisites.
+This enables the selected bound-attempt source gate; it neither dispatches the
+publisher nor asserts effective GitHub package write access. The original
+producer plan, candidate archives and receiver coordinates remain unchanged.
+
+After protected delivery, the programme integrator must select the final executor
+SHA and supply it as `expected-executor-sha`; the earlier preflight executor cannot
+stand in for the new source. Ordered tags must identify the immutable producer,
+not the executor. Publication still requires fresh OIDC and all-package scope
+checks, complete census, current tag/source checks, original archive recovery,
+native consumption checks and existing typed eligibility. GitHub effective write
+remains `unknown-before-attempt` until actual acknowledgement and readback.
+The publisher retains GitHub Packages first, nuget.org second, identical original
+bytes, and observation before replay after partial or unknown effects.
+
+No fresh or existing workspace changes through this readiness source promotion.
+Coherent publication, published receiver adoption, owning .3/.4 milestones and
+the late host GPU batch remain open.
