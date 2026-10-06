@@ -70,6 +70,15 @@ gate while publication is pending; the release lane still disables every waiver
 and enforces successor-tag order. A source bump does not make 0.32.1 available to
 receivers. No tag, feed, candidate or receiver evidence is synthesized to bypass it.
 
+The [bounded release-source qualification](../reports/svg-release-source-qualification-20261006.md)
+passed all five local F# commands at `b4326e3a6dca9c372beb4d9f7a6be807538a4212`,
+including an actual assertion-negative control and both pre-transport wrapper
+refusals. The failed preceding sentinel compile remains retained. This closes the
+local F# source gap only; required hosted checks and protected Stage A/B delivery
+remain separate. Stage C then produces the exact 19-package candidate and binds a
+successor of the existing Templates receiver route. Stage D cannot bind or admit a
+publisher until that candidate and genuine receiver evidence exist.
+
 Actual0.32.1 producer/run/archive custody, installed Templates receiver proof and
 publisher authority remain unbound. Future attempt literals can be supplied only
 from that genuine evidence. Existing both-feed order, exact original-byte custody,
