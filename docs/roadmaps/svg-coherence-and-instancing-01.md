@@ -64,10 +64,11 @@ the successor NuGet scope observation additionally joins the genuine same-run
 preflight receipt. It records source identity with no publication producer binding.
 The original full-publisher eligibility branch remains restricted to original custody.
 
-Before landing or allocating source qualification, retain the normal coherent gate
-and assess the pending-tag window: a version bump does not itself make 0.32.1
-available to receivers, and later non-bump revisions cannot assume pending-tag
-waivers. No tag, feed, candidate or receiver evidence is synthesized to bypass it.
+The current version guard derives pending tags from a version ahead of its tag
+lanes, including later repair commits. This preserves the normal required source
+gate while publication is pending; the release lane still disables every waiver
+and enforces successor-tag order. A source bump does not make 0.32.1 available to
+receivers. No tag, feed, candidate or receiver evidence is synthesized to bypass it.
 
 Actual0.32.1 producer/run/archive custody, installed Templates receiver proof and
 publisher authority remain unbound. Future attempt literals can be supplied only
