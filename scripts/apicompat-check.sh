@@ -79,7 +79,7 @@ cd "$repo_root"
 FEED_URL="${APICOMPAT_TEST_FEED_URL:-https://api.nuget.org/v3/index.json}"
 FEED_DL="${APICOMPAT_TEST_FEED_DL:-https://api.nuget.org/v3-flatcontainer}"
 FORCE_BASELINE=""
-RELEASE_PLAN="eng/release/svg-external-authority-0.32.0.json"
+RELEASE_PLAN="eng/release/svg-export-prefix-0.32.1.json"
 SELF_TEST=""
 while [ $# -gt 0 ]; do
   case "$1" in

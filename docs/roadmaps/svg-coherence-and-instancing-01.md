@@ -43,3 +43,44 @@ export; frozen .NET/Fable corpora preserve runtime-specific bytes and refusals.
 The accepted development run exceeded2GiB but fit its authorized8GiB allowance.
 This source candidate leaves the owning .3/.4, publication, installed adoption and
 late host GPU qualification open.
+
+The accepted prefix source merged in [#1389](https://github.com/FS-GG/FS.GG.Rendering/pull/1389)
+at `f133cb9f979cb4d5053e67c72ac7a6041524fc31`. The next source preparation selects
+[`svg-export-prefix-0.32.1.json`](../../eng/release/svg-export-prefix-0.32.1.json):
+the same 19-member coherent set, baseline0.32.0 and SDK10.0.401. Only delivered
+template and recipe axes move; the local0.4.0-preview.1 source/sample axis stays separate.
+
+Stages A/B now join the existing source-only candidate and read-only preflight
+routes to the selected 0.32.1 plan. They retain the original workflow names,
+permissions, SDK, custody checks and authority boundaries. The exact successor
+source tuple can pass static inspection, but effect validation refuses even a true
+readiness assertion. Automatic tag preparation therefore stops before .NET or tags.
+Only an explicit source-only dispatch may reach the candidate pack; this source
+change is not that operation selection.
+
+Historical bound attempts keep their original 0.32.0 plan, producer, archive and
+publisher literals. Read-only baseline/census selection follows the chosen plan;
+the successor NuGet scope observation additionally joins the genuine same-run
+preflight receipt. It records source identity with no publication producer binding.
+The original full-publisher eligibility branch remains restricted to original custody.
+
+The current version guard derives pending tags from a version ahead of its tag
+lanes, including later repair commits. This preserves the normal required source
+gate while publication is pending; the release lane still disables every waiver
+and enforces successor-tag order. A source bump does not make 0.32.1 available to
+receivers. No tag, feed, candidate or receiver evidence is synthesized to bypass it.
+
+The [bounded release-source qualification](../reports/svg-release-source-qualification-20261006.md)
+passed all five local F# commands at `b4326e3a6dca9c372beb4d9f7a6be807538a4212`,
+including an actual assertion-negative control and both pre-transport wrapper
+refusals. The failed preceding sentinel compile remains retained. This closes the
+local F# source gap only; required hosted checks and protected Stage A/B delivery
+remain separate. Stage C then produces the exact 19-package candidate and binds a
+successor of the existing Templates receiver route. Stage D cannot bind or admit a
+publisher until that candidate and genuine receiver evidence exist.
+
+Actual0.32.1 producer/run/archive custody, installed Templates receiver proof and
+publisher authority remain unbound. Future attempt literals can be supplied only
+from that genuine evidence. Existing both-feed order, exact original-byte custody,
+source/executor separation and partial-effect recovery remain required. This is
+neither publication nor installed adoption and does not close .3/.4 or the GPU batch.

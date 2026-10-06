@@ -117,16 +117,18 @@ jobs:
             [[ "$source_sha" == 730923fe9d27174e879566f21dab14a1b03d761a ]] || exit 3
           fi
           version="${INPUT_VERSION:-${EVENT_TAG#v}}"
+          plan=eng/release/svg-export-prefix-0.32.1.json
           authority=()
           # Read-only preflight gathers evidence needed for readiness; all effectful calls still require it.
           [[ "$SOURCE_ONLY" == 'true' || "$PREFLIGHT_ONLY" == 'true' ]] || authority+=(--require-publication-ready)
           if [[ "$BOUND_ATTEMPT" == true ]]; then
             [[ "$SOURCE_ONLY" != true ]] || { echo "::error::bound attempt cannot regenerate a source candidate"; exit 3; }
+            plan=eng/release/svg-external-authority-0.32.0.json
             authority+=(--attempt-binding)
             [[ "$PREFLIGHT_ONLY" != true ]] || authority+=(--attempt-preflight)
           fi
           python3 scripts/release-source-guard.py \
-            --plan eng/release/svg-external-authority-0.32.0.json \
+            --plan "$plan" \
             --source-sha "$source_sha" --version "$version" "${authority[@]}"
 
   package-tests:
@@ -400,13 +402,13 @@ jobs:
         with:
           target: FS.GG.Rendering.slnx
       - name: Pack the complete source candidate and verify custody
-        run: bash scripts/release-pack.sh eng/release/svg-external-authority-0.32.0.json "$GITHUB_SHA" 0.32.0
-      - name: ApiCompat against published 0.31.0
-        run: bash scripts/apicompat-check.sh --baseline 0.31.0 --release-plan eng/release/svg-external-authority-0.32.0.json
+        run: bash scripts/release-pack.sh eng/release/svg-export-prefix-0.32.1.json "$GITHUB_SHA" 0.32.1
+      - name: ApiCompat against published 0.32.0
+        run: bash scripts/apicompat-check.sh --baseline 0.32.0 --release-plan eng/release/svg-export-prefix-0.32.1.json
       - name: Retain candidate bytes for isolated consumer composition
         uses: actions/upload-artifact@v7
         with:
-          name: rendering-source-candidate-${{ github.sha }}-0.32.0
+          name: rendering-source-candidate-${{ github.sha }}-0.32.1
           path: artifacts/packages/
           if-no-files-found: error
           compression-level: 0
@@ -423,6 +425,10 @@ jobs:
       contents: read
       packages: write
       id-token: write
+    env:
+      # Historical recovery remains bound to its original plan and baseline.
+      RELEASE_PLAN: ${{ inputs.bound-attempt && 'eng/release/svg-external-authority-0.32.0.json' || 'eng/release/svg-export-prefix-0.32.1.json' }}
+      RELEASE_BASELINE: ${{ inputs.bound-attempt && '0.31.0' || '0.32.0' }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -457,16 +463,16 @@ jobs:
         uses: NuGet/login@v1
         with:
           user: ${{ secrets.NUGET_USER || 'Paradigma11' }}
-      - name: Restore the known 0.31 archive through the supported NuGet client
+      - name: Restore the selected published baseline archive through the supported NuGet client
         shell: bash
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           python3 scripts/nuget-client-archive.py restore \
-            --plan eng/release/svg-external-authority-0.32.0.json \
+            --plan "$RELEASE_PLAN" \
             --package-id FS.GG.UI.Scene \
-            --version 0.31.0 \
+            --version "$RELEASE_BASELINE" \
             --username "$GITHUB_ACTOR" \
             --token-env GITHUB_TOKEN \
             --cache artifacts/preflight/github-baseline-cache \
@@ -482,7 +488,7 @@ jobs:
           set -euo pipefail
           [[ -n "$VER" ]] || { echo "::error::version is required for publication preflight"; exit 1; }
           python3 scripts/release-preflight.py \
-            --plan eng/release/svg-external-authority-0.32.0.json \
+            --plan "$RELEASE_PLAN" \
             --source-sha "$SOURCE_SHA" \
             --version "$VER" \
             --workflow-sha "$GITHUB_SHA" \
@@ -493,7 +499,7 @@ jobs:
             --github-repository "$GITHUB_REPOSITORY" \
             --github-workflow-ref "$GITHUB_WORKFLOW_REF" \
             --github-run-id "$GITHUB_RUN_ID" \
-            --github-anchor-archive artifacts/preflight/github-baseline-cache/fs.gg.ui.scene/0.31.0/fs.gg.ui.scene.0.31.0.nupkg \
+            --github-anchor-archive "artifacts/preflight/github-baseline-cache/fs.gg.ui.scene/$RELEASE_BASELINE/fs.gg.ui.scene.$RELEASE_BASELINE.nupkg" \
             --diagnostic artifacts/preflight/github-packages-auth-diagnostic.json \
             --receipt artifacts/preflight/release-preflight.json
       - name: Retain the historical publisher credential diagnostic
@@ -522,18 +528,19 @@ jobs:
         run: |
           dotnet fsi --exec scripts/release-package-census.fsx \
             --preflight-receipt artifacts/preflight/release-preflight.json \
-            --plan eng/release/svg-external-authority-0.32.0.json \
+            --plan "$RELEASE_PLAN" \
             --receipt artifacts/preflight/release-package-census.json
       - name: Verify all19 existing-ID NuGet scopes without publication
         env:
           NUGET_API_KEY: ${{ steps.nuget-preflight-login.outputs.NUGET_API_KEY }}
           FSGG_NUGET_SCOPE_ONLY: 'true'
+          FSGG_NUGET_SCOPE_SOURCE: ${{ steps.source.outputs.sha }}
         run: |
           set -euo pipefail
-          git show "${{ steps.source.outputs.sha }}:eng/release/svg-external-authority-0.32.0.json" > artifacts/preflight/producer-plan.json
-          dotnet fsi --exec scripts/test-release-nuget-verify-key.fsx
+          git show "${{ steps.source.outputs.sha }}:$RELEASE_PLAN" > artifacts/preflight/producer-plan.json
+          dotnet fsi --define:DEBUG --exec scripts/test-release-nuget-verify-key.fsx
           dotnet fsi --exec scripts/release-nuget-verify-key.fsx --plan artifacts/preflight/producer-plan.json \
-            --receipt artifacts/preflight/nuget-key-scope.json --qualification unused --census unused
+            --receipt artifacts/preflight/nuget-key-scope.json --qualification artifacts/preflight/release-preflight.json --census unused
       - name: Retain sanitized verify-key observations including refusal
         if: always()
         uses: actions/upload-artifact@v7
@@ -794,7 +801,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          dotnet fsi --exec scripts/test-release-nuget-verify-key.fsx
+          dotnet fsi --define:DEBUG --exec scripts/test-release-nuget-verify-key.fsx
           dotnet fsi --exec scripts/release-nuget-verify-key.fsx \
             --plan "$PRODUCER_PLAN" --receipt artifacts/attempt/nuget-key-scope.json \
             --qualification artifacts/attempt/qualification-facts.json --census artifacts/attempt/fresh-package-census.json

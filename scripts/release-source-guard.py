@@ -34,8 +34,16 @@ def validate(root: Path, source_sha: str, plan_path: str, requested_version: str
     if require_publication_ready and plan['publicationReady'] is not True:
         preflight.fail('publication pending: genuine Rendering identity and publisher grants are not joined')
     version = plan.get('version')
-    if version != '0.32.0' or plan.get('baselineVersion') != '0.31.0':
-        preflight.fail('successor must be 0.32.0 against the published 0.31.0 baseline')
+    # Closed source selections only. The original publisher/attempt remains bound to
+    # its historical plan and producer; adding source preparation grants no effects.
+    selections = {
+        'eng/release/svg-external-authority-0.32.0.json': ('0.32.0', '0.31.0'),
+        'eng/release/svg-export-prefix-0.32.1.json': ('0.32.1', '0.32.0'),
+    }
+    if plan_path not in selections or (version, plan.get('baselineVersion')) != selections[plan_path]:
+        preflight.fail('release plan path/version/baseline is not a selected source tuple')
+    if version == '0.32.1' and (require_publication_ready or plan['publicationReady'] is not False):
+        preflight.fail('0.32.1 source preparation only: candidate custody and installed qualification are unbound')
     if requested_version and requested_version != version:
         preflight.fail(f'requested version {requested_version!r} differs from plan {version}')
     for path, pattern in [

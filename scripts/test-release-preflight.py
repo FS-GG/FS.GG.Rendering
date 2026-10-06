@@ -40,7 +40,8 @@ class Response:
 class StatusTests(unittest.TestCase):
     def test_preflight_binds_package_roster_to_exact_source(self):
         root = SCRIPT.parent.parent
-        original = json.loads((root / "eng/release/svg-external-authority-0.32.0.json").read_text())
+        # Primitive-only fixture uses current delivered axes; this does not select a workflow or authority.
+        original = json.loads((root / "eng/release/svg-export-prefix-0.32.1.json").read_text())
         projects = sorted(str(path.relative_to(root)) for path in (root / "src").rglob("*.fsproj"))
         projects.append(".template.package/FS.GG.UI.Template.fsproj")
 
@@ -70,7 +71,7 @@ class StatusTests(unittest.TestCase):
                 plan_path.write_text(body)
                 args = [
                     str(SCRIPT), "--repo-root", str(root), "--plan", str(plan_path),
-                    "--source-sha", "a" * 40, "--version", "0.32.0",
+                    "--source-sha", "a" * 40, "--version", "0.32.1",
                     "--workflow-sha", "b" * 40, "--github-username", "actor",
                     "--github-repository", "FS-GG/FS.GG.Rendering",
                     "--github-workflow-ref", "FS-GG/FS.GG.Rendering/.github/workflows/release.yml@refs/heads/main",
