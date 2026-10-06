@@ -15,7 +15,7 @@ import urllib.error
 import urllib.request
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parent.parent
-spec = importlib.util.spec_from_file_location('release_guard', ROOT/'scripts/release-source-guard.py')
+spec = importlib.util.spec_from_file_location('release_guard', ROOT/'scripts/release-source-guard-original730.py')
 guard = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(guard)
 spec = importlib.util.spec_from_file_location('custody', ROOT/'scripts/release-custody.py')
@@ -114,7 +114,7 @@ def main():
     phase('candidate-source-join')
     binding,_=source_facts(args.candidate_sha)
     phase('authenticated-original-acquisition')
-    subprocess.run([sys.executable,str(ROOT/'scripts/release-source-guard.py'),'--attempt-binding','--acquire-bound-artifacts','--source-sha',guard.PRODUCER,'--plan',binding['planPath'],'--version','0.32.0'],cwd=ROOT,capture_output=True,check=True,timeout=120)
+    subprocess.run([sys.executable,str(ROOT/'scripts/release-source-guard-original730.py'),'--attempt-binding','--acquire-bound-artifacts','--source-sha',guard.PRODUCER,'--plan',binding['planPath'],'--version','0.32.0'],cwd=ROOT,capture_output=True,check=True,timeout=120)
     archives=ROOT/'artifacts/packages'
     for row,status in zip(plan['packages'],statuses):
         if status==200:

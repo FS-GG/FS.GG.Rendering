@@ -47,9 +47,13 @@ on:
         required: false
         default: false
       bound-attempt:
-        description: Use the executor-owned immutable producer730 attempt binding; prerequisites must be joined
+        description: Use the executor-owned immutable producer6c9 attempt binding; prerequisites must be joined
         type: boolean
         default: false
+      expected-executor-sha:
+        description: "Exact protected release.yml executor SHA; mandatory for Stage D preflight and bound publication."
+        type: string
+        required: false
       source-sha:
         description: "Exact candidate source SHA to bind during a non-publishing preflight. Defaults to the called SHA."
         type: string
@@ -72,9 +76,13 @@ on:
         required: false
         default: false
       bound-attempt:
-        description: Use the executor-owned immutable producer730 attempt binding; prerequisites must be joined
+        description: Use the executor-owned immutable producer6c9 attempt binding; prerequisites must be joined
         type: boolean
         default: false
+      expected-executor-sha:
+        description: "Exact protected release.yml executor SHA; mandatory for Stage D preflight and bound publication."
+        type: string
+        required: false
       source-sha:
         description: "Exact candidate source SHA whose release axes are inspected without executing candidate bytes."
         type: string
@@ -87,6 +95,9 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  FSGG_EXPECTED_EXECUTOR_SHA: ${{ inputs.expected-executor-sha }}
+
 jobs:
   release-source-guard:
     name: Static release source and plan guard
@@ -95,6 +106,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ github.sha }}
           fetch-depth: 0
       - name: Refuse wrong source, axes, roster, delivered surface, or SDK before costly jobs
         env:
@@ -107,6 +119,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          fence=()
+          if [[ "$PREFLIGHT_ONLY" == true || "$BOUND_ATTEMPT" == true ]]; then
+            python3 scripts/release-source-guard.py --executor-only
+            fence+=(--executor-fence)
+          fi
           source_sha="${REQUESTED_SOURCE:-$GITHUB_SHA}"
           [[ "$source_sha" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::source-sha must be exact lowercase 40-hex"; exit 1; }
           if [[ "$source_sha" != "$GITHUB_SHA" ]]; then
@@ -114,7 +131,7 @@ jobs:
             git fetch --no-tags origin "$source_sha"
           fi
           if [[ "$BOUND_ATTEMPT" == true ]]; then
-            [[ "$source_sha" == 730923fe9d27174e879566f21dab14a1b03d761a ]] || exit 3
+            [[ "$source_sha" == 6c9f766fdd91483c2de6f061e75589e94852a265 ]] || exit 3
           fi
           version="${INPUT_VERSION:-${EVENT_TAG#v}}"
           plan=eng/release/svg-export-prefix-0.32.1.json
@@ -123,13 +140,13 @@ jobs:
           [[ "$SOURCE_ONLY" == 'true' || "$PREFLIGHT_ONLY" == 'true' ]] || authority+=(--require-publication-ready)
           if [[ "$BOUND_ATTEMPT" == true ]]; then
             [[ "$SOURCE_ONLY" != true ]] || { echo "::error::bound attempt cannot regenerate a source candidate"; exit 3; }
-            plan=eng/release/svg-external-authority-0.32.0.json
+            plan=eng/release/svg-export-prefix-0.32.1.json
             authority+=(--attempt-binding)
             [[ "$PREFLIGHT_ONLY" != true ]] || authority+=(--attempt-preflight)
           fi
           python3 scripts/release-source-guard.py \
             --plan "$plan" \
-            --source-sha "$source_sha" --version "$version" "${authority[@]}"
+            --source-sha "$source_sha" --version "$version" "${authority[@]}" "${fence[@]}"
 
   package-tests:
     needs: release-source-guard
@@ -171,7 +188,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.bound-attempt && '730923fe9d27174e879566f21dab14a1b03d761a' || github.sha }}
+          ref: ${{ inputs.bound-attempt && '6c9f766fdd91483c2de6f061e75589e94852a265' || github.sha }}
           # The Feature 209 coherence mirror in Package.Tests re-derives the verdict from the
           # fs-gg-ui/v* snapshot tags (git tag --list). Default shallow checkout has no tags ⇒ the
           # guard fails CLOSED ("tags must be visible (fetch-depth: 0)"). Fetch full history + tags.
@@ -264,7 +281,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.bound-attempt && '730923fe9d27174e879566f21dab14a1b03d761a' || github.sha }}
+          ref: ${{ inputs.bound-attempt && '6c9f766fdd91483c2de6f061e75589e94852a265' || github.sha }}
           fetch-depth: 0
       - uses: actions/setup-dotnet@v6
         with:
@@ -426,13 +443,16 @@ jobs:
       packages: write
       id-token: write
     env:
-      # Historical recovery remains bound to its original plan and baseline.
-      RELEASE_PLAN: ${{ inputs.bound-attempt && 'eng/release/svg-external-authority-0.32.0.json' || 'eng/release/svg-export-prefix-0.32.1.json' }}
-      RELEASE_BASELINE: ${{ inputs.bound-attempt && '0.31.0' || '0.32.0' }}
+      # Selected successor preflight uses its immutable producer plan and published baseline.
+      RELEASE_PLAN: eng/release/svg-export-prefix-0.32.1.json
+      RELEASE_BASELINE: '0.32.0'
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ github.sha }}
           fetch-depth: 0
+      - name: Refuse executor movement before tools or credentials
+        run: python3 scripts/release-source-guard.py --executor-only
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.401'
@@ -458,6 +478,8 @@ jobs:
           git fetch --no-tags origin "$source_sha"
           git cat-file -e "$source_sha^{commit}"
           echo "sha=$source_sha" >> "$GITHUB_OUTPUT"
+      - name: Recheck executor before OIDC authority
+        run: python3 scripts/release-source-guard.py --executor-only
       - name: NuGet login preflight (OIDC only; existing-ID verification GETs)
         id: nuget-preflight-login
         uses: NuGet/login@v1
@@ -539,6 +561,7 @@ jobs:
           set -euo pipefail
           git show "${{ steps.source.outputs.sha }}:$RELEASE_PLAN" > artifacts/preflight/producer-plan.json
           dotnet fsi --define:DEBUG --exec scripts/test-release-nuget-verify-key.fsx
+          python3 scripts/release-source-guard.py --executor-only > artifacts/preflight/executor-binding.json
           dotnet fsi --exec scripts/release-nuget-verify-key.fsx --plan artifacts/preflight/producer-plan.json \
             --receipt artifacts/preflight/nuget-key-scope.json --qualification artifacts/preflight/release-preflight.json --census unused
       - name: Retain sanitized verify-key observations including refusal
@@ -546,7 +569,9 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: rendering-nuget-key-scope-${{ steps.source.outputs.sha }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/preflight/nuget-key-scope.json
+          path: |
+            artifacts/preflight/nuget-key-scope.json
+            artifacts/preflight/executor-binding.json
           if-no-files-found: warn
           retention-days: 90
       - name: Retain read census including unavailable outcomes
@@ -578,11 +603,12 @@ jobs:
       packages: write
       id-token: write   # ADR-0013: mint the GitHub OIDC token for nuget.org Trusted Publishing
     env:
-      PRODUCER_SHA: 730923fe9d27174e879566f21dab14a1b03d761a
+      PRODUCER_SHA: 6c9f766fdd91483c2de6f061e75589e94852a265
       PRODUCER_PLAN: artifacts/attempt/producer-plan.json
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
       - name: Initialize sanitized attempt observations before tool or archive qualification
@@ -592,9 +618,11 @@ jobs:
           from pathlib import Path
           from datetime import datetime, timezone
           root=Path('artifacts/attempt');root.mkdir(parents=True,exist_ok=True)
-          receipt={'schema':'fsgg.rendering.publisher-attempt-start/v1','producerSha':os.environ['PRODUCER_SHA'],'executorSha':os.environ['GITHUB_SHA'],'run':os.environ['GITHUB_RUN_ID'],'attempt':os.environ['GITHUB_RUN_ATTEMPT'],'utc':datetime.now(timezone.utc).isoformat(),'githubEffectiveWrite':'unknown-before-attempt','nugetScope':'not-yet-observed','publication':'not-yet-observed','noPackageVersionMutationAtStart':True}
+          receipt={'schema':'fsgg.rendering.publisher-attempt-start/v1','producerSha':os.environ['PRODUCER_SHA'],'expectedExecutorSha':os.environ['FSGG_EXPECTED_EXECUTOR_SHA'],'executorSha':os.environ['GITHUB_SHA'],'workflowContextSha':os.environ['GITHUB_SHA'],'workflowSha':os.environ['GITHUB_WORKFLOW_SHA'],'workflowRef':os.environ['GITHUB_WORKFLOW_REF'],'run':os.environ['GITHUB_RUN_ID'],'attempt':os.environ['GITHUB_RUN_ATTEMPT'],'utc':datetime.now(timezone.utc).isoformat(),'githubEffectiveWrite':'unknown-before-attempt','nugetScope':'not-yet-observed','publication':'not-yet-observed','noPackageVersionMutationAtStart':True}
           (root/'attempt-start.json').write_text(json.dumps(receipt,sort_keys=True)+'\n')
           PYATTEMPT
+      - name: Refuse executor movement before tools or credentials
+        run: python3 scripts/release-source-guard.py --executor-only
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.401'
@@ -644,7 +672,7 @@ jobs:
           echo "version=$ver" >> "$GITHUB_OUTPUT"
           echo "Coherent-set version: $ver"
 
-      # This attempt selects original source730 bytes by exact native artifact identity.
+      # This attempt selects original source6c9 bytes by exact native artifact identity.
       # Missing, expired or substituted custody is STOP; publisher never packs.
       - name: Download selected original archives and genuine native Templates proof (no regeneration)
         id: custody
@@ -654,11 +682,11 @@ jobs:
           set -euo pipefail
           git fetch --no-tags origin "$PRODUCER_SHA"
           python3 scripts/release-source-guard.py --attempt-binding --acquire-bound-artifacts \
-            --source-sha "$PRODUCER_SHA" --plan eng/release/svg-external-authority-0.32.0.json --version 0.32.0
+            --source-sha "$PRODUCER_SHA" --plan eng/release/svg-export-prefix-0.32.1.json --version 0.32.1
           echo "recovered=true" >> "$GITHUB_OUTPUT"
-          echo "artifact-name=rendering-original730-custody-${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_OUTPUT"
+          echo "artifact-name=rendering-original6c9-custody-${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_OUTPUT"
           # Existing producer tags may never be moved to this executor.
-          for tag in fs-gg-ui/v0.32.0 fs-gg-ui-template/v0.32.0 v0.32.0; do
+          for tag in fs-gg-ui/v0.32.1 fs-gg-ui-template/v0.32.1 v0.32.1; do
             git fetch --no-tags origin "refs/tags/$tag:refs/tags/$tag"
             test "$(git rev-parse "$tag^{commit}")" = "$PRODUCER_SHA"
           done
@@ -786,8 +814,10 @@ jobs:
 
       - name: ApiCompat vs public baseline (pass / first publication / unavailable are distinct)
         shell: bash
-        run: scripts/apicompat-check.sh --baseline 0.31.0 --release-plan "$PRODUCER_PLAN"
+        run: scripts/apicompat-check.sh --baseline 0.32.0 --release-plan "$PRODUCER_PLAN"
 
+      - name: Recheck executor before OIDC authority
+        run: python3 scripts/release-source-guard.py --executor-only
       - name: NuGet login (OIDC → short-lived nuget.org key)
         if: steps.ver.outputs.push == 'true'
         id: nuget-login
@@ -853,6 +883,7 @@ jobs:
           PYCENSUS
               record probe absent
               record push requested
+              python3 scripts/release-source-guard.py --executor-only
               dotnet nuget push "artifacts/packages/$file" \
                 --source https://nuget.pkg.github.com/FS-GG/index.json \
                 --api-key "$GITHUB_TOKEN"
@@ -900,6 +931,7 @@ jobs:
               [[ "$rc" == 4 ]] || { record probe refused; exit "$rc"; }
               record probe absent
               record push requested
+              python3 scripts/release-source-guard.py --executor-only
               dotnet nuget push "artifacts/packages/$file" \
                 --source https://api.nuget.org/v3/index.json \
                 --api-key "${{ steps.nuget-login.outputs.NUGET_API_KEY }}" \
@@ -938,7 +970,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: rendering-publication-attempt-producer730-executor-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: rendering-publication-attempt-producer6c9-executor-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
           if-no-files-found: warn
           retention-days: 90
           compression-level: 0

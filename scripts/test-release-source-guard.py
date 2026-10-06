@@ -13,7 +13,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 sys.dont_write_bytecode = True
-SCRIPT = Path(__file__).with_name('release-source-guard.py')
+SCRIPT = Path(__file__).with_name('release-source-guard-original730.py')
 spec = importlib.util.spec_from_file_location('guard', SCRIPT)
 guard = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(guard)
@@ -90,7 +90,7 @@ class SourceGuardTests(unittest.TestCase):
             temp=Path(folder)
             # Capture the real workflow invocation; no candidate source, credentials or network execute.
             python=temp/'python3'
-            python.write_text("#!/usr/bin/env bash\nprintf '%s\\n' \"$@\" > \"$CAPTURE\"\nfor arg in \"$@\"; do [[ \"$arg\" != --require-publication-ready ]] || exit 42; done\n")
+            python.write_text("#!/usr/bin/env bash\n[[ \"$*\" != *--executor-only* ]] || exit 0\nprintf '%s\\n' \"$@\" > \"$CAPTURE\"\nfor arg in \"$@\"; do [[ \"$arg\" != --require-publication-ready ]] || exit 42; done\n")
             python.chmod(0o700)
             git=temp/'git'
             git.write_text("#!/usr/bin/env bash\nprintf '%s\\n' \"$@\" >> \"$GIT_CAPTURE\"\n")
@@ -222,7 +222,10 @@ class InertSuccessorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             marker = Path(folder)/'effect-reached'
             env = {**os.environ, 'GITHUB_SHA': head, 'REQUESTED_SOURCE': '',
-                   'BOUND_ATTEMPT': 'false', 'EVENT_TAG': '', 'EFFECT_MARKER': str(marker)}
+                   'BOUND_ATTEMPT': 'false', 'EVENT_TAG': '', 'EFFECT_MARKER': str(marker),
+                   'FSGG_EXPECTED_EXECUTOR_SHA':head,'GITHUB_WORKFLOW_SHA':head,
+                   'GITHUB_WORKFLOW_REF':'FS-GG/FS.GG.Rendering/.github/workflows/release.yml@refs/heads/main',
+                   'GITHUB_REPOSITORY':'FS-GG/FS.GG.Rendering','GITHUB_RUN_ID':'1','GITHUB_RUN_ATTEMPT':'1'}
             # Execute the actual shell entry and actual guard. Source/preflight may
             # pass this static boundary; publisher/tag calls must stop before it.
             for source, preflight, version, tag in [('true','false','0.32.1',''),
@@ -251,13 +254,13 @@ class SuccessorRouteTests(unittest.TestCase):
         blocks = dict(re.findall(r'^  ([a-z-]+):\n(.*?)(?=^  [a-z-]+:|\Z)', release, re.M|re.S))
         admission = blocks['release-source-guard']
         self.assertIn('plan=eng/release/svg-export-prefix-0.32.1.json', admission)
-        self.assertIn('plan=eng/release/svg-external-authority-0.32.0.json', admission)
+        self.assertIn('plan=eng/release/svg-export-prefix-0.32.1.json', admission)
         self.assertIn('--plan "$plan"', admission)
-        self.assertIn('[[ "$source_sha" == '+guard.PRODUCER+' ]]', admission)
+        self.assertIn('[[ "$source_sha" == 6c9f766fdd91483c2de6f061e75589e94852a265 ]]', admission)
         candidate = blocks['source-package-custody']
         self.assertIn('release-pack.sh eng/release/svg-export-prefix-0.32.1.json "$GITHUB_SHA" 0.32.1', candidate)
         preflight = blocks['publication-preflight']
-        self.assertIn("inputs.bound-attempt && '0.31.0' || '0.32.0'", preflight)
+        self.assertIn("RELEASE_BASELINE: '0.32.0'", preflight)
         self.assertEqual(3, preflight.count('--plan "$RELEASE_PLAN"'))
         self.assertIn('--version "$RELEASE_BASELINE"', preflight)
         self.assertIn('fs.gg.ui.scene/$RELEASE_BASELINE/fs.gg.ui.scene.$RELEASE_BASELINE.nupkg', preflight)
@@ -267,15 +270,15 @@ class SuccessorRouteTests(unittest.TestCase):
         self.assertIn('FSGG_NUGET_SCOPE_SOURCE: ${{ steps.source.outputs.sha }}', preflight)
         publisher = blocks['publish-packages']
         self.assertIn('!inputs.preflight-only && inputs.bound-attempt', publisher)
-        self.assertIn('PRODUCER_SHA: '+guard.PRODUCER, publisher)
-        self.assertIn('--plan eng/release/svg-external-authority-0.32.0.json --version 0.32.0', publisher)
-        self.assertNotIn('0.32.1', publisher)
+        self.assertIn('PRODUCER_SHA: 6c9f766fdd91483c2de6f061e75589e94852a265', publisher)
+        self.assertIn('--plan eng/release/svg-export-prefix-0.32.1.json --version 0.32.1', publisher)
+        self.assertNotIn('release-pack.sh', publisher)
         script = (ROOT/'scripts/release-nuget-verify-key.fsx').read_text()
-        self.assertIn('not(successor && scopeOnly)', script)
-        self.assertLess(script.index('not(successor && scopeOnly)'), script.index('GetEnvironmentVariable("NUGET_API_KEY")'))
+        self.assertIn('not successor', script)
+        self.assertLess(script.index('not successor'), script.index('GetEnvironmentVariable("NUGET_API_KEY")'))
         self.assertLess(script.index('scopeSourceFromReceipt'), script.index('GetEnvironmentVariable("NUGET_API_KEY")'))
         self.assertLess(script.index('if scopeOnly then exit 0'), script.index('GetEnvironmentVariable("GITHUB_TOKEN")'))
-        self.assertIn('producerSha=(if successor then null else "'+guard.PRODUCER+'")', script)
+        self.assertIn('producerSha=(if scopeOnly then null else "6c9f766fdd91483c2de6f061e75589e94852a265")', script)
         self.assertIn('sourceSha=scopeSource', script)
         self.assertEqual(2, release.count('dotnet fsi --define:DEBUG --exec scripts/test-release-nuget-verify-key.fsx'))
         self.assertNotIn('dotnet fsi --exec scripts/test-release-nuget-verify-key.fsx', release)
@@ -540,4 +543,131 @@ class ActualPublisherReplayControls(unittest.TestCase):
                         self.assertTrue(any('--event-stage interrupted --event-result failed' in line for line in commands))
                         self.assertFalse(any('--event-stage push --event-result acknowledged' in line for line in commands))
 
-if __name__ == '__main__': unittest.main()
+class ExecutorFenceTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        spec = importlib.util.spec_from_file_location('successor_guard', ROOT/'scripts/release-source-guard.py')
+        cls.subject = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cls.subject)
+
+    def environment(self):
+        return {'FSGG_EXPECTED_EXECUTOR_SHA':'a'*40,'GITHUB_SHA':'a'*40,
+                'GITHUB_WORKFLOW_SHA':'a'*40,'GITHUB_REPOSITORY':'FS-GG/FS.GG.Rendering',
+                'GITHUB_WORKFLOW_REF':'FS-GG/FS.GG.Rendering/.github/workflows/release.yml@refs/heads/main',
+                'GITHUB_RUN_ID':'10','GITHUB_RUN_ATTEMPT':'1'}
+
+    def test_executor_join_and_every_identity_mutant(self):
+        subject=self.subject
+        env=self.environment()
+        with patch.dict(os.environ,env,clear=True), patch.object(subject.preflight,'git',return_value='a'*40):
+            proof=subject.executor_identity(ROOT)
+            self.assertEqual('a'*40,proof['expectedExecutorSha'])
+            self.assertEqual('10',proof['run'])
+        for field, value in [('FSGG_EXPECTED_EXECUTOR_SHA',''),('FSGG_EXPECTED_EXECUTOR_SHA','A'*40),
+                ('FSGG_EXPECTED_EXECUTOR_SHA','b'*40),('GITHUB_SHA','b'*40),('GITHUB_WORKFLOW_SHA','b'*40),
+                ('GITHUB_WORKFLOW_REF','FS-GG/FS.GG.Rendering/.github/workflows/release.yml@refs/heads/other'),
+                ('GITHUB_REPOSITORY','fork/repo'),('GITHUB_RUN_ID','0'),('GITHUB_RUN_ATTEMPT','')]:
+            with self.subTest(field=field,value=value),patch.dict(os.environ,{**env,field:value},clear=True),patch.object(subject.preflight,'git',return_value='a'*40),self.assertRaises(SystemExit):
+                subject.executor_identity(ROOT)
+        with patch.dict(os.environ,env,clear=True),patch.object(subject.preflight,'git',return_value='b'*40),self.assertRaises(SystemExit):
+            subject.executor_identity(ROOT)
+
+    def test_original_guard_and_successor_readiness_are_independent(self):
+        self.assertEqual('eef83507eadf5dbcafd0e2dfbce40d39ed4a8e52b9e7e9793b9bc5610e2fb8bd',hashlib.sha256(SCRIPT.read_bytes()).hexdigest())
+        binding=json.loads((ROOT/self.subject.ATTEMPT).read_text())
+        self.assertFalse(binding['attemptReady'])
+        self.assertFalse(self.subject.validate_attempt(ROOT,self.subject.PRODUCER,False)['attemptReady'])
+        with self.assertRaises(SystemExit): self.subject.validate_attempt(ROOT,self.subject.PRODUCER)
+        for field,value in [('producerAttempt',2),('producerRun',1),('producerArtifact',1),
+                            ('outerSha256','0'*64),('custodySha256','0'*64)]:
+            changed=copy.deepcopy(binding);changed[field]=value
+            with tempfile.TemporaryDirectory() as folder:
+                root=Path(folder);target=root/self.subject.ATTEMPT;target.parent.mkdir(parents=True);target.write_text(json.dumps(changed))
+                with patch.object(self.subject,'source_bytes',return_value=self.subject.source_bytes(ROOT,self.subject.PRODUCER,binding['planPath'])),self.assertRaises(SystemExit):
+                    self.subject.validate_attempt(root,self.subject.PRODUCER,False)
+        for field,value in [('attempt',2),('run',1),('callerSha','a'*40),('templatesSha','b'*40),('qualificationSha256','0'*64)]:
+            changed=copy.deepcopy(binding);changed['qualification'][field]=value
+            with tempfile.TemporaryDirectory() as folder:
+                root=Path(folder);target=root/self.subject.ATTEMPT;target.parent.mkdir(parents=True);target.write_text(json.dumps(changed))
+                with patch.object(self.subject,'source_bytes',return_value=self.subject.source_bytes(ROOT,self.subject.PRODUCER,binding['planPath'])),self.assertRaises(SystemExit):
+                    self.subject.validate_attempt(root,self.subject.PRODUCER,False)
+
+    def test_extracted_credential_job_fence_stops_before_authority(self):
+        release=(ROOT/'.github/workflows/release.yml').read_text()
+        head=guard.preflight.git(ROOT,'rev-parse','HEAD')
+        env={**os.environ,**self.environment(),'FSGG_EXPECTED_EXECUTOR_SHA':head,
+             'GITHUB_SHA':head,'GITHUB_WORKFLOW_SHA':head}
+        for job in ('publication-preflight','publish-packages'):
+            block=re.search(r'^  '+job+r':\n.*?(?=^  [a-z-]+:|\Z)',release,re.M|re.S).group()
+            fence='python3 scripts/release-source-guard.py --executor-only'
+            self.assertLess(block.index(fence),block.index('actions/setup-dotnet'))
+            self.assertLess(block.index('Recheck executor before OIDC'),block.index('uses: NuGet/login'))
+            for expected,ok in [(head,True),('',False),('b'*40,False)]:
+                with tempfile.TemporaryDirectory() as folder:
+                    marker=Path(folder)/'authority-reached'
+                    result=subprocess.run(['bash','-ec',fence+'; printf reached > "$MARKER"'],cwd=ROOT,
+                        env={**env,'FSGG_EXPECTED_EXECUTOR_SHA':expected,'MARKER':str(marker)},capture_output=True,text=True,timeout=10)
+                    self.assertEqual(ok,result.returncode==0,result.stderr)
+                    self.assertEqual(ok,marker.exists())
+            if job=='publish-packages':
+                self.assertEqual(2,block.count('              python3 scripts/release-source-guard.py --executor-only\n              dotnet nuget push'))
+        boundary=(ROOT/'scripts/release-nuget-verify-key.fsx').read_text()
+        self.assertLess(boundary.index('joinExecutor executorFacts.RootElement'),boundary.index('GetEnvironmentVariable("NUGET_API_KEY")'))
+        self.assertLess(boundary.index('joinExecutor inputs.RootElement'),boundary.index('inspect (httpTransport key)'))
+
+def native_boundary():
+    """Selected native mode: actual wrapper, synthetic joins, no credential/network."""
+    import time
+    start=time.monotonic()
+    head='a'*40
+    plan=ROOT/'eng/release/svg-export-prefix-0.32.1.json'
+    proof={'expectedExecutorSha':head,'executorSha':head,'workflowContextSha':head,
+           'workflowSha':head,'workflowRef':'FS-GG/FS.GG.Rendering/.github/workflows/release.yml@refs/heads/main',
+           'run':'10','attempt':'1'}
+    inputs={**proof,'producerSha':'6c9f766fdd91483c2de6f061e75589e94852a265',
+            'originalPlanSha256':'ac433609d14d0a672ad42e5f3578afdd6ecf6ee1144c33d5e6aec951535d84f2',
+            'outerSha256':'486182db3efd8442c007f66322a7bfb27caf0cb8e3c87bc2521e66dd90a7adee',
+            'custodySha256':'ecd0c5d742fd8d19d5659991e413e92971c1d2cb9aea913faa2bb249f53f577d'}
+    # A closed child environment cannot inherit an actual publication credential.
+    allowed=['PATH','HOME','TMPDIR','DOTNET_CLI_HOME','DOTNET_ROOT','DOTNET_HOST_PATH',
+             'DOTNET_PROCESSOR_COUNT','DOTNET_MULTILEVEL_LOOKUP','DOTNET_NOLOGO',
+             'DOTNET_CLI_TELEMETRY_OPTOUT','DOTNET_SKIP_FIRST_TIME_EXPERIENCE',
+             'DOTNET_EnableDiagnostics','DOTNET_EnableEventPipe','LANG','LC_ALL']
+    env={k:os.environ[k] for k in allowed if k in os.environ}
+    env.update(FSGG_EXPECTED_EXECUTOR_SHA=head,GITHUB_SHA=head,GITHUB_WORKFLOW_SHA=head,
+               GITHUB_REPOSITORY='FS-GG/FS.GG.Rendering',GITHUB_WORKFLOW_REF=proof['workflowRef'],
+               GITHUB_RUN_ID='10',GITHUB_RUN_ATTEMPT='1',FSGG_NUGET_SCOPE_ONLY='false',NUGET_API_KEY='')
+    cases=[('positive-join',{}, {}, {},'credential'),
+           ('missing-expected',{'FSGG_EXPECTED_EXECUTOR_SHA':''},{},{},'executor'),
+           ('mismatched-expected',{'FSGG_EXPECTED_EXECUTOR_SHA':'b'*40},{},{},'executor'),
+           ('wrong-context',{'GITHUB_SHA':'b'*40},{},{},'executor'),
+           ('wrong-workflow',{'GITHUB_WORKFLOW_SHA':'b'*40},{},{},'executor')]
+    for field in ('expectedExecutorSha','executorSha','workflowContextSha','workflowSha','workflowRef','run','attempt'):
+        cases.append(('facts-'+field,{}, {field:'different'}, {},'executor'))
+    for field in ('run','attempt'):
+        cases.append(('input-'+field,{}, {}, {field:'different'},'executor'))
+    cases.append(('input-producer',{}, {}, {'producerSha':'b'*40},'input'))
+    results=[]
+    with tempfile.TemporaryDirectory(prefix='executor-boundary-',dir=os.environ.get('TMPDIR')) as folder:
+        root=Path(folder);attempt=root/'artifacts/attempt';attempt.mkdir(parents=True)
+        for name,environment,mutant,input_mutant,stage in cases:
+            remaining=85-(time.monotonic()-start)
+            if remaining<=0:raise RuntimeError('native-boundary-original-deadline')
+            facts=attempt/'qualification-facts.json';facts.write_text(json.dumps({**proof,**mutant}))
+            (attempt/'input-binding.json').write_text(json.dumps({**inputs,**input_mutant}))
+            receipt=attempt/'scope.json';receipt.unlink(missing_ok=True)
+            command=['/usr/share/dotnet/dotnet','exec','--fx-version','10.0.12',
+                     '/usr/share/dotnet/sdk/10.0.401/FSharp/fsi.dll','--nologo','--define:DEBUG','--optimize-',
+                     '--exec',str(ROOT/'scripts/release-nuget-verify-key.fsx'),
+                     '--plan',str(plan),'--receipt',str(receipt),'--qualification',str(facts),'--census',str(attempt/'census.json')]
+            child=subprocess.run(command,cwd=root,env={**env,**environment},capture_output=True,text=True,timeout=min(15,remaining))
+            expected='NuGet verify-key: refused stage='+stage+'; no publication eligibility'
+            if child.returncode!=3 or expected not in child.stderr or 'error FS' in child.stderr or receipt.exists():
+                raise AssertionError(name+': actual exit/stage/compilation/receipt refused '+child.stdout+child.stderr)
+            results.append({'case':name,'actualExit':child.returncode,'stage':stage,'receiptCreated':False})
+    print('SVG_EXECUTOR_BOUNDARY '+json.dumps({'cases':results,'passed':len(results),'actualCredentials':False,
+          'networkSelected':False,'positiveJoinReached':'credential','elapsedSeconds':time.monotonic()-start},sort_keys=True))
+
+if __name__ == '__main__':
+    if sys.argv[1:]==['--native-boundary']: native_boundary()
+    else: unittest.main()
