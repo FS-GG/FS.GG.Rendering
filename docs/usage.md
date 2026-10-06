@@ -34,7 +34,7 @@ Three things are worth internalizing up front:
 ## Getting the packages
 
 <!-- BEGIN GENERATED: fsgg-doc:package-coordinates (scripts/generate-doc-fragments.fsx — do not hand-edit) -->
-Source release coordinates: `FS.GG.UI.*` packages targeting `net10.0` — current framework version `0.32.0`.
+Source release coordinates: `FS.GG.UI.*` packages targeting `net10.0` — current framework version `0.32.1`.
 <!-- END GENERATED: fsgg-doc:package-coordinates -->
 
 The published baseline remains `0.31.0`. The source coordinates above select the pending
