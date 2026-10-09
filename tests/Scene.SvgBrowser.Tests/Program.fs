@@ -602,6 +602,35 @@ let reconciliationDocument mode =
 
     { PortableDocumentFixture.document with Children = children }
 
+// Research corpus only: caller supplies the same ordered command state to both representations.
+let instanceResearchDocument (variant: string) (revision: int) (ids: string array) (xs: float array) (ys: float array) =
+    if variant <> "shared-symbol" && variant <> "expanded-geometry" then
+        invalidArg "variant" "Unknown research representation."
+    if ids.Length <> xs.Length || ids.Length <> ys.Length || ids.Length > 250 then
+        invalidArg "ids" "Research state must have matching arrays and at most 250 instances."
+    if revision <> 0 && revision <> 1 then invalidArg "revision" "Unknown research definition."
+    let radius = if revision = 0 then 3.0 else 5.0
+    let fill = if revision = 0 then color 70uy 130uy 220uy else color 220uy 80uy 60uy
+    let leaf id content =
+        { Id = id; SemanticId = Some id; Visible = true; Transform = SvgAffine.identity
+          ClipId = None; MaskId = None; Presentation = None; Content = content }
+    let geometry = SvgElementContent.SceneLeaf { Nodes = [ SceneNode.Circle({ X = 0.0; Y = 0.0 }, radius, fill) ] }
+    let symbol = { (leaf "research-symbol-geometry" geometry) with SemanticId = None }
+    let children =
+        ids |> Array.mapi (fun index id ->
+            let content =
+                if variant = "shared-symbol" then SvgElementContent.SymbolInstance("research-symbol", None)
+                else geometry
+            { (leaf id content) with Transform = SvgAffine.translate xs[index] ys[index] })
+        |> Array.toList
+    { PortableDocumentFixture.document with
+        Definitions =
+            if variant = "shared-symbol" then
+                [ { Id = "research-symbol"; Content = SvgDefinitionContent.Symbol(None, [ symbol ]) } ]
+            else []
+        ViewBox = { X = 0.0; Y = 0.0; Width = 410.0; Height = 270.0 }
+        Children = children }
+
 let performanceDocument kind selection cameraStep changedObject =
     let objectCount =
         if kind = "dense" then 200
@@ -1147,6 +1176,9 @@ let api =
             ==> fun () -> documentHost.Value.Replace(changedDocument ()) |> documentError
             "replaceReconciliationDocument"
             ==> fun mode -> documentHost.Value.Replace(reconciliationDocument mode) |> documentError
+            "replaceInstanceResearchDocument"
+            ==> fun (variant: string) (revision: int) (ids: string array) (xs: float array) (ys: float array) ->
+                documentHost.Value.Replace(instanceResearchDocument variant revision ids xs ys) |> documentError
             "replaceOriginalDocument"
             ==> fun () -> documentHost.Value.Replace(PortableDocumentFixture.document) |> documentError
             "documentHit"

@@ -1,0 +1,78 @@
+{
+  "schema": "svg-instance-command-streams/1",
+  "seed": 1729,
+  "counts": [
+    100,
+    250
+  ],
+  "variants": [
+    "shared-symbol",
+    "expanded-geometry"
+  ],
+  "definitionRevisions": [
+    {
+      "revision": 0,
+      "radius": 3,
+      "rgb": [
+        70,
+        130,
+        220
+      ]
+    },
+    {
+      "revision": 1,
+      "radius": 5,
+      "rgb": [
+        220,
+        80,
+        60
+      ]
+    }
+  ],
+  "commands": [
+    {
+      "name": "initial",
+      "op": "snapshot"
+    },
+    {
+      "name": "sparse-motion",
+      "op": "move",
+      "stride": 10,
+      "dx": 7,
+      "dy": 2
+    },
+    {
+      "name": "definition-replacement",
+      "op": "definition",
+      "revision": 1
+    },
+    {
+      "name": "remove",
+      "op": "remove",
+      "indices": [
+        1,
+        21,
+        41,
+        61,
+        81
+      ]
+    },
+    {
+      "name": "create",
+      "op": "create",
+      "indices": [
+        1,
+        21,
+        41,
+        61,
+        81
+      ],
+      "generation": 1
+    },
+    {
+      "name": "definition-reset",
+      "op": "definition",
+      "revision": 0
+    }
+  ]
+}
