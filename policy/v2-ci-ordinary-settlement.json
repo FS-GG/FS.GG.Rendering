@@ -10,10 +10,10 @@
     "repositoryId": 1269292235
   },
   "sourceImplementation": {
-    "repository": "FS-GG/FS.GG.Audio",
-    "commit": "257ff5cfe0bf2c9cb9fc728cd007321527a39e49",
-    "adaptation": "rendering-v1-code-owned-source-profile",
-    "observerSha256": "6e63f6f724fb267e77ef02f41b4c58a833e0dc5b08c003f07fd16c89e4f7fd55",
+    "repository": "FS-GG/FS.GG.Coordination",
+    "commit": "8eef1ab7f205132553632e03dc650e7ecdd03679",
+    "adaptation": "rendering-v1-code-owned-source-profile; main-storage extension with local profile preserved",
+    "observerSha256": "7f5500d810ab9169d967f8c19fbcb01d706ebf82fdeea6e4a6927b0b19eef29a",
     "qualificationSha256": "a5518e59add15e9c4c02d0a9854efcf236bb6c9bfc83b7981002a2f6751c5c9d"
   },
   "operationClass": "ordinary-post-merge-delivery-settlement",
@@ -120,20 +120,20 @@
   },
   "packagePin": {
     "status": "published-served-verified",
-    "version": "0.1.4",
-    "sha256": "10a51295db43e454b7692196533cceda48508165a8023dc98e87639be89f5c50",
-    "hostedCandidateRunId": 36424378261,
-    "publishRunId": 36427124428,
-    "publishRunAttempt": 2,
-    "publishRunHeadSha": "e29bc98dc0d43343768dabfadd9c3f727e252ee1",
-    "publishWorkflow": ".github/workflows/callable-cli-release-publish.yml",
-    "releaseUrl": "https://github.com/FS-GG/FS.GG.Coordination/releases/tag/v0.1.4",
-    "releasePublishedAt": "2026-09-28T13:29:06Z",
-    "assetName": "FS.GG.Coordination.Cli.0.1.4.nupkg",
-    "assetSize": 6433772,
+    "version": "0.3.0",
+    "sha256": "a8cd6d602e1203257e1241df0b5dfdb9d867334b46dc406d8cdaa8e6d2b3019c",
+    "sourceCommit": "8eef1ab7f205132553632e03dc650e7ecdd03679",
     "servedPackageVerified": true,
+    "requiredBeforeActivation": true,
     "requiredCapability": "rendering-v1 selected source",
-    "requiredBeforeActivation": true
+    "publishRunId": 37983508705,
+    "publishRunHeadSha": "401a89e3e63c0eefda02124475e92d0c4b752cfd",
+    "releasePublishedAt": "2026-10-09T19:55:53Z",
+    "assetSize": 8694990,
+    "hostedCandidateRunId": 37977490696,
+    "releaseUrl": "https://github.com/FS-GG/FS.GG.Coordination/releases/tag/v0.3.0",
+    "assetName": "FS.GG.Coordination.Cli.0.3.0.nupkg",
+    "publishWorkflow": ".github/workflows/callable-cli-release-publish.yml"
   },
   "credentialInventory": [
     {

@@ -1,0 +1,107 @@
+{
+  "schema": "fsgg.github.v2-ci-ordinary-settlement-anchor/1",
+  "policyId": "v2-ci-i1-ordinary-settlement-v1",
+  "operationClass": "ordinary-post-merge-delivery-settlement",
+  "authorizer": {
+    "keyId": "ordinary-v2-production-6121c3f2ab38acf3",
+    "algorithm": "RSA-PSS-SHA256",
+    "publicKeySpkiSha256": "6121c3f2ab38acf38a37f782eb7775da78598b9cfabc0054917d3d59fe50e3ee"
+  },
+  "writer": {
+    "appId": 5064713,
+    "installationId": 164553252,
+    "repository": "FS-GG/FS.GG.Coordination.Authority",
+    "repositoryId": 1351660651,
+    "permissions": {
+      "contents": "write",
+      "metadata": "read"
+    }
+  },
+  "rulesets": {
+    "writer": {
+      "id": 24802693,
+      "name": "ordinary-v2-main-writer",
+      "enforcement": "active",
+      "updatedAt": "2026-10-09T18:56:41.235+02:00",
+      "conditions": {
+        "ref_name": {
+          "exclude": [],
+          "include": [
+            "refs/heads/main"
+          ]
+        }
+      },
+      "rules": [
+        {
+          "type": "creation"
+        },
+        {
+          "type": "update"
+        }
+      ],
+      "bypassActors": [
+        {
+          "actorId": 4882140,
+          "actorType": "Integration",
+          "bypassMode": "always"
+        },
+        {
+          "actorId": 5064713,
+          "actorType": "Integration",
+          "bypassMode": "always"
+        }
+      ]
+    },
+    "integrity": {
+      "id": 24802698,
+      "name": "ordinary-v2-main-integrity",
+      "enforcement": "active",
+      "updatedAt": "2026-10-09T18:56:42.726+02:00",
+      "conditions": {
+        "ref_name": {
+          "exclude": [],
+          "include": [
+            "refs/heads/main"
+          ]
+        }
+      },
+      "rules": [
+        {
+          "type": "deletion"
+        },
+        {
+          "type": "non_fast_forward"
+        }
+      ],
+      "bypassActors": []
+    }
+  },
+  "effectiveRules": [
+    {
+      "type": "deletion",
+      "rulesetId": 24802698,
+      "rulesetSourceType": "Repository",
+      "rulesetSource": "FS-GG/FS.GG.Coordination.Authority"
+    },
+    {
+      "type": "non_fast_forward",
+      "rulesetId": 24802698,
+      "rulesetSourceType": "Repository",
+      "rulesetSource": "FS-GG/FS.GG.Coordination.Authority"
+    },
+    {
+      "type": "creation",
+      "rulesetId": 24802693,
+      "rulesetSourceType": "Repository",
+      "rulesetSource": "FS-GG/FS.GG.Coordination.Authority"
+    },
+    {
+      "type": "update",
+      "rulesetId": 24802693,
+      "rulesetSourceType": "Repository",
+      "rulesetSource": "FS-GG/FS.GG.Coordination.Authority"
+    }
+  ],
+  "acceptedAt": "2026-10-09T19:31:28.661736+00:00",
+  "sourceCommit": "8eef1ab7f205132553632e03dc650e7ecdd03679"
+}
