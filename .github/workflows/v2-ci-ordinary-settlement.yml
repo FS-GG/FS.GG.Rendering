@@ -60,9 +60,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      PACKAGE_VERSION: 0.1.4
-      # Published release asset digest, independently read back from GitHub.
-      PACKAGE_SHA256: 10a51295db43e454b7692196533cceda48508165a8023dc98e87639be89f5c50
+      PACKAGE_VERSION: 0.3.0
+      # Verified served release asset; exact original candidate bytes.
+      PACKAGE_SHA256: a8cd6d602e1203257e1241df0b5dfdb9d867334b46dc406d8cdaa8e6d2b3019c
     permissions:
       actions: read
       contents: read
@@ -91,7 +91,7 @@ jobs:
           set -euo pipefail
           receipt="$RUNNER_TEMP/ordinary-v2-receipt/ordinary-v2-preflight.json"
           test "$(sha256sum "$receipt" | cut -d ' ' -f 1)" = "$EXPECTED_RECEIPT_SHA256"
-          python3 tools/v2-ci-ordinary-observe.py verify "$receipt"
+          python3 tools/v2-ci-ordinary-observe.py verify-main "$receipt"
       - name: Set up the pinned .NET SDK
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
         with:
@@ -125,4 +125,4 @@ jobs:
           V2_ORDINARY_AUTHORIZER_PRIVATE_KEY: ${{ secrets.V2_ORDINARY_AUTHORIZER_PRIVATE_KEY }}
         run: |
           set -euo pipefail
-          "$RUNNER_TEMP/ordinary-v2-cli/fsgg-coordination" ordinary-settlement execute
+          "$RUNNER_TEMP/ordinary-v2-cli/fsgg-coordination" ordinary-settlement execute-main
