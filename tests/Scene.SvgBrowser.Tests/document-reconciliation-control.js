@@ -1,3 +1,83 @@
+import researchCorpus from "./instance-research-command-streams.json" with { type: "json" };
+
+// Pure command oracle; it does not implement or time the production renderer.
+export function instanceResearchStates(corpus = researchCorpus, count = 100) {
+  const ensure = (ok, detail) => { if (!ok) throw Error(`instance corpus: ${detail}`); };
+  ensure(corpus.schema === "svg-instance-command-streams/1" && corpus.seed === 1729, "identity");
+  ensure(corpus.counts.includes(count) && [100,250].includes(count), "count");
+  let revision = 0;
+  let instances = Array.from({length:count}, (_,i) => ({id:`research-${i}-0`, index:i, x:10+(i%20)*20, y:10+Math.floor(i/20)*20}));
+  const states = [];
+  for (const command of corpus.commands) {
+    switch (command.op) {
+      case "snapshot": break;
+      case "move":
+        ensure(command.stride === 10 && Number.isFinite(command.dx) && Number.isFinite(command.dy), "sparse motion");
+        instances = instances.map(v => v.index % command.stride === 0 ? {...v,x:v.x+command.dx,y:v.y+command.dy} : v); break;
+      case "definition": revision = command.revision; break;
+      case "remove":
+        ensure(command.indices.every(i => instances.some(v => v.index === i)), "remove existing");
+        instances = instances.filter(v => !command.indices.includes(v.index)); break;
+      case "create":
+        ensure(command.indices.every(i => Number.isInteger(i) && i >= 0 && i < count && !instances.some(v => v.index === i)), "create absent");
+        instances = [...instances, ...command.indices.map(i => ({id:`research-${i}-${command.generation}`, index:i, x:10+(i%20)*20,y:10+Math.floor(i/20)*20}))]; break;
+      default: throw Error("instance corpus: unknown command");
+    }
+    const definition = corpus.definitionRevisions.find(d => d.revision === revision);
+    ensure(definition && definition.radius > 0 && definition.rgb.length === 3, "definition");
+    ensure(instances.length <= count && new Set(instances.map(v=>v.id)).size === instances.length, "population");
+    states.push({name:command.name,revision,radius:definition.radius,rgb:[...definition.rgb],instances:instances.map(v=>({...v}))});
+  }
+  return states;
+}
+
+// Compare independently observed geometry/style/layer descriptors with the command oracle.
+export function assertInstanceResearchSemantics(expected, observed) {
+  if (JSON.stringify(expected) !== JSON.stringify(observed)) throw Error("instance corpus: semantic mismatch");
+}
+
+function instanceResearchControl(f, rootOf, liveMatchesExport, require) {
+  const results = [], mountedRoot = rootOf();
+  for (const count of researchCorpus.counts) {
+    const states = instanceResearchStates(researchCorpus,count);
+    for (const variant of researchCorpus.variants) {
+      let previous = new Map();
+      for (const state of states) {
+        const error = f.replaceInstanceResearchDocument(variant,state.revision,state.instances.map(v=>v.id),state.instances.map(v=>v.x),state.instances.map(v=>v.y));
+        require(error === null, `instance ${count}/${variant}/${state.name}: ${error}`);
+        liveMatchesExport();
+        const root = rootOf();
+        require(root === mountedRoot, "instance root rebuilt");
+        root.scrollIntoView({block:"center",inline:"center"});
+        const elements = [...root.children].filter(n=>n.hasAttribute("data-fsgg-element-id"));
+        require(JSON.stringify(elements.map(n=>n.getAttribute("data-fsgg-element-id"))) === JSON.stringify(state.instances.map(v=>v.id)), "instance layer order");
+        const current = new Map(elements.map(n=>[n.getAttribute("data-fsgg-element-id"),n]));
+        for (const [id,node] of previous) {
+          if (current.has(id)) require(current.get(id) === node, "instance surviving ownership");
+          else require(!node.isConnected, "instance removed ownership");
+        }
+        const observed = state.instances.map(v => {
+          const node = current.get(v.id);
+          const circle = variant === "shared-symbol" ? root.querySelector("defs circle") : node.querySelector("circle");
+          require(circle !== null, "instance resolved geometry");
+          require(Number(circle.getAttribute("cx")) === 0 && Number(circle.getAttribute("cy")) === 0, "instance local geometry");
+          if (variant === "shared-symbol") {
+            require(node.querySelector("use")?.getAttribute("href") === `#${root.querySelector("defs symbol").id}`, "instance definition reference");
+          }
+          require(f.documentHit(v.x,v.y) === v.id, "instance hit identity");
+          require(node.getAttribute("transform") === `matrix(1 0 0 1 ${v.x} ${v.y})`, "instance transform");
+          return {id:v.id,radius:Number(circle.getAttribute("r")),fill:circle.getAttribute("fill")};
+        });
+        const expected = state.instances.map(v=>({id:v.id,radius:state.radius,fill:`rgb(${state.rgb.join(" ")})`}));
+        assertInstanceResearchSemantics(expected,observed);
+        previous = current;
+        results.push({count,variant,command:state.name,instances:elements.length});
+      }
+    }
+  }
+  return results;
+}
+
 // Uses the actual compiled document host; no renderer implementation is reproduced here.
 export function documentReconciliationControl(w) {
   const f = w.svgFoundation, doc = w.document;
@@ -113,12 +193,15 @@ export function documentReconciliationControl(w) {
     structuralMutants.push(expectKilled("skip-changed-attribute","live/export structure differs",liveMatchesExport));
     replaceStructure("unkeyed-changed",["control-unkeyed"]);
     const structuralResult={steps:structural,mutants:structuralMutants,topmostOriginal,topmostReverse,unkeyedWrappersRetained:true};
-    f.replaceOriginalDocument();liveMatchesExport();
+    const instanceResearch = instanceResearchControl(f,rootOf,liveMatchesExport,require);
+    require(instanceResearch.length === 24, "instance research report coverage");
+    require(f.replaceOriginalDocument() === null, "restore original after instance research");liveMatchesExport();
+    require(rootOf() === root && JSON.stringify(exportTree()) === JSON.stringify(initialTree), "instance research restoration differs");
     const clone = root.cloneNode(true);root.replaceWith(clone);const reconstruction = expectKilled("full-reconstruction","root rebuilt",identity);clone.replaceWith(root);f.documentDispose();
     const disposedRoots = [];
     for(let cycle=0;cycle<5;cycle++) { f.documentMount();require(rootOf(), "remount failed after namespace release");disposedRoots.push(f.documentDispose());require(!rootOf(), "disposed root retained"); }
     require(disposedRoots.every(n => n === 0) && listeners.length === 0 && frames.size === 0, "document effects retained after disposal");
-    return { noOp, changed, repeat, repair, reordered, restored, invalid, reconstruction, structural:structuralResult, disposedRoots, ownedListeners:listeners.length, ownedFrames:frames.size, scope:"effects registered after fixture bootstrap; foundation controls excluded", countersRestored:true };
+    return { noOp, changed, repeat, repair, reordered, restored, invalid, reconstruction, structural:structuralResult, instanceResearch, disposedRoots, ownedListeners:listeners.length, ownedFrames:frames.size, scope:"effects registered after fixture bootstrap; foundation controls excluded", countersRestored:true };
   } finally {
     f.documentDispose();
     for(const id of frames)cancel.call(w,id);

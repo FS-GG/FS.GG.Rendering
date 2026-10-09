@@ -178,3 +178,30 @@ Actual notification and published receiver adoption remain separately unobserved
 No fresh or existing workspace changes through this readiness source promotion.
 Coherent publication, published receiver adoption, owning .3/.4 milestones and
 the late host GPU batch remain open.
+
+## Deterministic instance command source preparation (.3)
+
+The public `instance-research-command-streams.json` corpus supplies identical ordered states
+for shared-symbol and expanded-circle documents at counts 100 and 250. Seed 1729 fixes
+placement; commands move every tenth instance, replace a shared definition, remove five
+instances, append five newly identified instances and reset the definition. Geometry, colour,
+transforms, hit identity, layer order, export agreement and surviving/removed node ownership
+are checked through the existing compiled document-host seam. Pure command controls check
+sparse selection, definition propagation and churn identity separately from the renderer.
+
+Source continuation on 2026-10-09 reconstructed the four files from the retained base and
+two patches; it does not recover the unavailable original Git commit. Fresh source controls
+passed 21 assertions, including removal of the public research call, sparse motion, churn,
+semantic mismatches and malformed corpus refusals. The unchanged isolated browser fixture
+compiled against its public 0.32.0 package references with no warnings or errors. Another 65
+checks exercised the exact fixture function for both representations, definition revisions,
+semantic identities, transforms and array/count refusals; they did not execute a browser. The initial
+in-repository build refused a versionless FSharp.Core reference; the existing harness already
+uses an isolated fixture layout.
+
+These checks qualify source and compilation only. Browser execution, matched command-stream
+measurements and allocation qualification remain pending separate admission. The simple circle
+corpus does not qualify the previously unsupported expanded complex count-250 fixture or widen
+any workload limit. Accepted comparison 14 and failed comparison 11 retain their original
+identities. Licensed sealed-baseline availability remains unknown; publication, installed
+adoption and late GPU acceptance remain separate owning-plan obligations.
