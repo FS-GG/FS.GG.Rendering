@@ -48,6 +48,19 @@ packed .NET/Fable correspondence, and the existing three-browser fixture. Callba
 settlement uncertainty remain visible while listener cleanup and reentrant callback fencing preserve actual
 owned-resource truth. Package publication, an installed consumer, and product adoption remain later gates.
 
+The [Templates qualification caller](../../.github/workflows/templates-external-reference-qualification.yml)
+now pins both its reusable workflow and consumer checkout to protected Templates
+`b005c26e43cd4a823577ff94e1ee6da2cfed58d4` (Templates PR #683). That source aligns the receipt
+binder with eight cases per browser family and runs its static receipt controls before acquisition
+or compilation. Rendering's static controls accept this literal join and refuse the prior consumer,
+mismatched or floating pins, non-public inputs, broader permissions and bypassed preflight controls.
+
+This caller source join has not run hosted qualification. A new explicitly selected full run must
+authenticate original Rendering source `6c9f766fdd91483c2de6f061e75589e94852a265`, run
+`37419955679` and artifact `11392773621`, then qualify the generated consumer against public
+0.32.1 inputs with all 24 browser cases. It changes no producer archive, publication, installed
+consumer, retained upgrade or product-native outcome.
+
 ## SVG-RUNTIME-01.5 — Generated continuous player and Preview-B handoff
 
 Game producer repair PR #625 merged as `c6de5b83eaa3d3f14909b42c3f8c3c94558157c9`. Templates PR #471
