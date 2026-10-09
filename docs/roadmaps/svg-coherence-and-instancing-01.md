@@ -205,3 +205,25 @@ corpus does not qualify the previously unsupported expanded complex count-250 fi
 any workload limit. Accepted comparison 14 and failed comparison 11 retain their original
 identities. Licensed sealed-baseline availability remains unknown; publication, installed
 adoption and late GPU acceptance remain separate owning-plan obligations.
+
+
+The next source slice adds one counter pass, two warm-up passes and five raw
+samples per ordered state to the existing public circle fixture. Replacement
+timing excludes export, geometry and hit assertions; the counter pass stays
+separate. Fresh helper controls distinguish changed writes, removals, moves and
+normal/exception prototype restoration. Mutations detect omitted child removals,
+prototype leaks, misclassified writes and an extra measured warm-up pass. No
+software timing results are accepted by this source change.
+
+A separately retained private tactical-glyph fixture uses the same ordered
+100/250 states and existing shared/expanded representations. Its exact licensed
+geometry stays outside public source and package payloads. Private source and
+portable-paint controls passed, including seven semantic mutants; the full
+private fixture compiled without warnings or errors, and 132 compiled checks
+covered actual geometry, paint, representation equivalence and refusals. This
+is preparation for a fresh software screen, not detailed articulated-soldier,
+Fable, browser, allocation or GPU qualification. The selected Fable, fresh npm
+closure and exact software-browser/runtime profile still need qualification.
+Five samples within one trial do not replace the owning plan's three independent
+measured repetitions. Original failed/unknown comparison and process custody
+remain unchanged.

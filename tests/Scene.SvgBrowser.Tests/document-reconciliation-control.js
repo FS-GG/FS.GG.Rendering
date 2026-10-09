@@ -36,14 +36,24 @@ export function assertInstanceResearchSemantics(expected, observed) {
   if (JSON.stringify(expected) !== JSON.stringify(observed)) throw Error("instance corpus: semantic mismatch");
 }
 
-function instanceResearchControl(f, rootOf, liveMatchesExport, require) {
+function instanceResearchControl(f, rootOf, liveMatchesExport, require, countUpdate, now) {
   const results = [], mountedRoot = rootOf();
   for (const count of researchCorpus.counts) {
     const states = instanceResearchStates(researchCorpus,count);
     for (const variant of researchCorpus.variants) {
       let previous = new Map();
+      const observations = new Map();
+      const {warmupPasses,samplePasses} = researchCorpus.measurement;
+      require(warmupPasses === 2 && samplePasses === 5, "instance timing bounds");
+      // Counters and timing run in different passes; replay the complete ordered stream.
+      for (let pass = 0; pass < 1 + warmupPasses + samplePasses; pass++) {
       for (const state of states) {
-        const error = f.replaceInstanceResearchDocument(variant,state.revision,state.instances.map(v=>v.id),state.instances.map(v=>v.x),state.instances.map(v=>v.y));
+        const ids=state.instances.map(v=>v.id), xs=state.instances.map(v=>v.x), ys=state.instances.map(v=>v.y);
+        const replace = () => f.replaceInstanceResearchDocument(variant,state.revision,ids,xs,ys);
+        let error, updateCounts, elapsed;
+        if (pass === 0) { const counted=countUpdate(replace); ({value:error,...updateCounts}=counted); }
+        else if (pass > warmupPasses) { const start=now();error=replace();elapsed=now()-start;require(Number.isFinite(elapsed)&&elapsed>=0,"instance timing clock"); }
+        else error=replace();
         require(error === null, `instance ${count}/${variant}/${state.name}: ${error}`);
         liveMatchesExport();
         const root = rootOf();
@@ -71,7 +81,13 @@ function instanceResearchControl(f, rootOf, liveMatchesExport, require) {
         const expected = state.instances.map(v=>({id:v.id,radius:state.radius,fill:`rgb(${state.rgb.join(" ")})`}));
         assertInstanceResearchSemantics(expected,observed);
         previous = current;
-        results.push({count,variant,command:state.name,instances:elements.length});
+        if (pass === 0) observations.set(state.name,{count,variant,command:state.name,instances:elements.length,updateCounts,timing:{samplesMs:[],warmupPasses,samplePasses,scope:researchCorpus.measurement.scope}});
+        if (elapsed !== undefined) observations.get(state.name).timing.samplesMs.push(elapsed);
+      }
+      }
+      for (const observation of observations.values()) {
+        require(observation.timing.samplesMs.length === samplePasses,"instance sample coverage");
+        results.push(observation);
       }
     }
   }
@@ -90,19 +106,7 @@ export function documentReconciliationControl(w) {
     return canonical(parsed.documentElement);
   };
   const liveMatchesExport = () => require(JSON.stringify(canonical(rootOf())) === JSON.stringify(exportTree()), "live/export structure differs");
-  const count = (operation) => {
-    const ep = w.Element.prototype, set = ep.setAttribute, remove = ep.removeAttribute;
-    const writes = [], removals = [], childMoves = [];
-    const np = w.Node.prototype, append = np.appendChild, insert = np.insertBefore;
-    np.appendChild = function(child) { childMoves.push({kind:"append", alreadyOwned:child.parentNode === this});return append.call(this,child); };
-    np.insertBefore = function(child,before) { childMoves.push({kind:"insert", alreadyOwned:child.parentNode === this});return insert.call(this,child,before); };
-    ep.setAttribute = function(name,value) { writes.push({ name, changed: this.getAttribute(name) !== String(value) }); return set.call(this,name,value); };
-    ep.removeAttribute = function(name) { removals.push(name); return remove.call(this,name); };
-    let value;
-    try { value = operation(); } finally { ep.setAttribute = set; ep.removeAttribute = remove; np.appendChild = append; np.insertBefore = insert; }
-    require(ep.setAttribute === set && ep.removeAttribute === remove && np.appendChild === append && np.insertBefore === insert, "native counters not restored");
-    return { value, writes: writes.length, changedWrites: writes.filter(v => v.changed).length, unchangedWrites: writes.filter(v => !v.changed).length, removals: removals.length, childMoves:childMoves.length, alreadyOwnedMoves:childMoves.filter(v=>v.alreadyOwned).length };
-  };
+  const count = operation => countInstanceResearchUpdate(w,operation,require);
   // Track effects registered by the mounted document during this control only.
   const ep = w.EventTarget.prototype, add = ep.addEventListener, remove = ep.removeEventListener;
   const raf = w.requestAnimationFrame, cancel = w.cancelAnimationFrame, listeners = [], frames = new Set();
@@ -193,7 +197,7 @@ export function documentReconciliationControl(w) {
     structuralMutants.push(expectKilled("skip-changed-attribute","live/export structure differs",liveMatchesExport));
     replaceStructure("unkeyed-changed",["control-unkeyed"]);
     const structuralResult={steps:structural,mutants:structuralMutants,topmostOriginal,topmostReverse,unkeyedWrappersRetained:true};
-    const instanceResearch = instanceResearchControl(f,rootOf,liveMatchesExport,require);
+    const instanceResearch = instanceResearchControl(f,rootOf,liveMatchesExport,require,count,()=>w.performance.now());
     require(instanceResearch.length === 24, "instance research report coverage");
     require(f.replaceOriginalDocument() === null, "restore original after instance research");liveMatchesExport();
     require(rootOf() === root && JSON.stringify(exportTree()) === JSON.stringify(initialTree), "instance research restoration differs");
@@ -208,4 +212,19 @@ export function documentReconciliationControl(w) {
     for(const l of listeners)remove.call(l.target,l.type,l.handler,l.capture);
     ep.addEventListener = add;ep.removeEventListener = remove;w.requestAnimationFrame = raf;w.cancelAnimationFrame = cancel;
   }
+}
+
+export function countInstanceResearchUpdate(w, operation, require) {
+    const ep = w.Element.prototype, set = ep.setAttribute, remove = ep.removeAttribute;
+    const writes = [], removals = [], childMoves = [], childRemovals = [];
+    const np = w.Node.prototype, append = np.appendChild, insert = np.insertBefore, removeChild = np.removeChild;
+    np.removeChild = function(child) { childRemovals.push(child);return removeChild.call(this,child); };
+    np.appendChild = function(child) { childMoves.push({kind:"append", alreadyOwned:child.parentNode === this});return append.call(this,child); };
+    np.insertBefore = function(child,before) { childMoves.push({kind:"insert", alreadyOwned:child.parentNode === this});return insert.call(this,child,before); };
+    ep.setAttribute = function(name,value) { writes.push({ name, changed: this.getAttribute(name) !== String(value) }); return set.call(this,name,value); };
+    ep.removeAttribute = function(name) { removals.push(name); return remove.call(this,name); };
+    let value;
+    try { value = operation(); } finally { ep.setAttribute = set; ep.removeAttribute = remove; np.appendChild = append; np.insertBefore = insert; np.removeChild = removeChild; }
+    require(ep.setAttribute === set && ep.removeAttribute === remove && np.appendChild === append && np.insertBefore === insert && np.removeChild === removeChild, "native counters not restored");
+    return { value, writes: writes.length, changedWrites: writes.filter(v => v.changed).length, unchangedWrites: writes.filter(v => !v.changed).length, removals: removals.length, childRemovals:childRemovals.length, childMoves:childMoves.length, alreadyOwnedMoves:childMoves.filter(v=>v.alreadyOwned).length };
 }

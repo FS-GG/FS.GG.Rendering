@@ -74,5 +74,10 @@
       "op": "definition",
       "revision": 0
     }
-  ]
+  ],
+  "measurement": {
+    "warmupPasses": 2,
+    "samplePasses": 5,
+    "scope": "synchronous compiled document replacement only; semantic/export/hit assertions outside measured span; separate counter pass"
+  }
 }
