@@ -88,9 +88,30 @@ SHA-256 `fd007c0119b35be7b07367b1a8c03f860e277275de6fc16a53e57d904c07cf8b`
 and qualification receipt SHA-256
 `857ab24886094aa4699cbf9e4eee04f56cdd8a94300a7ad5e06d9592f979e8d9`.
 
-This closes this exact generated-consumer Fable/browser qualification window. Full TypeScript
-typechecking, actual screen-reader observation, coherent publication, fresh installed creation,
-preserving upgrades and product-native acceptance remain separate gates. No producer archive was
+A separate local strict TypeScript window qualified exactly `two-client.spec.ts`,
+`soldier-reference.spec.ts`, `external-command-outcomes.spec.ts` and `playwright.config.ts`
+from protected Templates `20c009bc6728302f9ed06fdf49cb2e8bd19e417d` (PR #687). All six
+Browser.Tests source and package inputs matched the browser-qualified `0d945052` consumer.
+Node 26.10.0 and TypeScript 5.9.3 checked those four modules with `strict`, `noEmit` and
+`skipLibCheck: false`, using the exact installed graph: Playwright test/runner/core 1.63.0,
+Node types 26.6.5 and undici types 8.9.0. npm 12.2.0 acquired that six-package graph once
+with install scripts disabled; the corrected operation reused it without npm or acquisition.
+
+The first compiler operation stopped with five TS2488 diagnostics because its qualification
+configuration omitted `DOM.Iterable`; its deliberate-error control did not run. That failed
+attempt remains consumed. A separately admitted compiler-only operation added that library,
+changed no source or strictness setting, passed with exit 0 and no diagnostics, and refused
+one deliberate string-to-number error with exit 2 and exactly one TS2322. Before/after
+readback matched the complete 464-entry installed file/symlink tree, four executable aliases
+and every immutable input, including the original failed evidence. The accepted result receipt
+SHA-256 is `df3344d85b46f8b9f527118909708e533d92a982c6539bdddb63ae7e6a856c40`.
+All four new compiler-stage process groups and sessions were observed empty at completion;
+no cleanup signal was needed. This qualifies those four modules only: full Client/Vite
+TypeScript coverage and browser runtime acceptance are separate scopes.
+
+This closes this exact generated-consumer Fable/browser qualification window and the four-module
+TypeScript window. Full-site typechecking, actual screen-reader observation, coherent publication,
+fresh installed creation, preserving upgrades and product-native acceptance remain separate gates. No producer archive was
 rebuilt or published; the receipt records publication and installed acceptance as false. Historical
 retained operations and their unresolved ownership or cleanup remain unchanged.
 
