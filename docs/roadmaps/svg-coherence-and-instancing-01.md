@@ -258,3 +258,9 @@ change is selected by this repair.
 The [2026-10-10 software screen](../reports/svg-instance-stream-software-20261010.md) records three accepted independent fresh local-HTTP trials against the repaired local 0.4.0-preview.1 producer, with 144 total state records and 720 raw samples. Exact correctness and named mutation refusals passed for circle and private tactical glyph at 100/250, shared-symbol and expanded geometry. The report retains per-trial regressions, FSharp.Core consumer input change, private licensed asset boundaries, all failed predecessors and observed cleanup/resource limits.
 
 These measurements establish synchronous compiled document replacement elapsed time only. They do not establish process CPU, frame/raster, allocation, published 0.32.1 equivalence or host GPU acceptance. This is one bounded .3 software window; the broader .3/.4 milestones, product adoption and late consolidated host qualification remain open.
+
+## Exploratory replacement-stage attribution (.3)
+
+The [2026-10-10 stage diagnostic](../reports/svg-instance-stream-stages-20261010.md) records one fresh instrumented software queue: 384 ordered replacement rows, 1,536 spans and 48 semantic reports. For circle 250 definition-reset, candidate construction, validation/export and parse/import account for 87.37% shared and 83.97% expanded of five measured enclosing-interval sums. The report retains the 19.4 ms shared pass, all raw rows, the outer/enclosing timing distinction and observed cleanup.
+
+This is exploratory synchronous elapsed update-path evidence, not causal regression, CPU/allocation, instrumentation-overhead correction, published-producer equivalence or GPU acceptance. The selected next question separates validation traversal from successful SVG serialization in the same route; no optimization or further runtime is accepted. The broader .3/.4 milestones and existing custody/adoption boundaries remain open.
