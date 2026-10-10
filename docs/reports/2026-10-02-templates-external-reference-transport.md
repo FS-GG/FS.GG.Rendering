@@ -97,3 +97,9 @@ and the current programme projection must precede any new native admission. The 
 producer archive, 300-second session, 30-second cleanup reserve, 100ms census, 2GiB sampled RSS
 and 4MiB log bounds remain unchanged. No dispatch, browser, bus, service or native AT operation
 ran during this caller preparation. The whole FABLE-ADOPT-01 / GAME-TEMPLATE-01 outcome remains open.
+
+## Observer initialization successor
+
+Templates PR695 delivered the observer initialization repair at protected merge `93fd91dfa586101ca772e322a52f87476804affb`, with eleven checks passing and four intentional skips. The accepted finite source qualification passed 247 Python controls, 37 actual inert JavaScript controls and six groups. This caller binds all three workflow/validator literals to that protected merge; readback joins the qualified observer 9aff753a and unchanged workflow 05cdcc64. Its separately admitted 19 caller controls and exact-head routine eligibility remain pending at this preparation.
+
+Original native run `38080394981/a1` failed at the observer library-mapping guard before journey actions. Its retained archive separately records eight browser cases per family, 186 provider PASS markers, successful private speech preflight and foreground Chrome/companion readiness in the original observed session. Original maps were not retained, so missing loading versus path disagreement remains unknown. The narrow repair performs a real private AT-SPI desktop initialization/read before the unchanged mapping and birth guard. No new native journey is accepted; earlier escaped-process history and reader/refusal attempts remain preserved.
