@@ -9,7 +9,7 @@ The initial transport qualification used Rendering source
 `730923fe9d27174e879566f21dab14a1b03d761a`, successful run `37046893526` and artifact
 `11244853996`, with its 14,790,371-byte archive and nineteen checked contents. Those inputs are
 historical. The current protected Templates gate at
-`fe6bdcf9f90eab2d7ef1a4de390e0768e9013a3b` instead requires its retained original Rendering
+`5cfb2dd42aa6f2bbd9ad6b584195958c530c67ec` instead requires its retained original Rendering
 producer `6c9f766fdd91483c2de6f061e75589e94852a265`, run `37419955679` and artifact `11392773621`.
 Its 14,912,688-byte archive must retain SHA-256
 `486182db3efd8442c007f66322a7bfb27caf0cb8e3c87bc2521e66dd90a7adee` and custody SHA-256
@@ -46,8 +46,8 @@ retained legacy groups, with completion/final markers, exact source/runtime join
 empty owned group. Actual native Gio/GLib shutdown, readiness and keyboard/speech behavior remain
 unqualified. Templates PR693 merged at this protected source on 2026-10-10, with eleven native
 source checks passing and four intentional skips; protected readback confirms the exact reviewed
-head tree. This caller selects that same merge at both reusable-workflow and checkout pins, and
-the validator requires that literal. The 19 existing caller refusals remain prepared, not rerun
+head tree. The prior caller delivery selected that same merge at both reusable-workflow and
+checkout pins, and its validator required that literal. The 19 existing caller refusals remain prepared, not rerun
 here. Protected Rendering caller delivery and programme projection precede a separately admitted
 native attempt with fresh current-source, original-input, runtime identity and deadline joins.
 
@@ -59,3 +59,41 @@ These source safeguards do not establish hard whole-tree containment or resolve 
 uncertainty. No dispatch, browser/AT/service execution or protected operation ran during this caller
 preparation. The whole FABLE-ADOPT-01 / GAME-TEMPLATE-01 outcome remains open, including actual AT,
 full-site/example/WASM qualification, coherent publication and clean/retained installed adoption.
+
+## Owned browser successor preparation — 2026-10-10
+
+The later original run `38064291547` failed when Playwright launched Chromium PID 11633 in a
+separate session/process group outside the original owned group. Its retained artifact readback
+accepts bytes and first-cause evidence only; historical escaped custody remains unresolved. The
+independent 24 browser cases, 186 provider PASS lines and private accessibility/speech startup
+remain separate from the unproduced Orca journey. No previous grant or deadline is renewed.
+
+Templates PR694 delivered protected merge `5cfb2dd42aa6f2bbd9ad6b584195958c530c67ec`,
+with eleven source checks passing and four intentional skips. Protected readback joins the exact
+qualified observer 52c212ff and workflow 05cdcc64. That source launches locked headed Chromium
+foreground in the existing owned session and uses a separate Node companion through the public
+CDP transport with `noDefaults: true`. Original Chrome birth, private profile, loopback socket,
+endpoint, X11 window and accessibility-library identities remain mandatory. A later transport
+outcome requires matching successful inner-result evidence, original completion/journey/source
+identity, actual wrapper exit zero, clean reporting evidence and accepted cleanup.
+
+Its finite local inert successor qualification passed all 234 named Python controls, including
+the retained 121, all 37 actual inert JavaScript controls and six retained/final group markers.
+The sole Node child reported version 26.10.0 and 43 mapped objects matching the pinned runtime
+manifest; network and process APIs were refused. Source/runtime pins and returned/retained owner
+receipts joined, with exit zero and observed empty-group cleanup. The original 6364951f fixture
+failure and unknown completed counts remain preserved. These controls do not qualify native
+browser topology, hard whole-tree containment or the actual Orca journey.
+
+This caller selects the PR694 protected merge at both reusable-workflow and explicit checkout
+pins, and requires the same literal in its validator. The existing 19 caller-refusal controls
+are unchanged except for that literal. Their separately admitted finite qualification passed
+all 19 refusals and exact-head trusted Rendering-base routine eligibility at the original
+21146b4d preparation. All five fixed stages completed, with matching returned/retained receipts,
+unchanged source/runtime pins and observed empty owned-group cleanup. This delivery changes
+only that qualification prose; its workflow and validator remain byte-identical to the qualified
+source. The original 21146b4d tree and pinned body remain preserved. Rendering protected source delivery
+and the current programme projection must precede any new native admission. The original public
+producer archive, 300-second session, 30-second cleanup reserve, 100ms census, 2GiB sampled RSS
+and 4MiB log bounds remain unchanged. No dispatch, browser, bus, service or native AT operation
+ran during this caller preparation. The whole FABLE-ADOPT-01 / GAME-TEMPLATE-01 outcome remains open.
