@@ -251,3 +251,10 @@ not establish compiled package, browser, software timing or publication acceptan
 The prior failed software attempts remain retained; the owning .3/.4 milestones,
 receiver adoption and late GPU qualification remain open. No version or public API
 change is selected by this repair.
+
+
+## Bounded matched command-stream software screen (.3)
+
+The [2026-10-10 software screen](../reports/svg-instance-stream-software-20261010.md) records three accepted independent fresh local-HTTP trials against the repaired local 0.4.0-preview.1 producer, with 144 total state records and 720 raw samples. Exact correctness and named mutation refusals passed for circle and private tactical glyph at 100/250, shared-symbol and expanded geometry. The report retains per-trial regressions, FSharp.Core consumer input change, private licensed asset boundaries, all failed predecessors and observed cleanup/resource limits.
+
+These measurements establish synchronous compiled document replacement elapsed time only. They do not establish process CPU, frame/raster, allocation, published 0.32.1 equivalence or host GPU acceptance. This is one bounded .3 software window; the broader .3/.4 milestones, product adoption and late consolidated host qualification remain open.
