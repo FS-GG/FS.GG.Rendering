@@ -49,17 +49,36 @@ settlement uncertainty remain visible while listener cleanup and reentrant callb
 owned-resource truth. Package publication, an installed consumer, and product adoption remain later gates.
 
 The [Templates qualification caller](../../.github/workflows/templates-external-reference-qualification.yml)
-now pins both its reusable workflow and consumer checkout to protected Templates
-`775853887a88a3c72e726daa475a49053e84c4bd` (Templates PR #691). That successor preserves
-the receipt binder, pre-acquisition controls and reference journey. It records the first rejected
-custody census before cleanup and retains package-owned installed AT-SPI activation service,
-configuration and executable provenance during existing provisioning. Snapshot/reporting failures
-preserve the first cause; unresolved activation provenance refuses dependent AT launch.
-Source/static controls passed. Custody guards, activation behavior and runtime budgets are unchanged;
-preflight-only calls do not provision or launch assistive technology. Rendering's static controls
-accept this literal join and refuse prior consumers, mismatched or floating pins, non-public inputs,
-broader permissions and bypassed preflight controls. A new full hosted observation remains pending
-protected caller delivery, programme projection and separate fresh operation admission.
+now pins both reusable workflow and consumer checkout to protected Templates
+`d2bd6e8d3c9cde06d3d200137743ea29a0919fa6` (Templates PR #692). That diagnostic fixture
+uses fixed, directly owned foreground accessibility-bus and registry processes with closed private
+session/accessibility configs. Authenticated Ubuntu source and packaging establish invocation
+semantics; actual installed wrapper, daemon, registry and library identities have a separate gate.
+The private accessibility address precedes first AT initialization; cached clients are not rebound.
+Owned X display readiness precedes registry construction, selected hashes are rechecked before
+launch, and runtime receipt checks join name ownership and browser library mappings to original
+births and registered ancestry. Vendor systemd activation remains unresolved metadata.
+
+One bounded pure/static source operation passed the observer controls, 25 public-input tests,
+28 workflow fixtures and 14 final browser-receipt refusals. All 242 pins and aliases remained
+unchanged; the stage exited 0 with its owned group observed empty. Result SHA-256:
+`5e6c725c14b7a8b341231830d3cb5d25b89e1338f9f4990c573dc637396fe821`.
+Templates native source delivery passed. These results do not establish actual foreground launch,
+AT speech/keyboard acceptance or complete process containment. The strict custody guard,
+first rejected census, original reference journey and runtime budgets remain; preflight-only calls
+do not provision or launch AT. Rendering's wrapper retains equal literal pins, public input,
+read-only permissions, forced PR preflight and prior/mismatched/floating consumer refusals.
+A new full hosted observation still requires protected caller delivery, programme projection
+and one separate fresh operation admission.
+
+[Full run 38032694850 attempt 1](https://github.com/FS-GG/FS.GG.Rendering/actions/runs/38032694850)
+passed all 24 generated-template browser cases at caller
+`f7b8d6d5e8e0956390cf0fbcfce54edd66dcdc7b` and consumer `775853887a88a3c72e726daa475a49053e84c4bd`.
+Provisioning then refused unresolved `org.a11y.Bus` systemd activation delegation before the
+actual AT stage. [Artifact 11662687324](https://github.com/FS-GG/FS.GG.Rendering/actions/runs/38032694850/artifacts/11662687324)
+SHA-256 `3018874d5d6dde2f9bb5b94ac07e37f6847d4e873fdaf10a48041edecb18f29e`
+retains the browser reports and package-owned activation facts. This consumed prerequisite failure
+produced no new AT journey or cleanup result and does not resolve the original custody unknowns.
 
 [Full run 38024897635 attempt 1](https://github.com/FS-GG/FS.GG.Rendering/actions/runs/38024897635)
 passed all 24 generated-template browser cases at caller
