@@ -60,13 +60,39 @@ The previous caller's [full run 38005778318 attempt 1](https://github.com/FS-GG/
 authenticated the original archive and compiled the generated Fable composition. Chromium passed
 four existing cases; all four command-outcome cases stopped at an ambiguous button locator.
 Firefox and WebKit did not run, and the successful full-result binder was skipped. That failed
-attempt remains consumed; this source update does not establish browser acceptance.
+attempt remains consumed and its failure evidence is retained.
 
-After protected caller delivery and programme projection, a newly admitted full run must authenticate
-original Rendering source `6c9f766fdd91483c2de6f061e75589e94852a265`, run `37419955679` and
-artifact `11392773621`, then qualify the generated consumer against public 0.32.1 inputs with all
-24 browser cases. It changes no producer archive, publication, installed consumer, retained upgrade
-or product-native outcome.
+After protected caller delivery and programme projection, [full run 38011120121 attempt 1](https://github.com/FS-GG/FS.GG.Rendering/actions/runs/38011120121)
+passed at exact Rendering caller `d8556ece76bc4701e9f04ececff5aaef8b0b7bda` and Templates
+consumer `0d945052250eb53056a5b4a87fe742efd1b7a0a2` (tree
+`7cc5a78662a75a6eb708bfb9066a42cc7a918d7a`). This consumer includes the qualified, default-false
+Portal example from PR #684 as well as the reference selector correction from PR #685. The direct
+qualification omits that option; the Portal subtree is excluded, with Portal adoption retaining its
+own acceptance scope.
+
+The native preflight authenticated original Rendering source
+`6c9f766fdd91483c2de6f061e75589e94852a265` (tree `90b94005f308917f95eebad031bb22a97bb82e0f`),
+producer run `37419955679` attempt 1 and artifact `11392773621`. The original archive SHA-256 is
+`486182db3efd8442c007f66322a7bfb27caf0cb8e3c87bc2521e66dd90a7adee`; its 19-package custody
+manifest SHA-256 is `ecd0c5d742fd8d19d5659991e413e92971c1d2cb9aea913faa2bb249f53f577d`.
+The generated composition selects three source-bearing producer archives and public Rendering
+0.32.1 inputs. Actual template generation, public locked restores, Fable/Vite builds, codec,
+Studio and tactical controls passed, together with all 186 ProviderComposition assertions.
+
+Chromium, Firefox and WebKit each passed the same eight cases once: four command-outcome cases,
+three existing external-reference cases and the FourD reference case. All 24 passed with zero
+skips, flaky results or unexpected failures. The final binder joined the exact consumer, original
+producer custody and all three browser report hashes. Independent native artifact readback verified
+[artifact 11653406338](https://github.com/FS-GG/FS.GG.Rendering/actions/runs/38011120121/artifacts/11653406338)
+SHA-256 `fd007c0119b35be7b07367b1a8c03f860e277275de6fc16a53e57d904c07cf8b`
+and qualification receipt SHA-256
+`857ab24886094aa4699cbf9e4eee04f56cdd8a94300a7ad5e06d9592f979e8d9`.
+
+This closes this exact generated-consumer Fable/browser qualification window. Full TypeScript
+typechecking, actual screen-reader observation, coherent publication, fresh installed creation,
+preserving upgrades and product-native acceptance remain separate gates. No producer archive was
+rebuilt or published; the receipt records publication and installed acceptance as false. Historical
+retained operations and their unresolved ownership or cleanup remain unchanged.
 
 ## SVG-RUNTIME-01.5 — Generated continuous player and Preview-B handoff
 
