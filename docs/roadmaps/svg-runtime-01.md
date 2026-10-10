@@ -50,16 +50,23 @@ owned-resource truth. Package publication, an installed consumer, and product ad
 
 The [Templates qualification caller](../../.github/workflows/templates-external-reference-qualification.yml)
 now pins both its reusable workflow and consumer checkout to protected Templates
-`b005c26e43cd4a823577ff94e1ee6da2cfed58d4` (Templates PR #683). That source aligns the receipt
-binder with eight cases per browser family and runs its static receipt controls before acquisition
-or compilation. Rendering's static controls accept this literal join and refuse the prior consumer,
-mismatched or floating pins, non-public inputs, broader permissions and bypassed preflight controls.
+`0d945052250eb53056a5b4a87fe742efd1b7a0a2` (Templates PR #685). That successor retains the
+eight-case receipt binder and pre-acquisition static controls, and scopes command-outcome test
+actions and receipt status to the intended direct reference controls. Rendering's static controls
+accept this literal join and refuse both prior consumers, mismatched or floating pins, non-public
+inputs, broader permissions and bypassed preflight controls.
 
-This caller source join has not run hosted qualification. A new explicitly selected full run must
-authenticate original Rendering source `6c9f766fdd91483c2de6f061e75589e94852a265`, run
-`37419955679` and artifact `11392773621`, then qualify the generated consumer against public
-0.32.1 inputs with all 24 browser cases. It changes no producer archive, publication, installed
-consumer, retained upgrade or product-native outcome.
+The previous caller's [full run 38005778318 attempt 1](https://github.com/FS-GG/FS.GG.Rendering/actions/runs/38005778318)
+authenticated the original archive and compiled the generated Fable composition. Chromium passed
+four existing cases; all four command-outcome cases stopped at an ambiguous button locator.
+Firefox and WebKit did not run, and the successful full-result binder was skipped. That failed
+attempt remains consumed; this source update does not establish browser acceptance.
+
+After protected caller delivery and programme projection, a newly admitted full run must authenticate
+original Rendering source `6c9f766fdd91483c2de6f061e75589e94852a265`, run `37419955679` and
+artifact `11392773621`, then qualify the generated consumer against public 0.32.1 inputs with all
+24 browser cases. It changes no producer archive, publication, installed consumer, retained upgrade
+or product-native outcome.
 
 ## SVG-RUNTIME-01.5 — Generated continuous player and Preview-B handoff
 
