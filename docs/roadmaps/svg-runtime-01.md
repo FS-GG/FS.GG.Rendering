@@ -50,11 +50,16 @@ owned-resource truth. Package publication, an installed consumer, and product ad
 
 The [Templates qualification caller](../../.github/workflows/templates-external-reference-qualification.yml)
 now pins both its reusable workflow and consumer checkout to protected Templates
-`0d945052250eb53056a5b4a87fe742efd1b7a0a2` (Templates PR #685). That successor retains the
-eight-case receipt binder and pre-acquisition static controls, and scopes command-outcome test
-actions and receipt status to the intended direct reference controls. Rendering's static controls
-accept this literal join and refuse both prior consumers, mismatched or floating pins, non-public
-inputs, broader permissions and bypassed preflight controls.
+`92944277a8d27b15759dd8e5803acf4c4e0ae162` (Templates PR #690). That successor retains the
+eight-case receipt binder, pre-acquisition static controls and direct reference selectors. It adds
+an actual-Orca recovery observer after the generated-template/browser prerequisite, with bounded
+original-server readiness, termination reporting and owned-process cleanup. Source/static controls
+passed; no actual external-reference screen-reader observation has run. Preflight-only calls do not
+provision or launch assistive technology. Rendering's static controls accept this literal join and
+refuse prior consumers, mismatched or floating pins, non-public inputs, broader permissions and
+bypassed preflight controls. A fresh full hosted observation remains pending protected caller
+delivery, programme projection and separate operation admission; the original producer and
+previous runtime evidence below remain unchanged.
 
 The previous caller's [full run 38005778318 attempt 1](https://github.com/FS-GG/FS.GG.Rendering/actions/runs/38005778318)
 authenticated the original archive and compiled the generated Fable composition. Chromium passed
