@@ -5,10 +5,17 @@ commit used for its explicit Templates checkout. Pull requests run preflight onl
 default to preflight; an explicit `preflight-only=false` requests the full existing Ubuntu24.04
 ProviderComposition and three-family browser qualification. Only the callee owns concurrency.
 
-The fixed original input is Rendering source `730923fe9d27174e879566f21dab14a1b03d761a`, successful
-run37046893526 and artifact11244853996. The native artifact digest and14,790,371-byte size,
-outer SHA256, custody SHA256 and all19 archive contents are checked before any CLR. No producer
-archive, release plan or version is changed. The caller transmits no secret or credential input.
+The initial transport qualification used Rendering source
+`730923fe9d27174e879566f21dab14a1b03d761a`, successful run `37046893526` and artifact
+`11244853996`, with its 14,790,371-byte archive and nineteen checked contents. Those inputs are
+historical. The current protected Templates gate at
+`fe6bdcf9f90eab2d7ef1a4de390e0768e9013a3b` instead requires its retained original Rendering
+producer `6c9f766fdd91483c2de6f061e75589e94852a265`, run `37419955679` and artifact `11392773621`.
+Its 14,912,688-byte archive must retain SHA-256
+`486182db3efd8442c007f66322a7bfb27caf0cb8e3c87bc2521e66dd90a7adee` and custody SHA-256
+`ecd0c5d742fd8d19d5659991e413e92971c1d2cb9aea913faa2bb249f53f577d`; archive/member custody
+checks precede CLR. This caller update changes neither that producer archive nor its release plan
+or version. The caller transmits no secret or credential input.
 
 Historical Templates run37052030437 failed at the App read grant with HTTP422. The individual
 missing permission remains unknown. This caller uses Rendering's ordinary read-only repository
