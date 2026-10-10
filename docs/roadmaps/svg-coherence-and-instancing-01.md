@@ -227,3 +227,27 @@ closure and exact software-browser/runtime profile still need qualification.
 Five samples within one trial do not replace the owning plan's three independent
 measured repetitions. Original failed/unknown comparison and process custody
 remain unchanged.
+
+
+## Textless-container source repair (.3)
+
+A bounded software screen of the published 0.32.1 producer stopped at live/export
+structure agreement. Its precise command phase was not retained. An independent
+control of the exact producer reconciler demonstrates a separate concrete defect:
+replacing populated, textless definitions with empty definitions preserves the old
+element children because both containers have empty text.
+
+The repair clears existing element children before returning from the empty-candidate
+branch, including when text is equal. It preserves owner identity and avoids writes
+for an unchanged text leaf or already empty container. The source regression evaluates
+the actual emitted reconciler, covers definitions, ordinary and nested containers,
+checks detachment and equal/changed text leaves, and rejects the original defective
+condition. The packed browser entry point runs this cheap Node control before its
+package and browser stages. Run it separately with
+`node tests/Scene.SvgBrowser.Tests/reconciliation-source-test.mjs`.
+
+These controls establish source behavior using a small DOM-property fixture. They do
+not establish compiled package, browser, software timing or publication acceptance.
+The prior failed software attempts remain retained; the owning .3/.4 milestones,
+receiver adoption and late GPU qualification remain open. No version or public API
+change is selected by this repair.

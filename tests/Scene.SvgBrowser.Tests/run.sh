@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+node "$repo/tests/Scene.SvgBrowser.Tests/reconciliation-source-test.mjs"
 output="${1:-$repo/readiness/svg-scene-02-5/browser-observations.json}"
 work="$(mktemp -d "${TMPDIR:-/tmp}/scene-svg-browser.XXXXXX")"
 trap 'rm -rf "$work"' EXIT
