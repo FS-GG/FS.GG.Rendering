@@ -50,16 +50,30 @@ owned-resource truth. Package publication, an installed consumer, and product ad
 
 The [Templates qualification caller](../../.github/workflows/templates-external-reference-qualification.yml)
 now pins both its reusable workflow and consumer checkout to protected Templates
-`92944277a8d27b15759dd8e5803acf4c4e0ae162` (Templates PR #690). That successor retains the
-eight-case receipt binder, pre-acquisition static controls and direct reference selectors. It adds
-an actual-Orca recovery observer after the generated-template/browser prerequisite, with bounded
-original-server readiness, termination reporting and owned-process cleanup. Source/static controls
-passed; no actual external-reference screen-reader observation has run. Preflight-only calls do not
-provision or launch assistive technology. Rendering's static controls accept this literal join and
-refuse prior consumers, mismatched or floating pins, non-public inputs, broader permissions and
-bypassed preflight controls. A fresh full hosted observation remains pending protected caller
-delivery, programme projection and separate operation admission; the original producer and
-previous runtime evidence below remain unchanged.
+`775853887a88a3c72e726daa475a49053e84c4bd` (Templates PR #691). That successor preserves
+the receipt binder, pre-acquisition controls and reference journey. It records the first rejected
+custody census before cleanup and retains package-owned installed AT-SPI activation service,
+configuration and executable provenance during existing provisioning. Snapshot/reporting failures
+preserve the first cause; unresolved activation provenance refuses dependent AT launch.
+Source/static controls passed. Custody guards, activation behavior and runtime budgets are unchanged;
+preflight-only calls do not provision or launch assistive technology. Rendering's static controls
+accept this literal join and refuse prior consumers, mismatched or floating pins, non-public inputs,
+broader permissions and bypassed preflight controls. A new full hosted observation remains pending
+protected caller delivery, programme projection and separate fresh operation admission.
+
+[Full run 38024897635 attempt 1](https://github.com/FS-GG/FS.GG.Rendering/actions/runs/38024897635)
+passed all 24 generated-template browser cases at caller
+`3cd887adca8caf48ae2ab6107032f573c180d684` and consumer `92944277a8d27b15759dd8e5803acf4c4e0ae162`:
+eight expected cases passed once in each family, with zero skipped, flaky or unexpected results.
+The authenticated original producer and archive custody below were unchanged. The private speech
+prerequisite passed, but the reference keyboard/Orca journey was not reached. The observer refused
+`AT custody uncertainty`; the supervised session exited `-15`, with no authenticated inner exit.
+The rejected census was not retained, so the offending PID and unknown/escaped branch remain unknown.
+Later empty tracked-session observations do not establish complete escaped-process cleanup.
+[Artifact 11659493945](https://github.com/FS-GG/FS.GG.Rendering/actions/runs/38024897635/artifacts/11659493945)
+SHA-256 `6344115ff7d9e07d5ca7f855d20e51ccd54685cc793b2b85c47cfcb620442660`
+retains that failed attempt and the independently verified current-consumer browser reports.
+This browser prerequisite is distinct from actual AT acceptance; the original failed operation remains consumed.
 
 The previous caller's [full run 38005778318 attempt 1](https://github.com/FS-GG/FS.GG.Rendering/actions/runs/38005778318)
 authenticated the original archive and compiled the generated Fable composition. Chromium passed
