@@ -264,3 +264,10 @@ These measurements establish synchronous compiled document replacement elapsed t
 The [2026-10-10 stage diagnostic](../reports/svg-instance-stream-stages-20261010.md) records one fresh instrumented software queue: 384 ordered replacement rows, 1,536 spans and 48 semantic reports. For circle 250 definition-reset, candidate construction, validation/export and parse/import account for 87.37% shared and 83.97% expanded of five measured enclosing-interval sums. The report retains the 19.4 ms shared pass, all raw rows, the outer/enclosing timing distinction and observed cleanup.
 
 This is exploratory synchronous elapsed update-path evidence, not causal regression, CPU/allocation, instrumentation-overhead correction, published-producer equivalence or GPU acceptance. The selected next question separates validation traversal from successful SVG serialization in the same route; no optimization or further runtime is accepted. The broader .3/.4 milestones and existing custody/adoption boundaries remain open.
+
+
+## Whole-page sampled stack accounting (.3)
+
+The [2026-10-10 CPU-profile report](../reports/svg-instance-stream-cpu-profile-20261010.md) records one accepted whole-page capture and conservative offline accounting of all 8,296 samples. It retains 87.61% unresolved samples, native/oracle boundaries, exporter ambiguity, overlapping inclusive totals, failed predecessors and the controls-fixture syntax repair. Exact executed script/source/map and cleanup joins passed; font readiness remains unobserved.
+
+This is sampled JavaScript stack evidence and elapsed-interval weighting, not exact function/process CPU or phase/allocation/performance acceptance. The validation-versus-serialization question remains unresolved. The next proposal checks complete function correspondence at missing entry coordinates before a separately selected heap window; it selects no producer/map change or runtime. The broader .3/.4 milestones, repeated research, adoption and late host qualification remain open.
