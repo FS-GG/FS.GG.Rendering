@@ -14,7 +14,7 @@ def validate(text):
     assert "preflight-only: ${{ github.event_name == 'pull_request' || inputs.preflight-only }}" in text
     assert 'type: boolean\n        default: true' in text
     assert '    needs: static' in text
-    assert uses[0] == 'd2bd6e8d3c9cde06d3d200137743ea29a0919fa6', 'selected protected Templates source required'
+    assert uses[0] == 'fe6bdcf9f90eab2d7ef1a4de390e0768e9013a3b', 'selected protected Templates source required'
     assert re.findall(r'^      rendering-input-source: (.+)$', text, re.M) == ['public'], 'selected public Rendering input required'
     return uses[0]
 head=validate(source)
