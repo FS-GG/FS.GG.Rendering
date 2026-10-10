@@ -109,8 +109,27 @@ All four new compiler-stage process groups and sessions were observed empty at c
 no cleanup signal was needed. This qualifies those four modules only: full Client/Vite
 TypeScript coverage and browser runtime acceptance are separate scopes.
 
-This closes this exact generated-consumer Fable/browser qualification window and the four-module
-TypeScript window. Full-site typechecking, actual screen-reader observation, coherent publication,
+A further strict window passed `Client/vite.config.ts`, the Client's only handwritten
+TypeScript module, at the same Templates release producer `20c009bc`. Current protected
+Templates `b93f82edabf7b4195b5a1d53f254532df93180ec` adds only the Portal owning-plan record;
+the Client source, package manifest and lock remain byte-identical to browser-qualified
+`0d945052`. The operation used Node 26.10.0, npm 12.2.0, TypeScript 5.9.3 and exact locked
+Vite 7.3.6. One script-disabled, optional-dependency-omitting acquisition installed 29 Client
+packages; three read-only aliases reused the qualified compiler, Node types and undici types
+without reacquiring the original graph. The positive check retained `strict`, `noEmit`,
+`skipLibCheck: false`, NodeNext resolution and `DOM.Iterable`: exit 0, no diagnostics. The
+countercontrol exited 2 with exactly one TS2322. Readback matched the new 576-entry tree,
+32 composed package roots and original 464-entry graph; all six new stage groups and sessions
+were observed empty with zero cleanup signals. The accepted receipt SHA-256 is
+`0ea9ba254473742f53d0312653deac108260c6e4de7d5ff1fc6df12135dc0ca7`.
+
+Together these windows cover the five handwritten TypeScript modules. Client application
+code is F# compiled by Fable to JavaScript; this compiler-only check ran no Vite, Fable,
+browser or assistive technology and does not establish generated-JavaScript or full-site
+semantic acceptance.
+
+This closes this exact generated-consumer Fable/browser qualification window and the two narrow
+TypeScript windows. Full-site typechecking, actual screen-reader observation, coherent publication,
 fresh installed creation, preserving upgrades and product-native acceptance remain separate gates. No producer archive was
 rebuilt or published; the receipt records publication and installed acceptance as false. Historical
 retained operations and their unresolved ownership or cleanup remain unchanged.
