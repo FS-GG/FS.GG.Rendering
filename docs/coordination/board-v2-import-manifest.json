@@ -1,5 +1,6 @@
 {
   "schema": "fsgg.coordination-board-v2-import/v1",
+  "observedAt": "2026-10-10T11:51:40.399445+00:00",
   "target": {
     "ownerKind": "organization",
     "owner": "FS-GG",
@@ -15,8 +16,8 @@
     "repositories": [
       "FS-GG/FS.GG.Rendering"
     ],
-    "recipeRevision": "2ab0c0ff9f37bdec9a11ba3604ebdc230711934f",
-    "artifactSha256": "cb318977a143085680b27ba4c86fffd6fb3f5a91dc6a7e07cf79ef7c67825615"
+    "recipeRevision": "482fb0d46625992de0228e1d4799d3ac6963caa1",
+    "artifactSha256": "2841486123c0655f59fa3f0c6ef7ca116f81c7f62400cad8702a230da113f086"
   },
   "items": [
     {
@@ -24,11 +25,45 @@
       "nodeId": "I_kwDOS6fcy88AAAABOP77ug",
       "observedUpdatedAt": "2026-08-25T22:14:22Z",
       "observedState": "open",
-      "pilot": true,
       "decision": "import",
       "adjudication": "verified-remaining",
+      "remainingOutcome": "After the FS-GG/FS.GG.SDD#924 producer prerequisite is accepted, pin published Q3/Q6 registry artifacts in the product lifecycle template/documentation, retain v1 inspection, add the consumer-facing generated-contract integration required by the published contract, and qualify clean package-only lifecycle/golden/profile/version/CI checks.",
       "roadmap": "https://github.com/FS-GG/FS.GG.Rendering/issues/1274",
+      "status": "Blocked",
+      "track": "Active delivery",
+      "observation": "Unknown",
+      "observedRoadmapValue": "https://github.com/FS-GG/FS.GG.Rendering/issues/1274",
+      "pilot": true,
       "dependencies": []
     }
-  ]
+  ],
+  "inventory": {
+    "prospectiveQualification": {
+      "projectCreationPerformed": false,
+      "membershipMutationPerformed": false,
+      "historicalConstructorAuthenticated": false,
+      "qualifier": {
+        "recipeRevision": "482fb0d46625992de0228e1d4799d3ac6963caa1",
+        "artifactSha256": "2841486123c0655f59fa3f0c6ef7ca116f81c7f62400cad8702a230da113f086"
+      },
+      "adapter": {
+        "recipeRevision": "64e95ebec1a8294e16edaafdb27e6aa96f32c6f7",
+        "artifactSha256": "c6fc21abdc7c9a8186eebab02b70ef6d3351a226f536b6d413a5dec432efde29"
+      },
+      "textualBlockerDisposition": {
+        "status": "preserved",
+        "evidenceBodySha256": "9887ab9e4a62ee63d128354f949bd6218cccc4ab45b900c910ffbe2bcf89b1a2",
+        "statement": "Preserve the explicit owning-body blocker FS-GG/FS.GG.SDD#924. The observed empty native blocked_by response does not remove this producer prerequisite or change the human Status=Blocked."
+      },
+      "metadataSha256": "fa1c9612827eee5851730598872e917231d89556318f840d7bc3624a7baff916",
+      "currentnessSha256": "8cd0574a67ca16d459cc41b2734ac906376ad1d1f612df738055c494e2b9c404",
+      "adjudicationSha256": "75bbbba2aae5405852be39cb570e26e497c06d2db57177548923057560f87d4d",
+      "priorPopulationSha256": "52d715673614908001034d78b0a825ba7133046ed91643b7405317890f00deab",
+      "priorImportProvenance": {
+        "recipeRevision": "2ab0c0ff9f37bdec9a11ba3604ebdc230711934f",
+        "artifactSha256": "cb318977a143085680b27ba4c86fffd6fb3f5a91dc6a7e07cf79ef7c67825615",
+        "historicalConstructorAuthenticated": false
+      }
+    }
+  }
 }
