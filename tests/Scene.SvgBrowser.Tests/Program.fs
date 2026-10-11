@@ -1116,6 +1116,24 @@ let api =
 
                 host.Value.Dispatch(RetainedInteractionMessage.ReplaceScene reordered)
                 |> resultObject
+            "advanceFocusControl"
+            ==> fun mode ->
+                let current = retained (host.Value.State.Scene.Revision + 1) 28.0
+                let candidate =
+                    { current with
+                        Layers =
+                            current.Layers
+                            |> List.map (fun layer ->
+                                let objects =
+                                    match mode with
+                                    | "reordered" -> List.rev layer.Objects
+                                    | "remove-alpha" -> layer.Objects |> List.filter (fun value -> value.Id <> "alpha")
+                                    | "remove-beta" -> layer.Objects |> List.filter (fun value -> value.Id <> "beta")
+                                    | "stable" -> layer.Objects
+                                    | _ -> invalidArg "mode" "Unknown focus control mode"
+                                { layer with Objects = objects }) }
+                host.Value.Dispatch(RetainedInteractionMessage.ReplaceScene candidate)
+                |> resultObject
             "replaceStale"
             ==> fun () ->
                 host.Value.Dispatch(RetainedInteractionMessage.ReplaceScene(retained 1 35.0))

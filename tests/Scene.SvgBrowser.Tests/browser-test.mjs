@@ -1,3 +1,4 @@
+import { producerFocusCompositionControl } from "./focus-reconciliation-control.mjs";
 import { createHash } from "node:crypto";
 import { createServer } from "node:http";
 import { cpus, platform, release } from "node:os";
@@ -81,11 +82,13 @@ let browserMatrixEvidence;
 let sessionEvidence;
 let externalSessionEvidence;
 let animationEvidence;
+let focusReconciliationEvidence;
 try {
   await page.goto(`http://127.0.0.1:${address.port}/`, { waitUntil: "networkidle" });
   await page.waitForFunction(() => window.svgFoundation !== undefined, undefined, { timeout: 5000 }).catch((error) => {
     throw new Error(`fixture API unavailable: ${consoleErrors.join("\n") || error.message}`);
   });
+  focusReconciliationEvidence = await producerFocusCompositionControl(page, true);
   const mountedSession = await page.evaluate(() => window.svgFoundation.sessionMount());
   if (mountedSession.listeners !== 2 || mountedSession.frames !== 1 || mountedSession.requests !== 0 || mountedSession.status !== "Running") {
     throw new Error(`session mount ownership failed: ${JSON.stringify(mountedSession)}`);
@@ -905,6 +908,7 @@ const evidence = {
     sessionHost: sessionEvidence,
     externalSessionHost: externalSessionEvidence,
     animationHost: animationEvidence,
+    focusReconciliation: focusReconciliationEvidence,
   },
   browserMatrix: browserMatrixEvidence,
   document: { ...documentEvidence, exportedSvg: undefined },
