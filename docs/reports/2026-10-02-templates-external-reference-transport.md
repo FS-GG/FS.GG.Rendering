@@ -138,5 +138,8 @@ packed builds, source joins and SDK10.0.401 checks passed; the original browser,
 context and server closed, but baseline focus loss and candidate behavior remain
 unqualified. This successor selects the actual index entrypoint, checks its
 manifest-bound compiled Program API bootstrap, and retains bounded page errors.
-Its focused inert qualification and the seven hosted product cases remain
-pending; the first attempt and all native failures stay preserved.
+All 17 inert controls passed against the retained original/candidate compiled
+fixtures, with exact results, 43 actual Node mappings and empty owned-group
+cleanup joined. These checks parse compiled bytes without executing product
+JavaScript. The seven hosted product cases remain pending; the first attempt
+and all native failures stay preserved.
