@@ -19,6 +19,7 @@ const start=performance.now(), workDeadline=start+60000, finalDeadline=start+700
 let launchPromise=null, pendingContext=null;
 let first=null, results=null, browser=null, context=null, server=null, selected=null, browserVersion=null, browserDisconnected=false, executable=null, runtime=null;
 const fixtureEntries=[], pageDiagnostics=[];
+let mutationEvidence=null;
 const served=[], cleanup={context:'not-created',browser:'not-created',server:'not-created'}, cancellations=[];
 let cancelReject;
 const canceled=new Promise((_,reject)=>{cancelReject=reject;});
@@ -28,7 +29,7 @@ async function hashFile(path){const value=createHash('sha256');for await(const c
 function bindEvidence(evidence,variant){
  requireValue(evidence.scope==='actual-SvgBrowserHost-ReplaceScene-focus-control' && evidence.expectedRetainedFocus===variant.expectedRetainedFocus && evidence.fixtureOnlyProgrammaticFocus===true && evidence.productActivation===0 && evidence.nativeJourneyAcceptance===false,'product control authority differs');
  const receipt=evidence.receipt;
- requireValue(receipt.before.focused===true && receipt.after.sameButton===true && receipt.after.connected===true && receipt.after.revision===2 && receipt.after.focused===variant.expectedRetainedFocus && !receipt.sourceResult.error,'actual product focus receipt incomplete');
+ requireValue(receipt.before.focused===true && receipt.after.sameButton===true && receipt.after.connected===true && receipt.after.revision===2 && receipt.after.focused===variant.expectedRetainedFocus && Number.isInteger(receipt.redundantControlMutations) && (variant.expectedRetainedFocus?receipt.redundantControlMutations===0:receipt.redundantControlMutations>0) && !receipt.sourceResult.error,'actual product focus receipt incomplete');
  const expected=variant.expectedRetainedFocus?['100-accepted-continuous-scene-updates','reorder-active-alpha','reorder-active-beta','remove-alpha','remove-beta']:[];
  requireValue(JSON.stringify(evidence.additional.map(x=>x.case))===JSON.stringify(expected),'actual product focus case set incomplete');
  return {variant:variant.name,head:variant.head,productionSourceSha256:variant.productionSource.sha256,packedSourceSha256:variant.packedSourceSha256,fixtureManifestSha256:variant.distManifest.sha256,packageSha256:variant.package.sha256,retainedPackageSha256:variant.retainedPackage.sha256,sourceManifestSha256:variant.sourceManifest.sha256,artifactId:variant.artifactId,evidence};
@@ -43,6 +44,8 @@ try {
  runtime={node:process.version,nodeExecutableSha256:await bounded(hashFile(process.execPath),workDeadline,'Node identity deadline exhausted'),playwrightVersion:JSON.parse(readFileSync(packagePath)).version,playwrightPackageSha256:hash(readFileSync(packagePath)),browserDescriptor:descriptor,platform:process.platform,architecture:process.arch,kernel:os.release(),imageOS:process.env.ImageOS??null,imageVersion:process.env.ImageVersion??null,runnerName:process.env.RUNNER_NAME??null};
  const controlBytes=readFileSync(c.control.path);requireValue(hash(controlBytes)===c.control.sha256,'actual comparison control differs');
  const {producerFocusCompositionControl}=await import(pathToFileURL(c.control.path));
+ requireValue(hash(readFileSync(c.mutationControl.path))===c.mutationControl.sha256,'actual mutation control differs');
+ const {producerMutationCompositionControl,MUTATION_CASES}=await import(pathToFileURL(c.mutationControl.path));
  const manifests=new Map();
  for(const variant of c.variants){
   const bytes=readFileSync(variant.distManifest.path);requireValue(hash(bytes)===variant.distManifest.sha256,'selected fixture manifest changed');const manifest=JSON.parse(bytes);
@@ -80,9 +83,13 @@ try {
   await bounded(page.waitForFunction(()=>window.svgFoundation!==undefined),workDeadline,'actual fixture initialization deadline exhausted');
   const evidence=await bounded(producerFocusCompositionControl(page,variant.expectedRetainedFocus),workDeadline,'actual product comparison deadline exhausted');
   requireValue(first===null,'earlier fixture failure: '+first);completed.push(bindEvidence(evidence,variant));
+  if(variant.name==='candidate'){
+   mutationEvidence=await bounded(producerMutationCompositionControl(page),workDeadline,'actual mutation comparison deadline exhausted');
+   requireValue(mutationEvidence.scope==='actual-packed-SvgBrowserHost-MutationObserver'&&mutationEvidence.nativeJourneyAcceptance===false&&mutationEvidence.fixtureOnlySetupFocus===true&&mutationEvidence.fixtureSelectionClicks===1&&JSON.stringify(mutationEvidence.cases.map(x=>x.case))===JSON.stringify(MUTATION_CASES)&&MUTATION_CASES.length===7,'actual mutation case receipts incomplete');
+  }
   await bounded(context.close(),workDeadline,'variant context close deadline exhausted');cleanup.context='closed';context=null;
  }
- requireValue(completed.length===2 && completed.reduce((n,x)=>n+1+x.evidence.additional.length,0)===7,'seven actual case receipts incomplete');results=completed;
+ requireValue(mutationEvidence!==null && completed.length===2 && completed.reduce((n,x)=>n+1+x.evidence.additional.length,0)===7,'seven actual case receipts incomplete');results=completed;
 }catch(error){if(first===null)first=error.name+': '+String(error.message).slice(0,4096);}
 finally{
  const closeDeadline=Math.min(finalDeadline,performance.now()+10000);
@@ -98,7 +105,7 @@ finally{
  if(browser)await close('browser',()=>browser.close());
  if(server)await close('server',()=>new Promise((done,reject)=>server.close(error=>error?reject(error):done())));
  if(browser && !browserDisconnected && first===null)first='ordinary browser disconnect not observed after close';
- const value={schema:'fsgg.svg-browser.product-focus-comparison/v1',firstCause:first,inputsSha256:hash(inputBytes),runId:c.runId,runAttempt:c.runAttempt,candidateHead:c.candidateHead,baselineHead:c.baselineHead,runtime,browserExecutable:executable,browserVersion,results:first===null?results:null,completedCases:first===null?7:null,partialCoverage:first===null?'complete':'unknown; failed/incomplete product result is never pass',served,fixtureEntries,pageDiagnostics,cleanup,browserDisconnected,cancellations,elapsedMs:performance.now()-start,bounds:{workMs:60000,closeReserveMs:10000},custody:'ordinary hosted Playwright/browser/context/server close contract only; no exact private group/kernel-backing or whole-tree proof',nativeJourneyAcceptance:false};
+ const value={schema:'fsgg.svg-browser.product-focus-comparison/v1',firstCause:first,inputsSha256:hash(inputBytes),runId:c.runId,runAttempt:c.runAttempt,candidateHead:c.candidateHead,baselineHead:c.baselineHead,runtime,browserExecutable:executable,browserVersion,results:first===null?results:null,completedCases:first===null?7:null,completedMutationCases:first===null?7:null,mutationEvidence:first===null?mutationEvidence:null,partialCoverage:first===null?'complete':'unknown; failed/incomplete product result is never pass',served,fixtureEntries,pageDiagnostics,cleanup,browserDisconnected,cancellations,elapsedMs:performance.now()-start,bounds:{workMs:60000,closeReserveMs:10000},custody:'ordinary hosted Playwright/browser/context/server close contract only; no exact private group/kernel-backing or whole-tree proof',nativeJourneyAcceptance:false};
  const body=JSON.stringify(value,null,2)+'\n';requireValue(Buffer.byteLength(body)<=1048576,'comparison result exceeds retained evidence budget');const population=readdirSync(dirname(outputPath));requireValue(population.length<128 && population.reduce((sum,name)=>sum+statSync(join(dirname(outputPath),name)).size,0)+Buffer.byteLength(body)<=4194304-65536,'retained result budget exhausted; no oversized proof promoted');writeFileSync(outputPath,body,{flag:'wx'});
 }
 if(first!==null)process.exitCode=1;

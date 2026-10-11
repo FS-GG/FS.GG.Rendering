@@ -1134,6 +1134,44 @@ let api =
                                 { layer with Objects = objects }) }
                 host.Value.Dispatch(RetainedInteractionMessage.ReplaceScene candidate)
                 |> resultObject
+            "advanceMutationControl"
+            ==> fun mode ->
+                let current = retained (host.Value.State.Scene.Revision + 1) 28.0
+
+                let changeObject (value: SemanticSceneObject) =
+                    if value.Id = "alpha" then
+                        let changed = alpha 35.0
+                        { changed with AccessibleLabel = "Alpha changed" }
+                    else
+                        value
+
+                let changeLayer (layer: RetainedSceneLayer) =
+                    match mode with
+                    | "changed" ->
+                        { layer with
+                            Objects = layer.Objects |> List.map changeObject
+                        }
+                    | "add" when layer.Id = "units" ->
+                        let gamma = { beta with Id = "gamma"; AccessibleLabel = "Gamma unit" }
+                        { layer with Objects = layer.Objects @ [ gamma ] }
+                    | "add" -> layer
+                    | "reordered" ->
+                        { layer with Objects = List.rev layer.Objects }
+                    | _ -> invalidArg "mode" "Unknown mutation control mode"
+
+                let orderedLayers =
+                    if mode = "reordered" then
+                        List.rev current.Layers
+                    else
+                        current.Layers
+
+                let candidate =
+                    { current with
+                        Layers = orderedLayers |> List.map changeLayer
+                    }
+
+                host.Value.Dispatch(RetainedInteractionMessage.ReplaceScene candidate)
+                |> resultObject
             "replaceStale"
             ==> fun () ->
                 host.Value.Dispatch(RetainedInteractionMessage.ReplaceScene(retained 1 35.0))

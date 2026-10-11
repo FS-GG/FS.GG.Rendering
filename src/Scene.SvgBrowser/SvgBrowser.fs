@@ -42,7 +42,17 @@ module private Dom =
     let create name =
         document.createElementNS (SvgNamespace, name)
 
-    let set name value (element: Element) = element.setAttribute (name, value)
+    let set name value (element: Element) =
+        if element.getAttribute name <> value then
+            element.setAttribute (name, value)
+
+    let setText value (element: Element) =
+        if element.textContent <> value then
+            element.textContent <- value
+
+    // Preserve already ordered retained SVG children; real order changes still move nodes.
+    [<Emit("(function(parent,wanted){const focused=parent.ownerDocument.activeElement;let anchor=parent.firstElementChild;for(const child of wanted){if(child===anchor){anchor=anchor.nextElementSibling;continue;}if(child===focused&&child.parentElement===parent){while(anchor!==child){if(!anchor)throw new Error('focused retained child ordering identity changed');const displaced=anchor;anchor=anchor.nextElementSibling;parent.insertBefore(displaced,child.nextSibling);}anchor=child.nextElementSibling;}else parent.insertBefore(child,anchor);}})($0,$1)")>]
+    let orderChildren (_parent: Element) (_wanted: Element array) : unit = jsNative
 
     let clear (element: Element) = element.innerHTML <- ""
 
@@ -513,15 +523,15 @@ type SvgBrowserHost
                     controlButtons[value.Id] <- created
                     created
 
-            button.textContent <- value.AccessibleLabel
+            Dom.setText value.AccessibleLabel button
 
-            button.setAttribute (
-                "aria-pressed",
-                if state.SelectedObjectId = Some value.Id then
+            Dom.set
+                "aria-pressed"
+                (if state.SelectedObjectId = Some value.Id then
                     "true"
                 else
-                    "false"
-            )
+                    "false")
+                button
 
             orderedControls.Add button
 
@@ -533,7 +543,7 @@ type SvgBrowserHost
             |> Option.map _.AccessibleLabel
             |> Option.defaultValue "No object selected"
 
-        status.textContent <- selectedLabel
+        Dom.setText selectedLabel status
 
     let reconcileScene () =
         Dom.set "id" state.Scene.RootId root
@@ -566,6 +576,7 @@ type SvgBrowserHost
                 objects.Remove id |> ignore
                 objectValues.Remove id |> ignore
 
+        let orderedLayers = ResizeArray<Element>()
         for layer in state.Scene.Layers do
             let layerElement =
                 match layers.TryGetValue layer.Id with
@@ -578,6 +589,7 @@ type SvgBrowserHost
 
             Dom.set "display" (if layer.Visible then "inline" else "none") layerElement
 
+            let orderedObjects = ResizeArray<Element>()
             for objectValue in layer.Objects do
                 let objectElement, requiresRender =
                     match objects.TryGetValue objectValue.Id with
@@ -601,11 +613,14 @@ type SvgBrowserHost
                         objectElement
                         objectValue.Content
 
-                Render.append layerElement objectElement
+                orderedObjects.Add objectElement
                 objects[objectValue.Id] <- objectElement
                 objectValues[objectValue.Id] <- objectValue
 
-            Render.append viewport layerElement
+            Dom.orderChildren layerElement (orderedObjects.ToArray())
+            orderedLayers.Add layerElement
+
+        Dom.orderChildren viewport (orderedLayers.ToArray())
 
         syncInteraction ()
 

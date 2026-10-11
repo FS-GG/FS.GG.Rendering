@@ -8,9 +8,12 @@ export async function producerFocusCompositionControl(page, expectedRetainedFocu
   const receipt = await page.evaluate(() => {
     const button = document.querySelector('#fixture [data-scene-control-id="alpha"]');
     const before = {focused: document.activeElement === button, revision: window.svgFoundation.state().revision};
+    const mutations=new MutationObserver(()=>{});mutations.observe(button.parentElement,{subtree:true,childList:true,attributes:true,attributeOldValue:true});
     const changed = window.svgFoundation.replaceCurrent();
+    const records=mutations.takeRecords();mutations.disconnect();
+    const redundantControlMutations=records.filter(m=>m.type==='attributes'?m.oldValue===m.target.getAttribute(m.attributeName):m.type==='childList'&&m.addedNodes.length>0&&m.removedNodes.length>0&&[...m.addedNodes].every(n=>n.nodeType===3)&&[...m.removedNodes].every(n=>n.nodeType===3)&&[...m.addedNodes].map(n=>n.textContent).join('')===[...m.removedNodes].map(n=>n.textContent).join('')).length;
     const afterButton = document.querySelector('#fixture [data-scene-control-id="alpha"]');
-    return {before, after: {focused: document.activeElement === button,
+    return {before, redundantControlMutations, after: {focused: document.activeElement === button,
       sameButton: afterButton === button, connected: button.isConnected,
       revision: window.svgFoundation.state().revision}, sourceResult: changed};
   });
@@ -21,6 +24,7 @@ export async function producerFocusCompositionControl(page, expectedRetainedFocu
   if (receipt.after.focused !== expectedRetainedFocus) {
     throw new Error('production focus outcome differs from selected hypothesis: ' + JSON.stringify(receipt));
   }
+  if(expectedRetainedFocus?receipt.redundantControlMutations!==0:receipt.redundantControlMutations<=0)throw Error('actual unchanged control mutation outcome differs: '+JSON.stringify(receipt));
   const additional = [];
   if (expectedRetainedFocus) {
     // Every update traverses the actual compiled product host; no copied DOM ordering implementation.
