@@ -14,11 +14,11 @@ def validate(text):
     assert "preflight-only: ${{ github.event_name == 'pull_request' || inputs.preflight-only }}" in text
     assert 'type: boolean\n        default: true' in text
     assert '    needs: static' in text
-    assert uses[0] == 'fa0f3ffdf7e3f39a8d1359baeb59095158f69b54', 'selected protected Templates source required'
-    assert re.findall(r'^      rendering-input-source: (.+)$', text, re.M) == ['public'], 'selected public Rendering input required'
+    assert uses[0] == 'e8534c12a22a9440e25a2a3d086d775f33353135', 'selected protected Templates source required'
+    assert re.findall(r'^      rendering-input-source: (.+)$', text, re.M) == ['candidate'], 'selected candidate Rendering input required'
     return uses[0]
 head=validate(source)
-mutations=[source.replace('      rendering-input-source: public\n',''),source.replace('rendering-input-source: public','rendering-input-source: candidate'),source.replace('rendering-input-source: public','rendering-input-source: unknown'),source.replace('templates-source: '+head,'templates-source: '+'0'*40),source.replace('@'+head,'@main'),source.replace('templates-source: '+head,'templates-source: ${{ github.sha }}'),source.replace('contents: read','contents: write'),source+'\nsecrets: inherit\n',source.replace('default: true','default: false'),source.replace("github.event_name == 'pull_request' || inputs.preflight-only",'inputs.preflight-only'),source+'\nconcurrency: shared\n',source.replace(head,'0'*40)]
+mutations=[source.replace('      rendering-input-source: candidate\n',''),source.replace('rendering-input-source: candidate','rendering-input-source: public'),source.replace('rendering-input-source: candidate','rendering-input-source: unknown'),source.replace('templates-source: '+head,'templates-source: '+'0'*40),source.replace('@'+head,'@main'),source.replace('templates-source: '+head,'templates-source: ${{ github.sha }}'),source.replace('contents: read','contents: write'),source+'\nsecrets: inherit\n',source.replace('default: true','default: false'),source.replace("github.event_name == 'pull_request' || inputs.preflight-only",'inputs.preflight-only'),source+'\nconcurrency: shared\n',source.replace(head,'0'*40)]
 mutations.extend([
     source.replace(head,'775853887a88a3c72e726daa475a49053e84c4bd'),
     source.replace(head,'92944277a8d27b15759dd8e5803acf4c4e0ae162'),

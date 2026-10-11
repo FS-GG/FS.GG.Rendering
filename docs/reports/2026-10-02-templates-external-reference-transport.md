@@ -143,3 +143,12 @@ fixtures, with exact results, 43 actual Node mappings and empty owned-group
 cleanup joined. These checks parse compiled bytes without executing product
 JavaScript. The seven hosted product cases remain pending; the first attempt
 and all native failures stay preserved.
+
+
+### Corrected candidate producer and closed input modes
+
+Rendering [PR1422](https://github.com/FS-GG/FS.GG.Rendering/pull/1422) delivered protected source `0f7deec93297bcda67f0e3a1dbd23dcff66a09d5`; the independent actual product focus comparison passed all seven cases and the existing browser checks passed. Its genuine source-only producer `38102910865/a1` completed four selected jobs successfully and skipped publication. Archive `11688966848` is 14,993,249 bytes, SHA256 `7a1592443d6723a76543e7569856154bcf0205d58ddb90347165301750676fef`, with custody SHA256 `fe657ad839ed1740c29f85dc7d2244694722d70007512d6fdb22f86927b3a492`. The accepted bounded offline check verified all 19 packages and 2,556 payload hashes, including the packed corrected browser source. No public package bytes were overwritten.
+
+Templates [PR697](https://github.com/FS-GG/FS.GG.Templates/pull/697) delivered protected merge `e8534c12a22a9440e25a2a3d086d775f33353135`. Its closed per-mode tuple selects that corrected archive for candidate input and preserves the original producer/public 0.32.1 tuple for public input. Its admitted finite qualification passed 93 named workflow controls and four retained groups; observer and public helpers remain unchanged. This caller binds the exact Templates merge in both workflow literals and the validator, and explicitly selects candidate input. Its separate 19 caller refusal controls and exact-head routine eligibility are prepared but unrun.
+
+These scoped product, source and archive results do not accept an Orca journey. Earlier native guard failures, expired read windows and unresolved historical Chrome custody remain preserved. The next native candidate operation requires root's current programme projection, fresh source/queue checks and a new finite grant; the whole GAME-TEMPLATE-01/FABLE-ADOPT-01 outcome remains open.
