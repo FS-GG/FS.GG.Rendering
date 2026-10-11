@@ -14,7 +14,7 @@ export function fixtureEntryProof(dist,manifest,advanced=false,entry=PRODUCT_FIX
  requireValue(scripts.length===1,'actual product module entry absent/ambiguous');
  const path=scripts[0][1];requireValue(path.startsWith('/assets/') && path.endsWith('.js') && !path.includes('..') && !path.includes('?') && !path.includes('#'),'product module path is not a declared dist asset');
  const program=member(path.slice(1));const source=program.body.toString('utf8');
- const requiredApi=advanced?['mount','state','replaceCurrent','advanceFocusControl']:['mount','state','replaceCurrent'];
+ const requiredApi=advanced?['mount','state','replaceCurrent','advanceFocusControl','advanceMutationControl']:['mount','state','replaceCurrent'];
  requireValue(/window\.svgFoundation\s*=/.test(source) && requiredApi.every(name=>new RegExp('\\b'+name+'\\s*:').test(source)),'compiled Program API bootstrap absent');
  return {entrypoint:entry,html:html.value,programModule:program.value,requiredApi,sourceCouplingOnly:true};
 }

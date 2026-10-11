@@ -2,7 +2,7 @@
 import hashlib,json,os,pathlib,re,subprocess,sys,zipfile
 BASE='f3eb5abb117042144a1cbb41a5ec43821642df74'
 SOURCE='src/Scene.SvgBrowser/SvgBrowser.fs'
-EXPECTED={'original':'e32cfb1f8c9683a4fddd158bba604ad825ef4c54a3b0f61d10b9902bde100cb0','candidate':'0749d4dd3399b32cf7db8e8b7ea9a4d2a4c6beccf499e7504604ec669a000c8a'}
+EXPECTED={'original':'e32cfb1f8c9683a4fddd158bba604ad825ef4c54a3b0f61d10b9902bde100cb0','candidate':'c89d455f2ce970d9b51a7d3fe2fea2d0c62eff458bf10cf1d7926cbfd1f7a107'}
 def require(value,cause):
  if not value:raise RuntimeError(cause)
 def digest(body):return hashlib.sha256(body).hexdigest()
@@ -30,7 +30,8 @@ def check(candidate,original,out):
   require(pin(repo/SOURCE)['sha256']==EXPECTED[name],name+' actual production source differs')
   selected.append({'name':name,'repo':str(repo),'head':head,'productionSource':pin(repo/SOURCE),'expectedRetainedFocus':name=='candidate'})
  control=pin(candidate/'tests/Scene.SvgBrowser.Tests/focus-reconciliation-control.mjs')
- emit(out/'checkouts.json',{'variants':selected,'control':control,'runId':os.environ.get('GITHUB_RUN_ID'),'runAttempt':os.environ.get('GITHUB_RUN_ATTEMPT'),'candidateHead':requested,'baselineHead':BASE})
+ mutation_control=pin(candidate/'tests/Scene.SvgBrowser.Tests/mutation-reconciliation-control.mjs')
+ emit(out/'checkouts.json',{'variants':selected,'control':control,'mutationControl':mutation_control,'runId':os.environ.get('GITHUB_RUN_ID'),'runAttempt':os.environ.get('GITHUB_RUN_ATTEMPT'),'candidateHead':requested,'baselineHead':BASE})
 def attest(candidate,original,work,out):
  seed=json.loads((out/'checkouts.json').read_text());variants=[]
  for selected in seed['variants']:
@@ -56,6 +57,7 @@ def attest(candidate,original,work,out):
   bounded_write(out/(name+'-source-manifest.tsv'),before.read_bytes());bounded_write(out/(name+'-source-manifest-after.tsv'),after.read_bytes())
   variants.append({**selected,'retainedPackage':pin(retained_package),'sourceManifestAfter':pin(after),'dist':str(dist),'distManifest':pin(manifest_path),'sourceManifest':pin(before),'package':pin(package),'actualSdkVersion':(parent/'sdk-version.log').read_text().strip(),'sdkSelection':pin(parent/'global.json'),'packedSourceSha256':digest(packed),'artifactId':manifest['artifactId']})
  require(pin(pathlib.Path(seed['control']['path']))==seed['control'],'exact comparison control changed')
+ require(pin(pathlib.Path(seed['mutationControl']['path']))==seed['mutationControl'],'exact mutation control changed')
  config={**seed,'variants':variants,'workSeconds':60,'cleanupSeconds':10,'diagnosticRetentionBytes':4194304,'nativeJourneyAcceptance':False}
  emit(out/'comparison-inputs.json',config)
  for name in ['original','candidate']:
