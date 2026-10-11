@@ -7,6 +7,7 @@ import {join, resolve, dirname} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import os from 'node:os';
 import {settlePendingCreation} from './focus-comparison-lifecycle.mjs';
+import {PRODUCT_FIXTURE_ENTRY,fixtureEntryProof} from './focus-comparison-entrypoint.mjs';
 const [inputPath, outputPath] = process.argv.slice(2);
 if (!inputPath || !outputPath) throw new Error('exact inputs and absent result path required');
 const inputBytes=readFileSync(inputPath), c=JSON.parse(inputBytes);
@@ -17,6 +18,7 @@ requireValue(c.variants[0].expectedRetainedFocus===false && c.variants[1].expect
 const start=performance.now(), workDeadline=start+60000, finalDeadline=start+70000;
 let launchPromise=null, pendingContext=null;
 let first=null, results=null, browser=null, context=null, server=null, selected=null, browserVersion=null, browserDisconnected=false, executable=null, runtime=null;
+const fixtureEntries=[], pageDiagnostics=[];
 const served=[], cleanup={context:'not-created',browser:'not-created',server:'not-created'}, cancellations=[];
 let cancelReject;
 const canceled=new Promise((_,reject)=>{cancelReject=reject;});
@@ -45,11 +47,12 @@ try {
  for(const variant of c.variants){
   const bytes=readFileSync(variant.distManifest.path);requireValue(hash(bytes)===variant.distManifest.sha256,'selected fixture manifest changed');const manifest=JSON.parse(bytes);
   requireValue(manifest.artifactId==='sha256:'+hash(JSON.stringify({files:manifest.files,packages:manifest.packages,sourceSha256:manifest.sourceSha256,workloadSha256:manifest.workloadSha256})),'fixture artifactId binding differs');
+  fixtureEntries.push({variant:variant.name,...fixtureEntryProof(variant.dist,manifest,variant.expectedRetainedFocus)});
   manifests.set(variant.name,new Map(manifest.files.map(x=>[x.path,x])));
  }
  server=createServer((request,response)=>{
   try{
-   const path=decodeURIComponent(new URL(request.url,'http://127.0.0.1').pathname).slice(1)||'suite.html';const member=selected && manifests.get(selected.name).get(path);
+   const path=decodeURIComponent(new URL(request.url,'http://127.0.0.1').pathname).slice(1)||PRODUCT_FIXTURE_ENTRY;const member=selected && manifests.get(selected.name).get(path);
    if(request.method!=='GET'||!member){response.writeHead(404);response.end();return;}
    const body=readFileSync(join(selected.dist,path));requireValue(body.length===member.bytes && 'sha256:'+hash(body)===member.sha256,'served fixture bytes differ');
    requireValue(served.length<1024,'fixture request count exceeded');served.push({variant:selected.name,path,bytes:body.length,sha256:hash(body)});
@@ -68,8 +71,12 @@ try {
   pendingContext.then(value=>{context=value;cleanup.context='open';},()=>{cleanup.context='creation-rejected';});
   await bounded(pendingContext,workDeadline,'context deadline exhausted');pendingContext=null;
   await context.route('**/*',route=>{const url=new URL(route.request().url());if(url.origin===origin)return route.continue();if(first===null)first='unexpected external fixture request: '+url.origin;return route.abort();});
-  const page=await bounded(context.newPage(),workDeadline,'page deadline exhausted');page.setDefaultTimeout(Math.min(5000,Math.max(1,workDeadline-performance.now())));
-  await bounded(page.goto(origin+'/suite.html'),workDeadline,'fixture navigation deadline exhausted');
+  const page=await bounded(context.newPage(),workDeadline,'page deadline exhausted');
+  const diagnostic=(kind,text)=>{if(pageDiagnostics.length<32)pageDiagnostics.push({variant:variant.name,kind,text:String(text).slice(0,1024)});};
+  page.on('pageerror',error=>diagnostic('pageerror',error.message));page.on('console',message=>{if(message.type()==='error')diagnostic('console-error',message.text());});
+  page.setDefaultTimeout(Math.min(5000,Math.max(1,workDeadline-performance.now())));
+  const response=await bounded(page.goto(origin+'/'+PRODUCT_FIXTURE_ENTRY),workDeadline,'fixture navigation deadline exhausted');
+  requireValue(response?.ok()===true,'actual BrowserFixture entrypoint response refused');
   await bounded(page.waitForFunction(()=>window.svgFoundation!==undefined),workDeadline,'actual fixture initialization deadline exhausted');
   const evidence=await bounded(producerFocusCompositionControl(page,variant.expectedRetainedFocus),workDeadline,'actual product comparison deadline exhausted');
   requireValue(first===null,'earlier fixture failure: '+first);completed.push(bindEvidence(evidence,variant));
@@ -91,7 +98,7 @@ finally{
  if(browser)await close('browser',()=>browser.close());
  if(server)await close('server',()=>new Promise((done,reject)=>server.close(error=>error?reject(error):done())));
  if(browser && !browserDisconnected && first===null)first='ordinary browser disconnect not observed after close';
- const value={schema:'fsgg.svg-browser.product-focus-comparison/v1',firstCause:first,inputsSha256:hash(inputBytes),runId:c.runId,runAttempt:c.runAttempt,candidateHead:c.candidateHead,baselineHead:c.baselineHead,runtime,browserExecutable:executable,browserVersion,results:first===null?results:null,completedCases:first===null?7:null,partialCoverage:first===null?'complete':'unknown; failed/incomplete product result is never pass',served,cleanup,browserDisconnected,cancellations,elapsedMs:performance.now()-start,bounds:{workMs:60000,closeReserveMs:10000},custody:'ordinary hosted Playwright/browser/context/server close contract only; no exact private group/kernel-backing or whole-tree proof',nativeJourneyAcceptance:false};
+ const value={schema:'fsgg.svg-browser.product-focus-comparison/v1',firstCause:first,inputsSha256:hash(inputBytes),runId:c.runId,runAttempt:c.runAttempt,candidateHead:c.candidateHead,baselineHead:c.baselineHead,runtime,browserExecutable:executable,browserVersion,results:first===null?results:null,completedCases:first===null?7:null,partialCoverage:first===null?'complete':'unknown; failed/incomplete product result is never pass',served,fixtureEntries,pageDiagnostics,cleanup,browserDisconnected,cancellations,elapsedMs:performance.now()-start,bounds:{workMs:60000,closeReserveMs:10000},custody:'ordinary hosted Playwright/browser/context/server close contract only; no exact private group/kernel-backing or whole-tree proof',nativeJourneyAcceptance:false};
  const body=JSON.stringify(value,null,2)+'\n';requireValue(Buffer.byteLength(body)<=1048576,'comparison result exceeds retained evidence budget');const population=readdirSync(dirname(outputPath));requireValue(population.length<128 && population.reduce((sum,name)=>sum+statSync(join(dirname(outputPath),name)).size,0)+Buffer.byteLength(body)<=4194304-65536,'retained result budget exhausted; no oversized proof promoted');writeFileSync(outputPath,body,{flag:'wx'});
 }
 if(first!==null)process.exitCode=1;

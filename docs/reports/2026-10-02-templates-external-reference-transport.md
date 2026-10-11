@@ -129,3 +129,14 @@ mmap expansion and retries stop. A successful scoped product result must precede
 a new genuine Rendering candidate producer archive and separately bound
 Templates qualification. Published source and the original producer archive
 remain unchanged.
+
+
+The first hosted focus attempt on PR1422, run `38097421109/a1`, failed before
+any product case because the comparison opened the performance-suite HTML and
+waited for the API exposed by the separate BrowserFixture index page. Both
+packed builds, source joins and SDK10.0.401 checks passed; the original browser,
+context and server closed, but baseline focus loss and candidate behavior remain
+unqualified. This successor selects the actual index entrypoint, checks its
+manifest-bound compiled Program API bootstrap, and retains bounded page errors.
+Its focused inert qualification and the seven hosted product cases remain
+pending; the first attempt and all native failures stay preserved.
