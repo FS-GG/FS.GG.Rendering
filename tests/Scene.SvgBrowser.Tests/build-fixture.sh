@@ -9,6 +9,15 @@ feed="$work/feed"
 packages="$work/packages"
 tools="$work/tools"
 mkdir -p "$feed" "$packages" "$tools" "$work/logs"
+# The independent focus comparison selects its SDK before package/Fable work.
+# Other callers retain the existing SDK selection and working directory.
+if [[ -n "${SVG_SCENE_FOCUS_SDK:-}" ]]; then
+  [[ "$SVG_SCENE_FOCUS_SDK" == 10.0.401 ]] || { echo 'Unsupported focus SDK input' >&2; exit 1; }
+  printf '%s\n' '{"sdk":{"version":"10.0.401","rollForward":"disable","allowPrerelease":false}}' > "$work/global.json"
+  cd "$work"
+  dotnet --version > "$work/logs/sdk-version.log"
+  [[ "$(cat "$work/logs/sdk-version.log")" == 10.0.401 ]] || { echo 'Actual focus SDK differs' >&2; exit 1; }
+fi
 export NUGET_PACKAGES="$packages"
 export MSBUILDDISABLENODEREUSE=1
 export DOTNET_CLI_USE_MSBUILD_SERVER=0

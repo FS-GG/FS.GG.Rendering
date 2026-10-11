@@ -109,3 +109,37 @@ Original native run `38080394981/a1` failed at the observer library-mapping guar
 Templates [PR #696](https://github.com/FS-GG/FS.GG.Templates/pull/696) delivered protected merge `fa0f3ffdf7e3f39a8d1359baeb59095158f69b54` with the qualified observer source and unchanged workflow. The caller selects that exact merge in its reusable workflow, `templates-source` input and static validator. The private customization selects vendor-supported INFO logging while retaining speech evidence, mandatory original first-cause records, exact Orca birth/source joins and the original 4 MiB log budget. Its isolated qualification passed 286 Python controls, 37 inert JavaScript controls and seven retained groups; this caller's isolated qualification passed all 19 refusal controls and all five stages, including exact-head binding, clean-worktree and protected-base routine eligibility. The qualified workflow and validator bytes are reused unchanged by this delivery documentation update.
 
 Original run `38086263814` failed the AT log budget guard and did not complete a journey. The producer focus correction is still under a separate real-product DOM qualification; the original producer `6c9f766fdd91483c2de6f061e75589e94852a265`, run `37419955679` and artifact `11392773621` remain historical evidence. A later native journey requires the delivered producer successor and separately admitted current source bindings. No native journey or unknown historical Chrome custody is accepted by this caller update.
+
+
+The hosted product focus successor is prepared against protected Rendering
+`f54eb930621f6d133026e9a0b23926e85b8b6cda`. It preserves the production baseline
+`f3eb5abb117042144a1cbb41a5ec43821642df74` and builds that baseline and the
+candidate stable control ordering as separate actual packed BrowserFixtures.
+The independent `svg-browser` focus job requires one baseline loss receipt and
+six candidate receipts, including 100 continuous accepted updates, both reorder
+cases and both removal cases. Existing browser-family checks remain intact.
+The separately admitted inert qualification passed all 13 Python package/upload
+controls and six actual inert Node lifecycle controls, with exact named receipts,
+43 pinned Node mappings and observed empty owned-group cleanup. Root accepted
+that qualification; its seven actual hosted product cases have not run. Its ordinary hosted browser close
+contract does not authenticate the refused local deleted mapping or establish
+native AT focus, speech, keyboard activation or journey completion. The original
+native run `38086263814` and subsequent local DOM failures remain failures; local
+mmap expansion and retries stop. A successful scoped product result must precede
+a new genuine Rendering candidate producer archive and separately bound
+Templates qualification. Published source and the original producer archive
+remain unchanged.
+
+
+The first hosted focus attempt on PR1422, run `38097421109/a1`, failed before
+any product case because the comparison opened the performance-suite HTML and
+waited for the API exposed by the separate BrowserFixture index page. Both
+packed builds, source joins and SDK10.0.401 checks passed; the original browser,
+context and server closed, but baseline focus loss and candidate behavior remain
+unqualified. This successor selects the actual index entrypoint, checks its
+manifest-bound compiled Program API bootstrap, and retains bounded page errors.
+All 17 inert controls passed against the retained original/candidate compiled
+fixtures, with exact results, 43 actual Node mappings and empty owned-group
+cleanup joined. These checks parse compiled bytes without executing product
+JavaScript. The seven hosted product cases remain pending; the first attempt
+and all native failures stay preserved.

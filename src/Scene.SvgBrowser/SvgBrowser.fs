@@ -46,6 +46,11 @@ module private Dom =
 
     let clear (element: Element) = element.innerHTML <- ""
 
+    // Preserve already ordered controls and the active control during keyed reorder.
+    // Moving an attached focused node with appendChild/insertBefore drops native focus.
+    [<Emit("(function(parent,status,wanted){const focused=parent.ownerDocument.activeElement;if(status.parentElement===parent&&parent.firstElementChild!==status)parent.insertBefore(status,parent.firstElementChild);let anchor=parent.firstElementChild;if(anchor===status)anchor=anchor.nextElementSibling;for(const button of wanted){if(button===anchor){anchor=anchor.nextElementSibling;continue;}if(button===focused&&button.parentElement===parent){while(anchor!==button){if(!anchor)throw new Error('focused control ordering identity changed');const displaced=anchor;anchor=anchor.nextElementSibling;parent.insertBefore(displaced,button.nextSibling);}anchor=button.nextElementSibling;}else{parent.insertBefore(button,anchor);}}})($0,$1,$2)")>]
+    let orderControls (_parent: Element) (_status: Element) (_wanted: HTMLElement array) : unit = jsNative
+
     [<Emit("document.importNode(new DOMParser().parseFromString($0, 'image/svg+xml').documentElement, true)")>]
     let parseExportedSvg (_svg: string) : Element = jsNative
 
@@ -496,6 +501,7 @@ type SvgBrowserHost
                 controlButtons[id].remove()
                 controlButtons.Remove id |> ignore
 
+        let orderedControls = ResizeArray<HTMLElement>()
         for value in selectable do
             let button =
                 match controlButtons.TryGetValue value.Id with
@@ -517,7 +523,9 @@ type SvgBrowserHost
                     "false"
             )
 
-            controls.appendChild (button) |> ignore
+            orderedControls.Add button
+
+        Dom.orderControls controls status (orderedControls.ToArray())
 
         let selectedLabel =
             state.SelectedObjectId

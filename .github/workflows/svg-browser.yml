@@ -49,6 +49,7 @@ permissions:
 
 jobs:
   browser:
+    needs: focus-comparison
     name: SVG browser adapter (packed Fable + Chromium)
     runs-on: ubuntu-latest
     steps:
@@ -125,4 +126,86 @@ jobs:
             ${{ runner.temp }}/svg-browser-observations*.orca.log
             ${{ runner.temp }}/svg-browser-observations*.exported.svg
             ${{ runner.temp }}/svg-scale-qualification.json
+          if-no-files-found: warn
+
+  focus-comparison:
+    name: Packed original/candidate DOM focus comparison
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Prepare exclusive hosted attempt evidence
+        env:
+          FOCUS_CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib
+          root = pathlib.Path(os.environ['RUNNER_TEMP']) / 'svg-focus-comparison'
+          root.mkdir(mode=0o700)
+          evidence = root / 'evidence'
+          evidence.mkdir(mode=0o700)
+          with (evidence / 'hosted-attempt.json').open('x') as stream:
+              json.dump({'runId': os.environ['GITHUB_RUN_ID'], 'runAttempt': os.environ['GITHUB_RUN_ATTEMPT'], 'candidateHead': os.environ['FOCUS_CANDIDATE_SHA'], 'job': os.environ['GITHUB_JOB'], 'nativeJourneyAcceptance': False}, stream)
+          PY
+      - name: Checkout exact candidate
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Checkout protected production baseline
+        uses: actions/checkout@v7
+        with:
+          repository: FS-GG/FS.GG.Rendering
+          ref: f3eb5abb117042144a1cbb41a5ec43821642df74
+          path: _focus-original
+          persist-credentials: false
+      - name: Set up selected .NET SDK
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.401'
+      - name: Set up selected Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '26.10.0'
+          cache: npm
+          cache-dependency-path: tests/Scene.SvgBrowser.Tests/package-lock.json
+      - name: Restore exact browser harness
+        working-directory: tests/Scene.SvgBrowser.Tests
+        run: npm ci
+      - name: Install matching Chromium and hosted dependencies
+        working-directory: tests/Scene.SvgBrowser.Tests
+        run: npx playwright-core install --with-deps chromium
+      - name: Compare separately packed original and candidate fixtures
+        env:
+          FOCUS_CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: bash tests/Scene.SvgBrowser.Tests/run-focus-comparison.sh "$RUNNER_TEMP/svg-focus-comparison"
+      - name: Record original terminal step status even on preparation failure
+        if: always()
+        env:
+          FOCUS_JOB_STATUS: ${{ job.status }}
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib, shutil
+          root = pathlib.Path(os.environ['RUNNER_TEMP']) / 'svg-focus-comparison'
+          evidence, upload = root / 'evidence', root / 'upload'
+          upload.mkdir(mode=0o700)
+          status = {'statusBeforeUpload': os.environ['FOCUS_JOB_STATUS'], 'runId': os.environ['GITHUB_RUN_ID'], 'runAttempt': os.environ['GITHUB_RUN_ATTEMPT'], 'coverage': 'actual result required; absent result is incomplete', 'nativeJourneyAcceptance': False}
+          files = list(evidence.iterdir()) if evidence.is_dir() else []
+          admitted = len(files) <= 128 and all(p.is_file() and not p.is_symlink() for p in files) and sum(p.stat().st_size for p in files) <= 4194304 - 4096
+          if admitted:
+              for path in files:
+                  shutil.copyfile(path, upload / path.name)
+          else:
+              status.update({'firstCause': 'upload population/budget refused', 'coverage': 'incomplete; original evidence omitted, no oversized proof uploaded'})
+          body = (json.dumps(status) + '\n').encode()
+          if len(body) > 4096: raise RuntimeError('terminal status oversized')
+          with (upload / 'hosted-step-status.json').open('xb') as stream: stream.write(body)
+          if sum(p.stat().st_size for p in upload.iterdir()) > 4194304: raise RuntimeError('upload promotion budget refused')
+          if not admitted: raise RuntimeError('upload population/budget refused; bounded receipt retained')
+          PY
+      - name: Retain bounded focus evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: svg-product-focus-comparison
+          path: ${{ runner.temp }}/svg-focus-comparison/upload/*
           if-no-files-found: warn
