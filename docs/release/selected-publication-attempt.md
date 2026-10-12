@@ -232,8 +232,19 @@ The original local observation expired before the candidate finished; archive ac
 separately budgeted later. Neither expiry nor this source window authorizes replay of the consumed POST.
 
 `external-authority-recovery-0.32.2-attempt.json` is a separate closed subject of the maintained
-publisher and selected tag route. It retains `attemptReady:false`; genuine qualification source,
-run/attempt/artifact, outer digest/size, result/AT observation and root readback remain explicit unknowns.
+publisher and selected tag route. It now binds accepted original qualification
+[run38228530090/a1](https://github.com/FS-GG/FS.GG.Rendering/actions/runs/38228530090),
+Rendering caller9ee91795 and Templates receiver6a5dd530, with `attemptReady:true`. Artifact11737512571
+has1,050,561 bytes and SHA256 `93f4fff4f1e7c6534d390a9b0db2f4361557445290ad795efbc7e991544b16cc`;
+its separate genuine Orca packet passed15 actions, including actual rearmed/disposed speech, with
+inner/outer/binder exit0, exact companion and session-contract reaping, and empty observed cleanup.
+The qualification binding retains exact result, observation and root acceptance digests. Source metadata
+continues to report actualScreenReader not-observed; the separate AT packet establishes the genuine
+observation. Original failed journeys38210437244 and38218823088 remain unchanged. Terminal success
+was observed before the original cutoff; later archive/log collection used separate read-only scopes.
+The first status observer parent birth retirement remains unknown because its prospective journal was
+missing. Sampled custody does not establish whole-tree retirement or physical audio observation.
+Publication and installed acceptance remain pending.
 Historical6c9/0.32.1 whole guard functions and attempt bytes are preserved. Unknown, mixed or arbitrary
 candidate selections refuse before effect eligibility. No automatic version-wide publisher or alternate
 launcher is introduced.
