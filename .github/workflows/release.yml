@@ -134,7 +134,7 @@ jobs:
             [[ "$source_sha" == 6c9f766fdd91483c2de6f061e75589e94852a265 ]] || exit 3
           fi
           version="${INPUT_VERSION:-${EVENT_TAG#v}}"
-          plan=eng/release/svg-export-prefix-0.32.1.json
+          plan=eng/release/external-authority-recovery-0.32.2.json
           authority=()
           # Read-only preflight gathers evidence needed for readiness; all effectful calls still require it.
           [[ "$SOURCE_ONLY" == 'true' || "$PREFLIGHT_ONLY" == 'true' ]] || authority+=(--require-publication-ready)
@@ -419,13 +419,13 @@ jobs:
         with:
           target: FS.GG.Rendering.slnx
       - name: Pack the complete source candidate and verify custody
-        run: bash scripts/release-pack.sh eng/release/svg-export-prefix-0.32.1.json "$GITHUB_SHA" 0.32.1
-      - name: ApiCompat against published 0.32.0
-        run: bash scripts/apicompat-check.sh --baseline 0.32.0 --release-plan eng/release/svg-export-prefix-0.32.1.json
+        run: bash scripts/release-pack.sh eng/release/external-authority-recovery-0.32.2.json "$GITHUB_SHA" 0.32.2
+      - name: ApiCompat against published 0.32.1
+        run: bash scripts/apicompat-check.sh --baseline 0.32.1 --release-plan eng/release/external-authority-recovery-0.32.2.json
       - name: Retain candidate bytes for isolated consumer composition
         uses: actions/upload-artifact@v7
         with:
-          name: rendering-source-candidate-${{ github.sha }}-0.32.1
+          name: rendering-source-candidate-${{ github.sha }}-0.32.2
           path: artifacts/packages/
           if-no-files-found: error
           compression-level: 0
@@ -444,8 +444,8 @@ jobs:
       id-token: write
     env:
       # Selected successor preflight uses its immutable producer plan and published baseline.
-      RELEASE_PLAN: eng/release/svg-export-prefix-0.32.1.json
-      RELEASE_BASELINE: '0.32.0'
+      RELEASE_PLAN: ${{ inputs.bound-attempt && 'eng/release/svg-export-prefix-0.32.1.json' || 'eng/release/external-authority-recovery-0.32.2.json' }}
+      RELEASE_BASELINE: ${{ inputs.bound-attempt && '0.32.0' || '0.32.1' }}
     steps:
       - uses: actions/checkout@v7
         with:

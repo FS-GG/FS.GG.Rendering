@@ -20,7 +20,9 @@ try
     let planBytes = File.ReadAllBytes(value "--plan")
     let planHash = Convert.ToHexString(SHA256.HashData planBytes).ToLowerInvariant()
     let scopeOnly = Environment.GetEnvironmentVariable("FSGG_NUGET_SCOPE_ONLY")="true"
-    let successor = planHash="ac433609d14d0a672ad42e5f3578afdd6ecf6ee1144c33d5e6aec951535d84f2"
+    // The new plan permits scope-only reads; the historical effect binding remains closed.
+    let successor = planHash="ac433609d14d0a672ad42e5f3578afdd6ecf6ee1144c33d5e6aec951535d84f2" ||
+                    (scopeOnly && planHash="81571fc65ac117e90467428d2e50e103ec875aa33cb83b054d9056bf4129aa1a")
     if not successor then invalidArg "plan" "verify-key-plan-refused"
     use plan = JsonDocument.Parse(planBytes)
     let baseline = plan.RootElement.GetProperty("baselineVersion").GetString()
