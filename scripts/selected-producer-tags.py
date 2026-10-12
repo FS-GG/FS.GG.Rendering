@@ -35,6 +35,37 @@ ORIGINS = ('https://github.com/FS-GG/FS.GG.Rendering', 'https://github.com/FS-GG
 class Refused(Exception):
     """Known failure or unknown observation; neither permits another effect."""
 
+    def __init__(self, message: str, diagnostic: dict | None = None):
+        super().__init__(message)
+        self.diagnostic = diagnostic
+
+
+def failure_diagnostic(result) -> dict:
+    """Retain fixed error categories, never arbitrary git output or credentials.
+
+    Categories describe observed messages, not an authenticated remote verdict.
+    Unclassified errors remain unknown. This adds no retry or credential authority.
+    """
+    stdout, stderr = result.stdout or '', result.stderr or ''
+    sample = (stdout[:16384] + '\n' + stderr[:16384]).lower()
+    categories = []
+    selectors = {
+        'repository-rule-message': ('gh013', 'gh006', 'repository rule violations', 'protected tag'),
+        'workflow-permission-message': ('refusing to allow a github app', 'without `workflows` permission', 'without workflows permission'),
+        'repository-write-message': ('write access to repository not granted', 'permission to'),
+        'authentication-message': ('authentication failed', 'could not read username', 'terminal prompts disabled', 'http basic: access denied'),
+        'remote-rejection-message': ('[remote rejected]', '[rejected]'),
+        'transport-message': ('could not resolve host', 'failed to connect', 'connection timed out', 'connection reset'),
+    }
+    for category, markers in selectors.items():
+        if any(marker in sample for marker in markers):
+            categories.append(category)
+    return {'returnCode': result.returncode, 'stdoutCharacters': len(stdout),
+            'stderrCharacters': len(stderr), 'sampleCharactersMaximum': 32769,
+            'sampleTruncated': len(stdout) > 16384 or len(stderr) > 16384,
+            'messageCategories': categories or ['unclassified'],
+            'remoteCauseAuthenticated': False, 'rawOutputRetained': False}
+
 
 class Git:
     def __init__(self, root: Path):
@@ -57,7 +88,8 @@ class Git:
             # Never print command output/remote URLs, which may contain authentication details.
             raise Refused(f'git {args[0]} unavailable or timed out; outcome unknown') from exc
         if result.returncode != 0:
-            raise Refused(f'git {args[0]} exit {result.returncode}; outcome unknown')
+            raise Refused(f'git {args[0]} exit {result.returncode}; outcome unknown',
+                          failure_diagnostic(result))
         if len(result.stdout) > 16384:
             raise Refused(f'git {args[0]} output limit exceeded')
         return result.stdout.strip()
@@ -222,7 +254,8 @@ class Operation:
         except (Refused, SystemExit, OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as exc:
             self.receipt['result'] = 'refused-or-unknown'
             # Exceptions from source validators contain paths/identities only; do not expose git output.
-            self.record('stopped', reason=str(exc))
+            diagnostic = getattr(exc, 'diagnostic', None)
+            self.record('stopped', reason=str(exc), **({'diagnostic': diagnostic} if diagnostic else {}))
             raise Refused(str(exc)) from exc
 
 

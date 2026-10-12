@@ -293,6 +293,70 @@ class TagTests(unittest.TestCase):
         self.assertLessEqual(kwargs['timeout'], 25)
         self.assertEqual('0', kwargs['env']['GIT_TERMINAL_PROMPT'])
 
+    def test_failure_categories_preserve_no_raw_output_or_credentials(self):
+        messages = {
+            'repository-rule-message': 'remote: error: GH013: Repository rule violations',
+            'workflow-permission-message': 'refusing to allow a GitHub App without `workflows` permission',
+            'repository-write-message': 'Write access to repository not granted',
+            'authentication-message': 'fatal: Authentication failed',
+            'remote-rejection-message': '[remote rejected]',
+            'transport-message': 'fatal: Could not resolve host',
+            'unclassified': 'unexpected response',
+        }
+        secret = 'credential-canary-do-not-retain'
+        for category, message in messages.items():
+            with self.subTest(category=category):
+                result = subprocess.CompletedProcess(['git'], 1,
+                    stdout='https://user:' + secret + '@example.invalid/private',
+                    stderr=message + ' Authorization: Bearer ' + secret)
+                diagnostic = tags.failure_diagnostic(result)
+                self.assertIn(category, diagnostic['messageCategories'])
+                self.assertFalse(diagnostic['remoteCauseAuthenticated'])
+                self.assertFalse(diagnostic['rawOutputRetained'])
+                serialized = json.dumps(diagnostic)
+                for value in (secret, 'example.invalid', message, 'Authorization'):
+                    self.assertNotIn(value, serialized)
+
+    def test_failure_category_sampling_reports_omitted_coverage(self):
+        result = subprocess.CompletedProcess(['git'], 1,
+            stdout='x' * 16384 + '[remote rejected]', stderr='y' * 16385)
+        diagnostic = tags.failure_diagnostic(result)
+        self.assertEqual(['unclassified'], diagnostic['messageCategories'])
+        self.assertTrue(diagnostic['sampleTruncated'])
+        self.assertEqual(len(result.stdout), diagnostic['stdoutCharacters'])
+        self.assertEqual(len(result.stderr), diagnostic['stderrCharacters'])
+
+    def test_git_failure_attaches_only_fixed_diagnostic(self):
+        result = subprocess.CompletedProcess(['git'], 1, stdout='',
+            stderr='remote: GH013 credential-canary-do-not-retain')
+        with patch.object(tags.subprocess, 'run', return_value=result):
+            with self.assertRaises(tags.Refused) as observed:
+                tags.Git(self.root)('push', 'origin', 'original:ref')
+        self.assertEqual(['repository-rule-message'], observed.exception.diagnostic['messageCategories'])
+        self.assertNotIn('credential-canary', str(observed.exception))
+
+    def test_original_push_diagnostic_survives_failed_readback_without_retry(self):
+        diagnostic = tags.failure_diagnostic(subprocess.CompletedProcess(
+            ['git'], 1, stdout='', stderr='remote: GH013 credential-canary-do-not-retain'))
+        pushed = False
+        def uncertain(args):
+            nonlocal pushed
+            if args[0] == 'push':
+                pushed = True
+                raise tags.Refused('git push exit 1; outcome unknown', diagnostic)
+            if pushed and args[0] == 'ls-remote':
+                raise tags.Refused('git ls-remote unavailable; outcome unknown')
+        self.git.on_call = uncertain
+        operation = self.operation()
+        with self.assertRaisesRegex(tags.Refused, 'git push exit 1'):
+            operation.run()
+        self.assertEqual(1, sum(args[0] == 'push' for args in self.git.calls))
+        receipt = json.loads(operation.path.read_text())
+        self.assertEqual('refused-or-unknown', receipt['result'])
+        self.assertEqual('unknown-push-readback-unavailable', receipt['events'][-2]['stage'])
+        self.assertEqual(diagnostic, receipt['events'][-1]['diagnostic'])
+        self.assertNotIn('credential-canary', operation.path.read_text())
+
     def test_actual_source_binding_and_immutable_plan_are_reused(self):
         binding = tags.selected_binding(ROOT, tags.PRODUCER, tags.VERSION)
         self.assertTrue(binding['attemptReady'])
