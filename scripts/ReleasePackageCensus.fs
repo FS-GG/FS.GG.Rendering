@@ -16,6 +16,13 @@ open System.Threading
 
 let Repository = "FS-GG/FS.GG.Rendering"
 
+// Closed read-only plan coordinates; publication authority remains separate.
+let selectedPlanTuple = function
+    | "eng/release/svg-external-authority-0.32.0.json" -> Ok ("0.32.0", "0.31.0")
+    | "eng/release/svg-export-prefix-0.32.1.json" -> Ok ("0.32.1", "0.32.0")
+    | "eng/release/external-authority-recovery-0.32.2.json" -> Ok ("0.32.2", "0.32.1")
+    | _ -> Error "census-plan-path-refused"
+
 type Verdict = Absent | Occupied | Unknown
 
 type PermissionTerm = { Name: string; Level: string }
