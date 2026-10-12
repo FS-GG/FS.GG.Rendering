@@ -157,8 +157,8 @@ class SourceGuardTests(unittest.TestCase):
         self.assertNotIn('id-token: write',candidate)
         self.assertNotIn('NuGet/login',candidate)
         self.assertIn('release-pack.sh',candidate)
-        self.assertIn('rendering-source-candidate-${{ github.sha }}-0.32.1',candidate)
-        self.assertIn('--baseline 0.32.0',candidate)
+        self.assertIn('rendering-source-candidate-${{ github.sha }}-0.32.2',candidate)
+        self.assertIn('--baseline 0.32.1',candidate)
 
 class InertSuccessorTests(unittest.TestCase):
     PLAN = 'eng/release/svg-export-prefix-0.32.1.json'
@@ -166,6 +166,9 @@ class InertSuccessorTests(unittest.TestCase):
     def validate(self, mutation=None, ready=False, plan_path=None):
         def source(_root, _sha, path):
             value = (ROOT/path).read_text()
+            # Preserve the historical0.32.1 fixture axes; current source has a distinct0.32.2 plan.
+            if path in ('template/base/Directory.Packages.props', '.template.package/FS.GG.UI.Template.fsproj', 'template/product-skills/fs-gg-symbology/reference.fsx'):
+                value = value.replace('0.32.2', '0.32.1')
             return mutation(path, value) if mutation else value
         def git(_root, *args):
             if args[0] == 'ls-tree':
@@ -207,7 +210,7 @@ class InertSuccessorTests(unittest.TestCase):
     def test_actual_committed_successor_and_original_producer(self):
         # Real Git source reads: candidate source-only acceptance, historic original
         # acceptance, and cross-selection refusal. No restore, network or CLR.
-        head = guard.preflight.git(ROOT, 'rev-parse', 'HEAD')
+        head = 'd3b819a71eabcc0f557bcd23677dfd4397439428'
         self.assertEqual('pass', guard.validate(ROOT, head, self.PLAN, '0.32.1')['result'])
         self.assertEqual('pass', guard.validate(ROOT, guard.PRODUCER, PLAN, '0.32.0')['result'])
         with self.assertRaises(SystemExit): guard.validate(ROOT, head, PLAN, '0.32.0')
@@ -228,15 +231,15 @@ class InertSuccessorTests(unittest.TestCase):
                    'GITHUB_REPOSITORY':'FS-GG/FS.GG.Rendering','GITHUB_RUN_ID':'1','GITHUB_RUN_ATTEMPT':'1'}
             # Execute the actual shell entry and actual guard. Source/preflight may
             # pass this static boundary; publisher/tag calls must stop before it.
-            for source, preflight, version, tag in [('true','false','0.32.1',''),
-                    ('false','true','0.32.1',''), ('false','false','0.32.1',''),
-                    ('false','false','','v0.32.1'), ('true','false','0.32.0','')]:
+            for source, preflight, version, tag in [('true','false','0.32.2',''),
+                    ('false','true','0.32.2',''), ('false','false','0.32.2',''),
+                    ('false','false','','v0.32.2'), ('true','false','0.32.0','')]:
                 marker.unlink(missing_ok=True)
                 env.update(SOURCE_ONLY=source, PREFLIGHT_ONLY=preflight, INPUT_VERSION=version, EVENT_TAG=tag)
                 result = subprocess.run(['bash', '-c', script+'\nprintf reached > "$EFFECT_MARKER"'],
                                         cwd=ROOT, env=env, capture_output=True, text=True, timeout=10)
                 with self.subTest(source=source, preflight=preflight, version=version, tag=tag):
-                    allowed = version=='0.32.1' and (source=='true' or preflight=='true')
+                    allowed = version=='0.32.2' and (source=='true' or preflight=='true')
                     self.assertEqual(allowed, result.returncode==0, result.stdout+result.stderr)
                     self.assertEqual(allowed, marker.exists(), result.stdout+result.stderr)
                     if not allowed: self.assertIn('release-preflight:', result.stderr+result.stdout)
@@ -253,14 +256,14 @@ class SuccessorRouteTests(unittest.TestCase):
         release = (ROOT/'.github/workflows/release.yml').read_text()
         blocks = dict(re.findall(r'^  ([a-z-]+):\n(.*?)(?=^  [a-z-]+:|\Z)', release, re.M|re.S))
         admission = blocks['release-source-guard']
-        self.assertIn('plan=eng/release/svg-export-prefix-0.32.1.json', admission)
+        self.assertIn('plan=eng/release/external-authority-recovery-0.32.2.json', admission)
         self.assertIn('plan=eng/release/svg-export-prefix-0.32.1.json', admission)
         self.assertIn('--plan "$plan"', admission)
         self.assertIn('[[ "$source_sha" == 6c9f766fdd91483c2de6f061e75589e94852a265 ]]', admission)
         candidate = blocks['source-package-custody']
-        self.assertIn('release-pack.sh eng/release/svg-export-prefix-0.32.1.json "$GITHUB_SHA" 0.32.1', candidate)
+        self.assertIn('release-pack.sh eng/release/external-authority-recovery-0.32.2.json "$GITHUB_SHA" 0.32.2', candidate)
         preflight = blocks['publication-preflight']
-        self.assertIn("RELEASE_BASELINE: '0.32.0'", preflight)
+        self.assertIn("inputs.bound-attempt && '0.32.0' || '0.32.1'", preflight)
         self.assertEqual(3, preflight.count('--plan "$RELEASE_PLAN"'))
         self.assertIn('--version "$RELEASE_BASELINE"', preflight)
         self.assertIn('fs.gg.ui.scene/$RELEASE_BASELINE/fs.gg.ui.scene.$RELEASE_BASELINE.nupkg', preflight)
@@ -622,12 +625,66 @@ class ExecutorFenceTests(unittest.TestCase):
         self.assertLess(boundary.index('joinExecutor executorFacts.RootElement'),boundary.index('GetEnvironmentVariable("NUGET_API_KEY")'))
         self.assertLess(boundary.index('joinExecutor inputs.RootElement'),boundary.index('inspect (httpTransport key)'))
 
-def native_boundary():
+
+class RecoverySuccessorTests(unittest.TestCase):
+    PLAN = 'eng/release/external-authority-recovery-0.32.2.json'
+
+    def validate(self, mutation=None, require_ready=False):
+        spec = importlib.util.spec_from_file_location('recovery_guard', ROOT/'scripts/release-source-guard.py')
+        current_guard = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(current_guard)
+        def source(_root, _sha, path):
+            value = (ROOT / path).read_text()
+            return mutation(path, value) if mutation else value
+        def git(_root, *args):
+            if args[0] == 'ls-tree':
+                return '\n'.join(str(f.relative_to(ROOT)) for f in (ROOT/'src').rglob('*.fsproj')) + '\n.template.package/FS.GG.UI.Template.fsproj'
+            return 'b'*40 if args[0] == 'rev-parse' else ''
+        with patch.object(current_guard.preflight, 'source_text', side_effect=source), patch.object(current_guard.preflight, 'git', side_effect=git):
+            return current_guard.validate(ROOT, 'a'*40, self.PLAN, '0.32.2', require_ready)
+
+    def test_exact_source_only_coherent_successor(self):
+        actual = self.validate()
+        self.assertEqual(('0.32.2', '0.32.1', 19), tuple(actual[k] for k in ('version', 'baselineVersion', 'rosterCount')))
+        self.assertIn('no publication authority', actual['scope'])
+
+    def test_readiness_and_effects_still_refuse(self):
+        with self.assertRaises(SystemExit):
+            self.validate(require_ready=True)
+        def forged_ready(path, text):
+            if path == self.PLAN:
+                doc = json.loads(text); doc['publicationReady'] = True; return json.dumps(doc)
+            return text
+        with self.assertRaises(SystemExit):
+            self.validate(forged_ready)
+
+    def test_wrong_baseline_and_axes_refuse(self):
+        def wrong_baseline(path, text):
+            if path == self.PLAN:
+                doc = json.loads(text); doc['baselineVersion'] = '0.32.0'; return json.dumps(doc)
+            return text
+        with self.assertRaises(SystemExit):
+            self.validate(wrong_baseline)
+        for axis in ('template/base/Directory.Packages.props', '.template.package/FS.GG.UI.Template.fsproj', 'template/product-skills/fs-gg-symbology/reference.fsx'):
+            with self.subTest(axis=axis), self.assertRaises(SystemExit):
+                self.validate(lambda path, text: text.replace('0.32.2', '0.32.1') if path == axis else text)
+
+    def test_historical_publisher_is_not_rebound(self):
+        current = (ROOT/'.github/workflows/release.yml').read_text()
+        publisher = re.search(r'^  publish-packages:\n(.*?)(?=^  [a-z-]+:|\Z)', current, re.M|re.S).group(1)
+        self.assertIn('inputs.bound-attempt', publisher)
+        self.assertIn('PRODUCER_SHA: 6c9f766fdd91483c2de6f061e75589e94852a265', publisher)
+        self.assertIn('--plan eng/release/svg-export-prefix-0.32.1.json --version 0.32.1', publisher)
+        self.assertNotIn('0.32.2', publisher)
+        self.assertNotIn('release-pack.sh', publisher)
+
+
+def native_boundary(scope_only=False):
     """Selected native mode: actual wrapper, synthetic joins, no credential/network."""
     import time
     start=time.monotonic()
     head='a'*40
-    plan=ROOT/'eng/release/svg-export-prefix-0.32.1.json'
+    plan=ROOT/('eng/release/external-authority-recovery-0.32.2.json' if scope_only else 'eng/release/svg-export-prefix-0.32.1.json')
     proof={'expectedExecutorSha':head,'executorSha':head,'workflowContextSha':head,
            'workflowSha':head,'workflowRef':'FS-GG/FS.GG.Rendering/.github/workflows/release.yml@refs/heads/main',
            'run':'10','attempt':'1'}
@@ -654,13 +711,33 @@ def native_boundary():
     for field in ('run','attempt'):
         cases.append(('input-'+field,{}, {}, {field:'different'},'executor'))
     cases.append(('input-producer',{}, {}, {'producerSha':'b'*40},'input'))
+    if scope_only:
+        env.update(FSGG_NUGET_SCOPE_ONLY='true', FSGG_NUGET_SCOPE_SOURCE=head)
+        cases=[('recovery-scope-join',{}, {}, {},'credential'),
+               ('recovery-effects-refused',{'FSGG_NUGET_SCOPE_ONLY':'false'},{},{},'unavailable'),
+               ('recovery-source-refused',{'FSGG_NUGET_SCOPE_SOURCE':'b'*40},{},{},'unavailable'),
+               ('recovery-version-refused',{}, {'version':'0.32.1'}, {},'unavailable'),
+               ('recovery-plan-refused',{}, {'planSha256':'b'*64}, {},'unavailable'),
+               ('recovery-executor-refused',{'FSGG_EXPECTED_EXECUTOR_SHA':'b'*40},{},{},'executor')]
     results=[]
-    with tempfile.TemporaryDirectory(prefix='executor-boundary-',dir=os.environ.get('TMPDIR')) as folder:
+    with tempfile.TemporaryDirectory(prefix='executor-boundary-' ,dir=os.environ.get('TMPDIR')) as folder:
         root=Path(folder);attempt=root/'artifacts/attempt';attempt.mkdir(parents=True)
         for name,environment,mutant,input_mutant,stage in cases:
             remaining=85-(time.monotonic()-start)
             if remaining<=0:raise RuntimeError('native-boundary-original-deadline')
-            facts=attempt/'qualification-facts.json';facts.write_text(json.dumps({**proof,**mutant}))
+            facts=attempt/'qualification-facts.json'
+            if scope_only:
+                plan_doc=json.loads(plan.read_text())
+                receipt_proof={'schema':'fsgg.rendering.release-preflight/v1','result':'pass','mutation':'none',
+                    'sourceSha':head,'workflowSha':head,'version':'0.32.2','frameworkVersion':'0.32.2',
+                    'templateVersion':'0.32.2','planSha256':hashlib.sha256(plan.read_bytes()).hexdigest(),
+                    'rosterCount':19,'roster':[row['id'] for row in plan_doc['packages']],
+                    'workflow':{'repository':env['GITHUB_REPOSITORY'],'ref':proof['workflowRef'],'runId':'10'}}
+                facts.write_text(json.dumps({**receipt_proof,**mutant}))
+                preflight=root/'artifacts/preflight';preflight.mkdir(exist_ok=True)
+                (preflight/'executor-binding.json').write_text(json.dumps(proof))
+            else:
+                facts.write_text(json.dumps({**proof,**mutant}))
             (attempt/'input-binding.json').write_text(json.dumps({**inputs,**input_mutant}))
             receipt=attempt/'scope.json';receipt.unlink(missing_ok=True)
             command=['/usr/share/dotnet/dotnet','exec','--fx-version','10.0.12',
@@ -668,13 +745,15 @@ def native_boundary():
                      '--exec',str(ROOT/'scripts/release-nuget-verify-key.fsx'),
                      '--plan',str(plan),'--receipt',str(receipt),'--qualification',str(facts),'--census',str(attempt/'census.json')]
             child=subprocess.run(command,cwd=root,env={**env,**environment},capture_output=True,text=True,timeout=min(15,remaining))
-            expected='NuGet verify-key: refused stage='+stage+'; no publication eligibility'
+            expected=('NuGet verify-key: unavailable/refused; no publication eligibility' if stage=='unavailable' else
+                      'NuGet verify-key: refused stage='+stage+'; no publication eligibility')
             if child.returncode!=3 or expected not in child.stderr or 'error FS' in child.stderr or receipt.exists():
                 raise AssertionError(name+': actual exit/stage/compilation/receipt refused '+child.stdout+child.stderr)
             results.append({'case':name,'actualExit':child.returncode,'stage':stage,'receiptCreated':False})
     print('SVG_EXECUTOR_BOUNDARY '+json.dumps({'cases':results,'passed':len(results),'actualCredentials':False,
-          'networkSelected':False,'positiveJoinReached':'credential','elapsedSeconds':time.monotonic()-start},sort_keys=True))
+          'networkSelected':False,'positiveJoinReached':'credential','scopeOnly':scope_only,'elapsedSeconds':time.monotonic()-start},sort_keys=True))
 
 if __name__ == '__main__':
     if sys.argv[1:]==['--native-boundary']: native_boundary()
+    elif sys.argv[1:]==['--native-scope-boundary']: native_boundary(True)
     else: unittest.main()

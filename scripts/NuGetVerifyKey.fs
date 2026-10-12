@@ -11,7 +11,7 @@ type Observation = { PackageId: string; HttpStatus: int option; Outcome: string 
 type Transport = string -> string -> Observation
 
 let inspect (transport: Transport) (ids: string list) (baseline: string) =
-    if ids.Length <> 19 || (ids |> List.map (fun id -> id.ToLowerInvariant()) |> Set.ofList |> Set.count) <> 19 || (baseline <> "0.31.0" && baseline <> "0.32.0") then
+    if ids.Length <> 19 || (ids |> List.map (fun id -> id.ToLowerInvariant()) |> Set.ofList |> Set.count) <> 19 || (baseline <> "0.31.0" && baseline <> "0.32.0" && baseline <> "0.32.1") then
         Error "verify-key-roster-or-baseline-refused"
     else
         let observations = ids |> List.map (fun id ->
@@ -29,6 +29,11 @@ type ScopeContext = {
 let scopeSourceFromReceipt (context: ScopeContext) (receipt: JsonElement) =
     try
         let text (element: JsonElement) (name: string) = element.GetProperty(name).GetString()
+        let selectedVersion =
+            match context.PlanHash with
+            | "ac433609d14d0a672ad42e5f3578afdd6ecf6ee1144c33d5e6aec951535d84f2" -> "0.32.1"
+            | "81571fc65ac117e90467428d2e50e103ec875aa33cb83b054d9056bf4129aa1a" -> "0.32.2"
+            | _ -> null
         let workflow = receipt.GetProperty("workflow")
         let roster = receipt.GetProperty("roster").EnumerateArray() |> Seq.map(fun p -> p.GetString()) |> Seq.toList
         if isNull context.SourceSha || not(Regex.IsMatch(context.SourceSha, "^[0-9a-f]{40}$")) ||
@@ -36,12 +41,12 @@ let scopeSourceFromReceipt (context: ScopeContext) (receipt: JsonElement) =
            context.Repository<>"FS-GG/FS.GG.Rendering" ||
            context.WorkflowRef<>"FS-GG/FS.GG.Rendering/.github/workflows/release.yml@refs/heads/main" ||
            String.IsNullOrWhiteSpace(context.RunId) ||
-           context.PlanHash<>"ac433609d14d0a672ad42e5f3578afdd6ecf6ee1144c33d5e6aec951535d84f2" ||
+           isNull selectedVersion ||
            text receipt "schema"<>"fsgg.rendering.release-preflight/v1" ||
            text receipt "result"<>"pass" || text receipt "mutation"<>"none" ||
            text receipt "sourceSha"<>context.SourceSha || text receipt "workflowSha"<>context.WorkflowSha ||
-           text receipt "version"<>"0.32.1" || text receipt "frameworkVersion"<>"0.32.1" ||
-           text receipt "templateVersion"<>"0.32.1" || text receipt "planSha256"<>context.PlanHash ||
+           text receipt "version"<>selectedVersion || text receipt "frameworkVersion"<>selectedVersion ||
+           text receipt "templateVersion"<>selectedVersion || text receipt "planSha256"<>context.PlanHash ||
            text workflow "repository"<>context.Repository || text workflow "ref"<>context.WorkflowRef ||
            text workflow "runId"<>context.RunId || receipt.GetProperty("rosterCount").GetInt32()<>19 ||
            context.PackageIds.Length<>19 || roster<>context.PackageIds then

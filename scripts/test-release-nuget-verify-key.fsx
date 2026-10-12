@@ -10,7 +10,7 @@ for status in [Some 401;Some 403;Some 404;Some 302;Some 500;None] do
     assert(match inspect (response status) ids "0.31.0" with Ok(_,false)->true|_->false)
 assert(inspect (response(Some 200)) (List.tail ids) "0.31.0" |> Result.isError)
 assert(match inspect (response(Some 200)) ids "0.32.0" with Ok(rows,true) -> rows.Length=19 | _ -> false)
-for refused in ["0.30.0"; "0.32.1"; "0.32.x"; ""] do
+for refused in ["0.30.0"; "0.32.2"; "0.32.x"; ""] do
     assert(inspect (response(Some 200)) ids refused |> Result.isError)
 let facts = {OriginalCustodyVerified=true;NativeTemplatesQualified=true;ProviderPassed=180;BrowserPassed=[4;4;4];BrowserUnexpected=0;BrowserSkipped=0;BrowserFlaky=0;CompleteReadCensus=true;NuGetScopeStatuses=List.replicate 19 (Some 200);GitHubEffectiveWrite="unknown-before-attempt"}
 assert(admit facts)
@@ -87,3 +87,27 @@ for badContext in [{context with SourceSha="main"}; {context with WorkflowSha="m
     use document = JsonDocument.Parse(receiptText)
     assert(scopeSourceFromReceipt badContext document.RootElement |> Result.isError)
 printfn "PASS successor same-run scope provenance and refusal controls; no native authority"
+
+// The current recovery plan joins only its exact same-run, no-mutation source receipt.
+let recoveryContext = { context with PlanHash="81571fc65ac117e90467428d2e50e103ec875aa33cb83b054d9056bf4129aa1a" }
+let recoveryReceipt = JsonNode.Parse(receiptText)
+for field in ["version"; "frameworkVersion"; "templateVersion"] do
+    recoveryReceipt.[field] <- JsonValue.Create("0.32.2")
+recoveryReceipt.["planSha256"] <- JsonValue.Create(recoveryContext.PlanHash)
+let observeRecovery text =
+    use document = JsonDocument.Parse(text: string)
+    scopeSourceFromReceipt recoveryContext document.RootElement
+assert(observeRecovery (recoveryReceipt.ToJsonString()) = Ok recoveryContext.SourceSha)
+for field, replacement in ["version","0.32.1"; "frameworkVersion","0.32.1"; "templateVersion","0.32.1";
+                           "mutation","write"; "sourceSha",String.replicate 40 "c";
+                           "workflowSha",String.replicate 40 "c"; "planSha256",context.PlanHash] do
+    let changed = JsonNode.Parse(recoveryReceipt.ToJsonString())
+    changed.[field] <- JsonValue.Create(replacement)
+    assert(observeRecovery (changed.ToJsonString()) |> Result.isError)
+assert(observeRecovery receiptText |> Result.isError)
+assert(observe (recoveryReceipt.ToJsonString()) |> Result.isError)
+let recoveryRequestsBefore = requests.Count
+let recoveryFixture = httpTransportWithHandler "public-test-fixture-key" (new RecordingHandler(HttpStatusCode.OK, "0.32.1"))
+assert(match inspect recoveryFixture ids "0.32.1" with Ok(rows,true)->rows.Length=19|_->false)
+assert(requests.Count=recoveryRequestsBefore+19)
+printfn "PASS recovery exact-plan version/source joins and published-baseline19 GETs; no publication authority"
