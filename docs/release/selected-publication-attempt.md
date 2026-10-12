@@ -211,3 +211,58 @@ under the workspace credential in8.88 seconds. That credential is distinct from 
 principal whose supported-client readback verified all19 original archive hashes. No authentication
 policy was weakened; the failed local observation is retained alongside the successful native evidence.
 Ephemeral credential configuration was removed by the readback helper.
+
+
+## Retained 0.32.2 successor window, 2026-10-12
+
+This window selects original producer `9b73395658d4683a067d150ca9441b04e802c4af`,
+[source-only run38200411661/a1](https://github.com/FS-GG/FS.GG.Rendering/actions/runs/38200411661)
+and candidate artifact11725317255. Its15,007,722-byte outer archive SHA256 is
+`7b0532caf431cfa41acaf35555016cf126bc495c5a6e13fe7db6b8fbe7478cca`; custody SHA256 is
+`85bb1dcdf0378d05ca536d5878b88dedc301ff1524d39d98966e23888aae0120`.
+The raw original plan SHA256 is `81571fc65ac117e90467428d2e50e103ec875aa33cb83b054d9056bf4129aa1a`,
+with version0.32.2 and baseline0.32.1. Its `publicationReady:false` remains immutable.
+
+Recovered original archives and three identical SDK10.0.401/F#15.2.401/runtime10.0.12
+receipts passed offline source/custody correspondence and the canonical19-package verifier.
+Source-pack ApiCompat passed17 comparisons against published0.32.1 with zero breaks or unknowns.
+That gate repacks source check outputs; it does not establish a byte-equality claim to the retained
+candidate. Exact retained-template FSI/signature/custody/consumer gates remain separate.
+The original local observation expired before the candidate finished; archive acquisition was
+separately budgeted later. Neither expiry nor this source window authorizes replay of the consumed POST.
+
+`external-authority-recovery-0.32.2-attempt.json` is a separate closed subject of the maintained
+publisher and selected tag route. It retains `attemptReady:false`; genuine qualification source,
+run/attempt/artifact, outer digest/size, result/AT observation and root readback remain explicit unknowns.
+Historical6c9/0.32.1 whole guard functions and attempt bytes are preserved. Unknown, mixed or arbitrary
+candidate selections refuse before effect eligibility. No automatic version-wide publisher or alternate
+launcher is introduced.
+
+The exact retained candidate journey must consume the three selected Rendering archives from an empty
+private cache with no Rendering project references,186 Provider assertions, eight cases per Chromium,
+Firefox and WebKit, and all15 actual Orca actions with accepted custody and cleanup. The source-built
+Templates receiver is honest candidate evidence only; it reports `installedAcceptance:false`.
+Root authenticates the original qualified archive and accepted AT result before its immutable coordinates
+can replace the pending fields. The typed current186/8/15 eligibility contract is separate from historical180/4.
+
+Only a concrete, source-qualified executor and fresh root operation admission may cut the ordered
+0.32.2 tag triple at original9b733956 and execute the publisher. The publisher selects the same original
+archives without repacking, validates loaded compiler/runtime identity and all joined qualification before
+credential access, refreshes all19 active/deleted census and NuGet existing-ID scope observations, and
+keeps GitHub effective write unknown until acknowledgement/readback. Organization feed publication and
+complete payload readback precede public NuGet publication/readback; only repository signature entries
+may differ. Each sanitized event carries the separate fixed successor effect identity. Unknown sends
+retain their original identity for observation, never blind replay or a new journal.
+
+Pipeline preflight reuses actual-YAML dependency/order/refusal controls and the existing interrupted-send
+and ordered-tag controls. The first source/preflight design pass is capped at30 minutes before reassessment;
+no retry/effect-state protocol changed and no new model is justified. Source/refusal checks are preparation,
+not native qualification or published acceptance. Compilation, required hosted checks and protected native
+journeys remain required. Runner savings and complete token usage are unknown.
+
+Rendering0.32.2 publication and Templates0.18.3 adoption remain pending. After both-feed readback,
+public receiver tuples must bind actual released hashes before Templates0.18.3 qualification/publication.
+Installed acceptance requires the published package, an empty private template hive/cache, source unavailable
+to the generated workspace, and real browser/AT assertions. Fresh creation and promised retaining upgrades
+preserving edits/save/configuration/extensions and interruption/rollback are distinct outcomes. Shared
+WASM and SC2/BAR/FourD product authority remain outside this publication window.

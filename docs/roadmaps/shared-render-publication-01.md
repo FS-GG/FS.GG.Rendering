@@ -17,3 +17,21 @@ workspace defaults, Templates public pins, product native or Unified registry ar
 protected no-effect run37097094139 passed19 scope GETs and complete active/deleted/public absence checks.
 The executor binding selects that qualified source. Protected release37106323610 published all19 original archives to both feeds and matched native
 readbacks plus independent public payload readbacks. Fresh installed qualification remains pending. See [window evidence](../release/publication-window-20261003.json).
+
+
+## Current retained 0.32.2 successor
+
+The preceding completed rows describe historical0.32.0 publication. The current successor remains open
+under the [selected attempt's0.32.2 window](../release/selected-publication-attempt.md#retained-0322-successor-window-2026-10-12).
+Recovered original19-package source/custody/toolchain correspondence and source-pack ApiCompat have been
+reviewed separately. The closed publisher/typed eligibility/tag selection source is prepared with
+`attemptReady:false`; it grants no release effect.
+
+- [ ] Authenticate the complete exact-candidate186 Provider /8-per-browser /15-action AT journey and cleanup.
+- [ ] Populate its genuine immutable receiver qualification after root readback and qualify the changed executor.
+- [ ] Admit fresh selected tags/authority/census/scope and verify both-feed original payload readback.
+- [ ] Qualify published Templates0.18.3 fresh creation and promised retaining adoption separately.
+
+The original candidate plan remains `publicationReady:false`; historical failures, expired observation,
+consumed sends, reservations and original archive identities remain retained. Source delivery does not
+complete the publication or installed outcome.

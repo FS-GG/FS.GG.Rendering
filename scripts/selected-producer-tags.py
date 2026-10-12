@@ -77,7 +77,7 @@ def executor_identity(git, env: dict) -> dict:
     if git('rev-parse', 'HEAD') != expected:
         raise Refused('checkout HEAD differs from reviewed executor')
     git('diff', '--quiet', 'HEAD', '--', '.github/workflows/release-tags.yml',
-        'scripts/selected-producer-tags.py', 'scripts/release-source-guard.py', guard.ATTEMPT)
+        'scripts/selected-producer-tags.py', 'scripts/release-source-guard.py', guard.ATTEMPT, guard.SUCCESSOR_ATTEMPT)
     for arguments in [('remote', 'get-url', '--all', 'origin'),
                       ('remote', 'get-url', '--push', '--all', 'origin')]:
         if git(*arguments) not in ORIGINS:
@@ -101,18 +101,18 @@ def parse_refs(text: str, allowed: set[str]) -> dict:
     return observed
 
 
-def probe(git, refs=REFS) -> dict:
+def probe(git, refs=REFS, producer=PRODUCER) -> dict:
     requested = tuple(value for ref in refs for value in (ref, ref + '^{}'))
     observed = parse_refs(git('ls-remote', 'origin', *requested), set(requested))
     for ref in refs:
-        if ref + '^{}' in observed or observed.get(ref) not in (None, PRODUCER):
+        if ref + '^{}' in observed or observed.get(ref) not in (None, producer):
             raise Refused(f'{ref}: conflicting or annotated tag; preserve and stop')
     return {ref: observed.get(ref) for ref in refs}
 
 
-def ordered_prefix(state: dict) -> None:
+def ordered_prefix(state: dict, refs=REFS) -> None:
     absent = False
-    for ref in REFS:
+    for ref in refs:
         if state[ref] is None:
             absent = True
         elif absent:
@@ -120,6 +120,10 @@ def ordered_prefix(state: dict) -> None:
 
 
 def selected_binding(root: Path, source: str, version: str) -> dict:
+    if source == guard.SUCCESSOR['producerSha'] and version == guard.SUCCESSOR['version']:
+        binding = guard.validate_successor_attempt(root, source, require_ready=True)
+        guard.validate(root, source, guard.SUCCESSOR['planPath'], version, require_publication_ready=False)
+        return binding
     if source != PRODUCER or guard.PRODUCER != PRODUCER or version != VERSION:
         raise Refused('only original producer6c9 and version0.32.1 are admitted')
     # The publisher's executor_identity deliberately accepts only release.yml.
@@ -132,11 +136,17 @@ def selected_binding(root: Path, source: str, version: str) -> dict:
 class Operation:
     def __init__(self, root: Path, mode: str, source: str, version: str, env: dict,
                  git=None, binding_check=selected_binding):
+        subjects = {(PRODUCER, VERSION): TAGS,
+                    (guard.SUCCESSOR['producerSha'], guard.SUCCESSOR['version']): ('fs-gg-ui/v0.32.2', 'fs-gg-ui-template/v0.32.2', 'v0.32.2')}
+        if (source, version) not in subjects:
+            raise Refused('unknown or mixed closed producer/tag selection')
+        self.tags = subjects[(source, version)]
+        self.refs = tuple('refs/tags/' + tag for tag in self.tags)
         self.root, self.mode, self.source, self.version = root, mode, source, version
         self.env, self.git, self.binding_check = env, git or Git(root), binding_check
         self.path = root / 'artifacts/selected-producer-tags' / (mode + '.json')
         self.receipt = {'schema': 'fsgg.rendering.selected-producer-tags/v1', 'mode': mode,
-                        'producerSha': source, 'version': version, 'tags': list(TAGS),
+                        'producerSha': source, 'version': version, 'tags': list(self.tags),
                         'result': 'pending', 'publication': 'not-performed',
                         'notification': 'not-performed', 'events': []}
 
@@ -164,46 +174,46 @@ class Operation:
             if self.mode not in ('check', 'cut'):
                 raise Refused('unsupported operation mode')
             self.admit()
-            initial = probe(self.git)
-            ordered_prefix(initial)
+            initial = probe(self.git, self.refs, self.source)
+            ordered_prefix(initial, self.refs)
             self.record('all-three-before-effects', refs=initial)
             known = initial
             if self.mode == 'cut':
-                for ref in REFS:
+                for ref in self.refs:
                     self.admit()
-                    current = probe(self.git)
-                    ordered_prefix(current)
+                    current = probe(self.git, self.refs, self.source)
+                    ordered_prefix(current, self.refs)
                     # A tag observed before this run or created by it must never disappear.
-                    if any(current[previous] != PRODUCER for previous in REFS
-                           if known[previous] == PRODUCER):
+                    if any(current[previous] != self.source for previous in self.refs
+                           if known[previous] == self.source):
                         raise Refused('an observed tag disappeared; stop before the next effect')
                     self.record('before-tag', ref=ref, refs=current)
-                    if current[ref] == PRODUCER:
+                    if current[ref] == self.source:
                         self.record('preserved', ref=ref)
                     else:
                         # Journal before transport; a failed acknowledgement may still have effects.
-                        self.record('push-requested', ref=ref, target=PRODUCER)
+                        self.record('push-requested', ref=ref, target=self.source)
                         try:
                             self.git('push', '--no-follow-tags', '--recurse-submodules=no',
-                                     '--porcelain', 'origin', f'{PRODUCER}:{ref}')
+                                     '--porcelain', 'origin', f'{self.source}:{ref}')
                         except Refused:
                             self.record('push-outcome-unknown', ref=ref)
                             # One bounded READ ONLY observation, never another push or implicit retry.
                             try:
-                                observed = probe(self.git, (ref,))
+                                observed = probe(self.git, (ref,), self.source)
                                 self.record('unknown-push-readback', ref=ref, refs=observed)
                             except Refused:
                                 self.record('unknown-push-readback-unavailable', ref=ref)
                             raise
                         self.record('push-acknowledged', ref=ref)
-                    observed = probe(self.git, (ref,))
-                    if observed[ref] != PRODUCER:
+                    observed = probe(self.git, (ref,), self.source)
+                    if observed[ref] != self.source:
                         raise Refused(f'{ref}: immediate readback did not match original producer')
                     self.record('immediate-readback-matched', ref=ref, refs=observed)
-                    known = {**current, ref: PRODUCER}
+                    known = {**current, ref: self.source}
                 self.admit()
-                final = probe(self.git)
-                if any(value != PRODUCER for value in final.values()):
+                final = probe(self.git, self.refs, self.source)
+                if any(value != self.source for value in final.values()):
                     raise Refused('final ordered triple readback incomplete')
                 self.record('triple-readback-matched', refs=final)
             self.receipt['result'] = 'passed'

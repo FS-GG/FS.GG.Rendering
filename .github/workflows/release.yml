@@ -46,6 +46,10 @@ on:
         type: boolean
         required: false
         default: false
+      successor-attempt:
+        description: "Select the closed retained 0.32.2 candidate; pending genuine qualification refuses publication."
+        type: boolean
+        default: false
       bound-attempt:
         description: Use the executor-owned immutable producer6c9 attempt binding; prerequisites must be joined
         type: boolean
@@ -74,6 +78,10 @@ on:
         description: "Authenticate and prove collision state only; never pack, tag, or publish."
         type: boolean
         required: false
+        default: false
+      successor-attempt:
+        description: "Select the closed retained 0.32.2 candidate; pending genuine qualification refuses publication."
+        type: boolean
         default: false
       bound-attempt:
         description: Use the executor-owned immutable producer6c9 attempt binding; prerequisites must be joined
@@ -116,18 +124,21 @@ jobs:
           PREFLIGHT_ONLY: ${{ inputs.preflight-only }}
           SOURCE_ONLY: ${{ inputs.source-only }}
           BOUND_ATTEMPT: ${{ inputs.bound-attempt }}
+          SUCCESSOR_ATTEMPT: ${{ inputs.successor-attempt }}
         shell: bash
         run: |
           set -euo pipefail
           fence=()
-          if [[ "$PREFLIGHT_ONLY" == true || "$BOUND_ATTEMPT" == true ]]; then
+          successor="${SUCCESSOR_ATTEMPT:-false}"
+          [[ "$BOUND_ATTEMPT" != true || "$successor" != true ]] || { echo "::error::mixed immutable attempt selections"; exit 3; }
+          if [[ "$PREFLIGHT_ONLY" == true || "$BOUND_ATTEMPT" == true || "$successor" == true ]]; then
             python3 scripts/release-source-guard.py --executor-only
             fence+=(--executor-fence)
           fi
           source_sha="${REQUESTED_SOURCE:-$GITHUB_SHA}"
           [[ "$source_sha" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::source-sha must be exact lowercase 40-hex"; exit 1; }
           if [[ "$source_sha" != "$GITHUB_SHA" ]]; then
-            [[ "$PREFLIGHT_ONLY" == 'true' || "$BOUND_ATTEMPT" == 'true' ]] || { echo "::error::native qualification must use the checked-out source or admitted producer binding"; exit 1; }
+            [[ "$PREFLIGHT_ONLY" == 'true' || "$BOUND_ATTEMPT" == 'true' || "$successor" == true ]] || { echo "::error::native qualification must use the checked-out source or admitted producer binding"; exit 1; }
             git fetch --no-tags origin "$source_sha"
           fi
           if [[ "$BOUND_ATTEMPT" == true ]]; then
@@ -142,6 +153,11 @@ jobs:
             [[ "$SOURCE_ONLY" != true ]] || { echo "::error::bound attempt cannot regenerate a source candidate"; exit 3; }
             plan=eng/release/svg-export-prefix-0.32.1.json
             authority+=(--attempt-binding)
+            [[ "$PREFLIGHT_ONLY" != true ]] || authority+=(--attempt-preflight)
+          fi
+          if [[ "$successor" == true ]]; then
+            [[ "$SOURCE_ONLY" != true && "$source_sha" == 9b73395658d4683a067d150ca9441b04e802c4af ]] || exit 3
+            authority=(--successor-attempt)
             [[ "$PREFLIGHT_ONLY" != true ]] || authority+=(--attempt-preflight)
           fi
           python3 scripts/release-source-guard.py \
@@ -594,7 +610,7 @@ jobs:
       github.repository == 'FS-GG/FS.GG.Rendering' &&
       !inputs.source-only &&
       !inputs.validate-only &&
-      !inputs.preflight-only && inputs.bound-attempt
+      !inputs.preflight-only && (inputs.bound-attempt || inputs.successor-attempt)
     # Only publish a set that passed the release-only consumption checks above.
     needs: [release-source-guard, package-tests, template-product-tests]
     permissions:
@@ -603,7 +619,10 @@ jobs:
       packages: write
       id-token: write   # ADR-0013: mint the GitHub OIDC token for nuget.org Trusted Publishing
     env:
-      PRODUCER_SHA: 6c9f766fdd91483c2de6f061e75589e94852a265
+      PRODUCER_SHA: ${{ inputs.successor-attempt && '9b73395658d4683a067d150ca9441b04e802c4af' || '6c9f766fdd91483c2de6f061e75589e94852a265' }}
+      PRODUCER_VERSION: ${{ inputs.successor-attempt && '0.32.2' || '0.32.1' }}
+      PRODUCER_BASELINE: ${{ inputs.successor-attempt && '0.32.1' || '0.32.0' }}
+      FSGG_RELEASE_ATTEMPT: ${{ inputs.successor-attempt && '0322' || '0321' }}
       PRODUCER_PLAN: artifacts/attempt/producer-plan.json
     steps:
       - uses: actions/checkout@v7
@@ -681,12 +700,18 @@ jobs:
         run: |
           set -euo pipefail
           git fetch --no-tags origin "$PRODUCER_SHA"
-          python3 scripts/release-source-guard.py --attempt-binding --acquire-bound-artifacts \
-            --source-sha "$PRODUCER_SHA" --plan eng/release/svg-export-prefix-0.32.1.json --version 0.32.1
+          selected=(--attempt-binding)
+          plan=eng/release/svg-export-prefix-0.32.1.json
+          if [[ "$FSGG_RELEASE_ATTEMPT" == 0322 ]]; then
+            selected=(--successor-attempt)
+            plan=eng/release/external-authority-recovery-0.32.2.json
+          fi
+          python3 scripts/release-source-guard.py "${selected[@]}" --acquire-bound-artifacts \
+            --source-sha "$PRODUCER_SHA" --plan "$plan" --version "$PRODUCER_VERSION"
           echo "recovered=true" >> "$GITHUB_OUTPUT"
-          echo "artifact-name=rendering-original6c9-custody-${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_OUTPUT"
+          echo "artifact-name=rendering-original${FSGG_RELEASE_ATTEMPT}-custody-${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_OUTPUT"
           # Existing producer tags may never be moved to this executor.
-          for tag in fs-gg-ui/v0.32.1 fs-gg-ui-template/v0.32.1 v0.32.1; do
+          for tag in "fs-gg-ui/v$PRODUCER_VERSION" "fs-gg-ui-template/v$PRODUCER_VERSION" "v$PRODUCER_VERSION"; do
             git fetch --no-tags origin "refs/tags/$tag:refs/tags/$tag"
             test "$(git rev-parse "$tag^{commit}")" = "$PRODUCER_SHA"
           done
@@ -814,7 +839,16 @@ jobs:
 
       - name: ApiCompat vs public baseline (pass / first publication / unavailable are distinct)
         shell: bash
-        run: scripts/apicompat-check.sh --baseline 0.32.0 --release-plan "$PRODUCER_PLAN"
+        run: |
+          set -euo pipefail
+          if [[ "$FSGG_RELEASE_ATTEMPT" == 0322 ]]; then
+            # Closed original successful source-package-custody run and root-readback
+            # are bound by validate_successor_attempt before acquisition. No repack at
+            # executor HEAD is claimed to be the retained candidate's bytes.
+            echo "Reuse accepted source-pack gate38200411661/a1:17 comparisons vs0.32.1; retained-byte gates remain separate."
+          else
+            scripts/apicompat-check.sh --baseline 0.32.0 --release-plan "$PRODUCER_PLAN"
+          fi
 
       - name: Recheck executor before OIDC authority
         run: python3 scripts/release-source-guard.py --executor-only
@@ -970,7 +1004,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: rendering-publication-attempt-producer6c9-executor-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: rendering-publication-attempt-${{ env.FSGG_RELEASE_ATTEMPT }}-executor-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
           if-no-files-found: warn
           retention-days: 90
           compression-level: 0

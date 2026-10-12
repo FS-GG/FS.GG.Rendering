@@ -277,5 +277,178 @@ def main() -> int:
     print(json.dumps(result, sort_keys=True))
     return 0
 
+# The successor is an additional closed subject of this canonical executor. Historical
+# functions above retain their exact original bytes and module identities.
+SUCCESSOR_ATTEMPT = 'eng/release/external-authority-recovery-0.32.2-attempt.json'
+SUCCESSOR = {
+    'schema': 'fsgg.rendering.publication-attempt/v1',
+    'producerSha': '9b73395658d4683a067d150ca9441b04e802c4af',
+    'planPath': 'eng/release/external-authority-recovery-0.32.2.json',
+    'planSha256': '81571fc65ac117e90467428d2e50e103ec875aa33cb83b054d9056bf4129aa1a',
+    'producerRun': 38200411661, 'producerAttempt': 1, 'producerArtifact': 11725317255,
+    'outerSha256': '7b0532caf431cfa41acaf35555016cf126bc495c5a6e13fe7db6b8fbe7478cca',
+    'outerSizeBytes': 15007722,
+    'custodySha256': '85bb1dcdf0378d05ca536d5878b88dedc301ff1524d39d98966e23888aae0120',
+    'version': '0.32.2', 'baselineVersion': '0.32.1',
+    'githubEffectiveWrite': 'unknown-before-attempt',
+    'effectId': 'rendering-0322-original38200411661-a1',
+}
+
+
+def validate_successor_attempt(root: Path, source_sha: str, require_ready: bool = True) -> dict:
+    binding = json.loads((root / SUCCESSOR_ATTEMPT).read_text(), object_pairs_hook=preflight.unique_json_object)
+    if source_sha != SUCCESSOR['producerSha'] or any(type(binding.get(k)) is not type(v) or binding.get(k) != v for k, v in SUCCESSOR.items()):
+        preflight.fail('successor selected producer/artifact/plan/effect identity differs')
+    if set(binding) != set(SUCCESSOR) | {'attemptReady', 'qualification', 'sourcePackQualification', 'toolchain'}:
+        preflight.fail('successor attempt fields differ')
+    if hashlib.sha256(source_bytes(root, source_sha, binding['planPath'])).hexdigest() != binding['planSha256']:
+        preflight.fail('successor original raw plan bytes differ')
+    if binding['toolchain'] != {'sdkVersion': '10.0.401', 'compilerSha256': '2bd6190eafa94f47739538467f5a7cd52de233a627789c69f07959d7578e4d6b', 'fsharpCoreSha256': '2232698f623c28b8bcca32fa3cc8943cdd8529b20b487b5938106aae1c2ab256', 'runtimeVersion': '10.0.12'}:
+        preflight.fail('successor original toolchain identity differs')
+    source_pack = binding['sourcePackQualification']
+    if source_pack != {'run': 38200411661, 'attempt': 1, 'apiCompatPassed': 17, 'apiCompatBreaks': 0, 'scope': 'source-pack-only', 'rootReadbackSha256': '51219aa0559e7bfdb8499256db87ea86a6f8f5f22461dc88fa2ebeb1c8efa809'}:
+        preflight.fail('successor accepted source-pack qualification differs')
+    q = binding['qualification']
+    qfields = {'status', 'templatesSha', 'callerSha', 'run', 'attempt', 'artifact', 'outerSha256', 'outerSizeBytes', 'qualificationSha256', 'observationSha256', 'rootReadbackSha256'}
+    if not isinstance(q, dict) or set(q) != qfields or type(binding['attemptReady']) is not bool:
+        preflight.fail('successor qualification/readiness shape refused')
+    if binding['attemptReady']:
+        if q['status'] != 'qualified': preflight.fail('successor native qualification not accepted')
+        for k in ('templatesSha', 'callerSha'):
+            if not preflight.SHA.fullmatch(str(q[k])): preflight.fail('successor genuine qualification source unknown')
+        for k in ('run', 'artifact', 'outerSizeBytes'):
+            if type(q[k]) is not int or q[k] <= 0: preflight.fail('successor genuine qualification artifact unknown')
+        if q['outerSizeBytes'] > 16777216: preflight.fail('successor native qualification archive budget exceeded')
+        if type(q['attempt']) is not int or q['attempt'] != 1: preflight.fail('successor original qualification attempt refused')
+        for k in ('outerSha256', 'qualificationSha256', 'observationSha256', 'rootReadbackSha256'):
+            if not re.fullmatch('[0-9a-f]{64}', str(q[k])): preflight.fail('successor accepted qualification digest unknown')
+    elif q['status'] != 'pending' or any(q[k] is not None for k in qfields - {'status'}):
+        preflight.fail('successor pending qualification must retain explicit unknowns')
+    if require_ready and not binding['attemptReady']:
+        preflight.fail('successor attempt pending: retained candidate journey and root readback unjoined')
+    return binding
+
+
+def validate_successor_qualification(root: Path, binding: dict, read, archives: Path) -> dict:
+    q = binding['qualification']
+    raw = read('qualification.json')
+    if hashlib.sha256(raw).hexdigest() != q['qualificationSha256']: preflight.fail('successor qualification digest differs')
+    result = json.loads(raw, object_pairs_hook=preflight.unique_json_object)
+    native = result.get('nativePreflight', {})
+    if (result.get('disposition') != 'passed' or result.get('templates', {}).get('revision') != q['templatesSha']
+        or result.get('producer', {}).get('revision') != binding['producerSha']
+        or result.get('producer', {}).get('custodyManifestSha256') != binding['custodySha256']
+        or result.get('browserFamilies') != ['chromium', 'firefox', 'webkit'] or result.get('passedPerFamily') != 8
+        or result.get('skipped') != 0 or result.get('renderingInputSource') != 'candidate'
+        or result.get('templatesInputSource') != 'source-built-candidate'
+        or result.get('renderingPublicInputsQualified') is not False): preflight.fail('successor exact source-built candidate qualification refused')
+    caller = preflight.source_text(root, q['callerSha'], '.github/workflows/templates-external-reference-qualification.yml')
+    if (re.findall(r'^    uses: FS-GG/FS.GG.Templates/\.github/workflows/fable-external-reference-source\.yml@([0-9a-f]{40})$', caller, re.M) != [q['templatesSha']]
+        or re.findall(r'^      templates-source: ([0-9a-f]{40})$', caller, re.M) != [q['templatesSha']]
+        or re.findall(r'^      rendering-input-source: ([a-z]+)$', caller, re.M) != ['candidate']): preflight.fail('successor native caller executable/checkout/mode join refused')
+    context = native.get('caller', {})
+    if native.get('requestedPhase') != 'full' or context != {'repository': 'FS-GG/FS.GG.Rendering', 'revision': q['callerSha'], 'run': str(q['run']), 'attempt': str(q['attempt'])}:
+        preflight.fail('successor genuine full-phase caller receipt differs')
+    selected = ['FS.GG.UI.Scene.0.32.2.nupkg', 'FS.GG.UI.KeyboardInput.0.32.2.nupkg', 'FS.GG.UI.Scene.SvgBrowser.0.32.2.nupkg']
+    actual = result['producer']['archives']
+    if len(actual) != 3 or {row['name']: row['sha256'] for row in actual} != {n: hashlib.sha256((archives / n).read_bytes()).hexdigest() for n in selected}:
+        preflight.fail('successor three consumed archives differ from original candidate')
+    for family in result['browserFamilies']:
+        data = read(family + '-browser.json')
+        if hashlib.sha256(data).hexdigest() != result['browserReportSha256'][family] or any(json.loads(data)['stats'].get(k) != v for k, v in [('expected', 8), ('unexpected', 0), ('skipped', 0), ('flaky', 0)]):
+            preflight.fail('successor browser reports incomplete or changed')
+    if sum(line.startswith('PASS ') for line in read('provider-composition.log').decode().splitlines()) != 186:
+        preflight.fail('successor Provider requires exactly186 assertions')
+    observation_raw = read('orca/observation.json')
+    if hashlib.sha256(observation_raw).hexdigest() != q['observationSha256']: preflight.fail('successor accepted AT observation digest differs')
+    observation = json.loads(observation_raw)
+    if (observation.get('result') != 'passed' or observation.get('templates') != result['templates']
+        or observation.get('caller') != context or observation.get('producer') != native.get('producer')
+        or observation.get('physicalAudioHardware') != 'not-observed'
+        or observation.get('cleanup', {}).get('disposition') != 'observed-empty'
+        or observation['cleanup'].get('unknown') != [] or observation['cleanup'].get('remaining') != []
+        or len(observation.get('actions', [])) != 15): preflight.fail('successor accepted15-action AT/custody join refused')
+    for name, sha in observation['evidenceSha256'].items():
+        if Path(name).name != name or hashlib.sha256(read('orca/' + name)).hexdigest() != sha: preflight.fail('successor AT evidence changed or unavailable')
+    process = json.loads(read('orca/process-result.json'))
+    bound = json.loads(read('orca/bind-result.json'))
+    if process.get('exit') != 0 or process.get('firstCause') is not None or process.get('cleanup') != observation['cleanup'] or process.get('firstGuardCensus') is not None or bound.get('exit') != 0 or bound.get('firstCause') is not None:
+        preflight.fail('successor original AT execution/binder/cleanup differs')
+    return {'providerPassed': 186, 'browserPassed': [8, 8, 8], 'atPassed': 15, 'atCustodyQualified': True}
+
+
+def acquire_successor(root: Path, binding: dict) -> None:
+    identity = executor_identity(root)
+    out = root / 'artifacts/attempt'; out.mkdir(parents=True, exist_ok=True)
+    def api(path):
+        return subprocess.check_output(['gh', 'api', 'repos/FS-GG/FS.GG.Rendering/' + path], stderr=subprocess.DEVNULL, timeout=60)
+    def packet(run_id, attempt, artifact, source, sha, size, path):
+        run = json.loads(api(f'actions/runs/{run_id}')); meta = json.loads(api(f'actions/artifacts/{artifact}'))
+        if (run.get('id') != run_id or run.get('run_attempt') != attempt or run.get('head_sha') != source or run.get('conclusion') != 'success' or run.get('path') != path
+            or meta.get('id') != artifact or meta.get('expired') is not False or meta.get('workflow_run', {}).get('id') != run_id
+            or meta['workflow_run'].get('head_sha') != source or meta.get('digest') != 'sha256:' + sha or meta.get('size_in_bytes') != size): preflight.fail('successor original run/artifact metadata refused')
+        raw = api(f'actions/artifacts/{artifact}/zip')
+        if len(raw) != size or hashlib.sha256(raw).hexdigest() != sha: preflight.fail('successor original archive bytes differ')
+        return raw
+    raw = packet(binding['producerRun'], binding['producerAttempt'], binding['producerArtifact'], binding['producerSha'], binding['outerSha256'], binding['outerSizeBytes'], '.github/workflows/release.yml')
+    (out / 'original.zip').write_bytes(raw)
+    archives = root / 'artifacts/packages'; archives.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(out / 'original.zip') as z:
+        names = z.namelist()
+        if len(names) != 20 or len(set(names)) != 20 or any(Path(n).name != n for n in names) or set(names) != {r['file'] for r in json.loads(z.read('release-custody.json'))['archives']} | {'release-custody.json'}:
+            preflight.fail('successor exact19 archives unsafe or substituted')
+        for name in names: (archives / name).write_bytes(z.read(name))
+    if hashlib.sha256((archives / 'release-custody.json').read_bytes()).hexdigest() != binding['custodySha256']: preflight.fail('successor original custody differs')
+    original_plan = out / 'producer-plan.json'; original_plan.write_bytes(source_bytes(root, binding['producerSha'], binding['planPath']))
+    subprocess.run(['python3', str(root / 'scripts/release-custody.py'), 'verify', '--plan', str(original_plan), '--archives', str(archives), '--manifest', str(archives / 'release-custody.json'), '--source-sha', binding['producerSha']], check=True)
+    q = binding['qualification']
+    proof = packet(q['run'], q['attempt'], q['artifact'], q['callerSha'], q['outerSha256'], q['outerSizeBytes'], '.github/workflows/templates-external-reference-qualification.yml')
+    (out / 'qualification.zip').write_bytes(proof)
+    with zipfile.ZipFile(out / 'qualification.zip') as z:
+        def read(name):
+            matches = [n for n in z.namelist() if n == name or n.endswith('/' + name)]
+            if len(matches) != 1: preflight.fail('successor qualification evidence missing or duplicated')
+            return z.read(matches[0])
+        current = validate_successor_qualification(root, binding, read, archives)
+    facts = {**identity, **current, 'originalCustodyVerified': True, 'nativeTemplatesQualified': True, 'browserUnexpected': 0, 'browserSkipped': 0, 'browserFlaky': 0, 'githubEffectiveWrite': 'unknown-before-attempt'}
+    (out / 'qualification-facts.json').write_text(json.dumps(facts, sort_keys=True) + '\n')
+    (out / 'input-binding.json').write_text(json.dumps({**identity, 'producerSha': binding['producerSha'], 'originalPlanSha256': binding['planSha256'], 'outerSha256': binding['outerSha256'], 'custodySha256': binding['custodySha256'], 'effectId': binding['effectId'], 'qualification': q, 'publication': 'not-yet-observed'}, sort_keys=True) + '\n')
+
+
+def successor_main() -> int:
+    parser = argparse.ArgumentParser(description='Closed retained0.32.2 subject of the canonical executor')
+    parser.add_argument('--successor-attempt', action='store_true', required=True)
+    parser.add_argument('--repo-root', type=Path, default=Path.cwd())
+    parser.add_argument('--source-sha', default=SUCCESSOR['producerSha'])
+    parser.add_argument('--plan', default=SUCCESSOR['planPath'])
+    parser.add_argument('--version', default=SUCCESSOR['version'])
+    parser.add_argument('--executor-fence', action='store_true')
+    parser.add_argument('--attempt-preflight', action='store_true')
+    parser.add_argument('--acquire-bound-artifacts', action='store_true')
+    parser.add_argument('--record-event', action='store_true')
+    for field in ('feed', 'package', 'stage', 'result'): parser.add_argument('--event-' + field)
+    args = parser.parse_args()
+    root = args.repo_root.resolve()
+    identity = executor_identity(root)
+    if args.plan != SUCCESSOR['planPath'] or args.version != SUCCESSOR['version'] or (args.attempt_preflight and (args.acquire_bound_artifacts or args.record_event)):
+        preflight.fail('successor mixed source/plan/effect route refused')
+    binding = validate_successor_attempt(root, args.source_sha, not args.attempt_preflight)
+    result = validate(root, args.source_sha, args.plan, args.version, False)
+    result['planSha256'] = binding['planSha256']
+    if args.acquire_bound_artifacts: acquire_successor(root, binding)
+    if args.record_event:
+        ids = [p['id'] for p in json.loads(source_bytes(root, binding['producerSha'], binding['planPath']))['packages']]
+        if args.event_feed not in ('github', 'nuget') or args.event_package not in ids + ['all19', 'unknown'] or args.event_stage not in ('probe', 'compare', 'push', 'readback', 'interrupted') or args.event_result not in ('requested', 'acknowledged', 'matched', 'failed', 'absent', 'refused'):
+            preflight.fail('successor publisher observation fields refused')
+        event = {'schema': 'fsgg.rendering.publisher-observation/v1', **identity, 'producerSha': binding['producerSha'], 'planSha256': binding['planSha256'], 'custodySha256': binding['custodySha256'], 'effectId': binding['effectId'], 'utc': datetime.now(timezone.utc).isoformat(), 'feed': args.event_feed, 'packageId': args.event_package, 'stage': args.event_stage, 'outcome': args.event_result}
+        path = root / 'artifacts/attempt/publisher-events.jsonl'; path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open('a') as stream: stream.write(json.dumps(event, sort_keys=True) + '\n')
+        return 0
+    print(json.dumps(result, sort_keys=True))
+    return 0
+
+
 if __name__ == '__main__':
-    raise SystemExit(main())
+    if os.environ.get('FSGG_RELEASE_ATTEMPT') == '0322' and '--executor-only' not in sys.argv[1:] and '--successor-attempt' not in sys.argv[1:]:
+        sys.argv.append('--successor-attempt')
+    raise SystemExit(successor_main() if '--successor-attempt' in sys.argv[1:] else main())
