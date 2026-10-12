@@ -777,9 +777,9 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Fetch immutable producer plans for release guard controls
-        # Both historical and successor controls compare their original raw plan bytes.
-        # The depth-1 checkout needs the two exact producer commits, with no floating ref.
-        run: git fetch --no-tags --depth=1 origin 730923fe9d27174e879566f21dab14a1b03d761a 6c9f766fdd91483c2de6f061e75589e94852a265
+        # Historical producer plans and the committed successor fixture use exact source bytes.
+        # The depth-1 checkout needs all three exact commits, with no floating ref.
+        run: git fetch --no-tags --depth=1 origin 730923fe9d27174e879566f21dab14a1b03d761a 6c9f766fdd91483c2de6f061e75589e94852a265 d3b819a71eabcc0f557bcd23677dfd4397439428
 
       - name: Set up .NET
         uses: actions/setup-dotnet@v6
