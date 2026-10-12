@@ -350,7 +350,16 @@ class CurrentTagSelectionTests(unittest.TestCase):
 
     def test_pending_current_binding_blocks_tags(self):
         source=tags.guard.SUCCESSOR['producerSha']
-        with self.assertRaises(SystemExit):tags.selected_binding(ROOT,source,'0.32.2')
+        binding=json.loads((ROOT/tags.guard.SUCCESSOR_ATTEMPT).read_text())
+        # Model pending explicitly; the real canonical binding may already be qualified.
+        binding['attemptReady']=False
+        binding['qualification']={key:('pending' if key=='status' else None) for key in binding['qualification']}
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);path=root/tags.guard.SUCCESSOR_ATTEMPT;path.parent.mkdir(parents=True)
+            path.write_text(json.dumps(binding))
+            with patch.object(tags.guard,'source_bytes',return_value=(ROOT/tags.guard.SUCCESSOR['planPath']).read_bytes()):
+                with patch.object(tags.guard,'validate',side_effect=AssertionError('pending must refuse before downstream source validation')):
+                    with self.assertRaises(SystemExit):tags.selected_binding(root,source,'0.32.2')
 
 if __name__ == '__main__':
     unittest.main()
