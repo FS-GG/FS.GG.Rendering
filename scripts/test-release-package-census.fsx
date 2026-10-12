@@ -15,6 +15,23 @@ let baseline (request: Request) _ =
     elif request.Uri.AbsolutePath.EndsWith("/versions") then response 200 Map.empty "[]"
     else response 200 Map.empty (metadata(request.Uri.Segments |> Array.last))
 let mutable checks = 0
+for path, expected in [
+    "eng/release/svg-external-authority-0.32.0.json", ("0.32.0", "0.31.0")
+    "eng/release/svg-export-prefix-0.32.1.json", ("0.32.1", "0.32.0")
+    "eng/release/external-authority-recovery-0.32.2.json", ("0.32.2", "0.32.1")
+] do
+    if selectedPlanTuple path <> Ok expected then failwith "selected plan coordinates refused"
+    checks <- checks + 1
+for path in [
+    "eng/release/external-authority-recovery-0.32.3.json"
+    "eng/release/external-authority-recovery-0.32.2.json "
+    "ENG/release/external-authority-recovery-0.32.2.json"
+    "./eng/release/external-authority-recovery-0.32.2.json"
+    "eng/release/../release/external-authority-recovery-0.32.2.json"
+    ""
+] do
+    if selectedPlanTuple path <> Error "census-plan-path-refused" then failwith "unselected plan accepted"
+    checks <- checks + 1
 let check name expected transport limits =
     match inspectWith limits transport packages "0.32.0" with
     | Ok actual when actual.Overall = expected -> checks <- checks+1
