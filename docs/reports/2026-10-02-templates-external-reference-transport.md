@@ -225,3 +225,59 @@ Templates PR #705, protected merge `fb94149f8cd3f8923bc2ac9dd229a01333acbdcf`, r
 The Templates source passed 29 navigation controls, diagnostic self-tests and fifteen focused streaming equivalence/refusal controls, including real executable digest correspondence, short reads, UTF-8 and partial lines, append snapshots, truncation and original limits. Exact-head hosted source checks and coherence passed, and the bounded canonical source delivery joined the protected merge to the qualified executable. The earlier expired acquisition window and refused operation remain immutable; later acquisition was qualified only within its separate current-retained diagnostic scope.
 
 This Rendering caller binds the delivered Templates source immutably. Its current 19 caller controls and all five fixed qualification stages passed at exact executable source `ff45edc3e0d00cf92b9cbba6a8466b16e4e76b9e`. The original returned and retained owner receipts agree, cleanup is observed empty, source pins are unchanged, and the recorded outer and leader births are absent. A fresh full maintained browser-to-Orca candidate and native journey remain pending separate admission; this source preparation grants no replay or cap change.
+
+## Accepted bounded candidate keyboard and speech journey
+
+[Rendering run 38182777774, attempt 1](https://github.com/FS-GG/FS.GG.Rendering/actions/runs/38182777774)
+completed the maintained candidate browser-to-Orca route at Rendering
+`d3b819a71eabcc0f557bcd23677dfd4397439428` and Templates
+`fb94149f8cd3f8923bc2ac9dd229a01333acbdcf`. Chromium, Firefox and WebKit each
+passed eight cases with zero unexpected, skipped or flaky results. Fifteen
+actual focused Return actions exercised the external reference through private
+Orca/AT-SPI and X11 keyboard input. Premature rearm remained suspended; the
+original-generation reconciliation retained unknown receipt `sample:1`;
+reconnect preserved that receipt without replay; explicit rearm enabled fresh
+correlation `sample:2`; disposal returned owned counts to zero and retained
+controls stayed inert.
+
+The original inner result, wrapper and binder all returned zero with no first
+cause. Request, acknowledgement and reaped completion share the exact session
+identity and original process births. Native cleanup records an observed empty
+owned group with no remaining or unknown rows. Sampled aggregate RSS peaked at
+1,921,761,280 bytes under the unchanged 2,147,483,648-byte cap. Sampling does not
+prove hard containment or resolve historical escaped descendants. Physical
+audio hardware remains unobserved.
+
+The companion also retained `CDP handshake or transport error (redirect/non101
+refused)`. Its failure event captured the exact already-written successful
+inner-result digest `961fd7d161e68c23bacad92806f943ec1975a6b4036c31bed63b1a0771f6e72e`.
+The qualified observer binds that event to the original launch, browser and
+companion births, journey, session completion, successful wrapper and empty
+cleanup before classifying it as `post-observation-transport-outcome`. The
+precise close trigger and time remain unknown. The served `Server.dll` digest
+`c03e693be3bd65b4e0ce611a2a8a60979fd7bdf9f31274911536e97e78cdd36a` was checked
+before and after the session; that binary is absent from the archive, so an
+independent retained-byte rehash is unavailable.
+
+The original terminal-plus-300-second evidence window expired without an
+artifact acquisition. Distinct current-retained reads later acquired
+[artifact 11718512463](https://github.com/FS-GG/FS.GG.Rendering/actions/runs/38182777774/artifacts/11718512463),
+1,040,532 bytes with SHA-256
+`917aee5ddc3011505ab3fe292932fcecbccd9212c472275e0458da49d95831bc`, and the
+independent original logs. Bounded offline review verified all 291 members,
+all 25 observation evidence digests, source qualification, producer custody,
+three browser reports and session/birth joins. Root acceptance
+`0e072bb4efaa5067d0860dd07f2985c9ddbf21b55c76d30cb64213398591fe71` accepts this
+exact bounded candidate behavior. It does not renew the expired window, claim
+timely acquisition or continuous custody, or change any earlier failed run.
+
+The producer remains unpublished candidate `93b19deb5530241bc76055f69f11398bfd22eaa0`,
+run `38122527072/1`, artifact `11695963316`, archive
+`a437bd14761a7429eb3c166b29cc21630c260cda27a603c280991fe3cb825520` and custody
+`9a7a2ec2c06124544eb861b65f3a8bc6b6e652e46624ec42c6167c8892ce7853`.
+Publication, public Rendering input qualification and installed acceptance remain
+false. Coherent publication/readback, an empty-cache downloaded package-only
+receiver with source unavailable and no source fallback, promised preserving
+upgrades, broader example/WASM coverage and product adoption remain separate
+owning-plan outcomes. This acceptance closes the selected candidate keyboard
+and speech journey, not the full reference or programme.
