@@ -689,12 +689,18 @@ class CurrentRetainedAttemptTests(unittest.TestCase):
         spec=importlib.util.spec_from_file_location('current_retained_guard',ROOT/'scripts/release-source-guard.py')
         self.guard=importlib.util.module_from_spec(spec);spec.loader.exec_module(self.guard)
         self.binding=json.loads((ROOT/self.guard.SUCCESSOR_ATTEMPT).read_text())
+        # Preserve the original pending-state refusal controls after genuine qualification joins.
+        self.binding['attemptReady']=False
+        self.binding['qualification']={key:('pending' if key=='status' else None) for key in self.binding['qualification']}
 
     def test_pending_original_binding_allows_only_preparation(self):
-        self.assertFalse(self.guard.validate_successor_attempt(ROOT,self.guard.SUCCESSOR['producerSha'],False)['attemptReady'])
-        with patch.object(subprocess,'check_output',side_effect=AssertionError('no acquisition')):
-            with patch.object(self.guard,'source_bytes',return_value=(ROOT/self.guard.SUCCESSOR['planPath']).read_bytes()):
-                with self.assertRaises(SystemExit):self.guard.validate_successor_attempt(ROOT,self.guard.SUCCESSOR['producerSha'],True)
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);path=root/self.guard.SUCCESSOR_ATTEMPT;path.parent.mkdir(parents=True)
+            path.write_text(json.dumps(self.binding))
+            with patch.object(subprocess,'check_output',side_effect=AssertionError('no acquisition')):
+                with patch.object(self.guard,'source_bytes',return_value=(ROOT/self.guard.SUCCESSOR['planPath']).read_bytes()):
+                    self.assertFalse(self.guard.validate_successor_attempt(root,self.guard.SUCCESSOR['producerSha'],False)['attemptReady'])
+                    with self.assertRaises(SystemExit):self.guard.validate_successor_attempt(root,self.guard.SUCCESSOR['producerSha'],True)
 
     def test_closed_candidate_and_unknown_receiver_mutants(self):
         with tempfile.TemporaryDirectory() as directory:
