@@ -20,3 +20,25 @@ let admit facts =
     && facts.CompleteReadCensus && facts.NuGetScopeStatuses.Length=19
     && List.forall ((=) (Some 200)) facts.NuGetScopeStatuses
     && facts.GitHubEffectiveWrite="unknown-before-attempt"
+
+/// The current journey is a separate selected contract; historical admit stays 180/4.
+type CurrentJourney = {
+    OriginalCustodyVerified: bool
+    NativeTemplatesQualified: bool
+    ProviderPassed: int
+    BrowserPassed: int list
+    BrowserUnexpected: int
+    BrowserSkipped: int
+    BrowserFlaky: int
+    AtPassed: int
+    AtCustodyQualified: bool
+}
+
+let currentJourneyQualified facts =
+    facts.OriginalCustodyVerified && facts.NativeTemplatesQualified && facts.ProviderPassed=186
+    && facts.BrowserPassed=[8;8;8] && facts.BrowserUnexpected=0 && facts.BrowserSkipped=0 && facts.BrowserFlaky=0
+    && facts.AtPassed=15 && facts.AtCustodyQualified
+
+let admitCurrent journey completeReadCensus scopeStatuses effectiveWrite =
+    currentJourneyQualified journey && completeReadCensus && List.length scopeStatuses=19
+    && List.forall ((=) (Some 200)) scopeStatuses && effectiveWrite="unknown-before-attempt"

@@ -915,7 +915,7 @@ let feature209VersionCoherenceTests =
                     "a pack-only dry run publishes nothing and is exempt"
 
                 let sourceGuard = yml.IndexOf("--source-sha \"$source_sha\" --version \"$version\"", StringComparison.Ordinal)
-                let acquisition = idx "--attempt-binding --acquire-bound-artifacts"
+                let acquisition = idx "--acquire-bound-artifacts"
                 let custody = idx "      - name: Verify custody before any release-shaped check"
                 Expect.isGreaterThan sourceGuard -1 "the source guard must bind the trigger version"
                 Expect.isGreaterThan acquisition -1 "the publisher must acquire selected immutable archives"

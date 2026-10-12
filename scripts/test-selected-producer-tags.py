@@ -332,5 +332,25 @@ class TagTests(unittest.TestCase):
             with self.subTest(mutant=index), self.assertRaises(ValueError): check_workflow(mutant)
 
 
+
+class CurrentTagSelectionTests(unittest.TestCase):
+    def test_current_uses_same_ordered_mechanism_and_original_target(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);git=FakeGit();source=tags.guard.SUCCESSOR['producerSha']
+            expected=['refs/tags/fs-gg-ui/v0.32.2','refs/tags/fs-gg-ui-template/v0.32.2','refs/tags/v0.32.2']
+            binding=lambda root,sha,version:{'attemptReady':True,'producerSha':sha,'effectId':'fixture-only'}
+            result=tags.Operation(root,'cut',source,'0.32.2',ENV,git,binding).run()
+            self.assertEqual('passed',result['result'])
+            self.assertEqual([source+':'+ref for ref in expected],[row[-1] for row in git.pushes])
+            self.assertEqual('not-performed',result['publication'])
+            self.assertEqual('not-performed',result['notification'])
+            for sha,version in [(source,'0.32.1'),(tags.PRODUCER,'0.32.2'),('b'*40,'0.32.2'),(source,'0.32.3')]:
+                with self.subTest(sha=sha,version=version),self.assertRaises(tags.Refused):
+                    tags.Operation(root,'cut',sha,version,ENV,git,binding)
+
+    def test_pending_current_binding_blocks_tags(self):
+        source=tags.guard.SUCCESSOR['producerSha']
+        with self.assertRaises(SystemExit):tags.selected_binding(ROOT,source,'0.32.2')
+
 if __name__ == '__main__':
     unittest.main()

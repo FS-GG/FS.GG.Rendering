@@ -272,16 +272,18 @@ class SuccessorRouteTests(unittest.TestCase):
         self.assertIn("FSGG_NUGET_SCOPE_ONLY: 'true'", preflight)
         self.assertIn('FSGG_NUGET_SCOPE_SOURCE: ${{ steps.source.outputs.sha }}', preflight)
         publisher = blocks['publish-packages']
-        self.assertIn('!inputs.preflight-only && inputs.bound-attempt', publisher)
-        self.assertIn('PRODUCER_SHA: 6c9f766fdd91483c2de6f061e75589e94852a265', publisher)
-        self.assertIn('--plan eng/release/svg-export-prefix-0.32.1.json --version 0.32.1', publisher)
+        self.assertIn('!inputs.preflight-only && (inputs.bound-attempt || inputs.successor-attempt)', publisher)
+        self.assertIn("PRODUCER_SHA: ${{ inputs.successor-attempt && '9b73395658d4683a067d150ca9441b04e802c4af' || '6c9f766fdd91483c2de6f061e75589e94852a265' }}", publisher)
+        self.assertIn('plan=eng/release/svg-export-prefix-0.32.1.json', publisher)
+        self.assertIn('selected=(--attempt-binding)', publisher)
         self.assertNotIn('release-pack.sh', publisher)
         script = (ROOT/'scripts/release-nuget-verify-key.fsx').read_text()
         self.assertIn('not successor', script)
         self.assertLess(script.index('not successor'), script.index('GetEnvironmentVariable("NUGET_API_KEY")'))
         self.assertLess(script.index('scopeSourceFromReceipt'), script.index('GetEnvironmentVariable("NUGET_API_KEY")'))
         self.assertLess(script.index('if scopeOnly then exit 0'), script.index('GetEnvironmentVariable("GITHUB_TOKEN")'))
-        self.assertIn('producerSha=(if scopeOnly then null else "6c9f766fdd91483c2de6f061e75589e94852a265")', script)
+        self.assertIn('producerSha=(if scopeOnly then null else producer)', script)
+        self.assertIn('else "6c9f766fdd91483c2de6f061e75589e94852a265"', script)
         self.assertIn('sourceSha=scopeSource', script)
         self.assertEqual(2, release.count('dotnet fsi --define:DEBUG --exec scripts/test-release-nuget-verify-key.fsx'))
         self.assertNotIn('dotnet fsi --exec scripts/test-release-nuget-verify-key.fsx', release)
@@ -334,9 +336,9 @@ class SelectedAttemptTests(unittest.TestCase):
         self.assertNotIn('release-pack.sh',publisher);self.assertNotIn('locked-restore',publisher)
         self.assertNotIn('actions/artifacts?name=',publisher);self.assertNotIn('sort_by(.created_at)',publisher)
         self.assertNotIn('--source-sha "$GITHUB_SHA"',publisher)
-        self.assertIn('!inputs.preflight-only && inputs.bound-attempt',publisher)
-        self.assertLess(text.index('--source-sha "$source_sha" --version "$version"'), text.index('--attempt-binding --acquire-bound-artifacts'))
-        self.assertLess(publisher.index('--attempt-binding --acquire-bound-artifacts'), publisher.index('Verify the version to publish is the version the guard validated'))
+        self.assertIn('!inputs.preflight-only && (inputs.bound-attempt || inputs.successor-attempt)',publisher)
+        self.assertLess(text.index('--source-sha "$source_sha" --version "$version"'), text.index('--acquire-bound-artifacts'))
+        self.assertLess(publisher.index('--acquire-bound-artifacts'), publisher.index('Verify the version to publish is the version the guard validated'))
         self.assertLess(publisher.index('Verify the version to publish is the version the guard validated'), publisher.index('Verify custody before any release-shaped check'))
         self.assertLess(publisher.index('Verify custody before any release-shaped check'), publisher.index('dotnet nuget push'))
         self.assertIn('test "$(git rev-parse "$tag^{commit}")" = "$PRODUCER_SHA"',publisher)
@@ -404,7 +406,8 @@ class SelectedAttemptTests(unittest.TestCase):
         self.assertIn('Environment.GetEnvironmentVariable("NUGET_API_KEY")',wrapper)
         self.assertNotIn('eprintfn "%A"',wrapper);self.assertNotIn('printfn "%s" key',wrapper)
         self.assertIn('noPackageVersionMutation=true',wrapper)
-        self.assertIn('if not(admit facts)',wrapper)
+        self.assertIn('| None -> admit facts',wrapper)
+        self.assertIn('| Some journey -> admitCurrent journey',wrapper)
 
     def test_exact_fsharp_publisher_indices_and_job_scope_mutants(self):
         fixture=(ROOT/'tests/Package.Tests/Feature209VersionCoherenceTests.fs').read_text().split('test "release.yml: publish-packages binds',1)[1].split('// #517',1)[0]
@@ -673,18 +676,81 @@ class RecoverySuccessorTests(unittest.TestCase):
         current = (ROOT/'.github/workflows/release.yml').read_text()
         publisher = re.search(r'^  publish-packages:\n(.*?)(?=^  [a-z-]+:|\Z)', current, re.M|re.S).group(1)
         self.assertIn('inputs.bound-attempt', publisher)
-        self.assertIn('PRODUCER_SHA: 6c9f766fdd91483c2de6f061e75589e94852a265', publisher)
-        self.assertIn('--plan eng/release/svg-export-prefix-0.32.1.json --version 0.32.1', publisher)
-        self.assertNotIn('0.32.2', publisher)
+        self.assertIn("PRODUCER_SHA: ${{ inputs.successor-attempt && '9b73395658d4683a067d150ca9441b04e802c4af' || '6c9f766fdd91483c2de6f061e75589e94852a265' }}", publisher)
+        self.assertIn('plan=eng/release/svg-export-prefix-0.32.1.json', publisher)
+        self.assertIn('selected=(--attempt-binding)', publisher)
+        self.assertIn('selected=(--successor-attempt)', publisher)
         self.assertNotIn('release-pack.sh', publisher)
 
 
-def native_boundary(scope_only=False):
+
+class CurrentRetainedAttemptTests(unittest.TestCase):
+    def setUp(self):
+        spec=importlib.util.spec_from_file_location('current_retained_guard',ROOT/'scripts/release-source-guard.py')
+        self.guard=importlib.util.module_from_spec(spec);spec.loader.exec_module(self.guard)
+        self.binding=json.loads((ROOT/self.guard.SUCCESSOR_ATTEMPT).read_text())
+
+    def test_pending_original_binding_allows_only_preparation(self):
+        self.assertFalse(self.guard.validate_successor_attempt(ROOT,self.guard.SUCCESSOR['producerSha'],False)['attemptReady'])
+        with patch.object(subprocess,'check_output',side_effect=AssertionError('no acquisition')):
+            with patch.object(self.guard,'source_bytes',return_value=(ROOT/self.guard.SUCCESSOR['planPath']).read_bytes()):
+                with self.assertRaises(SystemExit):self.guard.validate_successor_attempt(ROOT,self.guard.SUCCESSOR['producerSha'],True)
+
+    def test_closed_candidate_and_unknown_receiver_mutants(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);path=root/self.guard.SUCCESSOR_ATTEMPT;path.parent.mkdir(parents=True)
+            def inspect(binding,ready=False):
+                path.write_text(json.dumps(binding))
+                with patch.object(self.guard,'source_bytes',return_value=(ROOT/self.guard.SUCCESSOR['planPath']).read_bytes()):
+                    return self.guard.validate_successor_attempt(root,self.guard.SUCCESSOR['producerSha'],ready)
+            self.assertFalse(inspect(self.binding)['attemptReady'])
+            mutants=[]
+            for key,value in self.guard.SUCCESSOR.items():
+                wrong=copy.deepcopy(self.binding);wrong[key]=(True if type(value) is int else str(value)+'-wrong');mutants.append((key,wrong))
+            for key in ['attemptReady','toolchain','sourcePackQualification','qualification']:
+                wrong=copy.deepcopy(self.binding);wrong[key]=True if key=='attemptReady' else {};mutants.append((key,wrong))
+            wrong=copy.deepcopy(self.binding);wrong['qualification']['run']=123;mutants.append(('unknown-partial-qualification',wrong))
+            wrong=copy.deepcopy(self.binding);wrong['undeclared']=1;mutants.append(('undeclared-field',wrong))
+            for name,wrong in mutants:
+                with self.subTest(name=name),self.assertRaises(SystemExit):inspect(wrong)
+            qualified=copy.deepcopy(self.binding);qualified['attemptReady']=True
+            qualified['qualification']={'status':'qualified','templatesSha':'a'*40,'callerSha':'b'*40,'run':123,'attempt':1,'artifact':456,'outerSha256':'c'*64,'outerSizeBytes':1024,'qualificationSha256':'d'*64,'observationSha256':'e'*64,'rootReadbackSha256':'f'*64}
+            self.assertTrue(inspect(qualified,True)['attemptReady']) # inert shape control, no native acceptance
+            for field in ['run','artifact','outerSizeBytes','attempt','templatesSha','callerSha','outerSha256','qualificationSha256','observationSha256','rootReadbackSha256']:
+                bad=copy.deepcopy(qualified);bad['qualification'][field]=None
+                with self.subTest(field=field),self.assertRaises(SystemExit):inspect(bad,True)
+
+    def test_historical_functions_and_original_plan_remain_exact(self):
+        import ast
+        old=self.guard.source_bytes(ROOT,self.guard.SUCCESSOR['producerSha'],'scripts/release-source-guard.py').decode()
+        new=(ROOT/'scripts/release-source-guard.py').read_text()
+        def functions(text):
+            lines=text.splitlines(True)
+            return {node.name:''.join(lines[node.lineno-1:node.end_lineno]) for node in ast.parse(text).body if isinstance(node,ast.FunctionDef)}
+        before,after=functions(old),functions(new)
+        for name in ['validate_attempt','validate_qualification_payload','executor_identity','acquire_selected','record_event','main']:
+            self.assertEqual(before[name],after[name],name)
+        self.assertEqual((ROOT/self.guard.ATTEMPT).read_bytes(),self.guard.source_bytes(ROOT,self.guard.SUCCESSOR['producerSha'],self.guard.ATTEMPT))
+        self.assertFalse(json.loads((ROOT/self.guard.SUCCESSOR['planPath']).read_text())['publicationReady'])
+
+    def test_current_prerequisites_precede_credentials_and_writer_paths(self):
+        wrapper=(ROOT/'scripts/release-nuget-verify-key.fsx').read_text()
+        credential=wrapper.index('let key = Environment.GetEnvironmentVariable("NUGET_API_KEY")')
+        for literal in ['verify-key-current-effect-refused','verify-key-current-journey-refused','verify-key-current-toolchain-refused']:
+            self.assertLess(wrapper.index(literal),credential)
+        release=(ROOT/'.github/workflows/release.yml').read_text()
+        self.assertIn('mixed immutable attempt selections',release)
+        self.assertIn('authority=(--successor-attempt)',release)
+        self.assertIn('[[ "$SOURCE_ONLY" != true && "$source_sha" == 9b73395658d4683a067d150ca9441b04e802c4af ]]',release)
+        self.assertEqual(1,release.count('  publish-packages:'))
+
+
+def native_boundary(scope_only=False, current_attempt=False):
     """Selected native mode: actual wrapper, synthetic joins, no credential/network."""
     import time
     start=time.monotonic()
     head='a'*40
-    plan=ROOT/('eng/release/external-authority-recovery-0.32.2.json' if scope_only else 'eng/release/svg-export-prefix-0.32.1.json')
+    plan=ROOT/('eng/release/external-authority-recovery-0.32.2.json' if scope_only or current_attempt else 'eng/release/svg-export-prefix-0.32.1.json')
     proof={'expectedExecutorSha':head,'executorSha':head,'workflowContextSha':head,
            'workflowSha':head,'workflowRef':'FS-GG/FS.GG.Rendering/.github/workflows/release.yml@refs/heads/main',
            'run':'10','attempt':'1'}
@@ -719,8 +785,22 @@ def native_boundary(scope_only=False):
                ('recovery-version-refused',{}, {'version':'0.32.1'}, {},'unavailable'),
                ('recovery-plan-refused',{}, {'planSha256':'b'*64}, {},'unavailable'),
                ('recovery-executor-refused',{'FSGG_EXPECTED_EXECUTOR_SHA':'b'*40},{},{},'executor')]
+    if current_attempt:
+        env.update(FSGG_RELEASE_ATTEMPT='0322')
+        proof.update(originalCustodyVerified=True,nativeTemplatesQualified=True,providerPassed=186,browserPassed=[8,8,8],browserUnexpected=0,browserSkipped=0,browserFlaky=0,atPassed=15,atCustodyQualified=True)
+        inputs.update(producerSha='9b73395658d4683a067d150ca9441b04e802c4af',originalPlanSha256='81571fc65ac117e90467428d2e50e103ec875aa33cb83b054d9056bf4129aa1a',outerSha256='7b0532caf431cfa41acaf35555016cf126bc495c5a6e13fe7db6b8fbe7478cca',custodySha256='85bb1dcdf0378d05ca536d5878b88dedc301ff1524d39d98966e23888aae0120',effectId='rendering-0322-original38200411661-a1')
+        cases=[('current-positive-no-credential',{}, {}, {},'credential'),
+               ('current-unknown-selection',{'FSGG_RELEASE_ATTEMPT':'unknown'}, {}, {},'input'),
+               ('current-producer',{}, {}, {'producerSha':'b'*40},'input'),
+               ('current-effect',{}, {}, {'effectId':'different'},'input'),
+               ('current-provider',{}, {'providerPassed':180}, {},'input'),
+               ('current-browser',{}, {'browserPassed':[4,4,4]}, {},'input'),
+               ('current-AT',{}, {'atPassed':14}, {},'input'),
+               ('current-custody',{}, {'atCustodyQualified':False}, {},'input'),
+               ('current-toolchain',{}, {'testToolchainRuntime':'different'}, {},'input'),
+               ('current-scope-effect-mixed',{'FSGG_NUGET_SCOPE_ONLY':'true'}, {}, {},'input')]
     results=[]
-    with tempfile.TemporaryDirectory(prefix='executor-boundary-' ,dir=os.environ.get('TMPDIR')) as folder:
+    with tempfile.TemporaryDirectory(prefix='executor-boundary-'  ,dir=os.environ.get('TMPDIR')) as folder:
         root=Path(folder);attempt=root/'artifacts/attempt';attempt.mkdir(parents=True)
         for name,environment,mutant,input_mutant,stage in cases:
             remaining=85-(time.monotonic()-start)
@@ -739,6 +819,11 @@ def native_boundary(scope_only=False):
             else:
                 facts.write_text(json.dumps({**proof,**mutant}))
             (attempt/'input-binding.json').write_text(json.dumps({**inputs,**input_mutant}))
+            if current_attempt:
+                toolchain=root/'artifacts/toolchain';toolchain.mkdir(exist_ok=True)
+                tool=json.loads((ROOT/'eng/release/external-authority-recovery-0.32.2-attempt.json').read_text())['toolchain']
+                if 'testToolchainRuntime' in mutant:tool['runtimeVersion']=mutant['testToolchainRuntime']
+                (toolchain/'publish-packages.json').write_text(json.dumps(tool))
             receipt=attempt/'scope.json';receipt.unlink(missing_ok=True)
             command=['/usr/share/dotnet/dotnet','exec','--fx-version','10.0.12',
                      '/usr/share/dotnet/sdk/10.0.401/FSharp/fsi.dll','--nologo','--define:DEBUG','--optimize-',
@@ -751,9 +836,10 @@ def native_boundary(scope_only=False):
                 raise AssertionError(name+': actual exit/stage/compilation/receipt refused '+child.stdout+child.stderr)
             results.append({'case':name,'actualExit':child.returncode,'stage':stage,'receiptCreated':False})
     print('SVG_EXECUTOR_BOUNDARY '+json.dumps({'cases':results,'passed':len(results),'actualCredentials':False,
-          'networkSelected':False,'positiveJoinReached':'credential','scopeOnly':scope_only,'elapsedSeconds':time.monotonic()-start},sort_keys=True))
+          'networkSelected':False,'positiveJoinReached':'credential','scopeOnly':scope_only,'currentAttempt':current_attempt,'elapsedSeconds':time.monotonic()-start},sort_keys=True))
 
 if __name__ == '__main__':
     if sys.argv[1:]==['--native-boundary']: native_boundary()
     elif sys.argv[1:]==['--native-scope-boundary']: native_boundary(True)
+    elif sys.argv[1:]==['--native-current-boundary']: native_boundary(False,True)
     else: unittest.main()

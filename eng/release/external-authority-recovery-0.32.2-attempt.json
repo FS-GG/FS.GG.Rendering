@@ -1,0 +1,44 @@
+{
+  "schema": "fsgg.rendering.publication-attempt/v1",
+  "producerSha": "9b73395658d4683a067d150ca9441b04e802c4af",
+  "planPath": "eng/release/external-authority-recovery-0.32.2.json",
+  "planSha256": "81571fc65ac117e90467428d2e50e103ec875aa33cb83b054d9056bf4129aa1a",
+  "producerRun": 38200411661,
+  "producerAttempt": 1,
+  "producerArtifact": 11725317255,
+  "outerSha256": "7b0532caf431cfa41acaf35555016cf126bc495c5a6e13fe7db6b8fbe7478cca",
+  "outerSizeBytes": 15007722,
+  "custodySha256": "85bb1dcdf0378d05ca536d5878b88dedc301ff1524d39d98966e23888aae0120",
+  "version": "0.32.2",
+  "baselineVersion": "0.32.1",
+  "githubEffectiveWrite": "unknown-before-attempt",
+  "effectId": "rendering-0322-original38200411661-a1",
+  "attemptReady": false,
+  "qualification": {
+    "status": "pending",
+    "templatesSha": null,
+    "callerSha": null,
+    "run": null,
+    "attempt": null,
+    "artifact": null,
+    "outerSha256": null,
+    "outerSizeBytes": null,
+    "qualificationSha256": null,
+    "observationSha256": null,
+    "rootReadbackSha256": null
+  },
+  "sourcePackQualification": {
+    "run": 38200411661,
+    "attempt": 1,
+    "apiCompatPassed": 17,
+    "apiCompatBreaks": 0,
+    "scope": "source-pack-only",
+    "rootReadbackSha256": "51219aa0559e7bfdb8499256db87ea86a6f8f5f22461dc88fa2ebeb1c8efa809"
+  },
+  "toolchain": {
+    "sdkVersion": "10.0.401",
+    "compilerSha256": "2bd6190eafa94f47739538467f5a7cd52de233a627789c69f07959d7578e4d6b",
+    "fsharpCoreSha256": "2232698f623c28b8bcca32fa3cc8943cdd8529b20b487b5938106aae1c2ab256",
+    "runtimeVersion": "10.0.12"
+  }
+}

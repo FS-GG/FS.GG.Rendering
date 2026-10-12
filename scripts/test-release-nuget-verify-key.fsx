@@ -12,7 +12,7 @@ assert(inspect (response(Some 200)) (List.tail ids) "0.31.0" |> Result.isError)
 assert(match inspect (response(Some 200)) ids "0.32.0" with Ok(rows,true) -> rows.Length=19 | _ -> false)
 for refused in ["0.30.0"; "0.32.2"; "0.32.x"; ""] do
     assert(inspect (response(Some 200)) ids refused |> Result.isError)
-let facts = {OriginalCustodyVerified=true;NativeTemplatesQualified=true;ProviderPassed=180;BrowserPassed=[4;4;4];BrowserUnexpected=0;BrowserSkipped=0;BrowserFlaky=0;CompleteReadCensus=true;NuGetScopeStatuses=List.replicate 19 (Some 200);GitHubEffectiveWrite="unknown-before-attempt"}
+let facts : Facts = {OriginalCustodyVerified=true;NativeTemplatesQualified=true;ProviderPassed=180;BrowserPassed=[4;4;4];BrowserUnexpected=0;BrowserSkipped=0;BrowserFlaky=0;CompleteReadCensus=true;NuGetScopeStatuses=List.replicate 19 (Some 200);GitHubEffectiveWrite="unknown-before-attempt"}
 assert(admit facts)
 for bad in [{facts with OriginalCustodyVerified=false};{facts with NativeTemplatesQualified=false};{facts with ProviderPassed=179};{facts with BrowserPassed=[4;4]};{facts with BrowserSkipped=1};{facts with BrowserFlaky=1};{facts with CompleteReadCensus=false};{facts with NuGetScopeStatuses=List.replicate 19 (Some 403)};{facts with GitHubEffectiveWrite="proven"}] do assert(not(admit bad))
 printfn "PASS bounded19 existing-ID scope and truthful attempt eligibility refusals"
@@ -111,3 +111,15 @@ let recoveryFixture = httpTransportWithHandler "public-test-fixture-key" (new Re
 assert(match inspect recoveryFixture ids "0.32.1" with Ok(rows,true)->rows.Length=19|_->false)
 assert(requests.Count=recoveryRequestsBefore+19)
 printfn "PASS recovery exact-plan version/source joins and published-baseline19 GETs; no publication authority"
+
+let current : CurrentJourney = {OriginalCustodyVerified=true;NativeTemplatesQualified=true;ProviderPassed=186;BrowserPassed=[8;8;8];BrowserUnexpected=0;BrowserSkipped=0;BrowserFlaky=0;AtPassed=15;AtCustodyQualified=true}
+assert(currentJourneyQualified current)
+assert(admitCurrent current true (List.replicate 19 (Some 200)) "unknown-before-attempt")
+for bad in [{current with OriginalCustodyVerified=false};{current with NativeTemplatesQualified=false};{current with ProviderPassed=180};{current with BrowserPassed=[4;4;4]};{current with BrowserUnexpected=1};{current with BrowserSkipped=1};{current with BrowserFlaky=1};{current with AtPassed=14};{current with AtCustodyQualified=false}] do
+    assert(not(currentJourneyQualified bad))
+    assert(not(admitCurrent bad true (List.replicate 19 (Some 200)) "unknown-before-attempt"))
+assert(not(admitCurrent current false (List.replicate 19 (Some 200)) "unknown-before-attempt"))
+assert(not(admitCurrent current true (List.replicate 18 (Some 200)) "unknown-before-attempt"))
+assert(not(admitCurrent current true (List.replicate 19 (Some 403)) "unknown-before-attempt"))
+assert(not(admitCurrent current true (List.replicate 19 (Some 200)) "proven"))
+printfn "PASS separate current186/8/15 eligibility and historical180/4 contract"

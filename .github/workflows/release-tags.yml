@@ -72,11 +72,11 @@ on:
         required: true
         type: string
       source-sha:
-        description: "Original qualified producer: 6c9f766fdd91483c2de6f061e75589e94852a265."
+        description: "Closed retained producer: original6c9/0.32.1 or original9b733956/0.32.2; genuine joined qualification required."
         required: true
         type: string
       version:
-        description: "Selected coherent version: 0.32.1."
+        description: "Closed coherent version: 0.32.1 or 0.32.2 matching the selected original producer."
         required: true
         type: string
 
