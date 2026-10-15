@@ -59,7 +59,7 @@ async function withFrame(entry) {
         if (expired || (frame.contentWindow?.location.href === frame.src && frame.contentDocument?.readyState === "complete")) throw new Error("Soldier opt-in/mount control missing from actual entry");
         await delay(20);
       }
-      const adapter = await import(new URL(manifest.workload.input.adapterEntry, location.href).href);
+      const adapter = await import(/* @vite-ignore */ new URL(manifest.workload.input.adapterEntry, location.href).href);
       const observations = await adapter.runSoldierCase(frame.contentWindow, entry.kind, { expired: () => expired, assetSha256: manifest.workload.input.assetSha256, hash });
       return observations;
     }
@@ -129,7 +129,7 @@ async function run(resume) {
       const entry = queue[index]; ui.progress.textContent = `${index + 1}/${queue.length}: ${entry.kind}, repetition ${entry.repetition + 1}`;
       const started = performance.now();
       try { await verifyArtifact(); const observations = await withFrame(entry); if (profile === "soldier-functional") validateSoldierCase(observations); await verifyArtifact(); result.cases.push({ ...entry, outcome: "pass", observations, integrity: "verified-before-and-after" }); }
-      catch (error) { result.cases.push({ ...entry, outcome: "failed", error: error.message, cleanup: error.cleanup ?? { status: "unknown" } }); }
+      catch (error) { result.cases.push({ ...entry, outcome: "failed", error: error.message, observations: error.observations ?? { kind: entry.kind, assertions: [{ name: error.message, passed: false }], skipped: false, retried: false, flaky: false, cleanup: error.cleanup ?? { status: "unknown" } }, cleanup: error.cleanup ?? { status: "unknown" } }); }
       result.cases.at(-1).durationMilliseconds = performance.now() - started;
       checkpoint();
     }
