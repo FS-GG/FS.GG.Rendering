@@ -348,9 +348,10 @@ let performanceEvidenceContract =
                 // the feed. Steps 1-5 of the routine were all still required.
                 // #1156 advances the pin to 7.5.2 for the published skill-observation contract and
                 // reconciles its deliberately curated SkillMirror surface through the same routine.
+                // #1144 advances the exact witness to 7.6.0; ProviderCatalog remains toolchain curation.
                 Expect.stringContains
                     packages
-                    "<FsGgContractsVersion>7.5.2</FsGgContractsVersion>"
+                    "<FsGgContractsVersion>7.6.0</FsGgContractsVersion>"
                     "producer version is exact"
 
                 Expect.stringContains

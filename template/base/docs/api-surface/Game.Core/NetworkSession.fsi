@@ -1,5 +1,5 @@
 // See skill: fs-gg-game-core
-// Mirrored from FS-GG/FS.GG.Game @ 0.16.0 (src/Game.Core/NetworkSession.fsi); regenerate when $(FsGgGameVersion) moves.
+// Mirrored from FS-GG/FS.GG.Game @ 0.17.0 (src/Game.Core/NetworkSession.fsi); regenerate when $(FsGgGameVersion) moves.
 namespace FS.GG.Game.Core
 
 /// A client identity bound to one session and one opaque reconnect token.
