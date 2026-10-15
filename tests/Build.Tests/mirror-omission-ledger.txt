@@ -684,3 +684,36 @@ type FS.GG.Contracts::Fsgg.UnobservedSkillFiles
 # change; SVG-PREVIEW-B owns the coherent package release and subsequent generated-mirror refresh. These
 # entries keep the source-candidate completeness probe explicit until that release makes the pin able to
 # supply the signatures. Delete all 13 when Preview B advances the pin and regenerate the mirror.
+
+# ------------------------------------------------------------------------------------------------
+# ADDED BY #1144 AT Contracts 7.6.0 / Game 0.17.0 — 24 omissions (2 modules, 22 types).
+# ProviderCatalog describes SDD provider discovery and configuration, continuing the existing
+# toolchain-only Contracts curation: generated products consume PerformanceIntentDeclaration.
+# AreaTopology describes optional local-area portal traversal; the generated game does not compose
+# a multi-area world or backend transfer admission. Keep this optional producer API explicitly
+# omitted until generated consumers teach that complete boundary, including occupancy and hysteresis.
+# Names were inspected in the published packages' ProviderCatalog.fsi and AreaTopology.fsi.
+module FS.GG.Contracts::Fsgg.ProviderCatalog
+type FS.GG.Contracts::Fsgg.CapabilityBinding
+type FS.GG.Contracts::Fsgg.CapabilityDeclaration
+type FS.GG.Contracts::Fsgg.Catalog
+type FS.GG.Contracts::Fsgg.CommandLimits
+type FS.GG.Contracts::Fsgg.Descriptor
+type FS.GG.Contracts::Fsgg.Diagnostic
+type FS.GG.Contracts::Fsgg.EvidenceDeclaration
+type FS.GG.Contracts::Fsgg.IdentityBindings
+type FS.GG.Contracts::Fsgg.Parameter
+type FS.GG.Contracts::Fsgg.ParameterKind
+type FS.GG.Contracts::Fsgg.PreparedConfiguration
+type FS.GG.Contracts::Fsgg.ToolRequirement
+type FS.GG.Contracts::Fsgg.Validation
+module FS.GG.Game.Core::FS.GG.Game.Core.AreaTopology
+type FS.GG.Game.Core::FS.GG.Game.Core.AreaId
+type FS.GG.Game.Core::FS.GG.Game.Core.Crossing
+type FS.GG.Game.Core::FS.GG.Game.Core.Direction
+type FS.GG.Game.Core::FS.GG.Game.Core.Graph
+type FS.GG.Game.Core::FS.GG.Game.Core.Motion
+type FS.GG.Game.Core::FS.GG.Game.Core.Opening
+type FS.GG.Game.Core::FS.GG.Game.Core.Portal
+type FS.GG.Game.Core::FS.GG.Game.Core.PortalId
+type FS.GG.Game.Core::FS.GG.Game.Core.RigidMap

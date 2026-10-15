@@ -2730,8 +2730,12 @@ let private omissionLedger =
 /// Lowered 569 -> 472 by SVG-PREVIEW-B.1: the 0.30 release mirror now teaches all 97 temporary module/type
 /// omissions introduced by SVG authoring, input, workspace and clip-animation work. The remaining ledger
 /// entries retain their earlier, unrelated curation decisions.
+/// Raised 479 -> 503 by #1144: Contracts 7.6.0 adds the ProviderCatalog module and thirteen
+/// configuration/discovery types; Game 0.17.0 adds AreaTopology and nine optional portal-world
+/// types. Neither surface is composed by the generated product. The ledger and manifest record
+/// these deliberate omissions with their toolchain/complete-consumer boundary reasons.
 [<Literal>]
-let private OmissionLedgerCeiling = 479
+let private OmissionLedgerCeiling = 503
 
 /// EVERYTHING the pin exports inside the mirror's own claimed scope — types AND modules, keyed alike.
 ///
