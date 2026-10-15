@@ -24,12 +24,18 @@ const executableSha256 = executablePath ? sha256(readFileSync(executablePath)) :
 const browserPromise = chromium.launch({ headless: true, args: ["--disable-gpu"], executablePath, timeout: Math.min(30000, deadlineMilliseconds) });
 let shutdownPromise;
 const closeBrowser = () => shutdownPromise ??= browserPromise.then((browser) => browser.close(), () => {});
+const cleanupReserveMilliseconds = Math.min(10000, Math.floor(deadlineMilliseconds / 10));
+const closeWithinBudget = async () => {
+  let timer;
+  try { await Promise.race([closeBrowser(), new Promise((_, reject) => { timer = setTimeout(() => reject(new Error("Browser cleanup unknown at cleanup deadline")), cleanupReserveMilliseconds); })]); }
+  finally { clearTimeout(timer); }
+};
 const deadline = setTimeout(() => {
   console.error(`Driver deadline exceeded: ${deadlineMilliseconds}ms`);
-  closeBrowser().then(() => process.exit(124), (error) => { console.error(error); process.exit(125); });
-}, deadlineMilliseconds);
+  closeWithinBudget().then(() => process.exit(124), (error) => { console.error(error); process.exit(125); });
+}, deadlineMilliseconds - cleanupReserveMilliseconds);
 for (const signal of ["SIGTERM", "SIGINT"]) process.once(signal, () => {
-  closeBrowser().then(() => process.exit(signal === "SIGTERM" ? 143 : 130), (error) => { console.error(error); process.exit(125); });
+  closeWithinBudget().then(() => process.exit(signal === "SIGTERM" ? 143 : 130), (error) => { console.error(error); process.exit(125); });
 });
 try {
   const browser = await browserPromise;
@@ -146,10 +152,10 @@ try {
     console.log(JSON.stringify({ outcome: result.outcome, cases: result.cases.length, resumeObserved, output: argument("--out") }));
   }
 } finally {
-  clearTimeout(deadline);
   let cleanup = "unknown";
-  try { await closeBrowser(); cleanup = "observed-closed"; }
+  try { await closeWithinBudget(); cleanup = "observed-closed"; }
   finally {
+    clearTimeout(deadline);
     if (existsSync(argument("--out"))) {
       const value = JSON.parse(readFileSync(argument("--out"), "utf8"));
       value.driver = { ...value.driver, browserCleanup: cleanup };
