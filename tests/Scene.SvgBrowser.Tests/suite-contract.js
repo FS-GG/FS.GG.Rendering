@@ -41,7 +41,7 @@ export function validateSoldierInput(value) {
   require(value.actualEntry === "soldier-player/index.html" && value.adapterEntry === "soldier-staged-journey.js", "wrong actual player entry");
   require(value.candidateVersion === "0.32.0" && value.evaluatedProperties?.FsGgExternalReferenceCandidate === "true"
     && value.evaluatedProperties?.FsGgSvgRuntimeCandidate === "true" && value.evaluatedProperties?.FsGgSvgInputCandidate === "true"
-    && value.evaluatedProperties?.FsGgLegacyPreview !== "true", "soldier opt-in/runtime flags missing");
+    && value.evaluatedProperties?.FsGgSvgNetworkCandidate === "true" && value.evaluatedProperties?.FsGgLegacyPreview !== "true", "soldier opt-in/runtime flags missing");
   require(value.packageArchives?.length === 3 && value.packageArchives.every((row) => typeof row.name === "string" && /^sha256:[0-9a-f]{64}$/.test(row.sha256)), "soldier package identities missing");
   return value;
 }
@@ -53,6 +53,7 @@ export function workloadForProfile(profile, input) {
 }
 
 export function validateSoldierCase(value) {
+  if (!soldierFunctionalContract.cases.includes(value?.kind)) throw new Error("soldier observation identity");
   if (!Array.isArray(value?.assertions) || value.assertions.length === 0 || !value.assertions.every((row) => typeof row.name === "string" && row.name.length > 0 && row.passed === true)) throw new Error("soldier assertions incomplete");
   if (value.skipped !== false || value.retried !== false || value.flaky !== false) throw new Error("soldier skipped/retried/flaky case");
   if (value.cleanup?.frameDisposed !== true || value.cleanup?.owned !== 0) throw new Error("soldier listener/resource-leak gate");
@@ -63,6 +64,7 @@ export function validateSoldierResult(result) {
   if (result.cases?.length !== soldierFunctionalContract.cases.length) throw new Error("soldier case missing");
   result.cases.forEach((row, index) => {
     if (row.kind !== soldierFunctionalContract.cases[index] || row.repetition !== 0 || row.outcome !== "pass" || row.integrity !== "verified-before-and-after") throw new Error("soldier case identity/order/failure");
+    if (row.observations.kind !== row.kind) throw new Error("soldier observation/case mismatch");
     validateSoldierCase(row.observations);
   });
   if (result.claims?.gpuQualified !== false || result.claims?.performanceAccepted !== false || result.claims?.representativeSoldierQualified !== false) throw new Error("unsupported soldier acceptance claim");
