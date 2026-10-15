@@ -4,6 +4,10 @@ import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { validateSoldierResult } from "./suite-contract.js";
 
+function requireObservedResume(result, required) {
+  if (required && result.driver?.resumeObserved !== true) throw new Error("Requested staged resume was not observed");
+}
+
 const argument = (name) => process.argv[process.argv.indexOf(name) + 1];
 if (!process.argv.includes("--base-url") || !process.argv.includes("--out")) throw new Error("Usage: drive-suite.mjs --base-url URL --out RESULT [--exercise-resume] [--mutant NAME]");
 const url = new URL("suite.html", argument("--base-url"));
@@ -124,6 +128,7 @@ try {
   const download = await downloadEvent;
   await download.saveAs(argument("--out"));
   const result = JSON.parse(readFileSync(argument("--out"), "utf8"));
+  resumeObserved = resumeObserved && typeof result.resumedAtUtc === "string";
   const worldExportEvidence = await Promise.all(worldExports);
   result.driver = { fullWorldExports: worldExportEvidence, profile: executablePath ? "container-software-diagnostic-explicit-browser" : "container-software-historical", historicalBaselineEquivalence: false, browser: browser.version(), executablePath: executablePath ?? "Playwright default", executableSha256, driverSha256, args: ["--disable-gpu"], baseUrl: url.href, resumeObserved, downloadObserved: true };
   writeFileSync(argument("--out"), `${JSON.stringify(result, null, 2)}\n`);
@@ -133,6 +138,7 @@ try {
     writeFileSync(argument("--out"), `${JSON.stringify(result, null, 2)}\n`);
     try {
       if (result.manifestSha256 !== argument("--manifest-sha256") || result.artifact?.artifactId !== inputManifest.artifactId || JSON.stringify(result.artifact) !== JSON.stringify(inputManifest)) throw new Error("Downloaded staged input identity mismatch");
+      requireObservedResume(result, !mutant);
       validateSoldierResult(result);
       const full = result.cases.find((row) => row.kind === "soldier-churn").observations.details.fullExport;
       if (worldExportEvidence.length !== 1 || worldExportEvidence[0].sha256 !== full.sha256) throw new Error("Actual full-world download differs from observed export");

@@ -90,3 +90,15 @@ for (const removed of [true, false]) {
   });
 }
 console.log("failed frame diagnostic follows actual removal and retains first failure: passed (inert)");
+
+// Run the driver's actual acceptance predicate without importing or launching Playwright.
+const driverSource = fs.readFileSync(new URL("./drive-suite.mjs", import.meta.url), "utf8");
+const resumeFunction = driverSource.slice(driverSource.indexOf("function requireObservedResume("), driverSource.indexOf("const argument ="));
+const requireObservedResume = runInNewContext(`(${resumeFunction})`);
+requireObservedResume({ driver: { resumeObserved: true } }, true);
+for (const driver of [{ resumeObserved: false }, {}, undefined]) {
+  assert.throws(() => requireObservedResume({ driver }, true), /resume was not observed/);
+}
+requireObservedResume({ driver: { resumeObserved: false } }, false);
+assert.match(driverSource, /requireObservedResume\(result, !mutant\)/);
+console.log("staged positive driver refuses unobserved resume: passed (inert)");
