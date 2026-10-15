@@ -15,3 +15,51 @@ validateExcessive({ rootRetained: true, error: "node-limit" });
 assert.throws(() => validateExcessive({ rootRetained: false, error: null }), /excessive-document gate/);
 assert.equal(summarize(Array.from({ length: 30 }, (_, i) => i)).p99, null);
 console.log("page control predicates and portable artifact hashes: passed");
+
+const { soldierFunctionalContract, workloadForProfile, validateSoldierInput, validateSoldierCase, validateSoldierResult } = await import("./suite-contract.js");
+const digest = "sha256:" + "a".repeat(64);
+const input = { schema: "fsgg.soldier-staged-input/v1", renderingRevision: "b".repeat(40), templatesRevision: "c".repeat(40), producerManifestSha256: digest, restoreAssetsSha256: digest, actualProgramSha256: digest, referenceSha256: digest, provenanceSha256: digest, assetSha256: digest, adapterSha256: digest, actualEntry: "soldier-player/index.html", adapterEntry: "soldier-staged-journey.js", candidateVersion: "0.32.0", evaluatedProperties: { FsGgExternalReferenceCandidate: "true", FsGgSvgRuntimeCandidate: "true", FsGgSvgInputCandidate: "true", FsGgLegacyPreview: "" }, packageArchives: ["Scene", "KeyboardInput", "Scene.SvgBrowser"].map((name) => ({ name, sha256: digest })) };
+validateSoldierInput(input);
+assert.equal(workloadForProfile("controls"), (await import("./suite-contract.js")).suiteContract);
+assert.equal(workloadForProfile("soldier-functional", input).cases.length, 8);
+assert.equal(soldierFunctionalContract.method.caseTimeoutMilliseconds, 60000);
+for (const field of ["renderingRevision", "templatesRevision", "producerManifestSha256", "restoreAssetsSha256", "actualProgramSha256", "referenceSha256", "provenanceSha256", "assetSha256", "adapterSha256", "actualEntry", "packageArchives"]) assert.throws(() => validateSoldierInput({ ...input, [field]: null }));
+assert.throws(() => validateSoldierInput({ ...input, evaluatedProperties: { ...input.evaluatedProperties, FsGgExternalReferenceCandidate: "false" } }), /opt-in/);
+assert.notEqual(JSON.stringify(workloadForProfile("soldier-functional", input)), JSON.stringify(workloadForProfile("soldier-functional", { ...input, assetSha256: "sha256:" + "d".repeat(64) })));
+const observation = { assertions: [{ name: "actual product assertion", passed: true }], skipped: false, retried: false, flaky: false, cleanup: { owned: 0, frameDisposed: true } };
+validateSoldierCase(observation);
+for (const value of [{ ...observation, assertions: [] }, { ...observation, skipped: true }, { ...observation, retried: true }, { ...observation, flaky: true }, { ...observation, cleanup: { owned: 1, frameDisposed: true } }, { ...observation, cleanup: { owned: 0, frameDisposed: false } }]) assert.throws(() => validateSoldierCase(value));
+const result = { outcome: "soldier-functional-completed", integrity: "verified-before-and-after", claims: { gpuQualified: false, performanceAccepted: false, representativeSoldierQualified: false }, cases: soldierFunctionalContract.cases.map((kind) => ({ kind, repetition: 0, outcome: "pass", integrity: "verified-before-and-after", observations: observation })) };
+validateSoldierResult(result);
+assert.throws(() => validateSoldierResult({ ...result, cases: result.cases.slice(1) }), /case missing/);
+assert.throws(() => validateSoldierResult({ ...result, cases: [...result.cases].reverse() }), /identity/);
+assert.throws(() => validateSoldierResult({ ...result, claims: { ...result.claims, gpuQualified: true } }), /unsupported/);
+console.log("soldier functional contract, identity, complete cases and negative controls: passed (inert)");
+
+// Exercise the real packager on inert files: metadata must affect the workload/artifact.
+const fs = await import("node:fs"), os = await import("node:os"), path = await import("node:path"), child = await import("node:child_process");
+const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "soldier-stage-control-"));
+try {
+  const adapter = path.join(fixtureRoot, "adapter.js"), player = path.join(fixtureRoot, "player");
+  fs.writeFileSync(adapter, "export const inert = true;\n"); fs.mkdirSync(player);
+  fs.writeFileSync(path.join(player, "index.html"), '<script type="module" src="/soldier-player/assets/player.js"></script>');
+  const stage = (label, metadata) => {
+    const work = path.join(fixtureRoot, label); fs.mkdirSync(path.join(work, "Browser/dist"), { recursive: true }); fs.mkdirSync(path.join(work, "feed"));
+    fs.writeFileSync(path.join(work, "Browser/dist/suite.html"), "inert harness"); fs.writeFileSync(path.join(work, "source-manifest.tsv"), "inert source identity");
+    const metadataPath = path.join(work, "input.json"); fs.writeFileSync(metadataPath, JSON.stringify(metadata));
+    const result = child.spawnSync(process.execPath, [new URL("./package-fixture.mjs", import.meta.url).pathname, "--work", work, "--profile", "soldier-functional", "--player-dist", player, "--adapter", adapter, "--input-metadata", metadataPath], { encoding: "utf8" });
+    return { result, work };
+  };
+  const metadata = { ...input, adapterSha256: `sha256:${createHash("sha256").update(fs.readFileSync(adapter)).digest("hex")}` };
+  const first = stage("first", metadata); assert.equal(first.result.status, 0, first.result.stderr);
+  const firstManifest = JSON.parse(fs.readFileSync(path.join(first.work, "Browser/dist/artifact-manifest.json")));
+  const second = stage("second", { ...metadata, templatesRevision: "e".repeat(40) }); assert.equal(second.result.status, 0, second.result.stderr);
+  const secondManifest = JSON.parse(fs.readFileSync(path.join(second.work, "Browser/dist/artifact-manifest.json")));
+  assert.notEqual(firstManifest.workloadSha256, secondManifest.workloadSha256); assert.notEqual(firstManifest.artifactId, secondManifest.artifactId);
+  assert(firstManifest.files.some((file) => file.path === "soldier-player/index.html")); assert(firstManifest.files.some((file) => file.path === "soldier-staged-journey.js"));
+  assert(!firstManifest.files.some((file) => file.path === "artifact-manifest.json"));
+  assert.notEqual(stage("wrong-entry", { ...metadata, actualEntry: "index.html" }).result.status, 0);
+  assert.notEqual(stage("wrong-adapter", { ...metadata, adapterSha256: digest }).result.status, 0);
+  assert.notEqual(stage("missing-optin", { ...metadata, evaluatedProperties: {} }).result.status, 0);
+} finally { fs.rmSync(fixtureRoot, { recursive: true, force: true }); }
+console.log("actual staged packager rejects entry/adapter/opt-in drift and hashes both source identities: passed (inert)");

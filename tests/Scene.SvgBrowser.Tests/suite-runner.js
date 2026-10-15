@@ -1,12 +1,13 @@
 import { documentReconciliationControl } from "./document-reconciliation-control.js";
-import { suiteContract, validateRebuild, validateLifecycle, validateExcessive, summarize } from "./suite-contract.js";
+import { suiteContract, workloadForProfile, validateSoldierCase, validateRebuild, validateLifecycle, validateExcessive, summarize } from "./suite-contract.js";
 import { hash } from "./fixture-hash.js";
 
 const ui = Object.fromEntries(["run", "resume", "download", "progress", "results", "case"].map((id) => [id, document.getElementById(id)]));
 const delay = (ms) => new Promise((done) => setTimeout(done, ms));
-const method = suiteContract.method;
+const profile = new URL(location.href).searchParams.get("profile") ?? "controls";
+let selectedContract = suiteContract, method = suiteContract.method, queue = [];
 let manifest, manifestHash, result, checkpointKey, running = false;
-const queue = suiteContract.cases.flatMap((kind) => Array.from({ length: ["ordinary", "dense", "extent-near", "extent-far"].includes(kind) ? method.repetitions : 1 }, (_, repetition) => ({ kind, repetition })));
+const makeQueue = (contract) => contract.cases.flatMap((kind) => Array.from({ length: ["ordinary", "dense", "extent-near", "extent-far"].includes(kind) ? contract.method.repetitions : 1 }, (_, repetition) => ({ kind, repetition })));
 const require = (condition, message) => { if (!condition) throw new Error(message); };
 async function fetchBytes(path, signal = AbortSignal.timeout(5000)) {
   const response = await fetch(new URL(path, location.href), { cache: "no-store", signal });
@@ -30,6 +31,7 @@ function environment() {
     origin: location.origin, secureContext: isSecureContext, visibility: document.visibilityState,
     hardwareAcceleration: "unknown", gpu: "unknown", driver: "unknown", gpuTiming: "unknown", physicalInputLatency: "unknown",
     serviceWorkerController: navigator.serviceWorker?.controller?.scriptURL ?? null,
+    suiteProfile: profile, physicalInput: "not-qualified", assistiveTechnology: "not-qualified",
     cache: "artifact verification fetches use no-store; frame cold-load timing is separate from warmed measurements",
   };
 }
@@ -51,6 +53,16 @@ async function withFrame(entry) {
   let timer;
   let expired = false;
   const operation = async () => {
+    if (profile === "soldier-functional") {
+      frame.src = new URL(manifest.workload.input.actualEntry, location.href).href;
+      while (!frame.contentDocument?.getElementById("mount-soldier-reference")) {
+        if (expired || (frame.contentWindow?.location.href === frame.src && frame.contentDocument?.readyState === "complete")) throw new Error("Soldier opt-in/mount control missing from actual entry");
+        await delay(20);
+      }
+      const adapter = await import(new URL(manifest.workload.input.adapterEntry, location.href).href);
+      const observations = await adapter.runSoldierCase(frame.contentWindow, entry.kind, { expired: () => expired, assetSha256: manifest.workload.input.assetSha256, hash });
+      return observations;
+    }
     frame.src = new URL("index.html", location.href).href;
     while (!frame.contentWindow?.svgFoundation) { if (expired) throw new Error("Case expired"); await delay(20); }
     const w = frame.contentWindow, f = w.svgFoundation, doc = w.document;
@@ -100,9 +112,11 @@ async function withFrame(entry) {
     validateRebuild(identity);
     return { coldLoadMilliseconds, warmupsDiscarded: method.warmups, samples, updateCpu: summarize(samples.map((s) => s.updateCpuMilliseconds)), frameCallback: summarize(samples.map((s) => s.callbackToNextFrameMilliseconds)), identity, observation: f.performanceObserve() };
   };
+  let observations;
   try {
-    return await Promise.race([operation(), new Promise((_, reject) => { timer = setTimeout(() => { expired = true; reject(new Error(`Case exceeded ${method.caseTimeoutMilliseconds}ms`)); }, method.caseTimeoutMilliseconds); })]);
-  } finally { expired = true; clearTimeout(timer); frame.remove(); }
+    observations = await Promise.race([operation(), new Promise((_, reject) => { timer = setTimeout(() => { expired = true; reject(new Error(`Case exceeded ${method.caseTimeoutMilliseconds}ms`)); }, method.caseTimeoutMilliseconds); })]);
+    return observations;
+  } finally { expired = true; clearTimeout(timer); frame.remove(); if (observations?.cleanup) observations.cleanup.frameDisposed = !frame.isConnected; }
 }
 async function run(resume) {
   if (running) return;
@@ -114,19 +128,20 @@ async function run(resume) {
     for (let index = result.cases.length; index < queue.length; index++) {
       const entry = queue[index]; ui.progress.textContent = `${index + 1}/${queue.length}: ${entry.kind}, repetition ${entry.repetition + 1}`;
       const started = performance.now();
-      try { await verifyArtifact(); const observations = await withFrame(entry); await verifyArtifact(); result.cases.push({ ...entry, outcome: "pass", observations, integrity: "verified-before-and-after" }); }
-      catch (error) { result.cases.push({ ...entry, outcome: "failed", error: error.message }); }
+      try { await verifyArtifact(); const observations = await withFrame(entry); if (profile === "soldier-functional") validateSoldierCase(observations); await verifyArtifact(); result.cases.push({ ...entry, outcome: "pass", observations, integrity: "verified-before-and-after" }); }
+      catch (error) { result.cases.push({ ...entry, outcome: "failed", error: error.message, cleanup: error.cleanup ?? { status: "unknown" } }); }
       result.cases.at(-1).durationMilliseconds = performance.now() - started;
       checkpoint();
     }
     await verifyArtifact(); result.integrity = "verified-before-and-after";
-    result.outcome = result.cases.some((c) => c.outcome === "failed") ? "failed" : "container-controls-completed";
+    result.outcome = result.cases.some((c) => c.outcome === "failed") ? "failed" : (profile === "soldier-functional" ? "soldier-functional-completed" : "container-controls-completed");
   } catch (error) { result.outcome = "failed"; result.error = error.message; }
   finally { result.completedAtUtc = new Date().toISOString(); checkpoint(); running = false; ui.run.disabled = false; ui.progress.textContent = `${result.outcome}: ${result.cases.length}/${queue.length} cases. Download combined results.`; }
 }
 ui.run.onclick = () => run(false);
 ui.resume.onclick = () => run(true);
-ui.download.onclick = () => {
+ui.download.onclick = async () => {
+  try { await verifyArtifact(); } catch (error) { result.outcome = "failed"; result.integrity = "failed-before-download"; result.error = error.message; display(); }
   const url = URL.createObjectURL(new Blob([JSON.stringify(result, null, 2)], { type: "application/json" }));
   const link = document.createElement("a"); link.href = url; link.download = `svg-controls-${result.runId}.json`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
@@ -134,13 +149,21 @@ window.svgSuite = { run: () => run(false), get result() { return result; }, get 
 try {
   const bytes = await fetchBytes("artifact-manifest.json"); manifestHash = hash(bytes); manifest = JSON.parse(new TextDecoder().decode(bytes));
   require(manifest.schema === "fsgg.svg-coherence.fixture/v1", "Unsupported artifact manifest");
-  require(manifest.workloadSha256 === hash(JSON.stringify(suiteContract)), "Workload contract hash mismatch");
+  selectedContract = workloadForProfile(profile, profile === "soldier-functional" ? manifest.workload.input : undefined);
+  method = selectedContract.method; queue = makeQueue(selectedContract);
+  require(manifest.workloadSha256 === hash(JSON.stringify(selectedContract)), "Workload contract hash mismatch");
   require(manifest.artifactId === hash(JSON.stringify({ files: manifest.files, packages: manifest.packages, sourceSha256: manifest.sourceSha256, workloadSha256: manifest.workloadSha256 })), "Artifact identity mismatch");
   await verifyArtifact(); checkpointKey = `svg-suite:${manifest.artifactId}`;
-  try {
-    const saved = JSON.parse(localStorage.getItem(checkpointKey));
-    if (saved?.manifestSha256 === manifestHash && saved.cases?.length < queue.length && saved.cases.every((c,i) => c.kind === queue[i].kind && c.repetition === queue[i].repetition)) { result = saved; ui.resume.disabled = false; display(); }
-  } catch { /* Storage unavailable: fresh runs and download remain usable. */ }
+  let savedText;
+  try { savedText = localStorage.getItem(checkpointKey); } catch { /* Storage may be unavailable; fresh runs remain usable. */ }
+  if (savedText) {
+    const saved = JSON.parse(savedText);
+    require(saved?.artifact?.artifactId === manifest.artifactId && saved.manifestSha256 === manifestHash
+      && Array.isArray(saved.cases) && saved.cases.length <= queue.length
+      && saved.cases.every((c, i) => c.kind === queue[i].kind && c.repetition === queue[i].repetition
+        && ["pass", "failed"].includes(c.outcome)), "Stale or foreign checkpoint");
+    if (saved.cases.length < queue.length) { result = saved; ui.resume.disabled = false; display(); }
+  }
   ui.run.disabled = false; ui.progress.textContent = `Ready: ${queue.length} sequential cases. ${manifest.artifactId}`;
 } catch (error) {
   result = { schema: "fsgg.svg-coherence.page-results/v1", runId: `${Date.now()}-capability`, outcome: "capability-check-failed", error: error.message, environment: environment(), cases: [], claims: { gpuQualified: false, performanceAccepted: false, representativeSoldierQualified: false } };
