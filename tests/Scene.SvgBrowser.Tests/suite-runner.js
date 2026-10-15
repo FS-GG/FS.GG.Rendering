@@ -112,11 +112,21 @@ async function withFrame(entry) {
     validateRebuild(identity);
     return { coldLoadMilliseconds, warmupsDiscarded: method.warmups, samples, updateCpu: summarize(samples.map((s) => s.updateCpuMilliseconds)), frameCallback: summarize(samples.map((s) => s.callbackToNextFrameMilliseconds)), identity, observation: f.performanceObserve() };
   };
-  let observations;
+  let observations, failure;
   try {
     observations = await Promise.race([operation(), new Promise((_, reject) => { timer = setTimeout(() => { expired = true; reject(new Error(`Case exceeded ${method.caseTimeoutMilliseconds}ms`)); }, method.caseTimeoutMilliseconds); })]);
     return observations;
-  } finally { expired = true; clearTimeout(timer); frame.remove(); if (observations?.cleanup) observations.cleanup.frameDisposed = !frame.isConnected; }
+  } catch (error) { failure = error; throw error; }
+  finally {
+    expired = true; clearTimeout(timer); frame.remove();
+    const frameDisposed = !frame.isConnected;
+    if (observations?.cleanup) observations.cleanup.frameDisposed = frameDisposed;
+    if (failure) {
+      failure.cleanup ??= { status: "unknown" };
+      failure.cleanup.frameDisposed = frameDisposed;
+      if (failure.observations?.cleanup) failure.observations.cleanup.frameDisposed = frameDisposed;
+    }
+  }
 }
 async function run(resume) {
   if (running) return;

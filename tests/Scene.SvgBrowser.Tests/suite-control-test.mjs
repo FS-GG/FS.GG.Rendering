@@ -63,3 +63,30 @@ try {
   assert.notEqual(stage("missing-optin", { ...metadata, evaluatedProperties: {} }).result.status, 0);
 } finally { fs.rmSync(fixtureRoot, { recursive: true, force: true }); }
 console.log("actual staged packager rejects entry/adapter/opt-in drift and hashes both source identities: passed (inert)");
+
+// Execute the real withFrame function with inert DOM ownership, retaining the first failure.
+const { runInNewContext } = await import("node:vm");
+const runnerSource = fs.readFileSync(new URL("./suite-runner.js", import.meta.url), "utf8");
+const frameFunction = runnerSource.slice(runnerSource.indexOf("async function withFrame(entry)"), runnerSource.indexOf("async function run(resume)"));
+for (const removed of [true, false]) {
+  const firstFailure = new Error("first product assertion failed");
+  firstFailure.cleanup = { owned: 3, frameDisposed: false };
+  firstFailure.observations = { assertions: [{ name: "first product assertion", passed: false }], cleanup: { owned: 3, frameDisposed: false } };
+  const frame = { isConnected: true, remove() { this.isConnected = !removed; }, contentDocument: { fonts: { ready: Promise.resolve() } }, contentWindow: { svgFoundation: { performanceMount() { throw firstFailure; } } } };
+  frame.contentWindow.document = frame.contentDocument;
+  const execute = runInNewContext(`(${frameFunction})`, {
+    document: { createElement: () => frame }, ui: { case: { replaceChildren() {} } },
+    performance: { now: () => 0 }, profile: "controls", location: { href: "http://inert.invalid/suite.html" },
+    method: { caseTimeoutMilliseconds: 1000 }, URL, setTimeout, clearTimeout,
+  });
+  await assert.rejects(execute({ kind: "lifecycle" }), (error) => {
+    assert.equal(error, firstFailure);
+    assert.equal(error.message, "first product assertion failed");
+    assert.equal(error.cleanup.owned, 3);
+    assert.equal(error.cleanup.frameDisposed, removed);
+    assert.equal(error.observations.cleanup.frameDisposed, removed);
+    assert.equal(error.observations.assertions[0].passed, false);
+    return true;
+  });
+}
+console.log("failed frame diagnostic follows actual removal and retains first failure: passed (inert)");
