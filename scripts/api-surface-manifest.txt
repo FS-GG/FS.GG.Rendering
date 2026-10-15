@@ -1456,7 +1456,9 @@ pkg    FS.GG.Game.Core
 +      Physics.fsi type Physics.Shape
 +      Physics.fsi type Physics.Material
 +      Physics.fsi type Physics.Config
-proseat Physics.fsi type Physics.Config ::: { Gravity: Point
+# #1144: Game 0.17.0 splits the record brace from Gravity. The unique opening brace
+# inside Physics.Config preserves this teaching block's original position before the record.
+proseat Physics.fsi type Physics.Config ::: {
 | /// Uniform acceleration applied to every `Dynamic` body each step.
 +      Physics.fsi type Physics.World
 +      Physics.fsi type Physics.Transform
