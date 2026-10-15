@@ -1,5 +1,5 @@
 import { chromium } from "playwright-core";
-import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, statSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { validateSoldierResult } from "./suite-contract.js";
@@ -46,6 +46,15 @@ try {
     }, 0);
   }, mutant);
   const page = await context.newPage();
+  const worldExports = [];
+  page.on("download", (download) => {
+    if (profile === "soldier-functional" && download.suggestedFilename() === "soldier-world.svg") worldExports.push((async () => {
+      const path = argument("--out") + ".world.svg";
+      await download.saveAs(path);
+      if (statSync(path).size > 8388608) throw new Error("Full-world export exceeds bounded evidence size");
+      return { sha256: sha256(readFileSync(path)), bytes: statSync(path).size };
+    })());
+  });
   let inputManifest;
   if (profile === "soldier-functional") {
     if (!process.argv.includes("--manifest-sha256")) throw new Error("Exact staged manifest digest required");
@@ -104,12 +113,13 @@ try {
   }
   if (!capabilityFailed) await page.waitForFunction(() => window.svgSuite.result?.completedAtUtc && !window.svgSuite.running, undefined, { timeout: Math.min(750000, deadlineMilliseconds) });
   if (mutant === "artifact-before-download") await page.route("**/artifact-manifest.json", (route) => route.fulfill({ status: 200, body: "altered-before-download" }));
-  const downloadEvent = page.waitForEvent("download");
+  const downloadEvent = page.waitForEvent("download", { predicate: (download) => download.suggestedFilename().startsWith("svg-controls-") });
   await page.locator("#download").click();
   const download = await downloadEvent;
   await download.saveAs(argument("--out"));
   const result = JSON.parse(readFileSync(argument("--out"), "utf8"));
-  result.driver = { profile: executablePath ? "container-software-diagnostic-explicit-browser" : "container-software-historical", historicalBaselineEquivalence: false, browser: browser.version(), executablePath: executablePath ?? "Playwright default", executableSha256, driverSha256, args: ["--disable-gpu"], baseUrl: url.href, resumeObserved, downloadObserved: true };
+  const worldExportEvidence = await Promise.all(worldExports);
+  result.driver = { fullWorldExports: worldExportEvidence, profile: executablePath ? "container-software-diagnostic-explicit-browser" : "container-software-historical", historicalBaselineEquivalence: false, browser: browser.version(), executablePath: executablePath ?? "Playwright default", executableSha256, driverSha256, args: ["--disable-gpu"], baseUrl: url.href, resumeObserved, downloadObserved: true };
   writeFileSync(argument("--out"), `${JSON.stringify(result, null, 2)}\n`);
   if (profile === "soldier-functional") {
     if (mutant === "missing-case") { result.cases.pop(); result.outcome = "failed"; result.error = "downloaded case removed by explicit negative control"; }
@@ -117,6 +127,8 @@ try {
     writeFileSync(argument("--out"), `${JSON.stringify(result, null, 2)}\n`);
     if (result.manifestSha256 !== argument("--manifest-sha256") || result.artifact?.artifactId !== inputManifest.artifactId || JSON.stringify(result.artifact) !== JSON.stringify(inputManifest)) throw new Error("Downloaded staged input identity mismatch");
     validateSoldierResult(result);
+    const full = result.cases.find((row) => row.kind === "soldier-churn").observations.details.fullExport;
+    if (worldExportEvidence.length !== 1 || worldExportEvidence[0].sha256 !== full.sha256) throw new Error("Actual full-world download differs from observed export");
     if (mutant) throw new Error(`Soldier mutant survived: ${mutant}`);
     console.log(JSON.stringify({ outcome: result.outcome, cases: result.cases.length, resumeObserved, output: argument("--out") }));
   } else if (mutant) {
