@@ -53,7 +53,7 @@ try {
       await download.saveAs(path);
       if (statSync(path).size > 8388608) throw new Error("Full-world export exceeds bounded evidence size");
       return { sha256: sha256(readFileSync(path)), bytes: statSync(path).size };
-    })());
+    })().catch((error) => ({ error: error.message })));
   });
   let inputManifest;
   if (profile === "soldier-functional") {
@@ -125,12 +125,18 @@ try {
     if (mutant === "missing-case") { result.cases.pop(); result.outcome = "failed"; result.error = "downloaded case removed by explicit negative control"; }
     if (mutant === "artifact-after-download") { result.artifact.files[0].sha256 = "altered"; result.outcome = "failed"; result.error = "downloaded artifact identity altered by explicit negative control"; }
     writeFileSync(argument("--out"), `${JSON.stringify(result, null, 2)}\n`);
-    if (result.manifestSha256 !== argument("--manifest-sha256") || result.artifact?.artifactId !== inputManifest.artifactId || JSON.stringify(result.artifact) !== JSON.stringify(inputManifest)) throw new Error("Downloaded staged input identity mismatch");
-    validateSoldierResult(result);
-    const full = result.cases.find((row) => row.kind === "soldier-churn").observations.details.fullExport;
-    if (worldExportEvidence.length !== 1 || worldExportEvidence[0].sha256 !== full.sha256) throw new Error("Actual full-world download differs from observed export");
-    if (mutant) throw new Error(`Soldier mutant survived: ${mutant}`);
-    console.log(JSON.stringify({ outcome: result.outcome, cases: result.cases.length, resumeObserved, output: argument("--out") }));
+    try {
+      if (result.manifestSha256 !== argument("--manifest-sha256") || result.artifact?.artifactId !== inputManifest.artifactId || JSON.stringify(result.artifact) !== JSON.stringify(inputManifest)) throw new Error("Downloaded staged input identity mismatch");
+      validateSoldierResult(result);
+      const full = result.cases.find((row) => row.kind === "soldier-churn").observations.details.fullExport;
+      if (worldExportEvidence.length !== 1 || worldExportEvidence[0].sha256 !== full.sha256) throw new Error("Actual full-world download differs from observed export");
+      if (mutant) throw new Error(`Soldier mutant survived: ${mutant}`);
+      console.log(JSON.stringify({ outcome: result.outcome, cases: result.cases.length, resumeObserved, output: argument("--out") }));
+    } catch (error) {
+      result.outcome = "failed"; result.verificationError = error.message;
+      writeFileSync(argument("--out"), `${JSON.stringify(result, null, 2)}\n`);
+      throw error;
+    }
   } else if (mutant) {
     const gate = { "unnecessary-rebuild": "unnecessary-rebuild gate", "listener-leak": "listener/resource-leak gate", "excessive-document-acceptance": "excessive-document gate" }[mutant];
     if (!result.cases.some((c) => c.error?.includes(gate))) throw new Error(`Mutant survived: ${mutant}`);
