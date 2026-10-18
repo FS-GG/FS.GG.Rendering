@@ -197,6 +197,65 @@ export function documentReconciliationControl(w) {
     structuralMutants.push(expectKilled("skip-changed-attribute","live/export structure differs",liveMatchesExport));
     replaceStructure("unkeyed-changed",["control-unkeyed"]);
     const structuralResult={steps:structural,mutants:structuralMutants,topmostOriginal,topmostReverse,unkeyedWrappersRetained:true};
+    // Definition-only replacement must not touch a disjoint definition/instance cohort.
+    const abIds = ["control-a-0", "control-a-1", "control-b-0", "control-b-1"];
+    replaceStructure("definition-ab-original", abIds);
+    root.scrollIntoView({block:"center",inline:"center"});
+    const abElements = keyed();
+    const definitionOf = node => {
+      const href = node.querySelector("use")?.getAttribute("href");
+      require(href?.startsWith("#"), "definition cohort reference missing");
+      const definition = root.querySelector(`[id='${w.CSS.escape(href.slice(1))}']`);
+      require(definition?.localName === "symbol", "definition cohort symbol missing");
+      return definition;
+    };
+    const definitionA = definitionOf(abElements.get("control-a-0"));
+    const definitionB = definitionOf(abElements.get("control-b-0"));
+    require(definitionA !== definitionB
+      && definitionOf(abElements.get("control-a-1")) === definitionA
+      && definitionOf(abElements.get("control-b-1")) === definitionB, "definition cohorts not independent");
+    const subtree = node => [node, ...[...node.childNodes].flatMap(subtree)];
+    const bRoots = [definitionB, abElements.get("control-b-0"), abElements.get("control-b-1")];
+    const bSnapshot = bRoots.map(node => ({node, nodes:subtree(node), markup:node.outerHTML}));
+    const bFill = w.getComputedStyle(definitionB.querySelector("circle")).fill;
+    const bHits = [110,140].map(x => f.documentHit(x,30));
+    require(JSON.stringify(bHits) === JSON.stringify(["control-b-0","control-b-1"]), "definition B initial hit identity");
+    require([37,67].every(x => f.documentHit(x,30) === null), "definition A initial geometry");
+    const bObserver = new w.MutationObserver(() => {});
+    for (const node of bRoots) bObserver.observe(node, {subtree:true,childList:true,attributes:true,characterData:true});
+    const assertB = () => {
+      require(definitionOf(keyed().get("control-b-0")) === definitionB, "unrelated definition B rebuilt");
+      for (const snapshot of bSnapshot) {
+        const actual = subtree(snapshot.node);
+        require(actual.length === snapshot.nodes.length && actual.every((node,i) => node === snapshot.nodes[i])
+          && snapshot.node.isConnected && snapshot.node.outerHTML === snapshot.markup, "unrelated B subtree changed");
+      }
+      require(["control-b-0","control-b-1"].every(id => keyed().get(id) === abElements.get(id)), "unrelated B instance rebuilt");
+      require(w.getComputedStyle(definitionB.querySelector("circle")).fill === bFill
+        && JSON.stringify([110,140].map(x => f.documentHit(x,30))) === JSON.stringify(bHits), "unrelated B style/hit changed");
+    };
+    const assertNoBMutation = () => require(bObserver.takeRecords().length === 0, "unrelated B mutation observed");
+    let definitionIsolation;
+    try {
+      const update = replaceStructure("definition-ab-changed", abIds);
+      assertB();assertNoBMutation();
+      const aCircle = definitionOf(keyed().get("control-a-0")).querySelector("circle");
+      require(Number(aCircle?.getAttribute("r")) === 8 && aCircle.getAttribute("fill") === "rgb(220 80 60)", "definition A replacement geometry/style");
+      require(JSON.stringify([37,67].map(x => f.documentHit(x,30))) === JSON.stringify(["control-a-0","control-a-1"]), "definition A dependent hit update");
+      // The identity witness catches a semantically identical unrelated subtree rebuild.
+      const clonedB = definitionB.cloneNode(true);
+      definitionB.replaceWith(clonedB);
+      let rebuildControl;
+      try { rebuildControl = expectKilled("rebuild-unrelated-definition-b", "unrelated definition B rebuilt", assertB); }
+      finally { clonedB.replaceWith(definitionB); }
+      assertB();assertNoBMutation();
+      // A redundant write preserves markup and identity but must fail the scoped mutation witness.
+      const bCircle = definitionB.querySelector("circle");
+      bCircle.setAttribute("r", bCircle.getAttribute("r"));
+      const mutationControl = expectKilled("write-unrelated-definition-b", "unrelated B mutation observed", assertNoBMutation);
+      assertB();assertNoBMutation();liveMatchesExport();
+      definitionIsolation = {update,unrelatedMutations:0,unrelatedSubtreesRetained:true,bHits,dependentHits:["control-a-0","control-a-1"],controls:[rebuildControl,mutationControl]};
+    } finally { bObserver.disconnect(); }
     const instanceResearch = instanceResearchControl(f,rootOf,liveMatchesExport,require,count,()=>w.performance.now());
     require(instanceResearch.length === 24, "instance research report coverage");
     require(f.replaceOriginalDocument() === null, "restore original after instance research");liveMatchesExport();
@@ -205,7 +264,7 @@ export function documentReconciliationControl(w) {
     const disposedRoots = [];
     for(let cycle=0;cycle<5;cycle++) { f.documentMount();require(rootOf(), "remount failed after namespace release");disposedRoots.push(f.documentDispose());require(!rootOf(), "disposed root retained"); }
     require(disposedRoots.every(n => n === 0) && listeners.length === 0 && frames.size === 0, "document effects retained after disposal");
-    return { noOp, changed, repeat, repair, reordered, restored, invalid, reconstruction, structural:structuralResult, instanceResearch, disposedRoots, ownedListeners:listeners.length, ownedFrames:frames.size, scope:"effects registered after fixture bootstrap; foundation controls excluded", countersRestored:true };
+    return { noOp, changed, repeat, repair, reordered, restored, invalid, reconstruction, structural:structuralResult, definitionIsolation, instanceResearch, disposedRoots, ownedListeners:listeners.length, ownedFrames:frames.size, scope:"effects registered after fixture bootstrap; foundation controls excluded", countersRestored:true };
   } finally {
     f.documentDispose();
     for(const id of frames)cancel.call(w,id);

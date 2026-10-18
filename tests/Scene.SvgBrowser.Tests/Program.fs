@@ -585,8 +585,17 @@ let reconciliationDocument mode =
     let box id = leaf id (rectangle 10.0 10.0 20.0 20.0 (color 70uy 130uy 220uy))
     let circle id = leaf id (SceneNode.Circle({ X = 20.0; Y = 20.0 }, 10.0, color 220uy 80uy 60uy))
     let translated offset = SceneNode.Translate((offset, 0.0), { Nodes = [ rectangle 10.0 10.0 20.0 20.0 (color 70uy 130uy 220uy) ] })
+    let definitionIsolation = mode = "definition-ab-original" || mode = "definition-ab-changed"
     let children =
         match mode with
+        | "definition-ab-original" | "definition-ab-changed" ->
+            [ for definition, prefix, positions in
+                  [ "control-definition-a", "control-a", [ 30.0; 60.0 ]
+                    "control-definition-b", "control-b", [ 110.0; 140.0 ] ] do
+                  for index, x in List.indexed positions do
+                      { (box $"{prefix}-{index}") with
+                          Transform = SvgAffine.translate x 30.0
+                          Content = SvgElementContent.SymbolInstance(definition, None) } ]
         | "reverse" -> [ box "control-c"; box "control-b"; box "control-a" ]
         | "insert" -> [ box "control-first"; box "control-a"; box "control-middle"; box "control-b"; box "control-c"; box "control-last" ]
         | "remove-first" -> [ box "control-b"; box "control-c" ]
@@ -600,7 +609,24 @@ let reconciliationDocument mode =
         | "original" -> [ box "control-a"; box "control-b"; box "control-c" ]
         | _ -> invalidArg "mode" "Unknown reconciliation control."
 
-    { PortableDocumentFixture.document with Children = children }
+    if definitionIsolation then
+        let symbol id radius fill =
+            { Id = id
+              Content =
+                  SvgDefinitionContent.Symbol(
+                      None,
+                      [ { (leaf (id + "-geometry") (SceneNode.Circle({ X = 0.0; Y = 0.0 }, radius, fill))) with
+                            SemanticId = None } ]) }
+        let changed = mode = "definition-ab-changed"
+        { PortableDocumentFixture.document with
+            ViewBox = { X = 0.0; Y = 0.0; Width = 180.0; Height = 70.0 }
+            Definitions =
+                [ symbol "control-definition-a" (if changed then 8.0 else 3.0)
+                      (if changed then color 220uy 80uy 60uy else color 70uy 130uy 220uy)
+                  symbol "control-definition-b" 5.0 (color 40uy 170uy 90uy) ]
+            Children = children }
+    else
+        { PortableDocumentFixture.document with Children = children }
 
 // Research corpus only: caller supplies the same ordered command state to both representations.
 let instanceResearchDocument (variant: string) (revision: int) (ids: string array) (xs: float array) (ys: float array) =
