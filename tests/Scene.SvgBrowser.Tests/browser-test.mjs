@@ -635,6 +635,7 @@ try {
   documentEvidence.prefixCompatibility = { corpus: 22, prechangeRuntime: "Fable 5.17.0", fullByteDigests: true, stalePrefixRejected, ...prefixLive };
   documentEvidence.definitionIsolation = await page.evaluate(definitionIsolationControl);
   const root = page.locator("[data-scene-root-id='svg-foundation-root']");
+  await root.scrollIntoViewIfNeeded();
   const box = await root.boundingBox();
   if (!box) throw new Error("SVG root has no rendered bounds");
 
