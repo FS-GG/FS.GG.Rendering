@@ -348,3 +348,15 @@ complex-glyph scaling, frame/raster or process CPU, allocation/GC, validation ve
 serialization attribution, performance acceptance, GPU qualification, publication
 or installed adoption. Prior accepted witnesses, timing failures and the closed
 profiling chain remain retained. The broader .3/.4 promises remain open.
+
+The research caller keeps `representationOrder` distinct from its existing local
+`order()` DOM reader. The early source check now executes the actual caller's
+lexical prefix and its verbatim downstream research calls at an inert boundary,
+including default and both explicit selections. Reintroducing the original
+parameter shadowing must fail each selection; the control also checks that the
+caller's effect wrappers are restored. The existing normal `run.sh` entry point
+runs this inexpensive source suite before package/browser work, so the regression
+is required by normal SVG CI without running the full research stream. This catches a caller-integration defect
+that helper-only order/parser tests miss. It establishes source binding behavior,
+not renderer correctness or replacement timing. The original failed qualification
+remains retained and a fresh complete three-trial qualification is still required.

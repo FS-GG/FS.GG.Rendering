@@ -168,3 +168,51 @@ try {
   assert.notEqual(manifest.workloadSha256,portableSha256(new TextEncoder().encode(JSON.stringify(altered))));
 } finally { fs.rmSync(controlsRoot,{recursive:true,force:true}); }
 console.log("actual pre-launch option parser and controls packager bind count/order selection: passed (inert)");
+
+// Exercise the real caller's lexical scope up to its existing DOM-order declaration.
+// Only the downstream renderer boundary is inert; both research call expressions
+// are copied verbatim from the maintained caller. This is no DOM/runtime acceptance.
+const reconciliationSource=fs.readFileSync(new URL("./document-reconciliation-control.js",import.meta.url),"utf8");
+function researchCallerBinding(source, selectedOrder) {
+  const start=source.indexOf("export function documentReconciliationControl(");
+  const end=source.indexOf("export function countInstanceResearchUpdate(",start);
+  assert(start>=0 && end>start,"actual caller source boundary missing");
+  const caller=source.slice(start,end).trim();
+  const calls=caller.match(/    const instanceResearch = instanceResearchControl[^\n]+;\n    validateInstanceResearchResult[^\n]+;/)?.[0];
+  assert(calls,"actual research calls missing");
+  const cut="    const originalOrder = order();";
+  assert.equal(caller.split(cut).length,2,"actual DOM-order binding boundary missing/ambiguous");
+  const instrumented=caller.replace("export function","function").replace(cut,`${cut}\n    return (() => {\n${calls}\n      return instanceResearch;\n    })();`);
+  const svg={namespaceURI:"http://www.w3.org/2000/svg",localName:"svg",attributes:[],children:[],textContent:"",querySelectorAll:()=>[]};
+  const add=()=>{}, remove=()=>{}, raf=()=>{throw Error("unexpected frame request");}, cancel=()=>{};
+  class InertEventTarget {}
+  InertEventTarget.prototype.addEventListener=add;InertEventTarget.prototype.removeEventListener=remove;
+  let mounts=0,disposals=0;
+  const w={
+    svgFoundation:{documentMount(){mounts++;},documentExport:()=>"<svg/>",documentDispose(){disposals++;}},
+    document:{querySelector:()=>svg},EventTarget:InertEventTarget,
+    DOMParser:class {parseFromString(){return {querySelector:()=>null,documentElement:svg};}},
+    performance:{now:()=>0},requestAnimationFrame:raf,cancelAnimationFrame:cancel,
+  };
+  const execute=runInNewContext(`(${instrumented})`,{
+    instanceResearchControl:(...args)=>rowsFor(args.at(-1)),validateInstanceResearchResult,
+  });
+  try { return execute(w,selectedOrder); }
+  finally {
+    assert.equal(mounts,1);assert.equal(disposals,1);
+    assert.equal(InertEventTarget.prototype.addEventListener,add);assert.equal(InertEventTarget.prototype.removeEventListener,remove);
+    assert.equal(w.requestAnimationFrame,raf);assert.equal(w.cancelAnimationFrame,cancel);
+  }
+}
+for (const order of [undefined,"shared-first","expanded-first"]) {
+  assert.deepEqual(researchCallerBinding(reconciliationSource,order),rowsFor(order ?? "shared-first"));
+}
+assert.throws(()=>researchCallerBinding(reconciliationSource,"unknown"),/Unknown instance research order/);
+// Reintroduce the exact original caller shadowing, retaining the local order() reader.
+const originalShadowing=reconciliationSource.replaceAll("representationOrder","order");
+assert.notEqual(originalShadowing,reconciliationSource);
+for (const order of [undefined,"shared-first","expanded-first"]) assert.throws(()=>researchCallerBinding(originalShadowing,order),/Unknown instance research order/);
+console.log("actual lexical caller: default + both orders pass; original shadowing mutant refused for all three (inert)");
+
+const maintainedRunner=fs.readFileSync(new URL("./run.sh",import.meta.url),"utf8");
+assert(maintainedRunner.includes('node "$repo/tests/Scene.SvgBrowser.Tests/suite-control-test.mjs"'),"normal packed runner must execute the inexpensive caller regression");

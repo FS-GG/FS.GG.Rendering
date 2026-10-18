@@ -205,7 +205,7 @@ export function definitionIsolationControl(w = window) {
 }
 
 // Uses the actual compiled document host; no renderer implementation is reproduced here.
-export function documentReconciliationControl(w, order = "shared-first") {
+export function documentReconciliationControl(w, representationOrder = "shared-first") {
   const f = w.svgFoundation, doc = w.document;
   const require = (condition, detail) => { if (!condition) throw new Error(`document-reconciliation gate: ${detail}`); };
   const rootOf = () => doc.querySelector("#document-fixture svg");
@@ -308,8 +308,8 @@ export function documentReconciliationControl(w, order = "shared-first") {
     replaceStructure("unkeyed-changed",["control-unkeyed"]);
     const structuralResult={steps:structural,mutants:structuralMutants,topmostOriginal,topmostReverse,unkeyedWrappersRetained:true};
     const definitionIsolation = definitionIsolationControl(w);
-    const instanceResearch = instanceResearchControl(f,rootOf,liveMatchesExport,require,count,()=>w.performance.now(),order);
-    validateInstanceResearchResult(instanceResearch,order);
+    const instanceResearch = instanceResearchControl(f,rootOf,liveMatchesExport,require,count,()=>w.performance.now(),representationOrder);
+    validateInstanceResearchResult(instanceResearch,representationOrder);
     require(f.replaceOriginalDocument() === null, "restore original after instance research");liveMatchesExport();
     require(rootOf() === root && JSON.stringify(exportTree()) === JSON.stringify(initialTree), "instance research restoration differs");
     const clone = root.cloneNode(true);root.replaceWith(clone);const reconstruction = expectKilled("full-reconstruction","root rebuilt",identity);clone.replaceWith(root);f.documentDispose();
