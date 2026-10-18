@@ -1,3 +1,4 @@
+import { definitionIsolationControl } from "./document-reconciliation-control.js";
 import { producerFocusCompositionControl } from "./focus-reconciliation-control.mjs";
 import { createHash } from "node:crypto";
 import { createServer } from "node:http";
@@ -632,7 +633,9 @@ try {
   if (!prefixLive.wrongReferenceRejected) throw new Error("prefix-reference-negative-control");
   for (const row of prefixLive.exports) checkPrefixBytes(row.name, row.svg);
   documentEvidence.prefixCompatibility = { corpus: 22, prechangeRuntime: "Fable 5.17.0", fullByteDigests: true, stalePrefixRejected, ...prefixLive };
+  documentEvidence.definitionIsolation = await page.evaluate(definitionIsolationControl);
   const root = page.locator("[data-scene-root-id='svg-foundation-root']");
+  await root.scrollIntoViewIfNeeded();
   const box = await root.boundingBox();
   if (!box) throw new Error("SVG root has no rendered bounds");
 
