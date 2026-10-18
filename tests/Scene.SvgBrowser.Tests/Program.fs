@@ -610,12 +610,13 @@ let reconciliationDocument mode =
         | _ -> invalidArg "mode" "Unknown reconciliation control."
 
     if definitionIsolation then
+        // Keep painted geometry and hit probes inside the symbol viewport, away from its clip edge.
         let symbol id radius fill =
             { Id = id
               Content =
                   SvgDefinitionContent.Symbol(
                       None,
-                      [ { (leaf (id + "-geometry") (SceneNode.Circle({ X = 0.0; Y = 0.0 }, radius, fill))) with
+                      [ { (leaf (id + "-geometry") (SceneNode.Circle({ X = 10.0; Y = 10.0 }, radius, fill))) with
                             SemanticId = None } ]) }
         let changed = mode = "definition-ab-changed"
         { PortableDocumentFixture.document with

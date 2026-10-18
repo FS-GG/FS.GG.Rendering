@@ -98,7 +98,7 @@ function instanceResearchControl(f, rootOf, liveMatchesExport, require, countUpd
 // Keep this function self-contained: Playwright evaluates this exact function in the packed page.
 export function definitionIsolationControl(w = window) {
   const f = w.svgFoundation, doc = w.document;
-  const require = (condition, detail) => { if (!condition) throw new Error(`document-reconciliation gate: ${detail}`); };
+  const require = (condition, detail, evidence) => { if (!condition) throw new Error(`document-reconciliation gate: ${detail}${evidence ? ": " + JSON.stringify(evidence) : ""}`); };
   const rootOf = () => doc.querySelector("#document-fixture svg");
   const root = rootOf();
   require(root, "definition isolation document not mounted");
@@ -145,9 +145,10 @@ export function definitionIsolationControl(w = window) {
   const bRoots = [definitionB, abElements.get("control-b-0"), abElements.get("control-b-1")];
   const bSnapshot = bRoots.map(node => ({node, nodes:subtree(node), markup:node.outerHTML}));
   const bFill = w.getComputedStyle(definitionB.querySelector("circle")).fill;
-  const bHits = [110,140].map(x => f.documentHit(x,30));
-  require(JSON.stringify(bHits) === JSON.stringify(["control-b-0","control-b-1"]), "definition B initial hit identity");
-  require([37,67].every(x => f.documentHit(x,30) === null), "definition A initial geometry");
+  const bHits = [120,150].map(x => f.documentHit(x,40));
+  require(JSON.stringify(bHits) === JSON.stringify(["control-b-0","control-b-1"]), "definition B initial hit identity", {expected:["control-b-0","control-b-1"],actual:bHits,points:[[120,40],[150,40]],viewBox:root.getAttribute("viewBox"),bounds:root.getBoundingClientRect().toJSON()});
+  const initialAHits = [47,77].map(x => f.documentHit(x,40));
+  require(initialAHits.every(hit => hit === null), "definition A initial geometry", {expected:[null,null],actual:initialAHits,points:[[47,40],[77,40]]});
   const bObserver = new w.MutationObserver(() => {});
   // Root child-list records are needed too: moving B records a change on its parent.
   bObserver.observe(root, {subtree:true,childList:true,attributes:true,characterData:true});
@@ -162,7 +163,7 @@ export function definitionIsolationControl(w = window) {
     }
     require(["control-b-0","control-b-1"].every(id => keyed().get(id) === abElements.get(id)), "unrelated B instance rebuilt");
     require(w.getComputedStyle(definitionB.querySelector("circle")).fill === bFill
-      && JSON.stringify([110,140].map(x => f.documentHit(x,30))) === JSON.stringify(bHits), "unrelated B style/hit changed");
+      && JSON.stringify([120,150].map(x => f.documentHit(x,40))) === JSON.stringify(bHits), "unrelated B style/hit changed");
   };
   const assertNoBMutation = () => require(bObserver.takeRecords().filter(affectsB).length === 0, "unrelated B mutation observed");
   let definitionIsolation;
@@ -171,7 +172,8 @@ export function definitionIsolationControl(w = window) {
     assertB();assertNoBMutation();
     const aCircle = definitionOf(keyed().get("control-a-0")).querySelector("circle");
     require(Number(aCircle?.getAttribute("r")) === 8 && aCircle.getAttribute("fill") === "rgb(220 80 60)", "definition A replacement geometry/style");
-    require(JSON.stringify([37,67].map(x => f.documentHit(x,30))) === JSON.stringify(["control-a-0","control-a-1"]), "definition A dependent hit update");
+    const dependentAHits = [47,77].map(x => f.documentHit(x,40));
+    require(JSON.stringify(dependentAHits) === JSON.stringify(["control-a-0","control-a-1"]), "definition A dependent hit update", {expected:["control-a-0","control-a-1"],actual:dependentAHits,points:[[47,40],[77,40]]});
     // The identity witness catches a semantically identical unrelated subtree rebuild.
     const clonedB = definitionB.cloneNode(true);
     definitionB.replaceWith(clonedB);
