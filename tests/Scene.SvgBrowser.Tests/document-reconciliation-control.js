@@ -222,7 +222,10 @@ export function documentReconciliationControl(w) {
     require(JSON.stringify(bHits) === JSON.stringify(["control-b-0","control-b-1"]), "definition B initial hit identity");
     require([37,67].every(x => f.documentHit(x,30) === null), "definition A initial geometry");
     const bObserver = new w.MutationObserver(() => {});
-    for (const node of bRoots) bObserver.observe(node, {subtree:true,childList:true,attributes:true,characterData:true});
+    // Root child-list records are needed too: moving B records a change on its parent.
+    bObserver.observe(root, {subtree:true,childList:true,attributes:true,characterData:true});
+    const affectsB = record => bRoots.some(node => record.target === node || node.contains(record.target)
+      || [...record.addedNodes,...record.removedNodes].some(changed => changed === node || changed.contains(node)));
     const assertB = () => {
       require(definitionOf(keyed().get("control-b-0")) === definitionB, "unrelated definition B rebuilt");
       for (const snapshot of bSnapshot) {
@@ -234,7 +237,7 @@ export function documentReconciliationControl(w) {
       require(w.getComputedStyle(definitionB.querySelector("circle")).fill === bFill
         && JSON.stringify([110,140].map(x => f.documentHit(x,30))) === JSON.stringify(bHits), "unrelated B style/hit changed");
     };
-    const assertNoBMutation = () => require(bObserver.takeRecords().length === 0, "unrelated B mutation observed");
+    const assertNoBMutation = () => require(bObserver.takeRecords().filter(affectsB).length === 0, "unrelated B mutation observed");
     let definitionIsolation;
     try {
       const update = replaceStructure("definition-ab-changed", abIds);
@@ -248,13 +251,20 @@ export function documentReconciliationControl(w) {
       let rebuildControl;
       try { rebuildControl = expectKilled("rebuild-unrelated-definition-b", "unrelated definition B rebuilt", assertB); }
       finally { clonedB.replaceWith(definitionB); }
+      const rebuildMutationControl = expectKilled("rebuild-unrelated-definition-b-mutation", "unrelated B mutation observed", assertNoBMutation);
+      assertB();assertNoBMutation();
+      // Final equality alone cannot detect removing and reinserting the same B node.
+      const bParent = definitionB.parentNode, bNext = definitionB.nextSibling;
+      bParent.removeChild(definitionB);bParent.insertBefore(definitionB,bNext);
+      assertB();
+      const moveControl = expectKilled("move-unrelated-definition-b", "unrelated B mutation observed", assertNoBMutation);
       assertB();assertNoBMutation();
       // A redundant write preserves markup and identity but must fail the scoped mutation witness.
       const bCircle = definitionB.querySelector("circle");
       bCircle.setAttribute("r", bCircle.getAttribute("r"));
       const mutationControl = expectKilled("write-unrelated-definition-b", "unrelated B mutation observed", assertNoBMutation);
       assertB();assertNoBMutation();liveMatchesExport();
-      definitionIsolation = {update,unrelatedMutations:0,unrelatedSubtreesRetained:true,bHits,dependentHits:["control-a-0","control-a-1"],controls:[rebuildControl,mutationControl]};
+      definitionIsolation = {update,unrelatedMutations:0,unrelatedSubtreesRetained:true,bHits,dependentHits:["control-a-0","control-a-1"],controls:[rebuildControl,rebuildMutationControl,moveControl,mutationControl]};
     } finally { bObserver.disconnect(); }
     const instanceResearch = instanceResearchControl(f,rootOf,liveMatchesExport,require,count,()=>w.performance.now());
     require(instanceResearch.length === 24, "instance research report coverage");
