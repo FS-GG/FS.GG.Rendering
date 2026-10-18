@@ -2,7 +2,7 @@ import { chromium } from "playwright-core";
 import { readFileSync, writeFileSync, existsSync, statSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { validateSoldierResult } from "./suite-contract.js";
+import { instanceResearchOrder, validateInstanceResearchSelection, validateInstanceResearchResult, validateSoldierResult } from "./suite-contract.js";
 
 function requireObservedResume(result, required) {
   if (required && result.driver?.resumeObserved !== true) throw new Error("Requested staged resume was not observed");
@@ -14,6 +14,10 @@ const url = new URL("suite.html", argument("--base-url"));
 const profile = process.argv.includes("--profile") ? argument("--profile") : "controls";
 if (!["controls", "soldier-functional"].includes(profile)) throw new Error("Unknown suite profile");
 if (profile !== "controls") url.searchParams.set("profile", profile);
+const selectedInstanceOrder = process.argv.includes("--instance-order") ? argument("--instance-order") : "shared-first";
+instanceResearchOrder(selectedInstanceOrder);
+if (profile !== "controls" && process.argv.includes("--instance-order")) throw new Error("Instance order requires controls profile");
+if (profile === "controls") url.searchParams.set("instance-order", selectedInstanceOrder);
 const soldierMutants = ["missing-mount", "wrong-entry", "source-hash", "asset-hash", "bundle-hash", "workload-hash", "missing-case", "stale-checkpoint", "stale-epoch-accepted", "incomplete-export", "owner-leak", "artifact-before-download", "artifact-after-download"];
 const mutant = process.argv.includes("--mutant") ? argument("--mutant") : null;
 if (mutant && !(profile === "soldier-functional" ? soldierMutants : ["unnecessary-rebuild", "listener-leak", "excessive-document-acceptance"]).includes(mutant)) throw new Error("Unknown mutant");
@@ -155,6 +159,16 @@ try {
     console.log(JSON.stringify({ mutant, result: "killed", gate, output: argument("--out") }));
   } else {
     if (result.outcome !== "container-controls-completed" || result.integrity !== "verified-before-and-after") throw new Error(`Suite failed: ${JSON.stringify(result.cases.filter((c) => c.outcome === "failed"))} ${result.error ?? ""}`);
+    try {
+      validateInstanceResearchSelection(result, selectedInstanceOrder);
+      const researchCases = result.cases.filter(row => row.kind === "document-reconciliation");
+      if (researchCases.length !== 1 || researchCases[0].outcome !== "pass") throw new Error("instance research case missing");
+      validateInstanceResearchResult(researchCases[0].observations.instanceResearch, selectedInstanceOrder);
+    } catch (error) {
+      result.outcome = "failed"; result.verificationError = error.message;
+      writeFileSync(argument("--out"), `${JSON.stringify(result, null, 2)}\n`);
+      throw error;
+    }
     console.log(JSON.stringify({ outcome: result.outcome, cases: result.cases.length, resumeObserved, output: argument("--out") }));
   }
 } finally {

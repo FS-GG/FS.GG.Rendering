@@ -299,3 +299,52 @@ requires a separately selected bounded run of the existing coherent browser gate
 No producer API, workflow, timing threshold or package version changes here;
 performance, genuine GPU qualification, publication and installed adoption remain
 open under the canonical plan.
+
+## Public-circle count-scaling preparation (.3)
+
+Under [the existing SVG owner issue](https://github.com/FS-GG/.github/issues/4645),
+the next selected source slice extends the maintained command-stream control to
+100, 250 and 500 public circles. Both shared-symbol and expanded-geometry states
+use the same current producer, based on `ad9adba53f5e5d06579b62b1778e4844e9010256`.
+Expanded geometry is the within-trial comparison representation; this is not a
+before/after producer optimization. The common viewBox is now 410 by 510 for all
+three populations. The oracle refuses geometry outside that viewBox, including
+circle radii, and the actual browser control requires that exact viewBox, ordered
+population, geometry/style, hits, live/export agreement and retained ownership.
+The changed viewBox prevents direct timing comparison with historical trials.
+
+The existing six-state sequence remains initial snapshot, 10% sparse motion,
+definition replacement, removal, recreation and definition reset. Each state has
+one separate counter pass, two warmup passes and five measured replacements.
+One trial therefore contains 36 state rows and 180 raw samples. The selected later
+comparison requires three fresh browser trials against one sealed artifact, with
+shared-first, expanded-first and shared-first representation order: 108 rows and
+540 raw samples in total. The closed `--instance-order` option on the existing
+`drive-suite.mjs` selects those orders. The page reports the selected order;
+checkpoint ownership includes it, and the driver refuses a mismatching selection,
+missing/reordered state rows or incomplete/nonfinite samples. The existing artifact
+manifest now seals the corpus and trial protocol as part of the controls workload.
+
+Run the inexpensive source preparation check with
+`node tests/Scene.SvgBrowser.Tests/suite-control-test.mjs`. It executes the actual
+command oracle, driver option block, result validators and packager using inert
+inputs. These checks qualify source preparation only. Compilation still requires
+the existing `build-fixture.sh` route. Actual measurement requires separately
+admitted build/serve/driver actions, with all 17 existing controls retained, a fresh
+browser per trial, the unchanged 30-second case timeout and a 180-second driver
+deadline per trial including cleanup reserve. No automatic research job or workflow
+change is introduced. The normal packed three-browser gate does not run this full
+research stream and cannot substitute for these three trials.
+
+The primary comparison is the per-trial median of five sparse-motion replacement
+samples at 500 versus 250 instances for each representation, plus shared/expanded
+ratios at each count. Retain the 100-instance control, every state, every raw sample,
+all trial extrema and negative comparisons. Initial snapshot replacement is reported
+separately from mount/bootstrap. These synchronous replacement elapsed intervals
+include the existing compiled `Replace` path; semantic assertions and the counter
+pass remain outside the timing span. Five samples do not support tail-percentile
+or statistical-significance claims. This public-circle model does not establish
+complex-glyph scaling, frame/raster or process CPU, allocation/GC, validation versus
+serialization attribution, performance acceptance, GPU qualification, publication
+or installed adoption. Prior accepted witnesses, timing failures and the closed
+profiling chain remain retained. The broader .3/.4 promises remain open.

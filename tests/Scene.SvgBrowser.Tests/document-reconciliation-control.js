@@ -1,10 +1,12 @@
+import { instanceResearchOrder, validateInstanceResearchResult } from "./suite-contract.js";
 import researchCorpus from "./instance-research-command-streams.json" with { type: "json" };
 
 // Pure command oracle; it does not implement or time the production renderer.
 export function instanceResearchStates(corpus = researchCorpus, count = 100) {
   const ensure = (ok, detail) => { if (!ok) throw Error(`instance corpus: ${detail}`); };
-  ensure(corpus.schema === "svg-instance-command-streams/1" && corpus.seed === 1729, "identity");
-  ensure(corpus.counts.includes(count) && [100,250].includes(count), "count");
+  ensure(corpus.schema === "svg-instance-command-streams/2" && corpus.seed === 1729, "identity");
+  ensure(JSON.stringify(corpus.counts) === "[100,250,500]" && corpus.counts.includes(count), "count");
+  ensure(JSON.stringify(corpus.viewBox) === "[0,0,410,510]", "common viewBox");
   let revision = 0;
   let instances = Array.from({length:count}, (_,i) => ({id:`research-${i}-0`, index:i, x:10+(i%20)*20, y:10+Math.floor(i/20)*20}));
   const states = [];
@@ -26,6 +28,7 @@ export function instanceResearchStates(corpus = researchCorpus, count = 100) {
     const definition = corpus.definitionRevisions.find(d => d.revision === revision);
     ensure(definition && definition.radius > 0 && definition.rgb.length === 3, "definition");
     ensure(instances.length <= count && new Set(instances.map(v=>v.id)).size === instances.length, "population");
+    ensure(instances.every(v => Number.isFinite(v.x) && Number.isFinite(v.y) && v.x-definition.radius >= 0 && v.y-definition.radius >= 0 && v.x+definition.radius <= 410 && v.y+definition.radius <= 510), "visible geometry bounds");
     states.push({name:command.name,revision,radius:definition.radius,rgb:[...definition.rgb],instances:instances.map(v=>({...v}))});
   }
   return states;
@@ -36,11 +39,11 @@ export function assertInstanceResearchSemantics(expected, observed) {
   if (JSON.stringify(expected) !== JSON.stringify(observed)) throw Error("instance corpus: semantic mismatch");
 }
 
-function instanceResearchControl(f, rootOf, liveMatchesExport, require, countUpdate, now) {
+function instanceResearchControl(f, rootOf, liveMatchesExport, require, countUpdate, now, order) {
   const results = [], mountedRoot = rootOf();
   for (const count of researchCorpus.counts) {
     const states = instanceResearchStates(researchCorpus,count);
-    for (const variant of researchCorpus.variants) {
+    for (const variant of instanceResearchOrder(order)) {
       let previous = new Map();
       const observations = new Map();
       const {warmupPasses,samplePasses} = researchCorpus.measurement;
@@ -58,6 +61,7 @@ function instanceResearchControl(f, rootOf, liveMatchesExport, require, countUpd
         liveMatchesExport();
         const root = rootOf();
         require(root === mountedRoot, "instance root rebuilt");
+        require(root.getAttribute("viewBox") === researchCorpus.viewBox.join(" "), "instance common viewBox");
         root.scrollIntoView({block:"center",inline:"center"});
         const elements = [...root.children].filter(n=>n.hasAttribute("data-fsgg-element-id"));
         require(JSON.stringify(elements.map(n=>n.getAttribute("data-fsgg-element-id"))) === JSON.stringify(state.instances.map(v=>v.id)), "instance layer order");
@@ -201,7 +205,7 @@ export function definitionIsolationControl(w = window) {
 }
 
 // Uses the actual compiled document host; no renderer implementation is reproduced here.
-export function documentReconciliationControl(w) {
+export function documentReconciliationControl(w, order = "shared-first") {
   const f = w.svgFoundation, doc = w.document;
   const require = (condition, detail) => { if (!condition) throw new Error(`document-reconciliation gate: ${detail}`); };
   const rootOf = () => doc.querySelector("#document-fixture svg");
@@ -304,8 +308,8 @@ export function documentReconciliationControl(w) {
     replaceStructure("unkeyed-changed",["control-unkeyed"]);
     const structuralResult={steps:structural,mutants:structuralMutants,topmostOriginal,topmostReverse,unkeyedWrappersRetained:true};
     const definitionIsolation = definitionIsolationControl(w);
-    const instanceResearch = instanceResearchControl(f,rootOf,liveMatchesExport,require,count,()=>w.performance.now());
-    require(instanceResearch.length === 24, "instance research report coverage");
+    const instanceResearch = instanceResearchControl(f,rootOf,liveMatchesExport,require,count,()=>w.performance.now(),order);
+    validateInstanceResearchResult(instanceResearch,order);
     require(f.replaceOriginalDocument() === null, "restore original after instance research");liveMatchesExport();
     require(rootOf() === root && JSON.stringify(exportTree()) === JSON.stringify(initialTree), "instance research restoration differs");
     const clone = root.cloneNode(true);root.replaceWith(clone);const reconstruction = expectKilled("full-reconstruction","root rebuilt",identity);clone.replaceWith(root);f.documentDispose();

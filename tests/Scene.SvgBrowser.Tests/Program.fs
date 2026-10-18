@@ -633,8 +633,8 @@ let reconciliationDocument mode =
 let instanceResearchDocument (variant: string) (revision: int) (ids: string array) (xs: float array) (ys: float array) =
     if variant <> "shared-symbol" && variant <> "expanded-geometry" then
         invalidArg "variant" "Unknown research representation."
-    if ids.Length <> xs.Length || ids.Length <> ys.Length || ids.Length > 250 then
-        invalidArg "ids" "Research state must have matching arrays and at most 250 instances."
+    if ids.Length <> xs.Length || ids.Length <> ys.Length || ids.Length > 500 then
+        invalidArg "ids" "Research state must have matching arrays and at most 500 instances."
     if revision <> 0 && revision <> 1 then invalidArg "revision" "Unknown research definition."
     let radius = if revision = 0 then 3.0 else 5.0
     let fill = if revision = 0 then color 70uy 130uy 220uy else color 220uy 80uy 60uy
@@ -655,7 +655,7 @@ let instanceResearchDocument (variant: string) (revision: int) (ids: string arra
             if variant = "shared-symbol" then
                 [ { Id = "research-symbol"; Content = SvgDefinitionContent.Symbol(None, [ symbol ]) } ]
             else []
-        ViewBox = { X = 0.0; Y = 0.0; Width = 410.0; Height = 270.0 }
+        ViewBox = { X = 0.0; Y = 0.0; Width = 410.0; Height = 510.0 }
         Children = children }
 
 let performanceDocument kind selection cameraStep changedObject =

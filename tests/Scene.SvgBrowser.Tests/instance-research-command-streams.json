@@ -1,9 +1,10 @@
 {
-  "schema": "svg-instance-command-streams/1",
+  "schema": "svg-instance-command-streams/2",
   "seed": 1729,
   "counts": [
     100,
-    250
+    250,
+    500
   ],
   "variants": [
     "shared-symbol",
@@ -79,5 +80,16 @@
     "warmupPasses": 2,
     "samplePasses": 5,
     "scope": "synchronous compiled document replacement only; semantic/export/hit assertions outside measured span; separate counter pass"
-  }
+  },
+  "viewBox": [
+    0,
+    0,
+    410,
+    510
+  ],
+  "trialOrders": [
+    "shared-first",
+    "expanded-first",
+    "shared-first"
+  ]
 }

@@ -1,10 +1,11 @@
 import { documentReconciliationControl } from "./document-reconciliation-control.js";
-import { suiteContract, workloadForProfile, validateSoldierCase, validateRebuild, validateLifecycle, validateExcessive, summarize } from "./suite-contract.js";
+import { instanceResearchOrder, validateInstanceResearchSelection, suiteContract, workloadForProfile, validateSoldierCase, validateRebuild, validateLifecycle, validateExcessive, summarize } from "./suite-contract.js";
 import { hash } from "./fixture-hash.js";
 
 const ui = Object.fromEntries(["run", "resume", "download", "progress", "results", "case"].map((id) => [id, document.getElementById(id)]));
 const delay = (ms) => new Promise((done) => setTimeout(done, ms));
 const profile = new URL(location.href).searchParams.get("profile") ?? "controls";
+const selectedInstanceOrder = new URL(location.href).searchParams.get("instance-order") ?? "shared-first";
 let selectedContract = suiteContract, method = suiteContract.method, queue = [];
 let manifest, manifestHash, result, checkpointKey, running = false;
 const makeQueue = (contract) => contract.cases.flatMap((kind) => Array.from({ length: ["ordinary", "dense", "extent-near", "extent-far"].includes(kind) ? contract.method.repetitions : 1 }, (_, repetition) => ({ kind, repetition })));
@@ -31,7 +32,7 @@ function environment() {
     origin: location.origin, secureContext: isSecureContext, visibility: document.visibilityState,
     hardwareAcceleration: "unknown", gpu: "unknown", driver: "unknown", gpuTiming: "unknown", physicalInputLatency: "unknown",
     serviceWorkerController: navigator.serviceWorker?.controller?.scriptURL ?? null,
-    suiteProfile: profile, physicalInput: "not-qualified", assistiveTechnology: "not-qualified",
+    suiteProfile: profile, instanceResearchOrder: profile === "controls" ? selectedInstanceOrder : null, physicalInput: "not-qualified", assistiveTechnology: "not-qualified",
     cache: "artifact verification fetches use no-store; frame cold-load timing is separate from warmed measurements",
   };
 }
@@ -80,7 +81,7 @@ async function withFrame(entry) {
       require(observed.semanticId === "alpha" && observed.events.length > 0, "Animation semantic target/samples missing");
       return { coldLoadMilliseconds, intervals, summary: summarize(intervals), observed, disposed };
     }
-    if (entry.kind === "document-reconciliation") return { coldLoadMilliseconds, ...documentReconciliationControl(w) };
+    if (entry.kind === "document-reconciliation") return { coldLoadMilliseconds, ...documentReconciliationControl(w, selectedInstanceOrder) };
     f.performanceMount(entry.kind === "lifecycle" || entry.kind === "excessive-document" ? "ordinary" : entry.kind);
     if (entry.kind === "excessive-document") { const refusal = f.performanceExcessiveDocument(); validateExcessive(refusal); return { coldLoadMilliseconds, refusal }; }
     if (entry.kind === "lifecycle") {
@@ -157,17 +158,20 @@ ui.download.onclick = async () => {
 };
 window.svgSuite = { run: () => run(false), get result() { return result; }, get running() { return running; } };
 try {
+  instanceResearchOrder(selectedInstanceOrder);
+  if (profile !== "controls" && new URL(location.href).searchParams.has("instance-order")) throw new Error("Instance order requires controls profile");
   const bytes = await fetchBytes("artifact-manifest.json"); manifestHash = hash(bytes); manifest = JSON.parse(new TextDecoder().decode(bytes));
   require(manifest.schema === "fsgg.svg-coherence.fixture/v1", "Unsupported artifact manifest");
   selectedContract = workloadForProfile(profile, profile === "soldier-functional" ? manifest.workload.input : undefined);
   method = selectedContract.method; queue = makeQueue(selectedContract);
   require(manifest.workloadSha256 === hash(JSON.stringify(selectedContract)), "Workload contract hash mismatch");
   require(manifest.artifactId === hash(JSON.stringify({ files: manifest.files, packages: manifest.packages, sourceSha256: manifest.sourceSha256, workloadSha256: manifest.workloadSha256 })), "Artifact identity mismatch");
-  await verifyArtifact(); checkpointKey = `svg-suite:${manifest.artifactId}`;
+  await verifyArtifact(); checkpointKey = `svg-suite:${manifest.artifactId}${profile === "controls" ? ":" + selectedInstanceOrder : ""}`;
   let savedText;
   try { savedText = localStorage.getItem(checkpointKey); } catch { /* Storage may be unavailable; fresh runs remain usable. */ }
   if (savedText) {
     const saved = JSON.parse(savedText);
+    if (profile === "controls") validateInstanceResearchSelection(saved, selectedInstanceOrder);
     require(saved?.artifact?.artifactId === manifest.artifactId && saved.manifestSha256 === manifestHash
       && Array.isArray(saved.cases) && saved.cases.length <= queue.length
       && saved.cases.every((c, i) => c.kind === queue[i].kind && c.repetition === queue[i].repetition

@@ -1,12 +1,39 @@
+import researchCorpus from "./instance-research-command-streams.json" with { type: "json" };
+
 // Existing specimens are controls; realistic licensed glyphs join milestone .3.
 export const suiteContract = {
-  version: "svg-coherence-container-controls/2",
+  version: "svg-coherence-container-controls/3",
   fixture: "historical control workloads; shared symbol is a single circle",
+  instanceResearch: researchCorpus,
   representativeAsset: { status: "pending-milestone-.1/.3", sha256: null, complexity: null },
   method: { warmups: 5, samples: 30, repetitions: 3, continuousMilliseconds: 1000, lifecycleCycles: 20, caseTimeoutMilliseconds: 30000 },
   cases: ["ordinary", "dense", "extent-near", "extent-far", "gallery", "lifecycle", "excessive-document", "animation", "document-reconciliation"],
   timing: "browser update CPU and rAF cadence only; no pixel presentation or GPU claim",
 };
+
+// Closed order selection is shared by the page, driver and inert controls.
+export function instanceResearchOrder(value) {
+  if (value === "shared-first") return ["shared-symbol", "expanded-geometry"];
+  if (value === "expanded-first") return ["expanded-geometry", "shared-symbol"];
+  throw new Error("Unknown instance research order");
+}
+
+export function validateInstanceResearchResult(rows, order) {
+  const variants = instanceResearchOrder(order);
+  const expected = researchCorpus.counts.flatMap(count => variants.flatMap(variant => researchCorpus.commands.map(command => ({count, variant, command:command.name, instances:count-(command.op === "remove" ? command.indices.length : 0)}))));
+  if (!Array.isArray(rows) || rows.length !== 36 || rows.length !== expected.length) throw new Error("instance research report coverage");
+  rows.forEach((row, index) => {
+    const cell = expected[index];
+    if (!Object.entries(cell).every(([key,value]) => row[key] === value)) throw new Error("instance research cell identity/order/population");
+    if (row.timing?.warmupPasses !== 2 || row.timing?.samplePasses !== 5 || row.timing?.scope !== researchCorpus.measurement.scope
+      || row.timing.samplesMs?.length !== 5 || !row.timing.samplesMs.every(value => Number.isFinite(value) && value >= 0)) throw new Error("instance research raw sample coverage");
+  });
+}
+
+export function validateInstanceResearchSelection(result, order) {
+  instanceResearchOrder(order);
+  if (result.environment?.instanceResearchOrder !== order) throw new Error("instance research selection mismatch");
+}
 
 export function validateRebuild(value) {
   if (value.rebuiltObjects || value.rebuiltDefinitions) throw new Error("unnecessary-rebuild gate");
