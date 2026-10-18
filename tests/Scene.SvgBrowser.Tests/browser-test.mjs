@@ -1,3 +1,4 @@
+import { cameraRevisionControl } from "./camera-revision-control.mjs";
 import { definitionIsolationControl } from "./document-reconciliation-control.js";
 import { producerFocusCompositionControl } from "./focus-reconciliation-control.mjs";
 import { createHash } from "node:crypto";
@@ -84,6 +85,7 @@ let sessionEvidence;
 let externalSessionEvidence;
 let animationEvidence;
 let focusReconciliationEvidence;
+let cameraRevisionEvidence;
 try {
   await page.goto(`http://127.0.0.1:${address.port}/`, { waitUntil: "networkidle" });
   await page.waitForFunction(() => window.svgFoundation !== undefined, undefined, { timeout: 5000 }).catch((error) => {
@@ -704,18 +706,7 @@ try {
     throw new Error(`native editing/composition was consumed: ${JSON.stringify(preservedNativeInput)}`);
   }
 
-  const camera = await page.evaluate(() => {
-    const before = window.svgFoundation.scenePoint(60, 50);
-    const zoom = window.svgFoundation.zoomAt(60, 50, 4);
-    const after = window.svgFoundation.scenePoint(60, 50);
-    const anchoredHit = window.svgFoundation.hit(60, 50);
-    const pan = window.svgFoundation.panBy(10, -5);
-    const movedHit = window.svgFoundation.hit(70, 45);
-    return { before, after, anchoredHit, movedHit, zoom, pan };
-  });
-  if (camera.before.x !== 20 || camera.before.y !== 20 || camera.after.x !== 20 || camera.after.y !== 20 || camera.anchoredHit !== "alpha" || camera.movedHit !== "alpha" || camera.zoom.error || camera.pan.error) {
-    throw new Error(`camera anchor/inverse contract failed: ${JSON.stringify(camera)}`);
-  }
+  cameraRevisionEvidence = await page.evaluate(cameraRevisionControl);
 
   await page.evaluate(() => {
     window.svgFoundation.mount();
@@ -912,6 +903,7 @@ const evidence = {
     externalSessionHost: externalSessionEvidence,
     animationHost: animationEvidence,
     focusReconciliation: focusReconciliationEvidence,
+    cameraRevisionIsolation: cameraRevisionEvidence,
   },
   browserMatrix: browserMatrixEvidence,
   document: { ...documentEvidence, exportedSvg: undefined },

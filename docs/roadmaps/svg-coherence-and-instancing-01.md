@@ -273,3 +273,29 @@ The [2026-10-10 CPU-profile report](../reports/svg-instance-stream-cpu-profile-2
 This is sampled JavaScript stack evidence and elapsed-interval weighting, not exact function/process CPU or phase/allocation/performance acceptance. The validation-versus-serialization question remains unresolved. A separately accepted lossless function-correspondence inventory retains 57 missing-coordinate frames with homogeneous mapped evidence, while preserving the failed report-cap attempt and assigning no new semantic credit. A separate accepted whole-page heap diagnostic conserves 2,729 node selfSize weights totalling 3,368,864,664 sampled profile bytes and retains 3,200 original samples separately. Its 89.70% unresolved weight leaves validation versus successful serialization **not distinguished**. Zero disjoint validation attribution is not zero validation allocation; inclusive ancestry overlaps and heap ordinals supply no phase timestamps. No total allocation, live heap, GC, exact CPU or performance acceptance follows. The broader .3/.4 milestones, repeated research, adoption and late host qualification remain open.
 
 The selected one-use allocation diagnostic ends this mapping/profiling refinement chain. No further capture, map refinement, instrumentation or optimization is selected. A proposed later scientific question would separate actual validation-call work from successful serialization in a distinct private source-correspondent producer diagnostic, preserving call count/order/errors, exact output/ownership and measured overhead. Root must select that question and its qualification separately. The broader .3/.4 milestones, required repeated acceptance, adoption and late host qualification remain open; original failed attempts and custody holds are unchanged.
+
+## Camera-only scene revision witness (.3/.4)
+
+Under the existing [SVG owner issue](https://github.com/FS-GG/.github/issues/4645),
+the next selected correctness assertion is the canonical plan's requirement that
+camera changes must not manufacture simulation revisions. The existing packed
+browser camera case now calls `cameraRevisionControl` from
+`tests/Scene.SvgBrowser.Tests/camera-revision-control.mjs`. It reads retained state,
+host observation and the actual root's DOM revision marker before and after each
+zoom and pan, requires the requested camera changes and retained root identity,
+and preserves the existing anchor and inverse-picking assertions. A genuine
+`ReplaceScene` dispatch must advance all three revision observations; this positive
+control prevents unchanged observations alone from qualifying the assertion. The
+normal browser JSON retains each revision snapshot and the control result.
+
+The dependency-free early check is
+`node tests/Scene.SvgBrowser.Tests/camera-revision-control-test.mjs`. It exercises
+the exact witness against an inert observation surface, including unwanted camera
+revisions, stale/missing observations, root replacement, no-op camera actions and a
+non-advancing or rejected scene replacement. It also checks that the existing packed
+runner invokes the witness and retains its receipt. These controls qualify the
+witness source only. Actual compiled Chromium, Firefox and WebKit execution still
+requires a separately selected bounded run of the existing coherent browser gate.
+No producer API, workflow, timing threshold or package version changes here;
+performance, genuine GPU qualification, publication and installed adoption remain
+open under the canonical plan.
