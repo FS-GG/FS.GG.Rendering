@@ -831,6 +831,75 @@ class FontDisposalSourceTests(unittest.TestCase):
 
 
 
+class SourceSdkInstallationRootTests(unittest.TestCase):
+    JOBS = ('package-tests', 'template-product-tests', 'source-package-custody')
+    STEP = 'Require a fresh private SDK root for source qualification'
+
+    def block(self, name):
+        text = (ROOT/'.github/workflows/release.yml').read_text()
+        return re.search(r'^  '+name+r':\n(.*?)(?=^  [a-z][a-z0-9-]*:\n|\Z)', text, re.M|re.S).group(1)
+
+    def preparation(self, name):
+        import textwrap
+        block = self.block(name)
+        step = re.search(r'^      - name: '+self.STEP+r'\n(.*?)(?=^      - |\Z)', block, re.M|re.S).group(1)
+        self.assertIn('        if: inputs.source-only\n', step)
+        self.assertIn('        shell: bash\n', step)
+        return textwrap.dedent(step.split('        run: |\n', 1)[1])
+
+    def test_actual_workflow_routes_three_source_workloads_through_supported_isolated_install(self):
+        scripts = []
+        for name in self.JOBS:
+            with self.subTest(job=name):
+                block = self.block(name)
+                expected = '${{ runner.temp }}/rendering-source-dotnet-10.0.401' if name == 'source-package-custody' else "${{ inputs.source-only && format('{0}/rendering-source-dotnet-10.0.401', runner.temp) || '' }}"
+                self.assertIn('      DOTNET_INSTALL_DIR: '+expected+'\n', block)
+                self.assertLess(block.index(self.STEP), block.index('uses: actions/setup-dotnet@v6'))
+                self.assertLess(block.index('uses: actions/setup-dotnet@v6'), block.index('release-toolchain-identity.py --expected-sdk 10.0.401'))
+                self.assertIn("dotnet-version: '10.0.401'", block)
+                self.assertNotIn('DOTNET_ROOT:', block)
+                scripts.append(self.preparation(name))
+        self.assertEqual(1, len(set(scripts)))
+        # Installation isolation must not rewrite the developer's roll-forward policy.
+        self.assertEqual({'version':'10.0.401','rollForward':'latestFeature','allowPrerelease':False}, json.loads((ROOT/'global.json').read_text())['sdk'])
+
+    def test_actual_preparation_allows_fresh_root_and_refuses_occupied_or_wrong_roots_before_installer(self):
+        for name in self.JOBS:
+            for case in ('fresh','directory','file','dangling-link','wrong-root','empty-root','relative-parent','linked-parent','missing-parent','trailing-slash'):
+                with self.subTest(job=name,case=case), tempfile.TemporaryDirectory() as value:
+                    root=Path(value); parent=root/'runner temp'; parent.mkdir(); selected=parent/'rendering-source-dotnet-10.0.401'
+                    env={**os.environ,'RUNNER_TEMP':str(parent),'DOTNET_INSTALL_DIR':str(selected)}
+                    if case=='directory': selected.mkdir()
+                    if case=='file': selected.write_text('owner bytes')
+                    if case=='dangling-link': selected.symlink_to(root/'missing-target')
+                    if case=='wrong-root': env['DOTNET_INSTALL_DIR']=str(parent/'other-sdk')
+                    if case=='empty-root': env['DOTNET_INSTALL_DIR']=''
+                    if case=='relative-parent': env['RUNNER_TEMP']='relative'
+                    if case=='linked-parent':
+                        alias=root/'alias';alias.symlink_to(parent, target_is_directory=True);env.update(RUNNER_TEMP=str(alias),DOTNET_INSTALL_DIR=str(alias/selected.name))
+                    if case=='missing-parent': env.update(RUNNER_TEMP=str(root/'absent'),DOTNET_INSTALL_DIR=str(root/'absent'/selected.name))
+                    if case=='trailing-slash': env['RUNNER_TEMP']=str(parent)+'/'
+                    marker=root/'installer-called'
+                    # Actual YAML shell, then an inert installer port: no SDK/install/network exists here.
+                    command=self.preparation(name)+'\nprintf installer > "$INSTALLER_MARKER"\n'
+                    result=subprocess.run(['bash','-c',command],env={**env,'INSTALLER_MARKER':str(marker)},text=True,capture_output=True,timeout=5)
+                    self.assertEqual(case=='fresh',result.returncode==0,result.stdout+result.stderr)
+                    self.assertEqual(case=='fresh',marker.exists())
+                    if case=='file': self.assertEqual('owner bytes',selected.read_text())
+                    if case=='directory': self.assertTrue(selected.is_dir())
+                    if case=='dangling-link': self.assertTrue(selected.is_symlink())
+
+    def test_actual_loaded_guard_refuses402_without_changing_expected401_or_creating_receipt(self):
+        with tempfile.TemporaryDirectory() as value:
+            root=Path(value); fake=root/'dotnet'; calls=root/'calls';receipt=root/'receipt.json'
+            fake.write_text('#!/usr/bin/env bash\nprintf "%s\\n" "$*" >> "$SDK_CALLS"\nprintf "10.0.402\\n"\n');fake.chmod(0o700)
+            result=subprocess.run([sys.executable,'-B',str(ROOT/'scripts/release-toolchain-identity.py'),'--expected-sdk','10.0.401','--receipt',str(receipt)],env={**os.environ,'PATH':str(root)+os.pathsep+os.environ['PATH'],'SDK_CALLS':str(calls)},text=True,capture_output=True,timeout=5)
+            self.assertEqual(1,result.returncode)
+            self.assertIn("loaded SDK '10.0.402', expected '10.0.401'",result.stderr)
+            self.assertEqual(['--version'],calls.read_text().splitlines())
+            self.assertFalse(receipt.exists())
+
+
 class OriginalArtifactFixtureTests(unittest.TestCase):
     def fixture(self, root):
         import argparse, contextlib, io
