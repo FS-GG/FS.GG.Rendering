@@ -90,7 +90,7 @@ class SourceGuardTests(unittest.TestCase):
             temp=Path(folder)
             # Capture the real workflow invocation; no candidate source, credentials or network execute.
             python=temp/'python3'
-            python.write_text("#!/usr/bin/env bash\n[[ \"$*\" != *--executor-only* ]] || exit 0\nprintf '%s\\n' \"$@\" > \"$CAPTURE\"\nfor arg in \"$@\"; do [[ \"$arg\" != --require-publication-ready ]] || exit 42; done\n")
+            python.write_text("#!/usr/bin/env bash\n[[ \"$1\" != - ]] || exit 0\n[[ \"$*\" != *--executor-only* ]] || exit 0\nprintf '%s\\n' \"$@\" > \"$CAPTURE\"\nfor arg in \"$@\"; do [[ \"$arg\" != --require-publication-ready ]] || exit 42; done\n")
             python.chmod(0o700)
             git=temp/'git'
             git.write_text("#!/usr/bin/env bash\nprintf '%s\\n' \"$@\" >> \"$GIT_CAPTURE\"\n")
@@ -102,7 +102,8 @@ class SourceGuardTests(unittest.TestCase):
                     env={**os.environ,'PATH':str(temp)+os.pathsep+os.environ['PATH'],
                          'GITHUB_SHA':'a'*40,'REQUESTED_SOURCE':'','INPUT_VERSION':'0.32.0','EVENT_TAG':'',
                          'SOURCE_ONLY':source_only,'PREFLIGHT_ONLY':preflight_only,'BOUND_ATTEMPT':'false',
-                         'CAPTURE':str(capture),'GIT_CAPTURE':str(git_capture)}
+                         'CAPTURE':str(capture),'GIT_CAPTURE':str(git_capture),'GITHUB_OUTPUT':str(temp/'outputs'),
+                         'SUCCESSOR_ATTEMPT':'false'}
                     result=subprocess.run(['bash','-c',script],env=env,capture_output=True,text=True)
                     nonmutating=source_only=='true' or preflight_only=='true'
                     self.assertEqual(0 if nonmutating else 42,result.returncode,result.stderr)
@@ -246,7 +247,15 @@ class InertSuccessorTests(unittest.TestCase):
                     allowed = version=='0.32.3' and source=='true' and preflight=='false'
                     self.assertEqual(allowed, result.returncode==0, result.stdout+result.stderr)
                     self.assertEqual(allowed, marker.exists(), result.stdout+result.stderr)
+                    if allowed:
+                        self.assertEqual(['plan=eng/release/font-disposal-0.32.3.json','version=0.32.3','baseline=0.32.1'],Path(env['GITHUB_OUTPUT']).read_text().splitlines())
                     if not allowed: self.assertTrue('release-preflight:' in result.stderr+result.stdout or 'source qualification only' in result.stderr+result.stdout)
+            for flag in ('BOUND_ATTEMPT','SUCCESSOR_ATTEMPT'):
+                marker.unlink(missing_ok=True)
+                env.update(SOURCE_ONLY='true',PREFLIGHT_ONLY='false',INPUT_VERSION='0.32.3',EVENT_TAG='',BOUND_ATTEMPT='false',SUCCESSOR_ATTEMPT='false')
+                env[flag]='true'
+                result=subprocess.run(['bash','-c',script+'\nprintf reached > "$EFFECT_MARKER"'],cwd=ROOT,env=env,capture_output=True,text=True,timeout=10)
+                self.assertNotEqual(0,result.returncode);self.assertFalse(marker.exists())
             marker.unlink(missing_ok=True)
             tags = (ROOT/'.github/workflows/release-tags.yml').read_text()
             body = re.search(r'- name: Validate successor release source before \.NET qualification\n        run: \|\n(.*?)(?=\n      - uses:)', tags, re.S).group(1)
