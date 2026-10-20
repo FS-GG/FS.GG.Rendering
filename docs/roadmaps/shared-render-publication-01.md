@@ -35,3 +35,28 @@ reviewed separately. The closed publisher/typed eligibility/tag selection source
 The original candidate plan remains `publicationReady:false`; historical failures, expired observation,
 consumed sends, reservations and original archive identities remain retained. Source delivery does not
 complete the publication or installed outcome.
+
+
+## Font-disposal patch source preparation (0.32.3)
+
+Changelog2026-10-20: add a distinct **disabled source-only** qualification route for
+the font-disposal producer delivered by Rendering PR1449/fd7c6801. The retained
+0.32.1 and0.32.2 attempts, archives, qualification and unknown effects are unchanged.
+The existing0.32.2 binding's actual `attemptReady:true` describes its separate
+qualified original journey, not publication or installed acceptance; earlier pending
+source notes above are historical. No part of that binding is reused for0.32.3.
+
+- [ ] Deliver/review the closed0.32.3 source tuple and all19 coherent package axes.
+- [ ] Admit the normal source-only hosted candidate; retain all19 original archives,
+  manifest and17 ApiCompat results against0.32.1 plus actual final-tree browser cases.
+- [ ] Establish authenticated current19-ID organization active/deleted collision
+  census and publisher/NuGet scope evidence. Publicabsence plus organization403
+  does not satisfy this prerequisite.
+- [ ] Independently qualify a genuine new immutable attempt and exact protected
+  executor before selecting any ordered tags/publication or notification.
+- [ ] Verify both-feed whole-set producer payloads, then separately qualify genuine
+  public consumer source/pins/cohort and promised installed creation/retaining paths.
+
+The [owning source window](../release/selected-publication-attempt.md#disabled-font-disposal-0323-source-qualification-2026-10-20)
+records the exact joins and boundaries. PublicationReady remainsfalse, the existing
+effect jobs have no0.32.3 subject, and full4709/4644 acceptance remains open.

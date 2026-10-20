@@ -40,10 +40,11 @@ def validate(root: Path, source_sha: str, plan_path: str, requested_version: str
         'eng/release/svg-external-authority-0.32.0.json': ('0.32.0', '0.31.0'),
         'eng/release/svg-export-prefix-0.32.1.json': ('0.32.1', '0.32.0'),
         'eng/release/external-authority-recovery-0.32.2.json': ('0.32.2', '0.32.1'),
+        'eng/release/font-disposal-0.32.3.json': ('0.32.3', '0.32.1'),
     }
     if plan_path not in selections or (version, plan.get('baselineVersion')) != selections[plan_path]:
         preflight.fail('release plan path/version/baseline is not a selected source tuple')
-    if version in ('0.32.1', '0.32.2') and (require_publication_ready or plan['publicationReady'] is not False):
+    if version in ('0.32.1', '0.32.2', '0.32.3') and (require_publication_ready or plan['publicationReady'] is not False):
         preflight.fail(f'{version} source preparation only: candidate custody and installed qualification are unbound')
     if requested_version and requested_version != version:
         preflight.fail(f'requested version {requested_version!r} differs from plan {version}')

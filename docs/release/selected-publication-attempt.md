@@ -277,3 +277,65 @@ Installed acceptance requires the published package, an empty private template h
 to the generated workspace, and real browser/AT assertions. Fresh creation and promised retaining upgrades
 preserving edits/save/configuration/extensions and interruption/rollback are distinct outcomes. Shared
 WASM and SC2/BAR/FourD product authority remain outside this publication window.
+
+
+## Disabled font-disposal 0.32.3 source qualification, 2026-10-20
+
+Source preparation only; publication and version-collision clearance are not selected.
+Rendering PR1449 delivered the private font-activation disposal guard at
+`fd7c6801c17d09633b8cbac347498503d62122b5`, tree
+`e112c80bc2a3f7de1c5c8991cce19cf36f0c35e7`. Its original hosted run39485797291/a1
+passed the packed adapter cases in Chromium, Firefox and WebKit, including actual
+`font-late-disposal=passed` outputs. This is source qualification, not published
+producer or generated-consumer acceptance.
+
+The prospective patch plan `eng/release/font-disposal-0.32.3.json` retains the complete
+19-member UI/BOM/template roster, 17 library ApiCompat comparisons against public
+0.32.1, curated Fable payload and SDK10.0.401. Its `publicationReady:false` is required:
+even a forged true value or an effect-capable request refuses. No producer attempt,
+artifact coordinates, qualification or authority evidence is invented. The separate
+0.32.2 producer9b733956, original candidate38200411661/a1, qualified receiver/AT packet,
+consumed sends and all original unknowns remain unchanged. That attempt cannot be
+repacked or rebound to carry this font fix; its reserved Templates0.18.3 adoption
+remains its own promise.
+
+Fresh read-only metadata on2026-10-20 found all19 public NuGet IDs at0.32.1 with
+0.32.2/0.32.3 absent. All19 organization package-version reads returned403. Public
+absence is not organization absence, active/deleted census, publisher grants or
+release eligibility. These are observations, not enduring admission. Before any
+publication selection, use the existing qualified authenticated hosted census and
+NuGet existing-ID/OIDC scope route to establish complete current19-member evidence,
+with independent source/executor/owner joins and original effect-custody observation.
+No new service, watcher family, credential or private-feed bypass is introduced here.
+The existing effect/preflight jobs deliberately have no0.32.3 selection yet.
+
+After ordinary protected source delivery and a separate finite hosted admission,
+the normal `release.yml` workflow may be dispatched on that exact protected source
+with `source-only:true`, `version:0.32.3`, `preflight-only:false`, and both retained
+attempt flags false. `source-sha` must be the same checked-out protected SHA; an
+unrelated source cannot be qualified through this route. The static guard emits
+one verified plan/version/baseline tuple consumed by pack, ApiCompat and artifact
+naming. Package consumption and template-product qualification still precede the
+whole-set original candidate archive. Source-only runs receive no package-write or
+OIDC permission in their jobs and skip publication/preflight writers. Normal tag
+planning refuses this source-only plan before tools or tags.
+
+Retain the first actual successful candidate run/attempt, exact source/tree,
+19 archives and custody manifest, loaded SDK/compiler/runtime receipts, raw outer
+artifact bytes and17 ApiCompat results. Actual three-family font cases must join
+the final source-qualified tree; earlier results can only be reused with explicit
+immutable-byte correspondence. A later independently reviewed immutable binding
+and fresh root admission are required before enabling a new tag or publisher
+subject. Do not fill those fields from anticipated artifacts or reset an old effect.
+
+Only a separately selected original-byte publication may push the whole coherent
+set, organization feed first and public feed second, followed by full payload/nuspec/
+source/tag readback and normal notification. Signed public archive bytes can differ;
+compare the genuine producer payload and retain signature custody precisely. Fresh
+Templates provider/SvgFoundation pins, a new genuine public template/cohort and
+installed Wizard/SDD acceptance belong to their existing owners. Template VerifyNoto's
+immediate disposal and unmounted OfflineNoto resource path need their own consumer
+repair/qualification; this producer fix does not establish worker/font runtime,
+loaded ABI, official Arch support, browser retirement or complete4709/4644 acceptance.
+No registry, consumer pin, publication, installed adoption, closure or Unknown release
+is authorized by this source preparation.

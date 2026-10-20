@@ -181,7 +181,15 @@ jobs:
           fetch-depth: 0
 
       - name: Validate successor release source before .NET qualification
-        run: python3 scripts/release-source-guard.py --plan eng/release/external-authority-recovery-0.32.2.json --source-sha "$GITHUB_SHA" --require-publication-ready
+        run: |
+          set -euo pipefail
+          plan=eng/release/external-authority-recovery-0.32.2.json
+          version="$(python3 -c 'import re,pathlib; print(re.search(r"<FsGgUiVersion>([^<]+)</FsGgUiVersion>", pathlib.Path("template/base/Directory.Packages.props").read_text())[1])')"
+          if [[ "$version" == 0.32.3 ]]; then
+            plan=eng/release/font-disposal-0.32.3.json
+          fi
+          # The new plan is source-only. This guard MUST refuse before tools, tags or credentials.
+          python3 scripts/release-source-guard.py --plan "$plan" --source-sha "$GITHUB_SHA" --require-publication-ready
 
       - uses: actions/setup-dotnet@v6
         with:
