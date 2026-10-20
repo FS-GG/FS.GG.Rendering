@@ -1299,7 +1299,10 @@ let feature209VersionCoherenceTests =
                             // the offline half CANNOT see this, which is why the feed lane exists and why it may not live
                             // inside it.
                             let coreEc, _ =
-                                runIn root "dotnet" [ "fsi"; repo "scripts/validate-version-coherence.fsx" ]
+                                runIn
+                                    releasedRoot.Value
+                                    "dotnet"
+                                    [ "fsi"; Path.Combine("scripts", "validate-version-coherence.fsx") ]
 
                             Expect.equal
                                 coreEc
@@ -1562,10 +1565,10 @@ let feature209VersionCoherenceTests =
                             // verdict-core probed the feed at all, this fixture would see the requests.
                             let ec, out =
                                 runInWithEnv
-                                    root
+                                    releasedRoot.Value
                                     [ "FS_GG_VERSION_COHERENCE_FEED_URL", feedUrl ]
                                     "dotnet"
-                                    [ "fsi"; repo "scripts/validate-version-coherence.fsx" ]
+                                    [ "fsi"; Path.Combine("scripts", "validate-version-coherence.fsx") ]
 
                             Expect.equal ec 0 (sprintf "the repo is coherent offline:\n%s" out)
 
