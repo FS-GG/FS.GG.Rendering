@@ -31,8 +31,11 @@ module private StudioInterop =
     [<Emit("new FontFace($0, \"url(\" + $1 + \") format('woff2')\", {weight:'400'})")>]
     let fontFace (_family: string) (_url: string) : obj = jsNative
 
-    [<Emit("$0.load().then(face => { document.fonts.add(face); $1(); }, error => $2(String(error?.message ?? error)))")>]
+    [<Emit("$0.load().then(() => $1(), error => $2(String(error?.message ?? error)))")>]
     let loadFont (_face: obj) (_ready: unit -> unit) (_failed: string -> unit) : unit = jsNative
+
+    [<Emit("document.fonts.add($0)")>]
+    let addFont (_face: obj) : unit = jsNative
 
     [<Emit("document.fonts.delete($0)")>]
     let removeFont (_face: obj) : unit = jsNative
@@ -86,6 +89,7 @@ type SvgFontResourceHost internal (resource: SvgFontResource) =
             face
             (fun () ->
                 if not disposed then
+                    StudioInterop.addFont face
                     ready <- true)
             (fun error ->
                 if not disposed then

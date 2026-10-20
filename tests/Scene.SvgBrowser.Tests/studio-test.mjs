@@ -102,7 +102,80 @@ try {
   await page.waitForFunction(()=>window.svgStudioFixture.fontStatus().ready||window.svgStudioFixture.fontStatus().diagnostic,{timeout:5000});
   const font=await page.evaluate(()=>window.svgStudioFixture.fontStatus());
   await page.evaluate(()=>window.svgStudioFixture.disposeFont());
+  // Keep the real FontFace load, but hold delivery to the production callback.
+  // This makes load -> Dispose -> late settlement deterministic in every family.
+  const fontSettlement = {};
+  for (const mode of ["ordinary", "ordinary-failure", "disposed-success", "disposed-failure"]) {
+    fontSettlement[mode] = await page.evaluate(async mode => {
+      const originalLoad = FontFace.prototype.load;
+      const originalAdd = FontFaceSet.prototype.add;
+      const originalRevoke = URL.revokeObjectURL;
+      let face, actualLoad, delayedLoad, release;
+      let adds = 0, revokes = 0;
+      FontFace.prototype.load = function () {
+        if (face) throw new Error("one font load per settlement case");
+        face = this;
+        actualLoad = originalLoad.call(this);
+        delayedLoad = actualLoad.then(loaded => new Promise((resolve, reject) => {
+          release = () => mode.endsWith("failure")
+            ? reject(new Error("controlled late font-load rejection")) : resolve(loaded);
+        }));
+        return delayedLoad;
+      };
+      FontFaceSet.prototype.add = function (value) {
+        if (value === face) adds++;
+        return originalAdd.call(this, value);
+      };
+      URL.revokeObjectURL = function (url) {
+        revokes++;
+        return originalRevoke.call(this, url);
+      };
+      try {
+        window.svgStudioFixture.resourceRoundtrip();
+        await actualLoad;
+        // The native font has loaded; its production completion is still pending.
+        await Promise.resolve();
+        if (!release || face.status !== "loaded") throw new Error("native font did not load");
+        const pending = window.svgStudioFixture.fontStatus();
+        if (pending.ready || pending.diagnostic || document.fonts.has(face))
+          throw new Error("font callback settled before its gate");
+        if (mode.startsWith("disposed-")) window.svgStudioFixture.disposeFont();
+        release();
+        await delayedLoad.catch(() => {});
+        // Drain the production success/failure continuation before inspecting custody.
+        await Promise.resolve();
+        let readyBeforeDispose = false, diagnosticBeforeDispose = null;
+        if (mode === "ordinary") {
+          readyBeforeDispose = window.svgStudioFixture.fontStatus().ready;
+          if (!readyBeforeDispose || !document.fonts.has(face))
+            throw new Error("ordinary loaded font was not activated");
+          window.svgStudioFixture.disposeFont();
+        }
+        if (mode === "ordinary-failure") {
+          const failed = window.svgStudioFixture.fontStatus();
+          diagnosticBeforeDispose = failed.diagnostic;
+          if (failed.ready || diagnosticBeforeDispose !== "controlled late font-load rejection")
+            throw new Error("ordinary font failure did not retain its diagnostic");
+        }
+        window.svgStudioFixture.disposeFont();
+        return { nativeStatus: face.status, adds, revokes, readyBeforeDispose, diagnosticBeforeDispose,
+          presentAfterDispose: document.fonts.has(face) };
+      } finally {
+        // Retire the fixture while its instrumentation is still active, then restore it.
+        window.svgStudioFixture.disposeFont();
+        FontFace.prototype.load = originalLoad;
+        FontFaceSet.prototype.add = originalAdd;
+        URL.revokeObjectURL = originalRevoke;
+      }
+    }, mode);
+    const proof = fontSettlement[mode];
+    if (proof.nativeStatus !== "loaded" || proof.presentAfterDispose || proof.revokes !== 1 ||
+        proof.adds !== (mode === "ordinary" ? 1 : 0) ||
+        proof.readyBeforeDispose !== (mode === "ordinary") ||
+        proof.diagnosticBeforeDispose !== (mode === "ordinary-failure" ? "controlled late font-load rejection" : null))
+      throw new Error(JSON.stringify({ fontSettlement }));
+  }
   if(evidence.nativeGamepads.length!==1||evidence.nativeGamepads[0].source!=="gamepad:2"||evidence.nativeGamepads[0].buttons.join(",")!=="true,false")throw new Error(JSON.stringify({nativeGamepads:evidence.nativeGamepads}));
   if(evidence.labels.join(",")!=="Region,Boundary,Object,Rectangle,Ellipse,Polygon,Path,Group,Ungroup,Align left,Bring forward,Apply style,Grid snapping,Freeform,Undo,Redo"||evidence.created.Revision!==1||evidence.created.SelectionCount!==1||!evidence.preview.acceptedUnchanged||evidence.preview.during===evidence.preview.after||evidence.cancelled[0]!==evidence.cancelled[1]||evidence.scene.schema!=="fsgg.svg-scene/1"||evidence.scene.entities!==1||evidence.scene.x!==11||evidence.scene.y!==13||!evidence.camera.style.includes("matrix(2")||evidence.camera.picked!=="rectangle-1"||evidence.placement.revision!==5||evidence.placement.children!==3||!evidence.placement.freeform||evidence.workspace.mode!=="review"||!evidence.workspace.sideCollapsed||evidence.workspace.modalFocus!=="workspace.possible-input-help"||evidence.workspace.restoredFocus!=="studio-fixture--scene"||!evidence.workspace.layoutRoundtrip||!evidence.workspace.authoringPreserved||!evidence.workspace.cameraPreserved||Object.values(evidence.workspaceUi).some(value=>!value.visible||!value.focused||!value.restored)||!evidence.workspaceUi.rebind.text.includes("Conflict feedback")||!evidence.logical.includes("invoke:workspace.palette")||!evidence.meta.includes("invoke:workspace.palette")||!evidence.physical.includes("invoke:workspace.physical")||!evidence.sequence.includes("invoke:workspace.sequence")||evidence.nativeControl.length!==0||evidence.composition.some(x=>x.startsWith("invoke:"))||evidence.altGraph.some(x=>x.startsWith("invoke:"))||!evidence.capture.some(x=>x.startsWith("captured:"))||!evidence.pointer.includes("invoke:workspace.pointer")||!evidence.touch.includes("invoke:workspace.touch")||!evidence.gamepad.includes("held:workspace.gamepad:true")||!evidence.gamepad.includes("held:workspace.gamepad:false")||evidence.inputLifecycle.OwnedListenerCount<10||evidence.inputLifecycle.OwnedDeadlineCount!==0||evidence.inputLifecycle.GamepadPollScheduled||evidence.disposedInput.OwnedListenerCount!==0||evidence.disposedInput.OwnedDeadlineCount!==0||evidence.disposedInput.GamepadPollScheduled||!evidence.disposedInput.IsDisposed||!evidence.resource.embedded||evidence.resource.fonts!==1||evidence.resource.children!==1||!evidence.geometryCancelled||Object.values(geometry).some(value=>value.operations!==1||value.contours<1||!value.duplicateRefused)||geometry.difference.contours<2||!font.ready||evidence.disposed!==0||evidence.disposedAgain!==0||evidence.roots!==0)throw new Error(JSON.stringify({evidence,font,geometry}));
-  console.log(`svg-studio-browser: ${family}=passed input-devices=passed workspace-accessibility=passed repeated-mount-dispose=passed native-controls=passed cancellation=passed offline-font=passed`);
+  console.log(`svg-studio-browser: ${family}=passed input-devices=passed workspace-accessibility=passed repeated-mount-dispose=passed native-controls=passed cancellation=passed offline-font=passed font-late-disposal=passed`);
 } finally { await browser.close(); await new Promise(done=>server.close(done)); }
