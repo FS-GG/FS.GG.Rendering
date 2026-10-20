@@ -852,8 +852,11 @@ class SourceSdkInstallationRootTests(unittest.TestCase):
         for name in self.JOBS:
             with self.subTest(job=name):
                 block = self.block(name)
-                expected = '${{ runner.temp }}/rendering-source-dotnet-10.0.401' if name == 'source-package-custody' else "${{ inputs.source-only && format('{0}/rendering-source-dotnet-10.0.401', runner.temp) || '' }}"
-                self.assertIn('      DOTNET_INSTALL_DIR: '+expected+'\n', block)
+                job_env = block.split('    steps:\n', 1)[0]
+                self.assertNotIn('runner.', job_env)  # GitHub disallows runner in jobs.<id>.env.
+                self.assertIn("      DOTNET_INSTALL_DIR: ''\n", job_env)
+                step = block.split('      - name: '+self.STEP+'\n',1)[1].split('      - ',1)[0]
+                self.assertIn('          DOTNET_INSTALL_DIR: ${{ runner.temp }}/rendering-source-dotnet-10.0.401\n', step)
                 self.assertLess(block.index(self.STEP), block.index('uses: actions/setup-dotnet@v6'))
                 self.assertLess(block.index('uses: actions/setup-dotnet@v6'), block.index('release-toolchain-identity.py --expected-sdk 10.0.401'))
                 self.assertIn("dotnet-version: '10.0.401'", block)
@@ -868,7 +871,7 @@ class SourceSdkInstallationRootTests(unittest.TestCase):
             for case in ('fresh','directory','file','dangling-link','wrong-root','empty-root','relative-parent','linked-parent','missing-parent','trailing-slash'):
                 with self.subTest(job=name,case=case), tempfile.TemporaryDirectory() as value:
                     root=Path(value); parent=root/'runner temp'; parent.mkdir(); selected=parent/'rendering-source-dotnet-10.0.401'
-                    env={**os.environ,'RUNNER_TEMP':str(parent),'DOTNET_INSTALL_DIR':str(selected)}
+                    env={**os.environ,'RUNNER_TEMP':str(parent),'DOTNET_INSTALL_DIR':str(selected),'GITHUB_ENV':str(root/'github-env')}
                     if case=='directory': selected.mkdir()
                     if case=='file': selected.write_text('owner bytes')
                     if case=='dangling-link': selected.symlink_to(root/'missing-target')
@@ -888,6 +891,24 @@ class SourceSdkInstallationRootTests(unittest.TestCase):
                     if case=='file': self.assertEqual('owner bytes',selected.read_text())
                     if case=='directory': self.assertTrue(selected.is_dir())
                     if case=='dangling-link': self.assertTrue(selected.is_symlink())
+
+    def test_actual_preparation_exports_verified_root_to_subsequent_action_only_after_success(self):
+        for name in self.JOBS:
+            with self.subTest(job=name), tempfile.TemporaryDirectory() as value:
+                root=Path(value); parent=root/'runner temp'; parent.mkdir()
+                selected=parent/'rendering-source-dotnet-10.0.401'; environment=root/'github-env'
+                env={**os.environ,'RUNNER_TEMP':str(parent),'DOTNET_INSTALL_DIR':str(selected),'GITHUB_ENV':str(environment)}
+                result=subprocess.run(['bash','-c',self.preparation(name)],env=env,text=True,capture_output=True,timeout=5)
+                self.assertEqual(0,result.returncode,result.stderr)
+                # Apply the documented GITHUB_ENV handoff to a distinct inert action port.
+                self.assertTrue(environment.is_file(), 'verified SDK root must be handed to subsequent action')
+                inherited=dict(line.split('=',1) for line in environment.read_text().splitlines())
+                result=subprocess.run(['bash','-c','test "$DOTNET_INSTALL_DIR" = "$EXPECTED_ROOT"'],env={**os.environ,**inherited,'EXPECTED_ROOT':str(selected)},capture_output=True,timeout=5)
+                self.assertEqual(0,result.returncode)
+                environment.unlink(); selected.mkdir()
+                result=subprocess.run(['bash','-c',self.preparation(name)],env=env,capture_output=True,timeout=5)
+                self.assertNotEqual(0,result.returncode)
+                self.assertFalse(environment.exists(), 'refused root must not reach subsequent action')
 
     def test_actual_loaded_guard_refuses402_without_changing_expected401_or_creating_receipt(self):
         with tempfile.TemporaryDirectory() as value:
