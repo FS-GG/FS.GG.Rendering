@@ -26,14 +26,21 @@ type ScopeContext = {
     RunId: string; PlanHash: string; PackageIds: string list
 }
 
+/// Closed raw-plan identities for nonmutating same-run scope observations.
+let scopePlanVersion = function
+    | "ac433609d14d0a672ad42e5f3578afdd6ecf6ee1144c33d5e6aec951535d84f2" -> Some "0.32.1"
+    | "81571fc65ac117e90467428d2e50e103ec875aa33cb83b054d9056bf4129aa1a" -> Some "0.32.2"
+    | "89369de0c0944c66a52c6ed914cef78d6bb7670866baedf85cd8a198c5c46239" -> Some "0.32.3"
+    | _ -> None
+
+/// This new subject grants scope-only GET observations, never writer eligibility.
+let fontDisposalScopePlan scopeOnly planHash =
+    scopeOnly && scopePlanVersion planHash = Some "0.32.3"
+
 let scopeSourceFromReceipt (context: ScopeContext) (receipt: JsonElement) =
     try
         let text (element: JsonElement) (name: string) = element.GetProperty(name).GetString()
-        let selectedVersion =
-            match context.PlanHash with
-            | "ac433609d14d0a672ad42e5f3578afdd6ecf6ee1144c33d5e6aec951535d84f2" -> "0.32.1"
-            | "81571fc65ac117e90467428d2e50e103ec875aa33cb83b054d9056bf4129aa1a" -> "0.32.2"
-            | _ -> null
+        let selectedVersion = scopePlanVersion context.PlanHash |> Option.defaultValue null
         let workflow = receipt.GetProperty("workflow")
         let roster = receipt.GetProperty("roster").EnumerateArray() |> Seq.map(fun p -> p.GetString()) |> Seq.toList
         if isNull context.SourceSha || not(Regex.IsMatch(context.SourceSha, "^[0-9a-f]{40}$")) ||

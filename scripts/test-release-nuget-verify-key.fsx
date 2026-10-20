@@ -123,3 +123,50 @@ assert(not(admitCurrent current true (List.replicate 18 (Some 200)) "unknown-bef
 assert(not(admitCurrent current true (List.replicate 19 (Some 403)) "unknown-before-attempt"))
 assert(not(admitCurrent current true (List.replicate 19 (Some 200)) "proven"))
 printfn "PASS separate current186/8/15 eligibility and historical180/4 contract"
+
+
+// Genuine source-plan bytes are raw, including the final newline, not source_text.Trim().
+let fontPlanBytes = System.IO.File.ReadAllBytes(System.IO.Path.Combine(__SOURCE_DIRECTORY__, "../eng/release/font-disposal-0.32.3.json"))
+let fontRawHash = System.Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(fontPlanBytes)).ToLowerInvariant()
+let fontStrippedBytes = System.Text.Encoding.UTF8.GetBytes(System.Text.Encoding.UTF8.GetString(fontPlanBytes).Trim())
+let fontStrippedHash = System.Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(fontStrippedBytes)).ToLowerInvariant()
+assert(fontPlanBytes.Length=3490 && fontRawHash="89369de0c0944c66a52c6ed914cef78d6bb7670866baedf85cd8a198c5c46239")
+assert(fontStrippedHash="d0127bcd424480549f9de233eb2b2109768d00491d529a08e65a9c980bebe27d")
+assert(scopePlanVersion fontRawHash=Some "0.32.3")
+assert(scopePlanVersion fontStrippedHash=None)
+assert(fontDisposalScopePlan true fontRawHash)
+assert(not(fontDisposalScopePlan false fontRawHash))
+for hash in [fontStrippedHash; context.PlanHash; recoveryContext.PlanHash; String.replicate 64 "c"; ""] do
+    assert(not(fontDisposalScopePlan true hash))
+let fontContext = { context with SourceSha="4ec6eafbbbf02264db9b0db4780c590abe0bf9cd"; PlanHash=fontRawHash }
+let fontReceipt = JsonNode.Parse(receiptText)
+for field in ["version"; "frameworkVersion"; "templateVersion"] do
+    fontReceipt.[field] <- JsonValue.Create("0.32.3")
+fontReceipt.["sourceSha"] <- JsonValue.Create(fontContext.SourceSha)
+fontReceipt.["planSha256"] <- JsonValue.Create(fontRawHash)
+let observeFont text =
+    use document = JsonDocument.Parse(text: string)
+    scopeSourceFromReceipt fontContext document.RootElement
+let beforeFontJoins = requests.Count
+assert(observeFont (fontReceipt.ToJsonString())=Ok fontContext.SourceSha)
+for field, replacement in ["sourceSha",context.SourceSha; "workflowSha",String.replicate 40 "c";
+                           "planSha256",fontStrippedHash; "planSha256",recoveryContext.PlanHash;
+                           "version","0.32.2"; "frameworkVersion","0.32.2"; "templateVersion","0.32.2";
+                           "result","unknown"; "mutation","write"] do
+    let changed = JsonNode.Parse(fontReceipt.ToJsonString())
+    changed.[field] <- JsonValue.Create(replacement)
+    assert(observeFont (changed.ToJsonString()) |> Result.isError)
+for badContext in [{fontContext with SourceSha=context.SourceSha};
+                   {fontContext with WorkflowSha=String.replicate 40 "c"};
+                   {fontContext with PlanHash=fontStrippedHash};
+                   {fontContext with PackageIds=List.rev ids}] do
+    use document = JsonDocument.Parse(fontReceipt.ToJsonString())
+    assert(scopeSourceFromReceipt badContext document.RootElement |> Result.isError)
+let wrongFontRoster = JsonNode.Parse(fontReceipt.ToJsonString())
+wrongFontRoster.["roster"] <- JsonSerializer.SerializeToNode(List.rev ids)
+assert(observeFont (wrongFontRoster.ToJsonString()) |> Result.isError)
+assert(requests.Count=beforeFontJoins) // Provenance/readiness checks perform no transport.
+let fontFixture = httpTransportWithHandler "public-test-fixture-key" (new RecordingHandler(HttpStatusCode.OK, "0.32.1"))
+assert(match inspect fontFixture ids "0.32.1" with Ok(rows,true)->rows.Length=19|_->false)
+assert(requests.Count=beforeFontJoins+19)
+printfn "PASS font-disposal RAW-plan scope-only selection/source/executor/roster joins;19 GETs and no writer authority"

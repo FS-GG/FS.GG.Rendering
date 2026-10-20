@@ -19,11 +19,17 @@ for path, expected in [
     "eng/release/svg-external-authority-0.32.0.json", ("0.32.0", "0.31.0")
     "eng/release/svg-export-prefix-0.32.1.json", ("0.32.1", "0.32.0")
     "eng/release/external-authority-recovery-0.32.2.json", ("0.32.2", "0.32.1")
+    "eng/release/font-disposal-0.32.3.json", ("0.32.3", "0.32.1")
 ] do
     if selectedPlanTuple path <> Ok expected then failwith "selected plan coordinates refused"
     checks <- checks + 1
 for path in [
     "eng/release/external-authority-recovery-0.32.3.json"
+    "eng/release/font-disposal-0.32.2.json"
+    "eng/release/font-disposal-0.32.3.json "
+    "ENG/release/font-disposal-0.32.3.json"
+    "./eng/release/font-disposal-0.32.3.json"
+    "eng/release/../release/font-disposal-0.32.3.json"
     "eng/release/external-authority-recovery-0.32.2.json "
     "ENG/release/external-authority-recovery-0.32.2.json"
     "./eng/release/external-authority-recovery-0.32.2.json"

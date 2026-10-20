@@ -781,10 +781,27 @@ jobs:
         # The depth-1 checkout needs each exact commit, with no floating ref.
         run: git fetch --no-tags --depth=1 origin 730923fe9d27174e879566f21dab14a1b03d761a 6c9f766fdd91483c2de6f061e75589e94852a265 d3b819a71eabcc0f557bcd23677dfd4397439428 9b73395658d4683a067d150ca9441b04e802c4af
 
+      - name: Require a fresh private SDK root for read-selector controls
+        shell: bash
+        env:
+          DOTNET_INSTALL_DIR: ${{ runner.temp }}/rendering-read-controls-dotnet-10.0.401
+        run: |
+          set -euo pipefail
+          expected="${RUNNER_TEMP:?}/rendering-read-controls-dotnet-10.0.401"
+          [[ "$RUNNER_TEMP" == /* && "$RUNNER_TEMP" != / && "$RUNNER_TEMP" != */ && "$(realpath -e -- "$RUNNER_TEMP")" == "$RUNNER_TEMP" ]] || { echo '::error::read-controls SDK parent must be canonical runner temp'; exit 1; }
+          [[ "${DOTNET_INSTALL_DIR:-}" == "$expected" && ! -e "$expected" && ! -L "$expected" ]] || { echo '::error::read-controls SDK root must be selected and absent'; exit 1; }
+          printf 'DOTNET_INSTALL_DIR=%s\n' "$expected" >> "$GITHUB_ENV"
+
       - name: Set up .NET
         uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: '10.0.x'
+          dotnet-version: '10.0.401'
+
+      - name: Qualify closed read-only release selectors without credentials
+        run: |
+          python3 scripts/release-toolchain-identity.py --expected-sdk 10.0.401 --receipt artifacts/toolchain/read-selector-controls.json
+          dotnet fsi --exec scripts/test-release-package-census.fsx
+          dotnet fsi --define:DEBUG --exec scripts/test-release-nuget-verify-key.fsx
 
       - name: ApiCompat vs feed baseline
         env:
