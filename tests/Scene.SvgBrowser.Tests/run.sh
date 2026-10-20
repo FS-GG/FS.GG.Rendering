@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-node "$repo/tests/Scene.SvgBrowser.Tests/reconciliation-source-test.mjs"
-node "$repo/tests/Scene.SvgBrowser.Tests/suite-control-test.mjs"
+original_mode=false
+if [[ -n "${SVG_SCENE_ORIGINAL_CANDIDATE_DIR:-}${SVG_SCENE_ORIGINAL_CUSTODY:-}${SVG_SCENE_ORIGINAL_CUSTODY_SHA256:-}${SVG_SCENE_ORIGINAL_SOURCE_SHA:-}" ]]; then
+  original_mode=true
+else
+  node "$repo/tests/Scene.SvgBrowser.Tests/reconciliation-source-test.mjs"
+  node "$repo/tests/Scene.SvgBrowser.Tests/suite-control-test.mjs"
+fi
 output="${1:-$repo/readiness/svg-scene-02-5/browser-observations.json}"
 work="$(mktemp -d "${TMPDIR:-/tmp}/scene-svg-browser.XXXXXX")"
 trap 'rm -rf "$work"' EXIT
@@ -11,6 +16,13 @@ packages="$work/packages"
 tools="$work/tools"
 mkdir -p "$feed" "$packages" "$tools" "$(dirname "$output")"
 
+if [[ "$original_mode" == true ]]; then
+  # The maintained builder owns the closed original-artifact input validation.
+  rm -rf "$work"
+  bash "$repo/tests/Scene.SvgBrowser.Tests/build-fixture.sh" "$work"
+  node "$repo/tests/Scene.SvgBrowser.Tests/reconciliation-source-test.mjs"
+  node "$repo/tests/Scene.SvgBrowser.Tests/suite-control-test.mjs"
+else
 dotnet pack "$repo/src/Scene/Scene.fsproj" -c Release -o "$feed" -p:Version=0.32.0
 dotnet pack "$repo/src/KeyboardInput/KeyboardInput.fsproj" -c Release -o "$feed" -p:Version=0.32.0
 dotnet pack "$repo/src/Scene.SvgBrowser/Scene.SvgBrowser.fsproj" -c Release -o "$feed" -p:Version=0.32.0
@@ -43,6 +55,7 @@ dotnet tool install fable --version 5.17.0 --tool-path "$tools" --configfile "$w
 "$tools/fable" "$work/Browser/BrowserFixture.fsproj" --outDir "$work/Browser/generated" --lang JavaScript --noCache
 npm ci --prefix "$work/Browser"
 npm run --prefix "$work/Browser" build
+fi
 source_digest="$(cat "$repo/src/KeyboardInput/KeyboardInput.fsi" "$repo/src/KeyboardInput/KeyboardInput.fs" "$repo/src/KeyboardInput/CommandInput.fsi" "$repo/src/KeyboardInput/CommandInput.fs" "$repo/src/KeyboardInput/CommandResolver.fsi" "$repo/src/KeyboardInput/CommandResolver.fs" "$repo/src/Scene/SvgWorkspace.fsi" "$repo/src/Scene/SvgWorkspace.fs" "$repo/src/Scene/Animation.fsi" "$repo/src/Scene/Animation.fs" "$repo/src/Scene.SvgBrowser/SvgBrowser.fsi" "$repo/src/Scene.SvgBrowser/SvgBrowser.fs" "$repo/src/Scene.SvgBrowser/SvgInputHost.fsi" "$repo/src/Scene.SvgBrowser/SvgInputHost.fs" "$repo/src/Scene.SvgBrowser/SvgSessionHost.fsi" "$repo/src/Scene.SvgBrowser/SvgSessionHost.fs" "$repo/src/Scene.SvgBrowser/SvgExternalSessionHost.fsi" "$repo/src/Scene.SvgBrowser/SvgExternalSessionHost.fs" "$repo/src/Scene.SvgBrowser/SvgStudio.fsi" "$repo/src/Scene.SvgBrowser/SvgStudio.fs" "$repo/src/Scene.SvgBrowser/SvgAnimationHost.fsi" "$repo/src/Scene.SvgBrowser/SvgAnimationHost.fs" "$repo/src/Scene.SvgBrowser/BrowserPersistence.fsi" "$repo/src/Scene.SvgBrowser/BrowserPersistence.fs" | sha256sum | cut -d' ' -f1)"
 package_digest="$(find "$feed" -name 'FS.GG.UI.*.nupkg' -type f -print0 | sort -z | while IFS= read -r -d '' package; do sha256sum "$package" | cut -d' ' -f1; done | sha256sum | cut -d' ' -f1)"
 if [[ -n "${SVG_SCENE_ORCA_OBSERVATION:-}" ]]; then
@@ -64,9 +77,11 @@ for required in ('fs.gg.ui.scene/', 'fs.gg.ui.keyboardinput/', 'fs.gg.ui.scene.s
 for forbidden in ('skiasharp/', 'fs.gg.ui.skiaviewer/', 'fs.gg.ui.controls.elmish/'):
     if any(name.startswith(forbidden) for name in libraries):
         raise SystemExit(f'browser closure contains forbidden dependency {forbidden}')
-scene=next((root/'feed').glob('FS.GG.UI.Scene.0.32.0.nupkg'))
-adapter=next((root/'feed').glob('FS.GG.UI.Scene.SvgBrowser.*.nupkg'))
-keyboard=next((root/'feed').glob('FS.GG.UI.KeyboardInput.*.nupkg'))
+original=root/'original-candidate.json'
+version=json.loads(original.read_text())['version'] if original.exists() else '0.32.0'
+scene=next((root/'feed').glob(f'FS.GG.UI.Scene.{version}.nupkg'))
+adapter=next((root/'feed').glob(f'FS.GG.UI.Scene.SvgBrowser.{version}.nupkg'))
+keyboard=next((root/'feed').glob(f'FS.GG.UI.KeyboardInput.{version}.nupkg'))
 with zipfile.ZipFile(scene) as archive:
     nuspec=archive.read('FS.GG.UI.Scene.nuspec').decode('utf-8-sig')
     if 'Fable.Browser.Dom' in nuspec:
@@ -121,3 +136,12 @@ jq -s --argjson at "$at_evidence" '
   }
 ' "$base.chromium.json" "$base.firefox.json" "$base.webkit.json" > "$output"
 echo "svg-browser-matrix: automated=passed browsers=chromium,firefox,webkit assistive-technology=$(jq -r '.externalDimensions.assistiveTechnology.result' "$output") evidence=$output"
+
+if [[ "$original_mode" == true ]]; then
+  # Verify all19 originals again after the actual three-family consumer journey.
+  [[ "$(sha256sum "$SVG_SCENE_ORIGINAL_CUSTODY" | cut -d' ' -f1)" == "$SVG_SCENE_ORIGINAL_CUSTODY_SHA256" ]] || exit 1
+  python3 "$repo/scripts/release-custody.py" verify --plan "$repo/eng/release/font-disposal-0.32.3.json" \
+    --archives "$SVG_SCENE_ORIGINAL_CANDIDATE_DIR" --manifest "$SVG_SCENE_ORIGINAL_CUSTODY" --source-sha "$SVG_SCENE_ORIGINAL_SOURCE_SHA"
+  cp "$work/original-candidate.json" "$base.original-candidate.json"
+  echo "svg-browser-original-candidate: version=0.32.3 roster=19 consumers=3 no-repack=passed custody=unchanged"
+fi

@@ -459,7 +459,36 @@ jobs:
         run: bash scripts/release-pack.sh "$SOURCE_PLAN" "$GITHUB_SHA" "$SOURCE_VERSION"
       - name: ApiCompat against the selected published baseline
         run: bash scripts/apicompat-check.sh --baseline "$SOURCE_BASELINE" --release-plan "$SOURCE_PLAN"
+      - name: Set up Node for original candidate browser consumers
+        if: env.SOURCE_VERSION == '0.32.3'
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Restore the maintained browser harness and all three browser families
+        if: env.SOURCE_VERSION == '0.32.3'
+        working-directory: tests/Scene.SvgBrowser.Tests
+        run: |
+          npm ci
+          npx playwright-core install --with-deps chromium firefox webkit
+      - name: Qualify all three browser families against original candidate archives without repacking
+        if: env.SOURCE_VERSION == '0.32.3'
+        env:
+          SVG_SCENE_ORIGINAL_CANDIDATE_DIR: ${{ github.workspace }}/artifacts/packages
+          SVG_SCENE_ORIGINAL_CUSTODY: ${{ github.workspace }}/artifacts/packages/release-custody.json
+          SVG_SCENE_ORIGINAL_SOURCE_SHA: ${{ github.sha }}
+          SVG_SCENE_FOCUS_SDK: '10.0.401'
+        run: |
+          export SVG_SCENE_ORIGINAL_CUSTODY_SHA256="$(sha256sum "$SVG_SCENE_ORIGINAL_CUSTODY" | cut -d' ' -f1)"
+          bash tests/Scene.SvgBrowser.Tests/run.sh "$RUNNER_TEMP/source-browser-observations.json"
+      - name: Retain original candidate browser qualification evidence
+        if: always() && env.SOURCE_VERSION == '0.32.3'
+        uses: actions/upload-artifact@v7
+        with:
+          name: rendering-source-browser-${{ github.sha }}-${{ env.SOURCE_VERSION }}
+          path: ${{ runner.temp }}/source-browser-observations*.json
+          if-no-files-found: warn
       - name: Retain candidate bytes for isolated consumer composition
+        if: success() || (always() && env.SOURCE_VERSION == '0.32.3' && hashFiles('artifacts/packages/release-custody.json') != '')
         uses: actions/upload-artifact@v7
         with:
           name: rendering-source-candidate-${{ github.sha }}-${{ env.SOURCE_VERSION }}

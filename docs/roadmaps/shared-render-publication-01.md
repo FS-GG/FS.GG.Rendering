@@ -60,3 +60,5 @@ source notes above are historical. No part of that binding is reused for0.32.3.
 The [owning source window](../release/selected-publication-attempt.md#disabled-font-disposal-0323-source-qualification-2026-10-20)
 records the exact joins and boundaries. PublicationReady remainsfalse, the existing
 effect jobs have no0.32.3 subject, and full4709/4644 acceptance remains open.
+
+The same source-only candidate uses the maintained browser runner’s closed original-artifact mode: verify all19 original archives before tools and after the three-family journey, copy exactly Scene/KeyboardInput/Scene.SvgBrowser into a private feed without repacking, pin the copied fixture references to `[0.32.3]`, and join restored private-cache bytes to those originals. Ordinary fixture packing remains unchanged. Actual hosted Chromium/Firefox/WebKit results are still required; source controls do not supply browser or assistive-technology acceptance.

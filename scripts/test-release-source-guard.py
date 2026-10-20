@@ -11,6 +11,7 @@ import re
 import subprocess
 import tempfile
 import unittest
+import zipfile
 from unittest.mock import patch
 sys.dont_write_bytecode = True
 SCRIPT = Path(__file__).with_name('release-source-guard-original730.py')
@@ -827,6 +828,93 @@ class FontDisposalSourceTests(unittest.TestCase):
             self.assertIn('!inputs.source-only',blocks[effect])
         self.assertNotIn('font-disposal-0.32.3',blocks['publish-packages'])
         self.assertNotIn('font-disposal-0.32.3',blocks['publication-preflight'])
+
+
+
+class OriginalArtifactFixtureTests(unittest.TestCase):
+    def fixture(self, root):
+        import argparse, contextlib, io
+        spec=importlib.util.spec_from_file_location('original_test_custody',ROOT/'scripts/release-custody.py')
+        custody=importlib.util.module_from_spec(spec);spec.loader.exec_module(custody)
+        archives=root/'archives';archives.mkdir();plan=ROOT/'eng/release/font-disposal-0.32.3.json'
+        doc=json.loads(plan.read_text());source=subprocess.check_output(['git','-C',str(ROOT),'rev-parse','HEAD'],text=True).strip()
+        libraries=[r['id'] for r in doc['packages'] if r['kind']=='library']
+        for row in doc['packages']:
+            name=row['id'];deps=''
+            if row['kind']=='bom':deps=''.join(f'<dependency id="{n}" version="[0.32.3]" />' for n in libraries)
+            xml=f'<package><metadata><id>{name}</id><version>0.32.3</version><license type="expression">MIT</license><repository url="https://github.com/FS-GG/FS.GG.Rendering.git" commit="{source}" /><dependencies>{deps}</dependencies></metadata></package>'
+            with zipfile.ZipFile(archives/(name+'.0.32.3.nupkg'),'w') as z:
+                z.writestr(name+'.nuspec',xml)
+                if name=='FS.GG.UI.Scene.SvgBrowser':
+                    for entry in doc['releaseChecks']['fableEntries']:z.writestr(entry,'inert fixture bytes')
+                    z.writestr('api-surface/SvgBrowser.fsi','\n'.join(doc['releaseChecks']['svgSurfaceMarkers']))
+                if row['kind']=='template':
+                    for entry in doc['releaseChecks']['generatedTemplateEntries']:z.writestr(entry,'inert fixture bytes')
+        manifest=archives/'release-custody.json'
+        with contextlib.redirect_stdout(io.StringIO()):custody.command_prepare(argparse.Namespace(plan=plan,archives=archives,manifest=manifest,source_sha=source))
+        tools=root/'tools';tools.mkdir();marker=root/'native-called'
+        for name in ('dotnet','node','npm'):
+            f=tools/name;f.write_text('#!/usr/bin/env bash\nprintf "%s %s\\n" "'+name+'" "$*" >> "$TOOL_MARKER"\nexit 43\n');f.chmod(0o700)
+        env={k:v for k,v in os.environ.items() if not k.startswith('SVG_SCENE_ORIGINAL_') and k!='SVG_SCENE_FOCUS_SDK'}
+        env.update(PATH=str(tools)+os.pathsep+env['PATH'],TOOL_MARKER=str(marker),PYTHONDONTWRITEBYTECODE='1',SVG_SCENE_ORIGINAL_CANDIDATE_DIR=str(archives),SVG_SCENE_ORIGINAL_CUSTODY=str(manifest),SVG_SCENE_ORIGINAL_CUSTODY_SHA256=hashlib.sha256(manifest.read_bytes()).hexdigest(),SVG_SCENE_ORIGINAL_SOURCE_SHA=source,TMPDIR=str(root))
+        return archives,manifest,marker,env
+
+    def invoke(self,root,env,runner=False):
+        path=ROOT/'tests/Scene.SvgBrowser.Tests'/('run.sh' if runner else 'build-fixture.sh')
+        return subprocess.run(['bash',str(path),str(root/('observation.json' if runner else 'work'))],cwd=ROOT,env=env,capture_output=True,text=True,timeout=10)
+
+    def test_actual_original_shell_stages_three_originals_without_pack_and_default_still_packs(self):
+        import xml.etree.ElementTree as ET
+        for original in (True,False):
+            with tempfile.TemporaryDirectory() as value:
+                root=Path(value);archives,manifest,marker,env=self.fixture(root)
+                if not original:env={k:v for k,v in env.items() if not k.startswith('SVG_SCENE_ORIGINAL_')}
+                result=self.invoke(root,env);self.assertEqual(43,result.returncode,result.stdout+result.stderr)
+                calls=marker.read_text().splitlines();self.assertEqual(1,len(calls))
+                if original:
+                    self.assertTrue(calls[0].startswith('dotnet restore '));self.assertNotIn(' pack ',calls[0])
+                    feed=root/'work/feed';self.assertEqual(3,len(list(feed.glob('*.nupkg'))))
+                    for f in feed.glob('*.nupkg'):self.assertEqual((archives/f.name).read_bytes(),f.read_bytes())
+                    refs=ET.parse(root/'work/Browser/BrowserFixture.fsproj').getroot().findall('.//PackageReference')
+                    selected=[r for r in refs if r.get('Include','').startswith('FS.GG.UI.')]
+                    self.assertEqual(3,len(selected));self.assertTrue(all(r.get('Version')=='[0.32.3]' for r in selected))
+                else:self.assertTrue(calls[0].startswith('dotnet pack '));self.assertIn('Version=0.32.0',calls[0])
+
+    def test_actual_builder_and_runner_refuse_wrong_or_missing_inputs_before_native_tools(self):
+        for fault in ('missing','manifest-hash','source','version','archive-hash','missing-archive'):
+            for runner in (False,True):
+                with self.subTest(fault=fault,runner=runner),tempfile.TemporaryDirectory() as value:
+                    root=Path(value);archives,manifest,marker,env=self.fixture(root)
+                    if fault=='missing':env.pop('SVG_SCENE_ORIGINAL_SOURCE_SHA')
+                    if fault=='manifest-hash':env['SVG_SCENE_ORIGINAL_CUSTODY_SHA256']='0'*64
+                    if fault=='source':env['SVG_SCENE_ORIGINAL_SOURCE_SHA']='b'*40
+                    if fault=='version':
+                        doc=json.loads(manifest.read_text());doc['version']='0.32.2';manifest.write_text(json.dumps(doc));env['SVG_SCENE_ORIGINAL_CUSTODY_SHA256']=hashlib.sha256(manifest.read_bytes()).hexdigest()
+                    if fault=='archive-hash':
+                        with next(archives.glob('*.nupkg')).open('ab') as stream:stream.write(b'changed')
+                    if fault=='missing-archive':next(archives.glob('*.nupkg')).unlink()
+                    result=self.invoke(root,env,runner);self.assertNotEqual(0,result.returncode);self.assertFalse(marker.exists(),result.stdout+result.stderr)
+
+    def test_actual_full_custody_function_detects_original_change_after_first_read(self):
+        with tempfile.TemporaryDirectory() as value:
+            root=Path(value);archives,manifest,marker,env=self.fixture(root)
+            text=(ROOT/'tests/Scene.SvgBrowser.Tests/build-fixture.sh').read_text();start=text.index('verify_original() {');end=text.index('if [[ "$original_mode" == true ]]; then',start)
+            script='set -euo pipefail\nrepo="'+str(ROOT)+'"\n'+text[start:end]+'\nverify_original >/dev/null\nprintf changed >> "'+str(next(archives.glob('*.nupkg')))+'"\nverify_original >/dev/null\n'
+            result=subprocess.run(['bash','-c',script],cwd=ROOT,env=env,capture_output=True,text=True,timeout=10)
+            self.assertNotEqual(0,result.returncode);self.assertIn('never repack or substitute',result.stderr);self.assertFalse(marker.exists())
+
+    def test_source_only_ci_uses_actual_original_candidate_for_all_three_browser_families(self):
+        text=(ROOT/'.github/workflows/release.yml').read_text();body=re.search(r'^  source-package-custody:\n(.*?)(?=^  [a-z-]+:|\Z)',text,re.M|re.S).group(1)
+        self.assertLess(body.index('release-pack.sh'),body.index('SVG_SCENE_ORIGINAL_CANDIDATE_DIR:'))
+        for field in ('CANDIDATE_DIR','CUSTODY','SOURCE_SHA'):
+            self.assertIn('SVG_SCENE_ORIGINAL_'+field+':',body)
+        self.assertIn('SVG_SCENE_ORIGINAL_CUSTODY_SHA256=',body)
+        self.assertIn('playwright-core install --with-deps chromium firefox webkit',body)
+        self.assertIn('bash tests/Scene.SvgBrowser.Tests/run.sh',body)
+        runner=(ROOT/'tests/Scene.SvgBrowser.Tests/run.sh').read_text()
+        self.assertIn('for family in chromium firefox webkit; do',runner)
+        self.assertIn('node "$work/Browser/studio-test.mjs" --browser "$family"',runner)
+        self.assertIn('release-custody.py" verify',runner)
 
 
 def native_boundary(scope_only=False, current_attempt=False):
