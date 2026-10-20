@@ -425,5 +425,17 @@ class CurrentTagSelectionTests(unittest.TestCase):
                 with patch.object(tags.guard,'validate',side_effect=AssertionError('pending must refuse before downstream source validation')):
                     with self.assertRaises(SystemExit):tags.selected_binding(root,source,'0.32.2')
 
+class DisabledFontTagTests(unittest.TestCase):
+    def test_genuine_pending_subject_refuses_before_remote_probe_or_push(self):
+        for mode in ('check','cut'):
+            with self.subTest(mode=mode),tempfile.TemporaryDirectory() as d:
+                root=Path(d);file=root/tags.guard.FONT_DISPOSAL_ATTEMPT;file.parent.mkdir(parents=True)
+                file.write_bytes((ROOT/tags.guard.FONT_DISPOSAL_ATTEMPT).read_bytes())
+                git=FakeGit()
+                with patch.object(tags,'executor_identity',return_value={}),patch.object(tags.guard,'source_bytes',return_value=(ROOT/tags.guard.FONT_DISPOSAL['planPath']).read_bytes()):
+                    with self.assertRaises(tags.Refused):tags.Operation(root,mode,tags.guard.FONT_DISPOSAL['producerSha'],'0.32.3',ENV,git).run()
+                self.assertEqual([],git.calls);self.assertEqual([],git.pushes)
+
+
 if __name__ == '__main__':
     unittest.main()

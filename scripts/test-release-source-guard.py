@@ -287,8 +287,8 @@ class SuccessorRouteTests(unittest.TestCase):
         self.assertIn("FSGG_NUGET_SCOPE_ONLY: 'true'", preflight)
         self.assertIn('FSGG_NUGET_SCOPE_SOURCE: ${{ steps.source.outputs.sha }}', preflight)
         publisher = blocks['publish-packages']
-        self.assertIn('!inputs.preflight-only && (inputs.bound-attempt || inputs.successor-attempt)', publisher)
-        self.assertIn("PRODUCER_SHA: ${{ inputs.successor-attempt && '9b73395658d4683a067d150ca9441b04e802c4af' || '6c9f766fdd91483c2de6f061e75589e94852a265' }}", publisher)
+        self.assertIn('!inputs.preflight-only && (inputs.bound-attempt || inputs.successor-attempt || inputs.font-disposal-attempt)', publisher)
+        self.assertIn("PRODUCER_SHA: ${{ inputs.font-disposal-attempt && '4ec6eafbbbf02264db9b0db4780c590abe0bf9cd' || inputs.successor-attempt && '9b73395658d4683a067d150ca9441b04e802c4af' || '6c9f766fdd91483c2de6f061e75589e94852a265' }}", publisher)
         self.assertIn('plan=eng/release/svg-export-prefix-0.32.1.json', publisher)
         self.assertIn('selected=(--attempt-binding)', publisher)
         self.assertNotIn('release-pack.sh', publisher)
@@ -351,7 +351,7 @@ class SelectedAttemptTests(unittest.TestCase):
         self.assertNotIn('release-pack.sh',publisher);self.assertNotIn('locked-restore',publisher)
         self.assertNotIn('actions/artifacts?name=',publisher);self.assertNotIn('sort_by(.created_at)',publisher)
         self.assertNotIn('--source-sha "$GITHUB_SHA"',publisher)
-        self.assertIn('!inputs.preflight-only && (inputs.bound-attempt || inputs.successor-attempt)',publisher)
+        self.assertIn('!inputs.preflight-only && (inputs.bound-attempt || inputs.successor-attempt || inputs.font-disposal-attempt)',publisher)
         self.assertLess(text.index('--source-sha "$source_sha" --version "$version"'), text.index('--acquire-bound-artifacts'))
         self.assertLess(publisher.index('--acquire-bound-artifacts'), publisher.index('Verify the version to publish is the version the guard validated'))
         self.assertLess(publisher.index('Verify the version to publish is the version the guard validated'), publisher.index('Verify custody before any release-shaped check'))
@@ -693,7 +693,7 @@ class RecoverySuccessorTests(unittest.TestCase):
         current = (ROOT/'.github/workflows/release.yml').read_text()
         publisher = re.search(r'^  publish-packages:\n(.*?)(?=^  [a-z-]+:|\Z)', current, re.M|re.S).group(1)
         self.assertIn('inputs.bound-attempt', publisher)
-        self.assertIn("PRODUCER_SHA: ${{ inputs.successor-attempt && '9b73395658d4683a067d150ca9441b04e802c4af' || '6c9f766fdd91483c2de6f061e75589e94852a265' }}", publisher)
+        self.assertIn("PRODUCER_SHA: ${{ inputs.font-disposal-attempt && '4ec6eafbbbf02264db9b0db4780c590abe0bf9cd' || inputs.successor-attempt && '9b73395658d4683a067d150ca9441b04e802c4af' || '6c9f766fdd91483c2de6f061e75589e94852a265' }}", publisher)
         self.assertIn('plan=eng/release/svg-export-prefix-0.32.1.json', publisher)
         self.assertIn('selected=(--attempt-binding)', publisher)
         self.assertIn('selected=(--successor-attempt)', publisher)
@@ -791,7 +791,7 @@ class FontDisposalSourceTests(unittest.TestCase):
         plan = json.loads((ROOT/self.PLAN).read_text())
         self.assertIs(plan['publicationReady'], False)
         self.assertNotIn('producerSha', plan); self.assertNotIn('qualification', plan)
-        self.assertFalse((ROOT/'eng/release/font-disposal-0.32.3-attempt.json').exists())
+        self.assertFalse(json.loads((ROOT/'eng/release/font-disposal-0.32.3-attempt.json').read_text())['attemptReady'])
         old = json.loads((ROOT/'eng/release/external-authority-recovery-0.32.2.json').read_text())
         self.assertEqual(old['packages'], plan['packages'])
 
@@ -826,9 +826,61 @@ class FontDisposalSourceTests(unittest.TestCase):
         self.assertNotIn('0.32.2',candidate)
         for effect in ('publication-preflight','publish-packages'):
             self.assertIn('!inputs.source-only',blocks[effect])
-        self.assertNotIn('font-disposal-0.32.3',blocks['publish-packages'])
-        self.assertNotIn('font-disposal-0.32.3',blocks['publication-preflight'])
+        self.assertIn('selected=(--font-disposal-attempt)',blocks['publish-packages'])
+        self.assertIn("inputs.font-disposal-attempt && 'eng/release/font-disposal-0.32.3.json'",blocks['publication-preflight'])
 
+
+
+class DisabledFontAttemptTests(unittest.TestCase):
+    def setUp(self):
+        spec=importlib.util.spec_from_file_location('disabled_font_guard',ROOT/'scripts/release-source-guard.py')
+        self.g=importlib.util.module_from_spec(spec);spec.loader.exec_module(self.g)
+
+    def test_genuine_original_binding_all19_and_runtime_without_borrowing_qualification(self):
+        g=self.g;b=g.validate_font_disposal_attempt(ROOT,g.FONT_DISPOSAL['producerSha'],False)
+        self.assertEqual(19,len(b['sourcePackQualification']['archives']))
+        self.assertEqual('10.0.13',b['toolchain']['runtimeVersion'])
+        self.assertFalse(b['attemptReady']);self.assertEqual({'status':'pending','receiver':None,'assistiveTechnology':None,'rootReadbackSha256':None},b['qualification'])
+        with self.assertRaises(SystemExit):g.validate_font_disposal_attempt(ROOT,g.FONT_DISPOSAL['producerSha'])
+        for key,value in [('producerSha',g.SUCCESSOR['producerSha']),('producerArtifact',g.SUCCESSOR['producerArtifact']),('outerSha256','a'*64),('attemptReady',True),('toolchain',{**b['toolchain'],'runtimeVersion':'10.0.12'})]:
+            with self.subTest(key=key),tempfile.TemporaryDirectory() as d:
+                root=Path(d);f=root/g.FONT_DISPOSAL_ATTEMPT;f.parent.mkdir(parents=True);bad=copy.deepcopy(b);bad[key]=value;f.write_text(json.dumps(bad))
+                with self.assertRaises(SystemExit):g.validate_font_disposal_attempt(root,g.FONT_DISPOSAL['producerSha'],False)
+
+    def test_preflight_only_and_pending_refuses_before_any_acquisition_port(self):
+        g=self.g
+        for extra,ok in [(['--attempt-preflight'],True),([],False),(['--acquire-bound-artifacts'],False),(['--record-event'],False),(['--attempt-preflight','--acquire-bound-artifacts'],False)]:
+            with self.subTest(extra=extra),patch.object(sys,'argv',['guard','--font-disposal-attempt','--repo-root',str(ROOT),*extra]),patch.object(g,'executor_identity',return_value={}),patch.object(g,'source_bytes',return_value=(ROOT/g.FONT_DISPOSAL['planPath']).read_bytes()),patch.object(g,'validate',return_value={}),patch.object(g.subprocess,'run',side_effect=AssertionError('no acquisition/tool port')):
+                if ok:self.assertEqual(0,g.font_disposal_main())
+                else:
+                    with self.assertRaises(SystemExit):g.font_disposal_main()
+
+    def test_actual_workflow_shell_selects_preflight_and_refuses_mixed_attempts_before_port(self):
+        import textwrap
+        workflow=(ROOT/'.github/workflows/release.yml').read_text()
+        block=workflow.split('      - name: Refuse wrong source, axes, roster, delivered surface, or SDK before costly jobs',1)[1].split('  package-tests:',1)[0]
+        script=textwrap.dedent(block.split('        run: |\n',1)[1])
+        for case in ('preflight','mixed-bound','mixed-successor','mixed-source'):
+            with self.subTest(case=case),tempfile.TemporaryDirectory() as d:
+                root=Path(d);calls=root/'calls';fake=root/'python3'
+                fake.write_text('#!/usr/bin/env bash\nprintf "%s\n" "$*" >> "$CALLS"\nif [[ "$1" == - ]]; then exec "'+sys.executable+'" "$@"; fi\n');fake.chmod(0o700)
+                env={**os.environ,'PATH':str(root)+os.pathsep+os.environ['PATH'],'CALLS':str(calls),'GITHUB_OUTPUT':str(root/'output'),'INPUT_VERSION':'0.32.3','REQUESTED_SOURCE':self.g.FONT_DISPOSAL['producerSha'],'GITHUB_SHA':self.g.FONT_DISPOSAL['producerSha'],'PREFLIGHT_ONLY':'true','FONT_DISPOSAL_ATTEMPT':'true','BOUND_ATTEMPT':'false','SUCCESSOR_ATTEMPT':'false','SOURCE_ONLY':'false'}
+                if case=='mixed-bound':env['BOUND_ATTEMPT']='true'
+                if case=='mixed-successor':env['SUCCESSOR_ATTEMPT']='true'
+                if case=='mixed-source':env['SOURCE_ONLY']='true'
+                result=subprocess.run(['bash','-c',script],cwd=ROOT,env=env,capture_output=True,text=True,timeout=5)
+                self.assertEqual(case=='preflight',result.returncode==0,result.stdout+result.stderr)
+                if case=='preflight':
+                    lines=calls.read_text().splitlines();self.assertEqual('scripts/release-source-guard.py --executor-only',lines[0]);self.assertIn('--font-disposal-attempt --attempt-preflight --executor-fence',lines[1])
+                else:self.assertFalse(calls.exists(),'mixed selection must refuse before tools/fence')
+
+    def test_preflight_private_root_uses_supported_step_handoff_before_setup(self):
+        text=(ROOT/'.github/workflows/release.yml').read_text().split('  publication-preflight:',1)[1].split('  publish-packages:',1)[0]
+        self.assertIn('if: inputs.font-disposal-attempt',text)
+        self.assertNotIn('runner.',text.split('    steps:',1)[0])
+        self.assertLess(text.index('Require a fresh private SDK root'),text.index('uses: actions/setup-dotnet@v6'))
+        self.assertIn('printf \'DOTNET_INSTALL_DIR=%s\\n\' "$expected" >> "$GITHUB_ENV"',text)
+        self.assertIn('release-toolchain-identity.py --expected-sdk 10.0.401',text)
 
 
 class SourceSdkInstallationRootTests(unittest.TestCase):
