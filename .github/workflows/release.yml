@@ -46,6 +46,10 @@ on:
         type: boolean
         required: false
         default: false
+      font-disposal-attempt:
+        description: "Select disabled retained0.32.3; preflight only until genuine receiver/AT qualification. Final publication remains refused."
+        type: boolean
+        default: false
       successor-attempt:
         description: "Select the closed retained 0.32.2 candidate; pending genuine qualification refuses publication."
         type: boolean
@@ -78,6 +82,10 @@ on:
         description: "Authenticate and prove collision state only; never pack, tag, or publish."
         type: boolean
         required: false
+        default: false
+      font-disposal-attempt:
+        description: "Select disabled retained0.32.3; preflight only until genuine receiver/AT qualification. Final publication remains refused."
+        type: boolean
         default: false
       successor-attempt:
         description: "Select the closed retained 0.32.2 candidate; pending genuine qualification refuses publication."
@@ -130,20 +138,23 @@ jobs:
           SOURCE_ONLY: ${{ inputs.source-only }}
           BOUND_ATTEMPT: ${{ inputs.bound-attempt }}
           SUCCESSOR_ATTEMPT: ${{ inputs.successor-attempt }}
+          FONT_DISPOSAL_ATTEMPT: ${{ inputs.font-disposal-attempt }}
         shell: bash
         run: |
           set -euo pipefail
           fence=()
           successor="${SUCCESSOR_ATTEMPT:-false}"
+          font_disposal="${FONT_DISPOSAL_ATTEMPT:-false}"
+          [[ "$font_disposal" != true || ( "$BOUND_ATTEMPT" != true && "$successor" != true && "$SOURCE_ONLY" != true ) ]] || { echo "::error::mixed font-disposal attempt selection"; exit 3; }
           [[ "$BOUND_ATTEMPT" != true || "$successor" != true ]] || { echo "::error::mixed immutable attempt selections"; exit 3; }
-          if [[ "$PREFLIGHT_ONLY" == true || "$BOUND_ATTEMPT" == true || "$successor" == true ]]; then
+          if [[ "$PREFLIGHT_ONLY" == true || "$BOUND_ATTEMPT" == true || "$successor" == true || "$font_disposal" == true ]]; then
             python3 scripts/release-source-guard.py --executor-only
             fence+=(--executor-fence)
           fi
           source_sha="${REQUESTED_SOURCE:-$GITHUB_SHA}"
           [[ "$source_sha" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::source-sha must be exact lowercase 40-hex"; exit 1; }
           if [[ "$source_sha" != "$GITHUB_SHA" ]]; then
-            [[ "$PREFLIGHT_ONLY" == 'true' || "$BOUND_ATTEMPT" == 'true' || "$successor" == true ]] || { echo "::error::native qualification must use the checked-out source or admitted producer binding"; exit 1; }
+            [[ "$PREFLIGHT_ONLY" == 'true' || "$BOUND_ATTEMPT" == 'true' || "$successor" == true || "$font_disposal" == true ]] || { echo "::error::native qualification must use the checked-out source or admitted producer binding"; exit 1; }
             git fetch --no-tags origin "$source_sha"
           fi
           if [[ "$BOUND_ATTEMPT" == true ]]; then
@@ -152,7 +163,7 @@ jobs:
           version="${INPUT_VERSION:-${EVENT_TAG#v}}"
           plan=eng/release/external-authority-recovery-0.32.2.json
           if [[ "$version" == 0.32.3 ]]; then
-            [[ "$SOURCE_ONLY" == true && "$PREFLIGHT_ONLY" != true && "$BOUND_ATTEMPT" != true && "$successor" != true ]] || { echo "::error::0.32.3 is source qualification only"; exit 3; }
+            [[ ( "$SOURCE_ONLY" == true && "$PREFLIGHT_ONLY" != true && "$BOUND_ATTEMPT" != true && "$successor" != true && "$font_disposal" != true ) || ( "$font_disposal" == true && "$SOURCE_ONLY" != true && "$BOUND_ATTEMPT" != true && "$successor" != true ) ]] || { echo "::error::0.32.3 is source qualification only unless its disabled immutable attempt is selected"; exit 3; }
             plan=eng/release/font-disposal-0.32.3.json
           fi
           authority=()
@@ -167,6 +178,11 @@ jobs:
           if [[ "$successor" == true ]]; then
             [[ "$SOURCE_ONLY" != true && "$source_sha" == 9b73395658d4683a067d150ca9441b04e802c4af ]] || exit 3
             authority=(--successor-attempt)
+            [[ "$PREFLIGHT_ONLY" != true ]] || authority+=(--attempt-preflight)
+          fi
+          if [[ "$font_disposal" == true ]]; then
+            [[ "$source_sha" == 4ec6eafbbbf02264db9b0db4780c590abe0bf9cd && "$version" == 0.32.3 ]] || exit 3
+            authority=(--font-disposal-attempt)
             [[ "$PREFLIGHT_ONLY" != true ]] || authority+=(--attempt-preflight)
           fi
           python3 scripts/release-source-guard.py \
@@ -556,7 +572,7 @@ jobs:
       id-token: write
     env:
       # Selected successor preflight uses its immutable producer plan and published baseline.
-      RELEASE_PLAN: ${{ inputs.bound-attempt && 'eng/release/svg-export-prefix-0.32.1.json' || 'eng/release/external-authority-recovery-0.32.2.json' }}
+      RELEASE_PLAN: ${{ inputs.font-disposal-attempt && 'eng/release/font-disposal-0.32.3.json' || inputs.bound-attempt && 'eng/release/svg-export-prefix-0.32.1.json' || 'eng/release/external-authority-recovery-0.32.2.json' }}
       RELEASE_BASELINE: ${{ inputs.bound-attempt && '0.32.0' || '0.32.1' }}
     steps:
       - uses: actions/checkout@v7
@@ -565,6 +581,18 @@ jobs:
           fetch-depth: 0
       - name: Refuse executor movement before tools or credentials
         run: python3 scripts/release-source-guard.py --executor-only
+      - name: Require a fresh private SDK root for font-disposal preflight
+        if: inputs.font-disposal-attempt
+        shell: bash
+        env:
+          DOTNET_INSTALL_DIR: ${{ runner.temp }}/rendering-source-dotnet-10.0.401
+        run: |
+          set -euo pipefail
+          expected="${RUNNER_TEMP:?}/rendering-source-dotnet-10.0.401"
+          [[ "$RUNNER_TEMP" == /* && "$RUNNER_TEMP" != / && "$RUNNER_TEMP" != */ && "$(realpath -e -- "$RUNNER_TEMP")" == "$RUNNER_TEMP" ]] || { echo '::error::source SDK parent must be an existing canonical runner temp directory'; exit 1; }
+          [[ "${DOTNET_INSTALL_DIR:-}" == "$expected" && ! -e "$expected" && ! -L "$expected" ]] || { echo '::error::source SDK root must be the selected absent runner-private directory'; exit 1; }
+          # GITHUB_ENV applies this verified root to setup-dotnet and later steps.
+          printf 'DOTNET_INSTALL_DIR=%s\n' "$expected" >> "$GITHUB_ENV"
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.401'
@@ -706,7 +734,7 @@ jobs:
       github.repository == 'FS-GG/FS.GG.Rendering' &&
       !inputs.source-only &&
       !inputs.validate-only &&
-      !inputs.preflight-only && (inputs.bound-attempt || inputs.successor-attempt)
+      !inputs.preflight-only && (inputs.bound-attempt || inputs.successor-attempt || inputs.font-disposal-attempt)
     # Only publish a set that passed the release-only consumption checks above.
     needs: [release-source-guard, package-tests, template-product-tests]
     permissions:
@@ -715,10 +743,10 @@ jobs:
       packages: write
       id-token: write   # ADR-0013: mint the GitHub OIDC token for nuget.org Trusted Publishing
     env:
-      PRODUCER_SHA: ${{ inputs.successor-attempt && '9b73395658d4683a067d150ca9441b04e802c4af' || '6c9f766fdd91483c2de6f061e75589e94852a265' }}
-      PRODUCER_VERSION: ${{ inputs.successor-attempt && '0.32.2' || '0.32.1' }}
-      PRODUCER_BASELINE: ${{ inputs.successor-attempt && '0.32.1' || '0.32.0' }}
-      FSGG_RELEASE_ATTEMPT: ${{ inputs.successor-attempt && '0322' || '0321' }}
+      PRODUCER_SHA: ${{ inputs.font-disposal-attempt && '4ec6eafbbbf02264db9b0db4780c590abe0bf9cd' || inputs.successor-attempt && '9b73395658d4683a067d150ca9441b04e802c4af' || '6c9f766fdd91483c2de6f061e75589e94852a265' }}
+      PRODUCER_VERSION: ${{ inputs.font-disposal-attempt && '0.32.3' || inputs.successor-attempt && '0.32.2' || '0.32.1' }}
+      PRODUCER_BASELINE: ${{ inputs.font-disposal-attempt && '0.32.1' || inputs.successor-attempt && '0.32.1' || '0.32.0' }}
+      FSGG_RELEASE_ATTEMPT: ${{ inputs.font-disposal-attempt && '0323' || inputs.successor-attempt && '0322' || '0321' }}
       PRODUCER_PLAN: artifacts/attempt/producer-plan.json
     steps:
       - uses: actions/checkout@v7
@@ -801,6 +829,10 @@ jobs:
           if [[ "$FSGG_RELEASE_ATTEMPT" == 0322 ]]; then
             selected=(--successor-attempt)
             plan=eng/release/external-authority-recovery-0.32.2.json
+          fi
+          if [[ "$FSGG_RELEASE_ATTEMPT" == 0323 ]]; then
+            selected=(--font-disposal-attempt)
+            plan=eng/release/font-disposal-0.32.3.json
           fi
           python3 scripts/release-source-guard.py "${selected[@]}" --acquire-bound-artifacts \
             --source-sha "$PRODUCER_SHA" --plan "$plan" --version "$PRODUCER_VERSION"

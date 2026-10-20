@@ -1,0 +1,162 @@
+{
+  "schema": "fsgg.rendering.publication-attempt/v1",
+  "producerSha": "4ec6eafbbbf02264db9b0db4780c590abe0bf9cd",
+  "planPath": "eng/release/font-disposal-0.32.3.json",
+  "planSha256": "89369de0c0944c66a52c6ed914cef78d6bb7670866baedf85cd8a198c5c46239",
+  "producerRun": 39509314882,
+  "producerAttempt": 1,
+  "producerArtifact": 12305198394,
+  "outerSha256": "84647332c124e511545787c8c3f8634d4f5177068521acfc86c93430ac73ef63",
+  "outerSizeBytes": 15073469,
+  "custodySha256": "7dbd4329546932c4c1d12767550b7b78aae85e32c81b354935b2c615b3e298c9",
+  "version": "0.32.3",
+  "baselineVersion": "0.32.1",
+  "githubEffectiveWrite": "unknown-before-attempt",
+  "effectId": "rendering-0323-original39509314882-a1",
+  "attemptReady": false,
+  "qualification": {
+    "status": "pending",
+    "receiver": null,
+    "assistiveTechnology": null,
+    "rootReadbackSha256": null
+  },
+  "sourcePackQualification": {
+    "run": 39509314882,
+    "attempt": 1,
+    "apiCompatPassed": 17,
+    "apiCompatBreaks": 0,
+    "scope": "source-pack-and-original-archive-three-browser-only",
+    "archives": [
+      {
+        "id": "FS.GG.UI",
+        "file": "FS.GG.UI.0.32.3.nupkg",
+        "sha256": "f9de9bb8fbc9a53a3230333878a4b116723b3f8ea3e5fe9ddf20269a7f34e194",
+        "size": 2211
+      },
+      {
+        "id": "FS.GG.UI.Build",
+        "file": "FS.GG.UI.Build.0.32.3.nupkg",
+        "sha256": "bcf4e464ed11e0ff6eab2f8b24dea9ff2f3c4d66bf267388ebf695e2454c4d6b",
+        "size": 22190
+      },
+      {
+        "id": "FS.GG.UI.Canvas",
+        "file": "FS.GG.UI.Canvas.0.32.3.nupkg",
+        "sha256": "09dbabdf025f06360a6afe82be4c15f8bf66a5e61674e5be22c98de917f2377a",
+        "size": 37449
+      },
+      {
+        "id": "FS.GG.UI.Controls",
+        "file": "FS.GG.UI.Controls.0.32.3.nupkg",
+        "sha256": "fe48fce9f4d661a819d6cde7089c1fb260398a4375b09cb465a328bb2ebbad0d",
+        "size": 748267
+      },
+      {
+        "id": "FS.GG.UI.Controls.Elmish",
+        "file": "FS.GG.UI.Controls.Elmish.0.32.3.nupkg",
+        "sha256": "1e63c762df13a93ae26e3bedb2afd92b419be464581b79ac7904155e1af40f7b",
+        "size": 135613
+      },
+      {
+        "id": "FS.GG.UI.DesignSystem",
+        "file": "FS.GG.UI.DesignSystem.0.32.3.nupkg",
+        "sha256": "7065c2c1027bc1e3089a03d1c82dd936caa48b7eb8b75e1be71ce58af9088b85",
+        "size": 52041
+      },
+      {
+        "id": "FS.GG.UI.Diagnostics",
+        "file": "FS.GG.UI.Diagnostics.0.32.3.nupkg",
+        "sha256": "c82bd1eac5f20887fa31c6deb1133cc6ba94c0ae8f17c0786e7e481757b6564e",
+        "size": 42503
+      },
+      {
+        "id": "FS.GG.UI.Elmish",
+        "file": "FS.GG.UI.Elmish.0.32.3.nupkg",
+        "sha256": "16c95020ffe2989a134cd0ab59eff6bfcb84bb2f7be61caefc8694a8819fbf0b",
+        "size": 66289
+      },
+      {
+        "id": "FS.GG.UI.KeyboardInput",
+        "file": "FS.GG.UI.KeyboardInput.0.32.3.nupkg",
+        "sha256": "c5d3e9617344594248135ce44f56bfd34ee874553e83b227293b6c093303059d",
+        "size": 164597
+      },
+      {
+        "id": "FS.GG.UI.Layout",
+        "file": "FS.GG.UI.Layout.0.32.3.nupkg",
+        "sha256": "3e945422b9a928d8aa8a9c70456746909aa476e3624fddf3cf2fb9e2dd4462bf",
+        "size": 118941
+      },
+      {
+        "id": "FS.GG.UI.Scene",
+        "file": "FS.GG.UI.Scene.0.32.3.nupkg",
+        "sha256": "fded2cf5bf352f9c82d7cb8a5e501ced74a293d78b2329bb6154d8cd9ce8d3e8",
+        "size": 816681
+      },
+      {
+        "id": "FS.GG.UI.Scene.SvgBrowser",
+        "file": "FS.GG.UI.Scene.SvgBrowser.0.32.3.nupkg",
+        "sha256": "9a4751d254cf95b00353802e272bf18cc84218b5cb706ba31c1d91f99acf5fef",
+        "size": 263275
+      },
+      {
+        "id": "FS.GG.UI.SkiaViewer",
+        "file": "FS.GG.UI.SkiaViewer.0.32.3.nupkg",
+        "sha256": "dc3b6af5b2dbe20fbd3c254d428b525b55c15e333507659b795bb4e97395180e",
+        "size": 2808108
+      },
+      {
+        "id": "FS.GG.UI.Symbology",
+        "file": "FS.GG.UI.Symbology.0.32.3.nupkg",
+        "sha256": "8b2eb5d28daa61220d8f31ab9fb72ed91b0eeb94f8ad2a6e6b2d1b90728ae194",
+        "size": 124510
+      },
+      {
+        "id": "FS.GG.UI.Symbology.Render",
+        "file": "FS.GG.UI.Symbology.Render.0.32.3.nupkg",
+        "sha256": "932ac3e1154dbc7fe9ee0ecae87256e5441920cbd5b8cd9ba2a15c461c37bf04",
+        "size": 9045
+      },
+      {
+        "id": "FS.GG.UI.Template",
+        "file": "FS.GG.UI.Template.0.32.3.nupkg",
+        "sha256": "a944d0dec4f8fefdad66c0fc64c659f7d898a020556c2174541536642ffe2fcf",
+        "size": 9037315
+      },
+      {
+        "id": "FS.GG.UI.Testing",
+        "file": "FS.GG.UI.Testing.0.32.3.nupkg",
+        "sha256": "76fcb4e6d769ec0910b67fb198f3450c7033b1a176a70d4ace07c131d60b283f",
+        "size": 231440
+      },
+      {
+        "id": "FS.GG.UI.Themes.AntDesign",
+        "file": "FS.GG.UI.Themes.AntDesign.0.32.3.nupkg",
+        "sha256": "fea5fcc6757af2a7bae71840cd4bc2b33fdcd15b5c47da67ade0be884bceab9a",
+        "size": 10999
+      },
+      {
+        "id": "FS.GG.UI.Themes.Default",
+        "file": "FS.GG.UI.Themes.Default.0.32.3.nupkg",
+        "sha256": "c0284af0bb94ac65e7e7d2e39695773cffa1e393eb2c1ec13e435fcc7f7f365b",
+        "size": 17678
+      }
+    ],
+    "browserArtifact": 12305782736,
+    "browserOuterSha256": "075bc150ab303e187d7784e4f7e020f8895a1dbfe6de0513b99f6743c44b2d7e",
+    "browserOuterSizeBytes": 37761,
+    "browserFamilies": [
+      "chromium",
+      "firefox",
+      "webkit"
+    ],
+    "assistiveTechnology": "unavailable-not-qualified",
+    "rootReadbackSha256": "7cc3c853cd8dc2540850b056f86db6610aea9eecaaf93152f5fe0360fd8227be"
+  },
+  "toolchain": {
+    "sdkVersion": "10.0.401",
+    "compilerSha256": "2bd6190eafa94f47739538467f5a7cd52de233a627789c69f07959d7578e4d6b",
+    "fsharpCoreSha256": "2232698f623c28b8bcca32fa3cc8943cdd8529b20b487b5938106aae1c2ab256",
+    "runtimeVersion": "10.0.13"
+  }
+}

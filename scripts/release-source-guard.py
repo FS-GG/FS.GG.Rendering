@@ -416,6 +416,51 @@ def acquire_successor(root: Path, binding: dict) -> None:
     (out / 'input-binding.json').write_text(json.dumps({**identity, 'producerSha': binding['producerSha'], 'originalPlanSha256': binding['planSha256'], 'outerSha256': binding['outerSha256'], 'custodySha256': binding['custodySha256'], 'effectId': binding['effectId'], 'qualification': q, 'publication': 'not-yet-observed'}, sort_keys=True) + '\n')
 
 
+# Separate disabled subject: source qualification is genuine; receiver/AT authority is not.
+FONT_DISPOSAL_ATTEMPT = 'eng/release/font-disposal-0.32.3-attempt.json'
+FONT_DISPOSAL = {'schema': 'fsgg.rendering.publication-attempt/v1', 'producerSha': '4ec6eafbbbf02264db9b0db4780c590abe0bf9cd', 'planPath': 'eng/release/font-disposal-0.32.3.json', 'planSha256': '89369de0c0944c66a52c6ed914cef78d6bb7670866baedf85cd8a198c5c46239', 'producerRun': 39509314882, 'producerAttempt': 1, 'producerArtifact': 12305198394, 'outerSha256': '84647332c124e511545787c8c3f8634d4f5177068521acfc86c93430ac73ef63', 'outerSizeBytes': 15073469, 'custodySha256': '7dbd4329546932c4c1d12767550b7b78aae85e32c81b354935b2c615b3e298c9', 'version': '0.32.3', 'baselineVersion': '0.32.1', 'githubEffectiveWrite': 'unknown-before-attempt', 'effectId': 'rendering-0323-original39509314882-a1'}
+FONT_DISPOSAL_BINDING_SHA256 = '0ed34d9d715f62cfcb3b1c26adedf169b2669aa70775e1efd788cddc32412050'
+
+def validate_font_disposal_attempt(root: Path, source_sha: str, require_ready: bool = True) -> dict:
+    raw = (root / FONT_DISPOSAL_ATTEMPT).read_bytes()
+    binding = json.loads(raw, object_pairs_hook=preflight.unique_json_object)
+    if hashlib.sha256(raw).hexdigest() != FONT_DISPOSAL_BINDING_SHA256 or source_sha != FONT_DISPOSAL['producerSha']:
+        preflight.fail('font-disposal immutable original binding differs')
+    if any(type(binding.get(k)) is not type(v) or binding.get(k) != v for k, v in FONT_DISPOSAL.items()):
+        preflight.fail('font-disposal selected producer/artifact identity differs')
+    if hashlib.sha256(source_bytes(root, source_sha, binding['planPath'])).hexdigest() != binding['planSha256']:
+        preflight.fail('font-disposal original raw plan differs')
+    if require_ready:
+        preflight.fail('font-disposal attempt pending: genuine receiver, AT and root readback unjoined')
+    return binding
+
+def font_disposal_main() -> int:
+    parser = argparse.ArgumentParser(description='Disabled retained0.32.3 subject; preflight only')
+    parser.add_argument('--font-disposal-attempt', action='store_true', required=True)
+    parser.add_argument('--repo-root', type=Path, default=Path.cwd())
+    parser.add_argument('--source-sha', default=FONT_DISPOSAL['producerSha'])
+    parser.add_argument('--plan', default=FONT_DISPOSAL['planPath'])
+    parser.add_argument('--version', default=FONT_DISPOSAL['version'])
+    parser.add_argument('--executor-fence', action='store_true')
+    parser.add_argument('--attempt-preflight', action='store_true')
+    parser.add_argument('--acquire-bound-artifacts', action='store_true')
+    parser.add_argument('--record-event', action='store_true')
+    args = parser.parse_args()
+    root = args.repo_root.resolve()
+    executor_identity(root)
+    if args.plan != FONT_DISPOSAL['planPath'] or args.version != FONT_DISPOSAL['version']:
+        preflight.fail('font-disposal mixed source/plan/version refused')
+    # No acquisition/event port exists for this disabled subject. A later reviewed
+    # source change must join genuine qualification before enabling any writer.
+    if args.acquire_bound_artifacts or args.record_event:
+        preflight.fail('font-disposal disabled: acquisition/effects require genuine qualification')
+    validate_font_disposal_attempt(root, args.source_sha, not args.attempt_preflight)
+    result = validate(root, args.source_sha, args.plan, args.version, False)
+    result['scope'] = 'disabled immutable attempt preflight only; no acquisition or publication authority'
+    print(json.dumps(result, sort_keys=True))
+    return 0
+
+
 def successor_main() -> int:
     parser = argparse.ArgumentParser(description='Closed retained0.32.2 subject of the canonical executor')
     parser.add_argument('--successor-attempt', action='store_true', required=True)
@@ -452,4 +497,4 @@ def successor_main() -> int:
 if __name__ == '__main__':
     if os.environ.get('FSGG_RELEASE_ATTEMPT') == '0322' and '--executor-only' not in sys.argv[1:] and '--successor-attempt' not in sys.argv[1:]:
         sys.argv.append('--successor-attempt')
-    raise SystemExit(successor_main() if '--successor-attempt' in sys.argv[1:] else main())
+    raise SystemExit(font_disposal_main() if '--font-disposal-attempt' in sys.argv[1:] else successor_main() if '--successor-attempt' in sys.argv[1:] else main())

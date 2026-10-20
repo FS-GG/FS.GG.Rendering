@@ -152,6 +152,8 @@ def ordered_prefix(state: dict, refs=REFS) -> None:
 
 
 def selected_binding(root: Path, source: str, version: str) -> dict:
+    if source == guard.FONT_DISPOSAL['producerSha'] and version == guard.FONT_DISPOSAL['version']:
+        return guard.validate_font_disposal_attempt(root, source, require_ready=True)
     if source == guard.SUCCESSOR['producerSha'] and version == guard.SUCCESSOR['version']:
         binding = guard.validate_successor_attempt(root, source, require_ready=True)
         guard.validate(root, source, guard.SUCCESSOR['planPath'], version, require_publication_ready=False)
@@ -168,7 +170,8 @@ def selected_binding(root: Path, source: str, version: str) -> dict:
 class Operation:
     def __init__(self, root: Path, mode: str, source: str, version: str, env: dict,
                  git=None, binding_check=selected_binding):
-        subjects = {(PRODUCER, VERSION): TAGS,
+        subjects = {(guard.FONT_DISPOSAL['producerSha'], guard.FONT_DISPOSAL['version']): ('fs-gg-ui/v0.32.3', 'fs-gg-ui-template/v0.32.3', 'v0.32.3'),
+                    (PRODUCER, VERSION): TAGS,
                     (guard.SUCCESSOR['producerSha'], guard.SUCCESSOR['version']): ('fs-gg-ui/v0.32.2', 'fs-gg-ui-template/v0.32.2', 'v0.32.2')}
         if (source, version) not in subjects:
             raise Refused('unknown or mixed closed producer/tag selection')
