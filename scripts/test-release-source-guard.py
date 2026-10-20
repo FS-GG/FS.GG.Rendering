@@ -837,11 +837,28 @@ class DisabledFontAttemptTests(unittest.TestCase):
         self.g=importlib.util.module_from_spec(spec);spec.loader.exec_module(self.g)
 
     def test_genuine_original_binding_all19_and_runtime_without_borrowing_qualification(self):
-        g=self.g;b=g.validate_font_disposal_attempt(ROOT,g.FONT_DISPOSAL['producerSha'],False)
+        g=self.g
+        # The normal API gate is shallow: pure binding validation must not fetch or
+        # require the retained producer object. Its immutable plan is unchanged here.
+        plan_bytes=(ROOT/g.FONT_DISPOSAL['planPath']).read_bytes()
+        self.assertEqual(g.FONT_DISPOSAL['planSha256'],hashlib.sha256(plan_bytes).hexdigest())
+        missing_history=subprocess.CalledProcessError(128,['git','show','missing-producer'])
+        with patch.object(g.subprocess,'check_output',side_effect=missing_history):
+            # Causal condition: the old direct source_bytes implementation cannot work.
+            with self.assertRaises(subprocess.CalledProcessError):
+                g.source_bytes(ROOT,g.FONT_DISPOSAL['producerSha'],g.FONT_DISPOSAL['planPath'])
+            with patch.object(g,'source_bytes',return_value=plan_bytes) as source:
+                b=g.validate_font_disposal_attempt(ROOT,g.FONT_DISPOSAL['producerSha'],False)
+                source.assert_called_once_with(ROOT,g.FONT_DISPOSAL['producerSha'],g.FONT_DISPOSAL['planPath'])
+            with patch.object(g,'source_bytes',return_value=plan_bytes+b'changed'):
+                with self.assertRaisesRegex(SystemExit,'original raw plan differs'):
+                    g.validate_font_disposal_attempt(ROOT,g.FONT_DISPOSAL['producerSha'],False)
         self.assertEqual(19,len(b['sourcePackQualification']['archives']))
         self.assertEqual('10.0.13',b['toolchain']['runtimeVersion'])
         self.assertFalse(b['attemptReady']);self.assertEqual({'status':'pending','receiver':None,'assistiveTechnology':None,'rootReadbackSha256':None},b['qualification'])
-        with self.assertRaises(SystemExit):g.validate_font_disposal_attempt(ROOT,g.FONT_DISPOSAL['producerSha'])
+        with patch.object(g,'source_bytes',return_value=plan_bytes):
+            with self.assertRaisesRegex(SystemExit,'attempt pending'):
+                g.validate_font_disposal_attempt(ROOT,g.FONT_DISPOSAL['producerSha'])
         for key,value in [('producerSha',g.SUCCESSOR['producerSha']),('producerArtifact',g.SUCCESSOR['producerArtifact']),('outerSha256','a'*64),('attemptReady',True),('toolchain',{**b['toolchain'],'runtimeVersion':'10.0.12'})]:
             with self.subTest(key=key),tempfile.TemporaryDirectory() as d:
                 root=Path(d);f=root/g.FONT_DISPOSAL_ATTEMPT;f.parent.mkdir(parents=True);bad=copy.deepcopy(b);bad[key]=value;f.write_text(json.dumps(bad))
