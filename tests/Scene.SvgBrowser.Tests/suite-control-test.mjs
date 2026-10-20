@@ -102,3 +102,128 @@ for (const driver of [{ resumeObserved: false }, {}, undefined]) {
 requireObservedResume({ driver: { resumeObserved: false } }, false);
 assert.match(driverSource, /requireObservedResume\(result, !mutant\)/);
 console.log("staged positive driver refuses unobserved resume: passed (inert)");
+
+// Execute the maintained command oracle and downloaded-result gates without a renderer.
+const { instanceResearchStates, assertInstanceResearchHit } = await import("./document-reconciliation-control.js");
+{
+  let visible = false;
+  const point = {id:"offscreen-instance",x:10,y:10};
+  const node = {scrollIntoView:()=>{visible=true;}};
+  const requireHit = (ok, detail) => {if(!ok)throw Error(detail);};
+  const f = {documentHit:(x,y)=>visible && x===10 && y===10 ? point.id : null};
+  assertInstanceResearchHit(f,node,point,requireHit);
+  visible=false;
+  assert.throws(()=>assertInstanceResearchHit(f,{scrollIntoView:()=>{}},point,requireHit),/instance hit identity/);
+  assert.throws(()=>assertInstanceResearchHit({documentHit:()=>"wrong-instance"},node,point,requireHit),/instance hit identity/);
+}
+const { suiteContract, instanceResearchOrder, validateInstanceResearchResult, validateInstanceResearchSelection } = await import("./suite-contract.js");
+const corpus = suiteContract.instanceResearch;
+assert.deepEqual(corpus.counts, [100,250,500]);
+assert.deepEqual(corpus.viewBox, [0,0,410,510]);
+assert.deepEqual(corpus.trialOrders, ["shared-first","expanded-first","shared-first"]);
+for (const count of corpus.counts) {
+  const states = instanceResearchStates(corpus,count);
+  assert.equal(states.length,6);
+  const [initial,moved,defined,removed,created,reset] = states;
+  assert.equal(initial.instances.length,count);
+  assert.equal(moved.instances.filter((v,i) => v.x !== initial.instances[i].x || v.y !== initial.instances[i].y).length,count/10);
+  assert(moved.instances.every((v,i) => v.x-initial.instances[i].x === (i%10 === 0 ? 7 : 0) && v.y-initial.instances[i].y === (i%10 === 0 ? 2 : 0)));
+  assert.equal(defined.radius,5); assert.equal(removed.instances.length,count-5);
+  assert.deepEqual(removed.instances.map(v=>v.id),defined.instances.filter(v=>![1,21,41,61,81].includes(v.index)).map(v=>v.id));
+  assert.deepEqual(created.instances.slice(-5).map(v=>v.id),[1,21,41,61,81].map(i=>`research-${i}-1`));
+  assert.equal(reset.radius,3);
+  for (const state of states) assert(state.instances.every(v=>v.x-state.radius>=0 && v.y-state.radius>=0 && v.x+state.radius<=410 && v.y+state.radius<=510));
+}
+for (const count of [0,249,501,1000]) assert.throws(()=>instanceResearchStates(corpus,count),/count/);
+const clipped = structuredClone(corpus);clipped.commands[1].dy=500;
+assert.throws(()=>instanceResearchStates(clipped,500),/visible geometry bounds/);
+const badViewport=structuredClone(corpus);badViewport.viewBox[3]=270;
+assert.throws(()=>instanceResearchStates(badViewport,500),/common viewBox/);
+const nonFinite=structuredClone(corpus);nonFinite.commands[1].dx=NaN;
+assert.throws(()=>instanceResearchStates(nonFinite,500),/sparse motion/);
+for (const order of [undefined,null,"","arbitrary","--out"]) assert.throws(()=>instanceResearchOrder(order),/Unknown instance research order/);
+assert.deepEqual(instanceResearchOrder("expanded-first"),["expanded-geometry","shared-symbol"]);
+const rowsFor = order => corpus.counts.flatMap(count=>instanceResearchOrder(order).flatMap(variant=>instanceResearchStates(corpus,count).map(state=>({count,variant,command:state.name,instances:state.instances.length,timing:{...corpus.measurement,samplesMs:[0,1,2,3,4]}}))));
+for (const order of corpus.trialOrders) {
+  const rows=rowsFor(order);validateInstanceResearchResult(rows,order);
+  assert.equal(rows.length,36);assert.equal(rows.reduce((n,r)=>n+r.timing.samplesMs.length,0),180);
+  validateInstanceResearchSelection({environment:{instanceResearchOrder:order}},order);
+  assert.throws(()=>validateInstanceResearchSelection({environment:{instanceResearchOrder:order}},order === "shared-first" ? "expanded-first" : "shared-first"),/selection mismatch/);
+  assert.throws(()=>validateInstanceResearchResult(rows.slice(1),order),/coverage/);
+  assert.throws(()=>validateInstanceResearchResult([...rows].reverse(),order),/identity/);
+  for (const mutate of [r=>r[0].count=250,r=>r[0].instances--,r=>r[0].command="unknown",r=>r[0].timing.samplesMs.pop(),r=>r[0].timing.samplesMs[0]=NaN,r=>r[0].timing.samplesMs[0]=-1,r=>r[0].timing.warmupPasses=0,r=>r[0].timing.scope="CPU"]) {
+    const altered=structuredClone(rows);mutate(altered);assert.throws(()=>validateInstanceResearchResult(altered,order));
+  }
+}
+assert.equal(corpus.trialOrders.flatMap(rowsFor).length,108);
+assert.equal(corpus.trialOrders.flatMap(rowsFor).flatMap(row=>row.timing.samplesMs).length,540);
+console.log("count-scaling command oracle, visible bounds, 108/540 census, order and result refusals: passed (inert; no renderer/timing acceptance)");
+
+// Parse the actual driver's pre-launch option block; no Playwright import or launch.
+const optionBlock=driverSource.slice(driverSource.indexOf("const argument ="),driverSource.indexOf("// This driver is explicitly"));
+const parseDriver = extra => runInNewContext(`${optionBlock}\n({ order:selectedInstanceOrder, url:url.href })`,{process:{argv:["node","drive-suite.mjs","--base-url","http://inert.invalid/","--out","unused.json",...extra]},URL,instanceResearchOrder});
+assert.equal(parseDriver([]).order,"shared-first");
+assert.equal(new URL(parseDriver(["--instance-order","expanded-first"]).url).searchParams.get("instance-order"),"expanded-first");
+for (const extra of [["--instance-order"],["--instance-order","arbitrary"],["--profile","soldier-functional","--instance-order","shared-first"]]) assert.throws(()=>parseDriver(extra));
+// The actual existing packager must seal this exact public corpus and trial protocol.
+const controlsRoot=fs.mkdtempSync(path.join(os.tmpdir(),"svg-count-controls-"));
+try {
+  fs.mkdirSync(path.join(controlsRoot,"Browser/dist"),{recursive:true});fs.mkdirSync(path.join(controlsRoot,"feed"));
+  fs.writeFileSync(path.join(controlsRoot,"Browser/dist/suite.html"),"inert harness");fs.writeFileSync(path.join(controlsRoot,"source-manifest.tsv"),"inert source identity");
+  const packaged=child.spawnSync(process.execPath,[new URL("./package-fixture.mjs",import.meta.url).pathname,"--work",controlsRoot],{encoding:"utf8"});
+  assert.equal(packaged.status,0,packaged.stderr);
+  const manifest=JSON.parse(fs.readFileSync(path.join(controlsRoot,"Browser/dist/artifact-manifest.json")));
+  assert.deepEqual(manifest.workload.instanceResearch,corpus);
+  assert.equal(manifest.workloadSha256,portableSha256(new TextEncoder().encode(JSON.stringify(suiteContract))));
+  const altered=structuredClone(suiteContract);altered.instanceResearch.counts.pop();
+  assert.notEqual(manifest.workloadSha256,portableSha256(new TextEncoder().encode(JSON.stringify(altered))));
+} finally { fs.rmSync(controlsRoot,{recursive:true,force:true}); }
+console.log("actual pre-launch option parser and controls packager bind count/order selection: passed (inert)");
+
+// Exercise the real caller's lexical scope up to its existing DOM-order declaration.
+// Only the downstream renderer boundary is inert; both research call expressions
+// are copied verbatim from the maintained caller. This is no DOM/runtime acceptance.
+const reconciliationSource=fs.readFileSync(new URL("./document-reconciliation-control.js",import.meta.url),"utf8");
+function researchCallerBinding(source, selectedOrder) {
+  const start=source.indexOf("export function documentReconciliationControl(");
+  const end=source.indexOf("export function countInstanceResearchUpdate(",start);
+  assert(start>=0 && end>start,"actual caller source boundary missing");
+  const caller=source.slice(start,end).trim();
+  const calls=caller.match(/    const instanceResearch = instanceResearchControl[^\n]+;\n    validateInstanceResearchResult[^\n]+;/)?.[0];
+  assert(calls,"actual research calls missing");
+  const cut="    const originalOrder = order();";
+  assert.equal(caller.split(cut).length,2,"actual DOM-order binding boundary missing/ambiguous");
+  const instrumented=caller.replace("export function","function").replace(cut,`${cut}\n    return (() => {\n${calls}\n      return instanceResearch;\n    })();`);
+  const svg={namespaceURI:"http://www.w3.org/2000/svg",localName:"svg",attributes:[],children:[],textContent:"",querySelectorAll:()=>[]};
+  const add=()=>{}, remove=()=>{}, raf=()=>{throw Error("unexpected frame request");}, cancel=()=>{};
+  class InertEventTarget {}
+  InertEventTarget.prototype.addEventListener=add;InertEventTarget.prototype.removeEventListener=remove;
+  let mounts=0,disposals=0;
+  const w={
+    svgFoundation:{documentMount(){mounts++;},documentExport:()=>"<svg/>",documentDispose(){disposals++;}},
+    document:{querySelector:()=>svg},EventTarget:InertEventTarget,
+    DOMParser:class {parseFromString(){return {querySelector:()=>null,documentElement:svg};}},
+    performance:{now:()=>0},requestAnimationFrame:raf,cancelAnimationFrame:cancel,
+  };
+  const execute=runInNewContext(`(${instrumented})`,{
+    instanceResearchControl:(...args)=>rowsFor(args.at(-1)),validateInstanceResearchResult,
+  });
+  try { return execute(w,selectedOrder); }
+  finally {
+    assert.equal(mounts,1);assert.equal(disposals,1);
+    assert.equal(InertEventTarget.prototype.addEventListener,add);assert.equal(InertEventTarget.prototype.removeEventListener,remove);
+    assert.equal(w.requestAnimationFrame,raf);assert.equal(w.cancelAnimationFrame,cancel);
+  }
+}
+for (const order of [undefined,"shared-first","expanded-first"]) {
+  assert.deepEqual(researchCallerBinding(reconciliationSource,order),rowsFor(order ?? "shared-first"));
+}
+assert.throws(()=>researchCallerBinding(reconciliationSource,"unknown"),/Unknown instance research order/);
+// Reintroduce the exact original caller shadowing, retaining the local order() reader.
+const originalShadowing=reconciliationSource.replaceAll("representationOrder","order");
+assert.notEqual(originalShadowing,reconciliationSource);
+for (const order of [undefined,"shared-first","expanded-first"]) assert.throws(()=>researchCallerBinding(originalShadowing,order),/Unknown instance research order/);
+console.log("actual lexical caller: default + both orders pass; original shadowing mutant refused for all three (inert)");
+
+const maintainedRunner=fs.readFileSync(new URL("./run.sh",import.meta.url),"utf8");
+assert(maintainedRunner.includes('node "$repo/tests/Scene.SvgBrowser.Tests/suite-control-test.mjs"'),"normal packed runner must execute the inexpensive caller regression");
