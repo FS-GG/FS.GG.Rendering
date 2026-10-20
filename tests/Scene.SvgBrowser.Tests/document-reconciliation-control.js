@@ -39,6 +39,13 @@ export function assertInstanceResearchSemantics(expected, observed) {
   if (JSON.stringify(expected) !== JSON.stringify(observed)) throw Error("instance corpus: semantic mismatch");
 }
 
+export function assertInstanceResearchHit(f, node, instance, require) {
+  // A tall root cannot expose every point at once. Scroll only outside timed replacement spans.
+  node.scrollIntoView({block:"center",inline:"center"});
+  const actual = f.documentHit(instance.x, instance.y);
+  require(actual === instance.id, "instance hit identity", {expected:instance.id,actual,x:instance.x,y:instance.y});
+}
+
 function instanceResearchControl(f, rootOf, liveMatchesExport, require, countUpdate, now, order) {
   const results = [], mountedRoot = rootOf();
   for (const count of researchCorpus.counts) {
@@ -77,8 +84,10 @@ function instanceResearchControl(f, rootOf, liveMatchesExport, require, countUpd
           require(Number(circle.getAttribute("cx")) === 0 && Number(circle.getAttribute("cy")) === 0, "instance local geometry");
           if (variant === "shared-symbol") {
             require(node.querySelector("use")?.getAttribute("href") === `#${root.querySelector("defs symbol").id}`, "instance definition reference");
+            require(root.querySelector("defs symbol").getAttribute("viewBox") === "-5 -5 10 10"
+              && ["x","y","width","height"].map(name=>node.querySelector("use").getAttribute(name)).join(" ") === "-5 -5 10 10", "instance symbol viewport");
           }
-          require(f.documentHit(v.x,v.y) === v.id, "instance hit identity");
+          assertInstanceResearchHit(f, node, v, require);
           require(node.getAttribute("transform") === `matrix(1 0 0 1 ${v.x} ${v.y})`, "instance transform");
           return {id:v.id,radius:Number(circle.getAttribute("r")),fill:circle.getAttribute("fill")};
         });

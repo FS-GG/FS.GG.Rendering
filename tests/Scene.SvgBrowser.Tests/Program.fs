@@ -643,17 +643,19 @@ let instanceResearchDocument (variant: string) (revision: int) (ids: string arra
           ClipId = None; MaskId = None; Presentation = None; Content = content }
     let geometry = SvgElementContent.SceneLeaf { Nodes = [ SceneNode.Circle({ X = 0.0; Y = 0.0 }, radius, fill) ] }
     let symbol = { (leaf "research-symbol-geometry" geometry) with SemanticId = None }
+    // Keep both radius revisions inside the symbol viewport at identity scale.
+    let symbolViewport = { X = -5.0; Y = -5.0; Width = 10.0; Height = 10.0 }
     let children =
         ids |> Array.mapi (fun index id ->
             let content =
-                if variant = "shared-symbol" then SvgElementContent.SymbolInstance("research-symbol", None)
+                if variant = "shared-symbol" then SvgElementContent.SymbolInstance("research-symbol", Some symbolViewport)
                 else geometry
             { (leaf id content) with Transform = SvgAffine.translate xs[index] ys[index] })
         |> Array.toList
     { PortableDocumentFixture.document with
         Definitions =
             if variant = "shared-symbol" then
-                [ { Id = "research-symbol"; Content = SvgDefinitionContent.Symbol(None, [ symbol ]) } ]
+                [ { Id = "research-symbol"; Content = SvgDefinitionContent.Symbol(Some symbolViewport, [ symbol ]) } ]
             else []
         ViewBox = { X = 0.0; Y = 0.0; Width = 410.0; Height = 510.0 }
         Children = children }

@@ -313,6 +313,17 @@ circle radii, and the actual browser control requires that exact viewBox, ordere
 population, geometry/style, hits, live/export agreement and retained ownership.
 The changed viewBox prevents direct timing comparison with historical trials.
 
+The first full count-scaling trial exposed an actual hit-witness failure. The taller
+root could leave SVG points outside the browser viewport, and a circle centered at
+the origin was clipped by the shared symbol's implicit viewport. The fixture now
+uses matching fixed -5/-5/10/10 symbol and instance viewports, preserving identity
+scale and enclosing both radius revisions. The browser oracle checks that mapping
+and scrolls each target into view before the real semantic hit check, outside timed
+replacement spans. The explicit instance viewport includes the producer's existing
+transparent hit proxy; a center hit establishes semantic routing, while separate
+circle, transform, viewport and live/export assertions establish geometry. Original
+failed trials remain evidence; these repairs require fresh compiled qualification.
+
 The existing six-state sequence remains initial snapshot, 10% sparse motion,
 definition replacement, removal, recreation and definition reset. Each state has
 one separate counter pass, two warmup passes and five measured replacements.

@@ -104,7 +104,18 @@ assert.match(driverSource, /requireObservedResume\(result, !mutant\)/);
 console.log("staged positive driver refuses unobserved resume: passed (inert)");
 
 // Execute the maintained command oracle and downloaded-result gates without a renderer.
-const { instanceResearchStates } = await import("./document-reconciliation-control.js");
+const { instanceResearchStates, assertInstanceResearchHit } = await import("./document-reconciliation-control.js");
+{
+  let visible = false;
+  const point = {id:"offscreen-instance",x:10,y:10};
+  const node = {scrollIntoView:()=>{visible=true;}};
+  const requireHit = (ok, detail) => {if(!ok)throw Error(detail);};
+  const f = {documentHit:(x,y)=>visible && x===10 && y===10 ? point.id : null};
+  assertInstanceResearchHit(f,node,point,requireHit);
+  visible=false;
+  assert.throws(()=>assertInstanceResearchHit(f,{scrollIntoView:()=>{}},point,requireHit),/instance hit identity/);
+  assert.throws(()=>assertInstanceResearchHit({documentHit:()=>"wrong-instance"},node,point,requireHit),/instance hit identity/);
+}
 const { suiteContract, instanceResearchOrder, validateInstanceResearchResult, validateInstanceResearchSelection } = await import("./suite-contract.js");
 const corpus = suiteContract.instanceResearch;
 assert.deepEqual(corpus.counts, [100,250,500]);
