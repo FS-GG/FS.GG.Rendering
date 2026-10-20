@@ -7,6 +7,7 @@ import importlib.util
 import base64
 import json
 import pathlib
+import re
 import sys
 import tempfile
 import unittest
@@ -40,7 +41,8 @@ class Response:
 class StatusTests(unittest.TestCase):
     def test_preflight_binds_package_roster_to_exact_source(self):
         root = SCRIPT.parent.parent
-        # Primitive-only fixture uses current delivered axes; this does not select a workflow or authority.
+        # Historical primitive-only fixture binds mocked axes to its immutable plan.
+        # Current source version changes do not grant this fixture release authority.
         original = json.loads((root / "eng/release/external-authority-recovery-0.32.2.json").read_text())
         projects = sorted(str(path.relative_to(root)) for path in (root / "src").rglob("*.fsproj"))
         projects.append(".template.package/FS.GG.UI.Template.fsproj")
@@ -51,9 +53,19 @@ class StatusTests(unittest.TestCase):
             return ""
 
         def source(_root, _sha, path):
-            return (root / path).read_text()
+            text = (root / path).read_text()
+            axes = {
+                "template/base/Directory.Packages.props": "FsGgUiVersion",
+                ".template.package/FS.GG.UI.Template.fsproj": "Version",
+            }
+            if path in axes:
+                element = axes[path]
+                version = "0.32.3" if replacement == "axis-mismatch" and element == "FsGgUiVersion" else original["version"]
+                text, count = re.subn(fr"<{element}>[^<]+</{element}>", f"<{element}>{version}</{element}>", text)
+                self.assertEqual(1, count)
+            return text
 
-        for replacement in ("valid", "missing", "FS.GG.UI.Impostor", "fs.gg.ui.build", "wrong-kind", "duplicate-json", "rollback"):
+        for replacement in ("valid", "missing", "FS.GG.UI.Impostor", "fs.gg.ui.build", "wrong-kind", "duplicate-json", "rollback", "axis-mismatch"):
             with self.subTest(replacement=replacement), tempfile.TemporaryDirectory() as folder:
                 plan = json.loads(json.dumps(original))
                 if replacement == "missing":
@@ -62,7 +74,7 @@ class StatusTests(unittest.TestCase):
                     plan["packages"][1]["kind"] = "bom"
                 elif replacement == "rollback":
                     plan["baselineVersion"] = "0.33.0"
-                elif replacement not in ("valid", "duplicate-json"):
+                elif replacement not in ("valid", "duplicate-json", "axis-mismatch"):
                     plan["packages"][1]["id"] = replacement
                 plan_path = pathlib.Path(folder) / "plan.json"
                 body = json.dumps(plan)
@@ -88,6 +100,10 @@ class StatusTests(unittest.TestCase):
                     if replacement == "valid":
                         self.assertEqual(0, MODULE.main())
                         self.assertTrue((pathlib.Path(folder) / "receipt.json").is_file())
+                    elif replacement == "axis-mismatch":
+                        with self.assertRaisesRegex(SystemExit, "source axes do not match 0.32.2: framework=0.32.3, template=0.32.2"):
+                            MODULE.main()
+                        self.assertFalse((pathlib.Path(folder) / "receipt.json").exists())
                     else:
                         with self.assertRaises(SystemExit):
                             MODULE.main()

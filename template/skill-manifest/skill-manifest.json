@@ -192,7 +192,7 @@
       "supplied-by": "template/product-skills/fs-gg-symbology/",
       "files": [
         { "path": "SKILL.md", "sha256": "519155cc317fc990fb20bda41011fe4a01576060e7677ebd857084d1e42b1525" },
-        { "path": "reference.fsx", "sha256": "a8d33a21af2574490aae400f0f44acaed52aa10c0877e0d69ce3db87dde567b8" },
+        { "path": "reference.fsx", "sha256": "b19e22f273941aeba3a77d48aa428d12143e33aead5c65d7ea858d2ebd0534f6" },
         { "path": "reference/labels.md", "sha256": "22f6f73fd1b83223ab0ccb37b9ddfc6168e3646d31f9154760f4ff05e6119226" }
       ]
     },

@@ -111,12 +111,17 @@ jobs:
     name: Static release source and plan guard
     runs-on: ubuntu-latest
     if: github.repository == 'FS-GG/FS.GG.Rendering'
+    outputs:
+      plan: ${{ steps.source-plan.outputs.plan }}
+      version: ${{ steps.source-plan.outputs.version }}
+      baseline: ${{ steps.source-plan.outputs.baseline }}
     steps:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
       - name: Refuse wrong source, axes, roster, delivered surface, or SDK before costly jobs
+        id: source-plan
         env:
           INPUT_VERSION: ${{ inputs.version }}
           EVENT_TAG: ${{ github.event.release.tag_name || (github.ref_type == 'tag' && github.ref_name) || '' }}
@@ -146,6 +151,10 @@ jobs:
           fi
           version="${INPUT_VERSION:-${EVENT_TAG#v}}"
           plan=eng/release/external-authority-recovery-0.32.2.json
+          if [[ "$version" == 0.32.3 ]]; then
+            [[ "$SOURCE_ONLY" == true && "$PREFLIGHT_ONLY" != true && "$BOUND_ATTEMPT" != true && "$successor" != true ]] || { echo "::error::0.32.3 is source qualification only"; exit 3; }
+            plan=eng/release/font-disposal-0.32.3.json
+          fi
           authority=()
           # Read-only preflight gathers evidence needed for readiness; all effectful calls still require it.
           [[ "$SOURCE_ONLY" == 'true' || "$PREFLIGHT_ONLY" == 'true' ]] || authority+=(--require-publication-ready)
@@ -163,6 +172,14 @@ jobs:
           python3 scripts/release-source-guard.py \
             --plan "$plan" \
             --source-sha "$source_sha" --version "$version" "${authority[@]}" "${fence[@]}"
+          # These are verified closed plan bytes, not unchecked dispatch strings.
+          python3 - "$plan" >> "$GITHUB_OUTPUT" <<'PYPLAN'
+          import json, sys
+          plan = json.load(open(sys.argv[1]))
+          print('plan=' + sys.argv[1])
+          print('version=' + plan['version'])
+          print('baseline=' + plan['baselineVersion'])
+          PYPLAN
 
   package-tests:
     needs: release-source-guard
@@ -413,6 +430,10 @@ jobs:
     needs: [release-source-guard, package-tests, template-product-tests]
     runs-on: ubuntu-latest
     if: github.repository == 'FS-GG/FS.GG.Rendering' && inputs.source-only && !inputs.preflight-only
+    env:
+      SOURCE_PLAN: ${{ needs.release-source-guard.outputs.plan }}
+      SOURCE_VERSION: ${{ needs.release-source-guard.outputs.version }}
+      SOURCE_BASELINE: ${{ needs.release-source-guard.outputs.baseline }}
     permissions:
       contents: read
     steps:
@@ -435,13 +456,42 @@ jobs:
         with:
           target: FS.GG.Rendering.slnx
       - name: Pack the complete source candidate and verify custody
-        run: bash scripts/release-pack.sh eng/release/external-authority-recovery-0.32.2.json "$GITHUB_SHA" 0.32.2
-      - name: ApiCompat against published 0.32.1
-        run: bash scripts/apicompat-check.sh --baseline 0.32.1 --release-plan eng/release/external-authority-recovery-0.32.2.json
-      - name: Retain candidate bytes for isolated consumer composition
+        run: bash scripts/release-pack.sh "$SOURCE_PLAN" "$GITHUB_SHA" "$SOURCE_VERSION"
+      - name: ApiCompat against the selected published baseline
+        run: bash scripts/apicompat-check.sh --baseline "$SOURCE_BASELINE" --release-plan "$SOURCE_PLAN"
+      - name: Set up Node for original candidate browser consumers
+        if: env.SOURCE_VERSION == '0.32.3'
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Restore the maintained browser harness and all three browser families
+        if: env.SOURCE_VERSION == '0.32.3'
+        working-directory: tests/Scene.SvgBrowser.Tests
+        run: |
+          npm ci
+          npx playwright-core install --with-deps chromium firefox webkit
+      - name: Qualify all three browser families against original candidate archives without repacking
+        if: env.SOURCE_VERSION == '0.32.3'
+        env:
+          SVG_SCENE_ORIGINAL_CANDIDATE_DIR: ${{ github.workspace }}/artifacts/packages
+          SVG_SCENE_ORIGINAL_CUSTODY: ${{ github.workspace }}/artifacts/packages/release-custody.json
+          SVG_SCENE_ORIGINAL_SOURCE_SHA: ${{ github.sha }}
+          SVG_SCENE_FOCUS_SDK: '10.0.401'
+        run: |
+          export SVG_SCENE_ORIGINAL_CUSTODY_SHA256="$(sha256sum "$SVG_SCENE_ORIGINAL_CUSTODY" | cut -d' ' -f1)"
+          bash tests/Scene.SvgBrowser.Tests/run.sh "$RUNNER_TEMP/source-browser-observations.json"
+      - name: Retain original candidate browser qualification evidence
+        if: always() && env.SOURCE_VERSION == '0.32.3'
         uses: actions/upload-artifact@v7
         with:
-          name: rendering-source-candidate-${{ github.sha }}-0.32.2
+          name: rendering-source-browser-${{ github.sha }}-${{ env.SOURCE_VERSION }}
+          path: ${{ runner.temp }}/source-browser-observations*.json
+          if-no-files-found: warn
+      - name: Retain candidate bytes for isolated consumer composition
+        if: success() || (always() && env.SOURCE_VERSION == '0.32.3' && hashFiles('artifacts/packages/release-custody.json') != '')
+        uses: actions/upload-artifact@v7
+        with:
+          name: rendering-source-candidate-${{ github.sha }}-${{ env.SOURCE_VERSION }}
           path: artifacts/packages/
           if-no-files-found: error
           compression-level: 0
