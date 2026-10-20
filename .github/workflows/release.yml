@@ -188,6 +188,9 @@ jobs:
     # Restrict to the canonical repo: fork tags/dispatch never run this (no fork secret exposure, FR-013).
     if: github.repository == 'FS-GG/FS.GG.Rendering' && !inputs.preflight-only
     env:
+      # Source qualification isolates the selected SDK from hosted preinstalled feature bands.
+      # Empty on ordinary release calls preserves setup-dotnet's existing default install root.
+      DOTNET_INSTALL_DIR: ${{ inputs.source-only && format('{0}/rendering-source-dotnet-10.0.401', runner.temp) || '' }}
       # Feature 209 — THE RELEASE LANE. This job gates `publish-packages` (needs:), so it is the last
       # thing standing between a version bump and the public feeds. The coherence mirror's
       # RELEASE-PENDING waivers exist because a tag cannot point at a commit that does not exist yet —
@@ -226,6 +229,14 @@ jobs:
           # fs-gg-ui/v* snapshot tags (git tag --list). Default shallow checkout has no tags ⇒ the
           # guard fails CLOSED ("tags must be visible (fetch-depth: 0)"). Fetch full history + tags.
           fetch-depth: 0
+      - name: Require a fresh private SDK root for source qualification
+        if: inputs.source-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="${RUNNER_TEMP:?}/rendering-source-dotnet-10.0.401"
+          [[ "$RUNNER_TEMP" == /* && "$RUNNER_TEMP" != / && "$RUNNER_TEMP" != */ && "$(realpath -e -- "$RUNNER_TEMP")" == "$RUNNER_TEMP" ]] || { echo '::error::source SDK parent must be an existing canonical runner temp directory'; exit 1; }
+          [[ "${DOTNET_INSTALL_DIR:-}" == "$expected" && ! -e "$expected" && ! -L "$expected" ]] || { echo '::error::source SDK root must be the selected absent runner-private directory'; exit 1; }
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.401'
@@ -310,12 +321,24 @@ jobs:
     needs: release-source-guard
     name: Generated product (template instantiation, release-only)
     runs-on: ubuntu-latest
+    env:
+      # Source qualification isolates the selected SDK from hosted preinstalled feature bands.
+      # Empty on ordinary release calls preserves setup-dotnet's existing default install root.
+      DOTNET_INSTALL_DIR: ${{ inputs.source-only && format('{0}/rendering-source-dotnet-10.0.401', runner.temp) || '' }}
     if: github.repository == 'FS-GG/FS.GG.Rendering' && !inputs.preflight-only
     steps:
       - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.bound-attempt && '6c9f766fdd91483c2de6f061e75589e94852a265' || github.sha }}
           fetch-depth: 0
+      - name: Require a fresh private SDK root for source qualification
+        if: inputs.source-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="${RUNNER_TEMP:?}/rendering-source-dotnet-10.0.401"
+          [[ "$RUNNER_TEMP" == /* && "$RUNNER_TEMP" != / && "$RUNNER_TEMP" != */ && "$(realpath -e -- "$RUNNER_TEMP")" == "$RUNNER_TEMP" ]] || { echo '::error::source SDK parent must be an existing canonical runner temp directory'; exit 1; }
+          [[ "${DOTNET_INSTALL_DIR:-}" == "$expected" && ! -e "$expected" && ! -L "$expected" ]] || { echo '::error::source SDK root must be the selected absent runner-private directory'; exit 1; }
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.401'
@@ -431,6 +454,9 @@ jobs:
     runs-on: ubuntu-latest
     if: github.repository == 'FS-GG/FS.GG.Rendering' && inputs.source-only && !inputs.preflight-only
     env:
+      # Source qualification isolates the selected SDK from hosted preinstalled feature bands.
+      # Empty on ordinary release calls preserves setup-dotnet's existing default install root.
+      DOTNET_INSTALL_DIR: ${{ runner.temp }}/rendering-source-dotnet-10.0.401
       SOURCE_PLAN: ${{ needs.release-source-guard.outputs.plan }}
       SOURCE_VERSION: ${{ needs.release-source-guard.outputs.version }}
       SOURCE_BASELINE: ${{ needs.release-source-guard.outputs.baseline }}
@@ -440,6 +466,14 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+      - name: Require a fresh private SDK root for source qualification
+        if: inputs.source-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="${RUNNER_TEMP:?}/rendering-source-dotnet-10.0.401"
+          [[ "$RUNNER_TEMP" == /* && "$RUNNER_TEMP" != / && "$RUNNER_TEMP" != */ && "$(realpath -e -- "$RUNNER_TEMP")" == "$RUNNER_TEMP" ]] || { echo '::error::source SDK parent must be an existing canonical runner temp directory'; exit 1; }
+          [[ "${DOTNET_INSTALL_DIR:-}" == "$expected" && ! -e "$expected" && ! -L "$expected" ]] || { echo '::error::source SDK root must be the selected absent runner-private directory'; exit 1; }
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.401'
