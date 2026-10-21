@@ -2,6 +2,8 @@
 """Finite static caller controls; no network, tools, credentials or workload launch."""
 import ast
 import json
+import os
+import sys
 from pathlib import Path
 import re
 
@@ -55,10 +57,21 @@ def dispatch(text,request,event='workflow_dispatch'):
     full=not (event=='pull_request' and preflight[0].startswith('github.event_name') or values['preflight-only'])
     return selected[0],full
 
+def validate_context(text, environment):
+    event=environment.get('QUALIFICATION_EVENT')
+    assert event in ['pull_request','workflow_dispatch'], 'actual caller event required'
+    if event=='pull_request':
+        return dispatch(text,{'ref':'main','inputs':{}},event)
+    inputs={'rendering-input-source':environment.get('QUALIFICATION_INPUT_SOURCE'),
+            'preflight-only':json.loads(environment.get('QUALIFICATION_PREFLIGHT_JSON','null'))}
+    return dispatch(text,{'ref':'main','inputs':inputs},event)
+
 def validate(text):
     assert re.search(r'^permissions:\n  contents: read\n  actions: read\n',text,re.M)
     assert not re.search(r'(contents|actions|packages|id-token): write|secrets:|secrets\.|environment:|continue-on-error|concurrency:',text)
     assert set(jobs(text))=={'static','qualify','qualify-font-disposal'}
+    for handoff in ['QUALIFICATION_EVENT: ${{ github.event_name }}','QUALIFICATION_INPUT_SOURCE: ${{ inputs.rendering-input-source }}','QUALIFICATION_PREFLIGHT_JSON: ${{ toJSON(inputs.preflight-only) }}']:
+        assert handoff in jobs(text)['static'], 'actual dispatch context handoff required'
     schema(text)
     for name,pin,mode in [('qualify',HISTORICAL,'candidate'),('qualify-font-disposal',FONT_DISPOSAL,'font-disposal')]:
         body=jobs(text)[name]
@@ -102,7 +115,24 @@ def controls(text):
         try:dispatch(text,request)
         except AssertionError:pass
         else:raise AssertionError('invalid request shape accepted')
-    print(f'PASS actual dispatch schema/defaults, four finite subject/phase branches, PR refusal and {len(bad)+9} causal caller/request refusals')
+    for mode,job in [('candidate','qualify'),('font-disposal','qualify-font-disposal')]:
+        for phase in [False,True]:
+            assert validate_context(text,{'QUALIFICATION_EVENT':'workflow_dispatch','QUALIFICATION_INPUT_SOURCE':mode,'QUALIFICATION_PREFLIGHT_JSON':json.dumps(phase)})==(job,not phase)
+    assert validate_context(text,{'QUALIFICATION_EVENT':'pull_request'})==('qualify',False)
+    for environment in [{},{'QUALIFICATION_EVENT':'push'}, {'QUALIFICATION_EVENT':'workflow_dispatch','QUALIFICATION_INPUT_SOURCE':'unknown','QUALIFICATION_PREFLIGHT_JSON':'true'}, {'QUALIFICATION_EVENT':'workflow_dispatch','QUALIFICATION_INPUT_SOURCE':'font-disposal','QUALIFICATION_PREFLIGHT_JSON':'"false"'}, {'QUALIFICATION_EVENT':'workflow_dispatch','QUALIFICATION_INPUT_SOURCE':'font-disposal','QUALIFICATION_PREFLIGHT_JSON':'null'}, {'QUALIFICATION_EVENT':'workflow_dispatch','QUALIFICATION_INPUT_SOURCE':'font-disposal','QUALIFICATION_PREFLIGHT_JSON':'{'}]:
+        try:validate_context(text,environment)
+        except (AssertionError,ValueError):pass
+        else:raise AssertionError('invalid actual dispatch context accepted')
+    for key in ['QUALIFICATION_EVENT','QUALIFICATION_INPUT_SOURCE','QUALIFICATION_PREFLIGHT_JSON']:
+        mutation=re.sub(r'^          '+key+r':.*\n','',text,flags=re.M)
+        try:validate(mutation)
+        except AssertionError:pass
+        else:raise AssertionError('missing context handoff accepted')
+    print(f'PASS actual dispatch schema/defaults, four finite subject/phase branches, PR refusal, {len(bad)+9} caller/request refusals and 9 actual-context/handoff refusals')
 
 if __name__=='__main__':
-    controls(PATH.read_text())
+    assert sys.argv[1:] in [[],['--self-test']], 'unknown verifier option'
+    text=PATH.read_text()
+    controls(text)
+    if not sys.argv[1:]:
+        print('actual caller selection:',validate_context(text,os.environ))

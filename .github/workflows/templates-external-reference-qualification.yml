@@ -34,6 +34,10 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - run: python3 scripts/verify-templates-external-reference-workflow.py
+        env:
+          QUALIFICATION_EVENT: ${{ github.event_name }}
+          QUALIFICATION_INPUT_SOURCE: ${{ inputs.rendering-input-source }}
+          QUALIFICATION_PREFLIGHT_JSON: ${{ toJSON(inputs.preflight-only) }}
   qualify:
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.rendering-input-source != 'font-disposal' }}
     needs: static
