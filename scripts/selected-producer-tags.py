@@ -109,7 +109,7 @@ def executor_identity(git, env: dict) -> dict:
     if git('rev-parse', 'HEAD') != expected:
         raise Refused('checkout HEAD differs from reviewed executor')
     git('diff', '--quiet', 'HEAD', '--', '.github/workflows/release-tags.yml',
-        'scripts/selected-producer-tags.py', 'scripts/release-source-guard.py', guard.ATTEMPT, guard.SUCCESSOR_ATTEMPT)
+        'scripts/selected-producer-tags.py', 'scripts/release-source-guard.py', guard.ATTEMPT, guard.SUCCESSOR_ATTEMPT, guard.FONT_DISPOSAL_ATTEMPT)
     for arguments in [('remote', 'get-url', '--all', 'origin'),
                       ('remote', 'get-url', '--push', '--all', 'origin')]:
         if git(*arguments) not in ORIGINS:
@@ -153,7 +153,9 @@ def ordered_prefix(state: dict, refs=REFS) -> None:
 
 def selected_binding(root: Path, source: str, version: str) -> dict:
     if source == guard.FONT_DISPOSAL['producerSha'] and version == guard.FONT_DISPOSAL['version']:
-        return guard.validate_font_disposal_attempt(root, source, require_ready=True)
+        binding = guard.validate_font_disposal_attempt(root, source, require_ready=True)
+        guard.validate(root, source, guard.FONT_DISPOSAL['planPath'], version, require_publication_ready=False)
+        return binding
     if source == guard.SUCCESSOR['producerSha'] and version == guard.SUCCESSOR['version']:
         binding = guard.validate_successor_attempt(root, source, require_ready=True)
         guard.validate(root, source, guard.SUCCESSOR['planPath'], version, require_publication_ready=False)

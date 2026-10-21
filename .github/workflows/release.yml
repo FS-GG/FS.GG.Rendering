@@ -47,7 +47,7 @@ on:
         required: false
         default: false
       font-disposal-attempt:
-        description: "Select disabled retained0.32.3; preflight only until genuine receiver/AT qualification. Final publication remains refused."
+        description: "Select retained0.32.3 with exact accepted receiver/AT proof; publication still requires explicit authority."
         type: boolean
         default: false
       successor-attempt:
@@ -84,7 +84,7 @@ on:
         required: false
         default: false
       font-disposal-attempt:
-        description: "Select disabled retained0.32.3; preflight only until genuine receiver/AT qualification. Final publication remains refused."
+        description: "Select retained0.32.3 with exact accepted receiver/AT proof; publication still requires explicit authority."
         type: boolean
         default: false
       successor-attempt:
@@ -246,7 +246,7 @@ jobs:
           # guard fails CLOSED ("tags must be visible (fetch-depth: 0)"). Fetch full history + tags.
           fetch-depth: 0
       - name: Require a fresh private SDK root for source qualification
-        if: inputs.source-only
+        if: inputs.source-only || inputs.font-disposal-attempt
         shell: bash
         env:
           DOTNET_INSTALL_DIR: ${{ runner.temp }}/rendering-source-dotnet-10.0.401
@@ -352,7 +352,7 @@ jobs:
           ref: ${{ inputs.bound-attempt && '6c9f766fdd91483c2de6f061e75589e94852a265' || github.sha }}
           fetch-depth: 0
       - name: Require a fresh private SDK root for source qualification
-        if: inputs.source-only
+        if: inputs.source-only || inputs.font-disposal-attempt
         shell: bash
         env:
           DOTNET_INSTALL_DIR: ${{ runner.temp }}/rendering-source-dotnet-10.0.401
@@ -766,6 +766,18 @@ jobs:
           PYATTEMPT
       - name: Refuse executor movement before tools or credentials
         run: python3 scripts/release-source-guard.py --executor-only
+      - name: Require a fresh private SDK root for font-disposal publisher
+        if: inputs.font-disposal-attempt
+        shell: bash
+        env:
+          DOTNET_INSTALL_DIR: ${{ runner.temp }}/rendering-source-dotnet-10.0.401
+        run: |
+          set -euo pipefail
+          expected="${RUNNER_TEMP:?}/rendering-source-dotnet-10.0.401"
+          [[ "$RUNNER_TEMP" == /* && "$RUNNER_TEMP" != / && "$RUNNER_TEMP" != */ && "$(realpath -e -- "$RUNNER_TEMP")" == "$RUNNER_TEMP" ]] || { echo '::error::source SDK parent must be an existing canonical runner temp directory'; exit 1; }
+          [[ "${DOTNET_INSTALL_DIR:-}" == "$expected" && ! -e "$expected" && ! -L "$expected" ]] || { echo '::error::source SDK root must be the selected absent runner-private directory'; exit 1; }
+          # GITHUB_ENV applies this verified root to setup-dotnet and later steps.
+          printf 'DOTNET_INSTALL_DIR=%s\n' "$expected" >> "$GITHUB_ENV"
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.401'
@@ -969,7 +981,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [[ "$FSGG_RELEASE_ATTEMPT" == 0322 ]]; then
+          if [[ "$FSGG_RELEASE_ATTEMPT" == 0323 ]]; then
+            echo "Reuse accepted source39509314882/a1:17 comparisons vs0.32.1; original archive custody verified separately."
+          elif [[ "$FSGG_RELEASE_ATTEMPT" == 0322 ]]; then
             # Closed original successful source-package-custody run and root-readback
             # are bound by validate_successor_attempt before acquisition. No repack at
             # executor HEAD is claimed to be the retained candidate's bytes.

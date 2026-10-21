@@ -425,15 +425,30 @@ class CurrentTagSelectionTests(unittest.TestCase):
                 with patch.object(tags.guard,'validate',side_effect=AssertionError('pending must refuse before downstream source validation')):
                     with self.assertRaises(SystemExit):tags.selected_binding(root,source,'0.32.2')
 
-class DisabledFontTagTests(unittest.TestCase):
-    def test_genuine_pending_subject_refuses_before_remote_probe_or_push(self):
-        for mode in ('check','cut'):
-            with self.subTest(mode=mode),tempfile.TemporaryDirectory() as d:
+class QualifiedFontTagTests(unittest.TestCase):
+    def test_original_source_validation_and_closed_tag_triple(self):
+        source=tags.guard.FONT_DISPOSAL['producerSha']
+        with patch.object(tags.guard,'source_bytes',return_value=(ROOT/tags.guard.FONT_DISPOSAL['planPath']).read_bytes()),patch.object(tags.guard,'validate',return_value={}) as validate:
+            binding=tags.selected_binding(ROOT,source,'0.32.3')
+            self.assertTrue(binding['attemptReady'])
+            validate.assert_called_once_with(ROOT,source,tags.guard.FONT_DISPOSAL['planPath'],'0.32.3',require_publication_ready=False)
+        with tempfile.TemporaryDirectory() as d:
+            git=FakeGit()
+            result=tags.Operation(Path(d),'cut',source,'0.32.3',ENV,git,lambda *args:binding).run()
+            self.assertEqual('passed',result['result'])
+            self.assertEqual([source+':refs/tags/'+name for name in ['fs-gg-ui/v0.32.3','fs-gg-ui-template/v0.32.3','v0.32.3']],[row[-1] for row in git.pushes])
+            self.assertEqual('not-performed',result['publication'])
+            diff=next(call for call in git.calls if call[0]=='diff')
+            self.assertIn(tags.guard.FONT_DISPOSAL_ATTEMPT,diff)
+
+    def test_changed_or_unqualified_binding_refuses_before_probe(self):
+        for key,value in [('attemptReady',False),('qualification',{'status':'pending'}),('producerArtifact',123)]:
+            with self.subTest(key=key),tempfile.TemporaryDirectory() as d:
                 root=Path(d);file=root/tags.guard.FONT_DISPOSAL_ATTEMPT;file.parent.mkdir(parents=True)
-                file.write_bytes((ROOT/tags.guard.FONT_DISPOSAL_ATTEMPT).read_bytes())
+                binding=json.loads((ROOT/tags.guard.FONT_DISPOSAL_ATTEMPT).read_bytes());binding[key]=value;file.write_text(json.dumps(binding))
                 git=FakeGit()
                 with patch.object(tags,'executor_identity',return_value={}),patch.object(tags.guard,'source_bytes',return_value=(ROOT/tags.guard.FONT_DISPOSAL['planPath']).read_bytes()):
-                    with self.assertRaises(tags.Refused):tags.Operation(root,mode,tags.guard.FONT_DISPOSAL['producerSha'],'0.32.3',ENV,git).run()
+                    with self.assertRaises(tags.Refused):tags.Operation(root,'cut',tags.guard.FONT_DISPOSAL['producerSha'],'0.32.3',ENV,git).run()
                 self.assertEqual([],git.calls);self.assertEqual([],git.pushes)
 
 
