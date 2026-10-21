@@ -1,35 +1,108 @@
 #!/usr/bin/env python3
-"""Verify the literal reusable workflow/checkout join without network or native execution."""
+"""Finite static caller controls; no network, tools, credentials or workload launch."""
+import ast
+import json
 from pathlib import Path
 import re
 
-path=Path(__file__).resolve().parents[1]/'.github/workflows/templates-external-reference-qualification.yml'
-source=path.read_text()
+HISTORICAL = '6a5dd5305ac6fe26f9f9726c72b1a7e553b0021b'
+FONT_DISPOSAL = '209a1ad1e85b66ea019e609147afcd8aeaf92a9c'
+PATH = Path(__file__).resolve().parents[1]/'.github/workflows/templates-external-reference-qualification.yml'
+
+def jobs(text):
+    rows=re.findall(r'^  ([A-Za-z_][A-Za-z0-9_-]*):\n(.*?)(?=^  [A-Za-z_][A-Za-z0-9_-]*:|\Z)', text.split('\njobs:\n',1)[1], re.M|re.S)
+    assert len(rows)==len(dict(rows)), 'duplicate job key'
+    return dict(rows)
+
+def schema(text):
+    block=text.split('  workflow_dispatch:\n    inputs:\n',1)[1].split('\npermissions:',1)[0]
+    pairs=re.findall(r'^      ([A-Za-z_][A-Za-z0-9_-]*):\n(.*?)(?=^      [A-Za-z_][A-Za-z0-9_-]*:|\Z)',block,re.M|re.S)
+    assert len(pairs)==len(dict(pairs)), 'duplicate dispatch input'
+    rows=dict(pairs)
+    assert set(rows)=={'rendering-input-source','preflight-only'}, 'closed dispatch keys required'
+    result={}
+    for key,row in rows.items():
+        types=re.findall(r'^        type: (\w+)$',row,re.M);defaults=re.findall(r'^        default: (.+)$',row,re.M)
+        assert len(types)==len(defaults)==1
+        required=re.findall(r'^        required: (.+)$',row,re.M);assert not required or required==['false']
+        options=re.findall(r'^          - (.+)$',row,re.M)
+        result[key]=(types[0],defaults[0],options)
+    assert result=={'rendering-input-source':('choice','candidate',['candidate','font-disposal']),'preflight-only':('boolean','true',[])}, 'safe dispatch defaults/types/options required'
+    return result
+
+def dispatch(text,request,event='workflow_dispatch'):
+    assert event in ['pull_request','workflow_dispatch'], 'unsupported event'
+    fields=schema(text)
+    assert type(request) is dict and set(request)=={'ref','inputs'} and request['ref']=='main', 'exact main dispatch shape required'
+    assert type(request['inputs']) is dict and set(request['inputs'])<=set(fields), 'unknown dispatch input'
+    values={}
+    for key,(kind,default,options) in fields.items():
+        value=request['inputs'].get(key, default=='true' if kind=='boolean' else default)
+        assert (type(value) is bool if kind=='boolean' else type(value) is str and value in options), 'dispatch type/choice refused'
+        values[key]=value
+    selected=[]
+    for name,body in jobs(text).items():
+        if not name.startswith('qualify'):continue
+        conditions=re.findall(r'^    if: \$\{\{ (.+) \}\}$',body,re.M);assert len(conditions)==1
+        expr=conditions[0].replace('github.event_name',repr(event)).replace('inputs.rendering-input-source',repr(values['rendering-input-source'])).replace('&&',' and ').replace('||',' or ')
+        tree=ast.parse(expr,mode='eval')
+        assert all(isinstance(n,(ast.Expression,ast.BoolOp,ast.And,ast.Or,ast.Compare,ast.Eq,ast.NotEq,ast.Constant,ast.Load)) for n in ast.walk(tree)), 'unsupported actual job condition'
+        if eval(compile(tree,'<actual-job-condition>','eval'),{'__builtins__':{}},{}):selected.append(name)
+    assert len(selected)==1, 'exactly one receiver subject required'
+    body=jobs(text)[selected[0]]
+    preflight=re.findall(r'^      preflight-only: \$\{\{ (.+) \}\}$',body,re.M);assert len(preflight)==1
+    assert preflight[0] in ["github.event_name == 'pull_request' || inputs.preflight-only",'inputs.preflight-only']
+    full=not (event=='pull_request' and preflight[0].startswith('github.event_name') or values['preflight-only'])
+    return selected[0],full
+
 def validate(text):
-    uses=re.findall(r'^    uses: FS-GG/FS.GG.Templates/\.github/workflows/fable-external-reference-source\.yml@([0-9a-f]{40})$',text,re.M)
-    checkout=re.findall(r'^      templates-source: ([0-9a-f]{40})$',text,re.M)
-    assert len(uses)==len(checkout)==1 and uses==checkout, 'literal workflow/input identity must match'
-    assert '  contents: read\n  actions: read' in text
+    assert re.search(r'^permissions:\n  contents: read\n  actions: read\n',text,re.M)
     assert not re.search(r'(contents|actions|packages|id-token): write|secrets:|secrets\.|environment:|continue-on-error|concurrency:',text)
-    assert "preflight-only: ${{ github.event_name == 'pull_request' || inputs.preflight-only }}" in text
-    assert 'type: boolean\n        default: true' in text
-    assert '    needs: static' in text
-    assert uses[0] == '6a5dd5305ac6fe26f9f9726c72b1a7e553b0021b', 'selected protected Templates source required'
-    assert re.findall(r'^      rendering-input-source: (.+)$', text, re.M) == ['candidate'], 'selected candidate Rendering input required'
-    return uses[0]
-head=validate(source)
-mutations=[source.replace('      rendering-input-source: candidate\n',''),source.replace('rendering-input-source: candidate','rendering-input-source: public'),source.replace('rendering-input-source: candidate','rendering-input-source: unknown'),source.replace('templates-source: '+head,'templates-source: '+'0'*40),source.replace('@'+head,'@main'),source.replace('templates-source: '+head,'templates-source: ${{ github.sha }}'),source.replace('contents: read','contents: write'),source+'\nsecrets: inherit\n',source.replace('default: true','default: false'),source.replace("github.event_name == 'pull_request' || inputs.preflight-only",'inputs.preflight-only'),source+'\nconcurrency: shared\n',source.replace(head,'0'*40)]
-mutations.extend([
-    source.replace(head,'775853887a88a3c72e726daa475a49053e84c4bd'),
-    source.replace(head,'92944277a8d27b15759dd8e5803acf4c4e0ae162'),
-    source.replace(head,'0d945052250eb53056a5b4a87fe742efd1b7a0a2'),
-    source.replace(head,'b005c26e43cd4a823577ff94e1ee6da2cfed58d4'),
-    source.replace(head,'208e5bffe99153375f7d3e2e1c84653104883cd3'),
-    source.replace('@'+head,'@'+'0'*40),
-    source.replace('actions: read','actions: write'),
-])
-for mutation in mutations:
-    try: validate(mutation)
-    except AssertionError: pass
-    else: raise AssertionError('known-bad wrapper accepted')
-print(f'PASS exact Templates identity {head}; {len(mutations)} negative wrapper controls')
+    assert set(jobs(text))=={'static','qualify','qualify-font-disposal'}
+    schema(text)
+    for name,pin,mode in [('qualify',HISTORICAL,'candidate'),('qualify-font-disposal',FONT_DISPOSAL,'font-disposal')]:
+        body=jobs(text)[name]
+        assert re.findall(r'^    uses: FS-GG/FS.GG.Templates/\.github/workflows/fable-external-reference-source\.yml@([0-9a-f]{40})$',body,re.M)==[pin], 'immutable selected workflow pin required'
+        assert re.findall(r'^      templates-source: (.+)$',body,re.M)==[pin], 'workflow/checkout identity differs'
+        assert re.findall(r'^      rendering-input-source: (.+)$',body,re.M)==[mode], 'closed receiver subject differs'
+        assert '    needs: static\n' in body
+    for mode,job in [('candidate','qualify'),('font-disposal','qualify-font-disposal')]:
+        for full in [False,True]:
+            assert dispatch(text,{'ref':'main','inputs':{'rendering-input-source':mode,'preflight-only':not full}})==(job,full)
+    assert dispatch(text,{'ref':'main','inputs':{}})==('qualify',False)
+    assert dispatch(text,{'ref':'main','inputs':{'rendering-input-source':'font-disposal','preflight-only':False}},'pull_request')==('qualify',False), 'PR must stay historical preflight'
+    return text
+
+def controls(text):
+    validate(text)
+    bad=[text.replace('contents: read','contents: write'),text+'\nsecrets: inherit\n',text.replace('default: true','default: false'),text.replace('default: candidate','default: font-disposal'),text.replace('      templates-source: '+FONT_DISPOSAL,'      templates-source: '+HISTORICAL),text.replace('@'+FONT_DISPOSAL,'@main'),text.replace('rendering-input-source: font-disposal','rendering-input-source: candidate'),text.replace("inputs.rendering-input-source != 'font-disposal'","inputs.rendering-input-source == 'font-disposal'"),text.replace("inputs.rendering-input-source == 'font-disposal'","inputs.rendering-input-source != 'font-disposal'"),text.replace("github.event_name == 'pull_request' || inputs.preflight-only",'inputs.preflight-only'),text.replace('    needs: static\n',''),text.replace(FONT_DISPOSAL,'0'*40),text.replace('        type: boolean','        type: string'),text.replace('        default: true','        default: true\n        required: true'),text+'\n  extra_job:\n    runs-on: ubuntu-latest\n    steps: []\n']
+    # Preserve the original historical-wrapper mutants as well as new subject routing.
+    bad.extend([
+        text.replace('      rendering-input-source: candidate\n',''),
+        text.replace('rendering-input-source: candidate','rendering-input-source: public'),
+        text.replace('rendering-input-source: candidate','rendering-input-source: unknown'),
+        text.replace('templates-source: '+HISTORICAL,'templates-source: '+'0'*40),
+        text.replace('@'+HISTORICAL,'@main'),
+        text.replace('templates-source: '+HISTORICAL,'templates-source: ${{ github.sha }}'),
+        text+'\nconcurrency: shared\n',
+        text.replace('@'+HISTORICAL,'@'+'0'*40),
+        text.replace('actions: read','actions: write'),
+    ])
+    for rejected in ['0'*40,'775853887a88a3c72e726daa475a49053e84c4bd','92944277a8d27b15759dd8e5803acf4c4e0ae162','0d945052250eb53056a5b4a87fe742efd1b7a0a2','b005c26e43cd4a823577ff94e1ee6da2cfed58d4','208e5bffe99153375f7d3e2e1c84653104883cd3']:
+        bad.append(text.replace(HISTORICAL,rejected))
+    for mutation in bad:
+        try:validate(mutation)
+        except (AssertionError,ValueError,IndexError):pass
+        else:raise AssertionError('bad caller mutation accepted')
+    for inputs in [{'unknown':False},{'preflight-only':'false'},{'preflight-only':0},{'rendering-input-source':'public'},{'rendering-input-source':'unknown'},{'rendering-input-source':True}]:
+        try:dispatch(text,{'ref':'main','inputs':inputs})
+        except AssertionError:pass
+        else:raise AssertionError('invalid dispatch accepted')
+    for request in [{'ref':'other','inputs':{}},{'ref':'main','inputs':{},'extra':False},{'ref':'main','inputs':[]}]:
+        try:dispatch(text,request)
+        except AssertionError:pass
+        else:raise AssertionError('invalid request shape accepted')
+    print(f'PASS actual dispatch schema/defaults, four finite subject/phase branches, PR refusal and {len(bad)+9} causal caller/request refusals')
+
+if __name__=='__main__':
+    controls(PATH.read_text())
