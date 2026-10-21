@@ -70,6 +70,7 @@ def validate(text):
     assert re.search(r'^permissions:\n  contents: read\n  actions: read\n',text,re.M)
     assert not re.search(r'(contents|actions|packages|id-token): write|secrets:|secrets\.|environment:|continue-on-error|concurrency:',text)
     assert set(jobs(text))=={'static','qualify','qualify-font-disposal'}
+    assert re.findall(r'^      - run: (.+)$',jobs(text)['static'],re.M)==['python3 scripts/verify-templates-external-reference-workflow.py'], 'production static entrypoint must validate actual context'
     for handoff in ['QUALIFICATION_EVENT: ${{ github.event_name }}','QUALIFICATION_INPUT_SOURCE: ${{ inputs.rendering-input-source }}','QUALIFICATION_PREFLIGHT_JSON: ${{ toJSON(inputs.preflight-only) }}']:
         assert handoff in jobs(text)['static'], 'actual dispatch context handoff required'
     schema(text)
@@ -89,6 +90,7 @@ def validate(text):
 def controls(text):
     validate(text)
     bad=[text.replace('contents: read','contents: write'),text+'\nsecrets: inherit\n',text.replace('default: true','default: false'),text.replace('default: candidate','default: font-disposal'),text.replace('      templates-source: '+FONT_DISPOSAL,'      templates-source: '+HISTORICAL),text.replace('@'+FONT_DISPOSAL,'@main'),text.replace('rendering-input-source: font-disposal','rendering-input-source: candidate'),text.replace("inputs.rendering-input-source != 'font-disposal'","inputs.rendering-input-source == 'font-disposal'"),text.replace("inputs.rendering-input-source == 'font-disposal'","inputs.rendering-input-source != 'font-disposal'"),text.replace("github.event_name == 'pull_request' || inputs.preflight-only",'inputs.preflight-only'),text.replace('    needs: static\n',''),text.replace(FONT_DISPOSAL,'0'*40),text.replace('        type: boolean','        type: string'),text.replace('        default: true','        default: true\n        required: true'),text+'\n  extra_job:\n    runs-on: ubuntu-latest\n    steps: []\n']
+    bad.append(text.replace('      - run: python3 scripts/verify-templates-external-reference-workflow.py\n','      - run: python3 scripts/verify-templates-external-reference-workflow.py --self-test\n'))
     # Preserve the original historical-wrapper mutants as well as new subject routing.
     bad.extend([
         text.replace('      rendering-input-source: candidate\n',''),
