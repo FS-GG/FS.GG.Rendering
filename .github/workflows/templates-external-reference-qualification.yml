@@ -7,6 +7,13 @@ on:
       - 'scripts/verify-templates-external-reference-workflow.py'
   workflow_dispatch:
     inputs:
+      rendering-input-source:
+        description: Historical0.32.2 candidate or exact retained font-disposal0.32.3 receiver
+        type: choice
+        options:
+          - candidate
+          - font-disposal
+        default: candidate
       preflight-only:
         description: Verify original archive transport only; false runs full three-family qualification
         type: boolean
@@ -27,7 +34,12 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - run: python3 scripts/verify-templates-external-reference-workflow.py
+        env:
+          QUALIFICATION_EVENT: ${{ github.event_name }}
+          QUALIFICATION_INPUT_SOURCE: ${{ inputs.rendering-input-source }}
+          QUALIFICATION_PREFLIGHT_JSON: ${{ toJSON(inputs.preflight-only) }}
   qualify:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.rendering-input-source != 'font-disposal' }}
     needs: static
     name: Original producer archive preflight or explicit full reference gate
     uses: FS-GG/FS.GG.Templates/.github/workflows/fable-external-reference-source.yml@6a5dd5305ac6fe26f9f9726c72b1a7e553b0021b
@@ -35,3 +47,14 @@ jobs:
       templates-source: 6a5dd5305ac6fe26f9f9726c72b1a7e553b0021b
       rendering-input-source: candidate
       preflight-only: ${{ github.event_name == 'pull_request' || inputs.preflight-only }}
+  # Original4ec producer/run39509314882-a1/artifact12305198394; no repack.
+  # This selects receiver/Studio-font/Orca qualification, not publication or whole4709 acceptance.
+  qualify-font-disposal:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.rendering-input-source == 'font-disposal' }}
+    needs: static
+    name: Exact retained0.32.3 receiver, Studio-font and Orca qualification
+    uses: FS-GG/FS.GG.Templates/.github/workflows/fable-external-reference-source.yml@357b445a87d803d6d591962b663c091ec35e230d
+    with:
+      templates-source: 357b445a87d803d6d591962b663c091ec35e230d
+      rendering-input-source: font-disposal
+      preflight-only: ${{ inputs.preflight-only }}
