@@ -53,8 +53,8 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.rendering-input-source == 'font-disposal' }}
     needs: static
     name: Exact retained0.32.3 receiver, Studio-font and Orca qualification
-    uses: FS-GG/FS.GG.Templates/.github/workflows/fable-external-reference-source.yml@357b445a87d803d6d591962b663c091ec35e230d
+    uses: FS-GG/FS.GG.Templates/.github/workflows/fable-external-reference-source.yml@752a2ac1fa996c3235ac0330ffbcefb6b8301cb4
     with:
-      templates-source: 357b445a87d803d6d591962b663c091ec35e230d
+      templates-source: 752a2ac1fa996c3235ac0330ffbcefb6b8301cb4
       rendering-input-source: font-disposal
       preflight-only: ${{ inputs.preflight-only }}
