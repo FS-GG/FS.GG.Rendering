@@ -791,7 +791,7 @@ class FontDisposalSourceTests(unittest.TestCase):
         plan = json.loads((ROOT/self.PLAN).read_text())
         self.assertIs(plan['publicationReady'], False)
         self.assertNotIn('producerSha', plan); self.assertNotIn('qualification', plan)
-        self.assertFalse(json.loads((ROOT/'eng/release/font-disposal-0.32.3-attempt.json').read_text())['attemptReady'])
+        self.assertTrue(json.loads((ROOT/'eng/release/font-disposal-0.32.3-attempt.json').read_text())['attemptReady'])
         old = json.loads((ROOT/'eng/release/external-authority-recovery-0.32.2.json').read_text())
         self.assertEqual(old['packages'], plan['packages'])
 
@@ -855,22 +855,22 @@ class DisabledFontAttemptTests(unittest.TestCase):
                     g.validate_font_disposal_attempt(ROOT,g.FONT_DISPOSAL['producerSha'],False)
         self.assertEqual(19,len(b['sourcePackQualification']['archives']))
         self.assertEqual('10.0.13',b['toolchain']['runtimeVersion'])
-        self.assertFalse(b['attemptReady']);self.assertEqual({'status':'pending','receiver':None,'assistiveTechnology':None,'rootReadbackSha256':None},b['qualification'])
+        self.assertTrue(b['attemptReady']);self.assertEqual(g.FONT_DISPOSAL_QUALIFICATION,b['qualification'])
         with patch.object(g,'source_bytes',return_value=plan_bytes):
-            with self.assertRaisesRegex(SystemExit,'attempt pending'):
-                g.validate_font_disposal_attempt(ROOT,g.FONT_DISPOSAL['producerSha'])
-        for key,value in [('producerSha',g.SUCCESSOR['producerSha']),('producerArtifact',g.SUCCESSOR['producerArtifact']),('outerSha256','a'*64),('attemptReady',True),('toolchain',{**b['toolchain'],'runtimeVersion':'10.0.12'})]:
+            self.assertEqual(b,g.validate_font_disposal_attempt(ROOT,g.FONT_DISPOSAL['producerSha']))
+        for key,value in [('producerSha',g.SUCCESSOR['producerSha']),('producerArtifact',g.SUCCESSOR['producerArtifact']),('outerSha256','a'*64),('attemptReady',False),('toolchain',{**b['toolchain'],'runtimeVersion':'10.0.12'})]:
             with self.subTest(key=key),tempfile.TemporaryDirectory() as d:
                 root=Path(d);f=root/g.FONT_DISPOSAL_ATTEMPT;f.parent.mkdir(parents=True);bad=copy.deepcopy(b);bad[key]=value;f.write_text(json.dumps(bad))
                 with self.assertRaises(SystemExit):g.validate_font_disposal_attempt(root,g.FONT_DISPOSAL['producerSha'],False)
 
-    def test_preflight_only_and_pending_refuses_before_any_acquisition_port(self):
+    def test_qualified_route_and_mixed_preflight_refuses_before_acquisition(self):
         g=self.g
-        for extra,ok in [(['--attempt-preflight'],True),([],False),(['--acquire-bound-artifacts'],False),(['--record-event'],False),(['--attempt-preflight','--acquire-bound-artifacts'],False)]:
-            with self.subTest(extra=extra),patch.object(sys,'argv',['guard','--font-disposal-attempt','--repo-root',str(ROOT),*extra]),patch.object(g,'executor_identity',return_value={}),patch.object(g,'source_bytes',return_value=(ROOT/g.FONT_DISPOSAL['planPath']).read_bytes()),patch.object(g,'validate',return_value={}),patch.object(g.subprocess,'run',side_effect=AssertionError('no acquisition/tool port')):
+        for extra,ok in [(['--attempt-preflight'],True),([],True),(['--acquire-bound-artifacts'],True),(['--attempt-preflight','--acquire-bound-artifacts'],False)]:
+            with self.subTest(extra=extra),patch.object(sys,'argv',['guard','--font-disposal-attempt','--repo-root',str(ROOT),*extra]),patch.object(g,'executor_identity',return_value={}),patch.object(g,'source_bytes',return_value=(ROOT/g.FONT_DISPOSAL['planPath']).read_bytes()),patch.object(g,'validate',return_value={}),patch.object(g,'acquire_font_disposal') as acquire:
                 if ok:self.assertEqual(0,g.font_disposal_main())
                 else:
                     with self.assertRaises(SystemExit):g.font_disposal_main()
+                self.assertEqual(ok and '--acquire-bound-artifacts' in extra,acquire.called)
 
     def test_actual_workflow_shell_selects_preflight_and_refuses_mixed_attempts_before_port(self):
         import textwrap
@@ -912,7 +912,7 @@ class SourceSdkInstallationRootTests(unittest.TestCase):
         import textwrap
         block = self.block(name)
         step = re.search(r'^      - name: '+self.STEP+r'\n(.*?)(?=^      - |\Z)', block, re.M|re.S).group(1)
-        self.assertIn('        if: inputs.source-only\n', step)
+        self.assertIn('        if: inputs.source-only' + (' || inputs.font-disposal-attempt' if name in ('package-tests','template-product-tests') else '') + '\n', step)
         self.assertIn('        shell: bash\n', step)
         return textwrap.dedent(step.split('        run: |\n', 1)[1])
 
@@ -1168,6 +1168,183 @@ def native_boundary(scope_only=False, current_attempt=False):
             results.append({'case':name,'actualExit':child.returncode,'stage':stage,'receiptCreated':False})
     print('SVG_EXECUTOR_BOUNDARY '+json.dumps({'cases':results,'passed':len(results),'actualCredentials':False,
           'networkSelected':False,'positiveJoinReached':'credential','scopeOnly':scope_only,'currentAttempt':current_attempt,'elapsedSeconds':time.monotonic()-start},sort_keys=True))
+
+
+class QualifiedFontProofTests(unittest.TestCase):
+    def setUp(self):
+        spec=importlib.util.spec_from_file_location('qualified_font_guard',ROOT/'scripts/release-source-guard.py')
+        self.g=importlib.util.module_from_spec(spec);spec.loader.exec_module(self.g)
+
+    def browser(self):
+        g=self.g
+        report={'stats':{'expected':15,'unexpected':0,'skipped':0,'flaky':0},'suites':[]}
+        for file,ancestry,title in g.FONT_DISPOSAL_CASES:
+            parent=report
+            for item in ancestry:
+                child=next((s for s in parent.setdefault('suites',[]) if s['title']==item),None)
+                if child is None:
+                    child={'title':item,'file':file,'suites':[],'specs':[]};parent['suites'].append(child)
+                parent=child
+            parent.setdefault('specs',[]).append({'title':title,'tests':[{'status':'expected','results':[{'status':'passed','retry':0}]}]})
+        return report
+
+    def test_exact_nested_and_direct_font_cases_and_causal_refusals(self):
+        g=self.g;report=self.browser();g.validate_font_browser(report)
+        def specs(s):
+            result=list(s.get('specs',[]))
+            for child in s.get('suites',[]):result+=specs(child)
+            return result
+        mutations=[lambda q:q['stats'].update(expected=8),
+                   lambda q:specs(q)[0]['tests'][0]['results'].append({'status':'passed','retry':1}),
+                   lambda q:specs(q)[0]['tests'][0]['results'][0].update(status='skipped'),
+                   lambda q:specs(q)[0].update(title='unrelated test'),
+                   lambda q:q['suites'][0]['suites'][0].update(title='wrong describe ancestry'),
+                   lambda q:q['suites'][0]['suites'][0].update(file='wrong.spec.ts'),
+                   lambda q:specs(q)[-1].update(title=specs(q)[-2]['title'])]
+        for index,mutate in enumerate(mutations):
+            bad=copy.deepcopy(report);mutate(bad)
+            with self.subTest(index=index),self.assertRaises(SystemExit):g.validate_font_browser(bad)
+
+    def fixture(self,root):
+        g=self.g;b=json.loads((ROOT/g.FONT_DISPOSAL_ATTEMPT).read_bytes());q=b['qualification'];members={}
+        caller={'repository':'FS-GG/FS.GG.Rendering','revision':q['callerSha'],'run':str(q['run']),'attempt':'1'}
+        producer={'revision':b['producerSha'],'run':str(b['producerRun']),'attempt':'1','artifact':str(b['producerArtifact']),'archiveSha256':b['outerSha256'],'custodySha256':b['custodySha256'],'version':b['version'],'plan':b['planPath'],'rawPlanSha256':b['planSha256']}
+        selected=['FS.GG.UI.Scene.0.32.3.nupkg','FS.GG.UI.KeyboardInput.0.32.3.nupkg','FS.GG.UI.Scene.SvgBrowser.0.32.3.nupkg']
+        for name in selected:(root/name).write_bytes(name.encode())
+        prod={'revision':b['producerSha'],'custodyManifestSha256':b['custodySha256'],'archives':[{'name':name,'sha256':hashlib.sha256((root/name).read_bytes()).hexdigest()} for name in selected]}
+        result={'disposition':'passed','templates':{'revision':q['templatesSha']},'producer':prod,'browserFamilies':['chromium','firefox','webkit'],'passedPerFamily':15,'studioFontCases':g.FONT_DISPOSAL_FONT_CASES,'skipped':0,'qualificationMode':'font-disposal','renderingInputSource':'candidate','templatesInputSource':'source-built-candidate','actualScreenReader':'not-observed','publication':False,'installedAcceptance':False,'renderingPublicInputsQualified':False,'nativePreflight':{'requestedPhase':'full','caller':caller,'producer':producer},'browserReportSha256':{}}
+        def store(name,data):
+            raw=json.dumps(data,sort_keys=True).encode() if not isinstance(data,bytes) else data
+            members[name]=raw;return hashlib.sha256(raw).hexdigest()
+        for family in result['browserFamilies']:result['browserReportSha256'][family]=store(family+'-browser.json',self.browser())
+        store('provider-composition.log',b'PASS assertion\n'*186)
+        q['sourceQualificationSha256']=store('orca/source-qualification.json',{'actualScreenReader':'not-observed','producer':prod,'templates':result['templates']})
+        cleanup={'disposition':'observed-empty','unknown':[],'remaining':[]}
+        process={'exit':0,'firstCause':None,'cleanup':cleanup,'firstGuardCensus':None,'firstRssBudgetCensus':None,'knownStarts':{str(i):i for i in range(57)},'reportingErrors':[]}
+        bound={'exit':0,'firstCause':None,'runtimeExit':0,'cleanup':cleanup}
+        companion={'exit':0,'firstCause':None,'originalBirthAbsent':True,'reaped':True}
+        store('orca/process-result.json',process);store('orca/bind-result.json',bound);store('orca/browser-companion-stop-result.json',companion)
+        store('orca/orca-debug.log',b'SPEECH OUTPUT qualified!\n'*4)
+        # Synthetic placeholders are inert byte fixtures, not claims of actual host evidence.
+        for i in range(22):store('orca/fixture-'+str(i),b'inert')
+        evidence={name[5:]:hashlib.sha256(raw).hexdigest() for name,raw in members.items() if name.startswith('orca/')}
+        self.assertEqual(27,len(evidence))
+        observation={'result':'passed','templates':result['templates'],'caller':caller,'producer':producer,'sourceQualificationSha256':q['sourceQualificationSha256'],'keyboard':'xdotool-X11','speechBoundary':'Orca SPEECH OUTPUT','physicalAudioHardware':'not-observed','cleanup':cleanup,'actions':[{'name':name,'key':'Return','atspiFocused':True,'directReferenceControl':True,'eventSequence':i} for i,name in enumerate(g.FONT_DISPOSAL_ACTIONS)],'evidenceSha256':evidence,'observations':{phase:{'speechStart':i*24,'speechEnd':(i+1)*24} for i,phase in enumerate(['unknown','reconciled','rearmed','disposed'])}}
+        q['observationSha256']=store('orca/observation.json',observation)
+        q['qualificationSha256']=store('qualification.json',result)
+        return b,members,result,observation
+
+    def test_full_proof_first_attempt_source_at_and_custody_joins(self):
+        g=self.g
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d);b,members,result,observation=self.fixture(root)
+            caller=(ROOT/'.github/workflows/templates-external-reference-qualification.yml').read_text()
+            with patch.object(g.preflight,'source_text',return_value=caller):
+                facts=g.validate_font_disposal_qualification(ROOT,b,members.__getitem__,root)
+                self.assertEqual([15,15,15],facts['browserPassed']);self.assertEqual(15,facts['atPassed']);self.assertEqual(4,facts['atSpeechWindows'])
+                for name in ['qualification.json','chromium-browser.json','orca/source-qualification.json','orca/observation.json','orca/bind-result.json']:
+                    bad=dict(members);bad[name]+=b' '
+                    with self.subTest(name=name),self.assertRaises(SystemExit):g.validate_font_disposal_qualification(ROOT,b,bad.__getitem__,root)
+                mutations=[('result',lambda r,o:r.update(actualScreenReader='observed')),
+                           ('result',lambda r,o:r['nativePreflight'].update(requestedPhase='preflight-only')),
+                           ('result',lambda r,o:r['nativePreflight']['producer'].update(archiveSha256='a'*64)),
+                           ('observation',lambda r,o:o['actions'].pop()),
+                           ('observation',lambda r,o:o['actions'][0].update(key='Space')),
+                           ('observation',lambda r,o:o['cleanup'].update(unknown=[1])),
+                           ('observation',lambda r,o:o['observations']['disposed'].update(speechEnd=999999)),
+                           ('observation',lambda r,o:o['evidenceSha256'].pop('fixture-0'))]
+                for index,(kind,mutate) in enumerate(mutations):
+                    bb=copy.deepcopy(b);rr=copy.deepcopy(result);oo=copy.deepcopy(observation);mm=dict(members);mutate(rr,oo)
+                    key='qualification.json' if kind=='result' else 'orca/observation.json';value=rr if kind=='result' else oo
+                    mm[key]=json.dumps(value,sort_keys=True).encode();bb['qualification']['qualificationSha256' if kind=='result' else 'observationSha256']=hashlib.sha256(mm[key]).hexdigest()
+                    with self.subTest(index=index),self.assertRaises(SystemExit):g.validate_font_disposal_qualification(ROOT,bb,mm.__getitem__,root)
+                with patch.object(g.preflight,'source_text',return_value=caller.replace(b['qualification']['templatesSha'],'a'*40)):
+                    with self.assertRaises(SystemExit):g.validate_font_disposal_qualification(ROOT,b,members.__getitem__,root)
+
+    def test_zip_closed_paths_collisions_types_and_bounds(self):
+        import io
+        g=self.g
+        for name in ['../escape','/absolute','a\\b','a//b','a/./b','C:drive']:
+            with self.subTest(name=name):
+                stream=io.BytesIO()
+                with zipfile.ZipFile(stream,'w') as z:z.writestr(name,b'inert')
+                with zipfile.ZipFile(stream) as z,self.assertRaises(SystemExit):g.validate_font_zip(z)
+        stream=io.BytesIO()
+        with zipfile.ZipFile(stream,'w') as z:
+            info=zipfile.ZipInfo('link');info.external_attr=0o120777<<16;z.writestr(info,b'target')
+        with zipfile.ZipFile(stream) as z,self.assertRaises(SystemExit):g.validate_font_zip(z)
+        stream=io.BytesIO()
+        with zipfile.ZipFile(stream,'w') as z:z.writestr('safe/member',b'inert')
+        with zipfile.ZipFile(stream) as z:g.validate_font_zip(z)
+
+    def test_event_entry_selection_and_closed_observation_fields(self):
+        g=self.g
+        # Execute the actual module dispatch tail with inert handlers: callbacks inherit
+        # 0323 from workflow env, while executor-only and historical0322 stay distinct.
+        tail=(ROOT/'scripts/release-source-guard.py').read_text().split("if __name__ == '__main__':",1)[1]
+        import textwrap
+        for selected,argv,expected in [('0323',['guard','--record-event'],'font'),('0322',['guard','--record-event'],'successor'),('0323',['guard','--executor-only'],'legacy')]:
+            seen=[]
+            ports={'os':os,'sys':sys,'font_disposal_main':lambda:seen.append('font'),'successor_main':lambda:seen.append('successor'),'main':lambda:seen.append('legacy')}
+            with patch.dict(os.environ,{'FSGG_RELEASE_ATTEMPT':selected}),patch.object(sys,'argv',list(argv)),self.assertRaises(SystemExit):exec(textwrap.dedent(tail),ports)
+            self.assertEqual([expected],seen)
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d);path=root/g.FONT_DISPOSAL_ATTEMPT;path.parent.mkdir(parents=True);path.write_bytes((ROOT/g.FONT_DISPOSAL_ATTEMPT).read_bytes())
+            plan=(ROOT/g.FONT_DISPOSAL['planPath']).read_bytes()
+            args=['guard','--font-disposal-attempt','--repo-root',str(root),'--record-event','--event-feed','github','--event-package','all19','--event-stage','push','--event-result','requested']
+            with patch.object(g,'executor_identity',return_value={'executorSha':'a'*40}),patch.object(g,'source_bytes',return_value=plan),patch.object(g,'validate',return_value={}),patch.object(sys,'argv',args):
+                self.assertEqual(0,g.font_disposal_main())
+            event=json.loads((root/'artifacts/attempt/publisher-events.jsonl').read_text())
+            self.assertEqual(g.FONT_DISPOSAL['producerSha'],event['producerSha']);self.assertEqual(g.FONT_DISPOSAL['planSha256'],event['planSha256']);self.assertEqual('a'*40,event['executorSha'])
+            for field,value in [('feed','other'),('package','other'),('stage','other'),('result','other')]:
+                bad=list(args);bad[bad.index('--event-'+field)+1]=value
+                before=(root/'artifacts/attempt/publisher-events.jsonl').read_bytes()
+                with patch.object(g,'executor_identity',return_value={}),patch.object(g,'source_bytes',return_value=plan),patch.object(g,'validate',return_value={}),patch.object(sys,'argv',bad),self.assertRaises(SystemExit):g.font_disposal_main()
+                self.assertEqual(before,(root/'artifacts/attempt/publisher-events.jsonl').read_bytes())
+
+    def test_acquisition_joins_native_originals_before_proof_and_never_repacks(self):
+        import io
+        g=self.g;b=json.loads((ROOT/g.FONT_DISPOSAL_ATTEMPT).read_bytes())
+        def archive(rows):
+            stream=io.BytesIO()
+            with zipfile.ZipFile(stream,'w') as z:
+                for name,raw in rows.items():z.writestr(name,raw)
+            return stream.getvalue()
+        custody=json.dumps({'archives':[{'file':'package-'+str(i)+'.nupkg'} for i in range(19)]}).encode()
+        candidate=archive({**{'package-'+str(i)+'.nupkg':b'inert package' for i in range(19)},'release-custody.json':custody})
+        proof=archive({'external-reference/qualification.json':b'{}'})
+        b['outerSha256']=hashlib.sha256(candidate).hexdigest();b['outerSizeBytes']=len(candidate);b['custodySha256']=hashlib.sha256(custody).hexdigest()
+        q=b['qualification'];q['outerSha256']=hashlib.sha256(proof).hexdigest();q['outerSizeBytes']=len(proof)
+        for wrong in [False,True]:
+            with self.subTest(wrong_native_source=wrong),tempfile.TemporaryDirectory() as d:
+                root=Path(d);calls=[]
+                def api(argv,**kwargs):
+                    self.assertEqual(60,kwargs['timeout']);self.assertEqual(['gh','api'],argv[:2]);calls.append(argv[-1]);path=argv[-1]
+                    subject=(q if str(q['run']) in path or str(q['artifact']) in path else {'run':b['producerRun'],'attempt':b['producerAttempt'],'artifact':b['producerArtifact'],'callerSha':b['producerSha'],'outerSha256':b['outerSha256'],'outerSizeBytes':b['outerSizeBytes']})
+                    if path.endswith('/zip'):return proof if subject is q else candidate
+                    workflow='.github/workflows/templates-external-reference-qualification.yml' if subject is q else '.github/workflows/release.yml'
+                    if '/runs/' in path:return json.dumps({'id':subject['run'],'run_attempt':1,'head_sha':'b'*40 if wrong else subject['callerSha'],'conclusion':'success','path':workflow}).encode()
+                    return json.dumps({'id':subject['artifact'],'expired':False,'workflow_run':{'id':subject['run'],'head_sha':subject['callerSha']},'digest':'sha256:'+subject['outerSha256'],'size_in_bytes':subject['outerSizeBytes']}).encode()
+                with patch.object(g,'executor_identity',return_value={}),patch.object(g.subprocess,'check_output',side_effect=api),patch.object(g.subprocess,'run') as verify,patch.object(g,'source_bytes',return_value=b'original raw plan'),patch.object(g,'validate_font_disposal_qualification',return_value={'atPassed':15}) as validate:
+                    if wrong:
+                        with self.assertRaises(SystemExit):g.acquire_font_disposal(root,b)
+                        verify.assert_not_called();validate.assert_not_called();self.assertFalse(any(p.endswith('/zip') for p in calls))
+                    else:
+                        g.acquire_font_disposal(root,b)
+                        self.assertEqual(6,len(calls));verify.assert_called_once();self.assertIn('verify',verify.call_args.args[0]);validate.assert_called_once()
+                        self.assertEqual(candidate,(root/'artifacts/attempt/original.zip').read_bytes())
+                        facts=json.loads((root/'artifacts/attempt/input-binding.json').read_text());self.assertEqual(b['producerSha'],facts['producerSha']);self.assertEqual('not-yet-observed',facts['publication'])
+
+    def test_publisher_reuses_same_supported_fresh_sdk_root_guard(self):
+        text=(ROOT/'.github/workflows/release.yml').read_text()
+        pre=text.split('  publication-preflight:',1)[1].split('  publish-packages:',1)[0]
+        pub=text.split('  publish-packages:',1)[1]
+        def step(block,name):return block.split('      - name: Require a fresh private SDK root for font-disposal '+name,1)[1].split('      - uses: actions/setup-dotnet@v6',1)[0]
+        self.assertEqual(step(pre,'preflight'),step(pub,'publisher'))
+        self.assertIn('if: inputs.font-disposal-attempt',step(pub,'publisher'))
+        self.assertIn('release-toolchain-identity.py --expected-sdk 10.0.401',pub)
+        self.assertIn('accepted source39509314882/a1:17 comparisons vs0.32.1',pub)
+
 
 if __name__ == '__main__':
     if sys.argv[1:]==['--native-boundary']: native_boundary()

@@ -13,12 +13,20 @@
   "baselineVersion": "0.32.1",
   "githubEffectiveWrite": "unknown-before-attempt",
   "effectId": "rendering-0323-original39509314882-a1",
-  "attemptReady": false,
+  "attemptReady": true,
   "qualification": {
-    "status": "pending",
-    "receiver": null,
-    "assistiveTechnology": null,
-    "rootReadbackSha256": null
+    "status": "qualified",
+    "templatesSha": "752a2ac1fa996c3235ac0330ffbcefb6b8301cb4",
+    "callerSha": "4e48c97533554ccece8db3db828c4cc327464050",
+    "run": 39531420324,
+    "attempt": 1,
+    "artifact": 12315224479,
+    "outerSha256": "d6df73c1baf26d7a75a7db7e13e0c0c55429a69e150ea4581f8afcbabb9aa2c5",
+    "outerSizeBytes": 728382,
+    "qualificationSha256": "d730c961b79bd8b5185ceb81d970dfdd4649c083ad669dcc52693311b5975dd1",
+    "observationSha256": "6a555861231b4c3e881298513aa71a320692589cb6cada85c682a1e442813ad1",
+    "sourceQualificationSha256": "b79e2a2939f4603fa914bbdf1e5a832390dd05448e6b30da1b6e2a0bad3f056a",
+    "rootReadbackSha256": "7dab9d3473110961508570af4ad7e95cbc05918dde4b23f2a61a64c8f6d02c4f"
   },
   "sourcePackQualification": {
     "run": 39509314882,

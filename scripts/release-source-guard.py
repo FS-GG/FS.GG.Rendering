@@ -416,10 +416,22 @@ def acquire_successor(root: Path, binding: dict) -> None:
     (out / 'input-binding.json').write_text(json.dumps({**identity, 'producerSha': binding['producerSha'], 'originalPlanSha256': binding['planSha256'], 'outerSha256': binding['outerSha256'], 'custodySha256': binding['custodySha256'], 'effectId': binding['effectId'], 'qualification': q, 'publication': 'not-yet-observed'}, sort_keys=True) + '\n')
 
 
-# Separate disabled subject: source qualification is genuine; receiver/AT authority is not.
+# Separate qualified subject; original source-pack and native AT observations remain distinct.
 FONT_DISPOSAL_ATTEMPT = 'eng/release/font-disposal-0.32.3-attempt.json'
 FONT_DISPOSAL = {'schema': 'fsgg.rendering.publication-attempt/v1', 'producerSha': '4ec6eafbbbf02264db9b0db4780c590abe0bf9cd', 'planPath': 'eng/release/font-disposal-0.32.3.json', 'planSha256': '89369de0c0944c66a52c6ed914cef78d6bb7670866baedf85cd8a198c5c46239', 'producerRun': 39509314882, 'producerAttempt': 1, 'producerArtifact': 12305198394, 'outerSha256': '84647332c124e511545787c8c3f8634d4f5177068521acfc86c93430ac73ef63', 'outerSizeBytes': 15073469, 'custodySha256': '7dbd4329546932c4c1d12767550b7b78aae85e32c81b354935b2c615b3e298c9', 'version': '0.32.3', 'baselineVersion': '0.32.1', 'githubEffectiveWrite': 'unknown-before-attempt', 'effectId': 'rendering-0323-original39509314882-a1'}
-FONT_DISPOSAL_BINDING_SHA256 = '0ed34d9d715f62cfcb3b1c26adedf169b2669aa70775e1efd788cddc32412050'
+FONT_DISPOSAL_BINDING_SHA256 = '4d665ab254ef012ea354106262ad6874b818ec68da9d46dad6fcdb08471e9701'
+FONT_DISPOSAL_QUALIFICATION = {'status': 'qualified',
+ 'templatesSha': '752a2ac1fa996c3235ac0330ffbcefb6b8301cb4',
+ 'callerSha': '4e48c97533554ccece8db3db828c4cc327464050',
+ 'run': 39531420324,
+ 'attempt': 1,
+ 'artifact': 12315224479,
+ 'outerSha256': 'd6df73c1baf26d7a75a7db7e13e0c0c55429a69e150ea4581f8afcbabb9aa2c5',
+ 'outerSizeBytes': 728382,
+ 'qualificationSha256': 'd730c961b79bd8b5185ceb81d970dfdd4649c083ad669dcc52693311b5975dd1',
+ 'observationSha256': '6a555861231b4c3e881298513aa71a320692589cb6cada85c682a1e442813ad1',
+ 'sourceQualificationSha256': 'b79e2a2939f4603fa914bbdf1e5a832390dd05448e6b30da1b6e2a0bad3f056a',
+ 'rootReadbackSha256': '7dab9d3473110961508570af4ad7e95cbc05918dde4b23f2a61a64c8f6d02c4f'}
 
 def validate_font_disposal_attempt(root: Path, source_sha: str, require_ready: bool = True) -> dict:
     raw = (root / FONT_DISPOSAL_ATTEMPT).read_bytes()
@@ -430,12 +442,238 @@ def validate_font_disposal_attempt(root: Path, source_sha: str, require_ready: b
         preflight.fail('font-disposal selected producer/artifact identity differs')
     if hashlib.sha256(source_bytes(root, source_sha, binding['planPath'])).hexdigest() != binding['planSha256']:
         preflight.fail('font-disposal original raw plan differs')
-    if require_ready:
-        preflight.fail('font-disposal attempt pending: genuine receiver, AT and root readback unjoined')
+    if binding.get('qualification') != FONT_DISPOSAL_QUALIFICATION or binding.get('attemptReady') is not True:
+        preflight.fail('font-disposal accepted native qualification/readiness differs')
     return binding
 
+FONT_DISPOSAL_FONT_CASES = ['Studio awaits genuine Noto readiness and retains the mounted font through replacement and redo',
+ 'Studio does not announce or mount Noto before native readiness is delivered',
+ 'Studio reports a font diagnostic without committing text and disposes the failed activation',
+ 'Studio timeout prevents a late genuine font load from mounting or leaking',
+ 'Studio replacement prevents a late genuine font load from mounting or leaking',
+ 'Studio stale font completion cannot replace or cancel a newer activation',
+ 'Studio unload releases its mounted native font and Blob']
+FONT_DISPOSAL_CASES = [('external-command-outcomes.spec.ts',
+  ('external-command-outcomes.spec.ts', 'external authority reference command outcomes'),
+  'unknown receipt survives projection and reconnect without replay'),
+ ('external-command-outcomes.spec.ts',
+  ('external-command-outcomes.spec.ts', 'external authority reference command outcomes'),
+  'explicit reconciliation and rearm retain the original and use a fresh correlation'),
+ ('external-command-outcomes.spec.ts',
+  ('external-command-outcomes.spec.ts', 'external authority reference command outcomes'),
+  'old generation completion is inert and abandonment requires explicit rearm'),
+ ('external-command-outcomes.spec.ts',
+  ('external-command-outcomes.spec.ts', 'external authority reference command outcomes'),
+  'delayed completion settles once and disposal makes retained controls inert'),
+ ('two-client.spec.ts',
+  ('two-client.spec.ts',),
+  'FourD reference composes local session, normalized input, transformed hit testing and settled '
+  'disposal'),
+ ('two-client.spec.ts',
+  ('two-client.spec.ts',),
+  'external authority reference fences captured snapshots and settles commands independently'),
+ ('two-client.spec.ts',
+  ('two-client.spec.ts',),
+  'external authority reference recovers failures and disposes owned resources terminally'),
+ ('two-client.spec.ts',
+  ('two-client.spec.ts',),
+  'external authority reference uses production keyboard pointer editing and IME input'),
+ ('two-client.spec.ts',
+  ('two-client.spec.ts',),
+  'Studio awaits genuine Noto readiness and retains the mounted font through replacement and redo'),
+ ('two-client.spec.ts',
+  ('two-client.spec.ts',),
+  'Studio does not announce or mount Noto before native readiness is delivered'),
+ ('two-client.spec.ts',
+  ('two-client.spec.ts',),
+  'Studio reports a font diagnostic without committing text and disposes the failed activation'),
+ ('two-client.spec.ts',
+  ('two-client.spec.ts',),
+  'Studio timeout prevents a late genuine font load from mounting or leaking'),
+ ('two-client.spec.ts',
+  ('two-client.spec.ts',),
+  'Studio replacement prevents a late genuine font load from mounting or leaking'),
+ ('two-client.spec.ts',
+  ('two-client.spec.ts',),
+  'Studio stale font completion cannot replace or cancel a newer activation'),
+ ('two-client.spec.ts',
+  ('two-client.spec.ts',),
+  'Studio unload releases its mounted native font and Blob')]
+FONT_DISPOSAL_ACTIONS = ['Mount external authority reference',
+ 'Connect sample authority',
+ 'Complete current external snapshot',
+ 'Lose next command receipt',
+ 'Increment external value',
+ 'Rearm sample commands',
+ 'Increment external value',
+ 'Reconcile unknown command',
+ 'Disconnect sample authority',
+ 'Connect sample authority',
+ 'Complete current external snapshot',
+ 'Rearm sample commands',
+ 'Increment external value',
+ 'Dispose external reference',
+ 'Increment external value']
+
+def validate_font_zip(archive) -> None:
+    """Bound original ZIP inventory before reading any payload; never extract paths."""
+    infos = archive.infolist()
+    names = [entry.filename for entry in infos]
+    if (not 1 <= len(infos) <= 512 or len(set(names)) != len(names)
+        or sum(entry.file_size for entry in infos) > 134217728):
+        preflight.fail('font-disposal ZIP inventory exceeds closed bounds')
+    for entry in infos:
+        name = entry.filename
+        if (not name or name.startswith('/') or '\\' in name or '\x00' in name
+            or any(part in ('', '.', '..') for part in name.rstrip('/').split('/'))
+            or ':' in name or entry.file_size > 16777216 or entry.flag_bits & 1
+            or (entry.external_attr >> 16) & 0o170000 not in (0, 0o100000, 0o040000)):
+            preflight.fail('font-disposal ZIP member unsafe or oversized')
+
+
+def validate_font_browser(data: dict) -> None:
+    if any(data.get('stats', {}).get(k) != v for k, v in [('expected', 15), ('unexpected', 0), ('skipped', 0), ('flaky', 0)]):
+        preflight.fail('font-disposal browser exact15 single attempts required')
+    found = []
+    def walk(suite, ancestors=()):
+        title = suite.get('title', '')
+        ancestry = ancestors + ((title,) if title else ())
+        for spec in suite.get('specs', []):
+            identity = (suite.get('file'), ancestry, spec.get('title'))
+            tests = spec.get('tests', [])
+            if len(tests) != 1 or tests[0].get('status') != 'expected' or len(tests[0].get('results', [])) != 1:
+                preflight.fail('font-disposal browser duplicate/retried test refused')
+            result = tests[0]['results'][0]
+            if result.get('status') != 'passed' or result.get('retry') != 0:
+                preflight.fail('font-disposal browser test did not pass first attempt')
+            found.append(identity)
+        for child in suite.get('suites', []): walk(child, ancestry)
+    walk(data)
+    if len(found) != 15 or set(found) != set(FONT_DISPOSAL_CASES):
+        preflight.fail('font-disposal exact file/suite/leaf identities differ')
+
+
+def validate_font_disposal_qualification(root: Path, binding: dict, read, archives: Path) -> dict:
+    q = binding['qualification']
+    raw = read('qualification.json')
+    if hashlib.sha256(raw).hexdigest() != q['qualificationSha256']:
+        preflight.fail('font-disposal accepted qualification digest differs')
+    result = json.loads(raw, object_pairs_hook=preflight.unique_json_object)
+    native = result.get('nativePreflight', {})
+    context = {'repository': 'FS-GG/FS.GG.Rendering', 'revision': q['callerSha'], 'run': str(q['run']), 'attempt': str(q['attempt'])}
+    producer = {'revision': binding['producerSha'], 'run': str(binding['producerRun']), 'attempt': str(binding['producerAttempt']), 'artifact': str(binding['producerArtifact']), 'archiveSha256': binding['outerSha256'], 'custodySha256': binding['custodySha256'], 'version': binding['version'], 'plan': binding['planPath'], 'rawPlanSha256': binding['planSha256']}
+    if (result.get('disposition') != 'passed' or result.get('templates', {}).get('revision') != q['templatesSha']
+        or result.get('producer', {}).get('revision') != binding['producerSha']
+        or result['producer'].get('custodyManifestSha256') != binding['custodySha256']
+        or result.get('browserFamilies') != ['chromium', 'firefox', 'webkit'] or result.get('passedPerFamily') != 15
+        or result.get('studioFontCases') != FONT_DISPOSAL_FONT_CASES
+        or result.get('skipped') != 0 or result.get('qualificationMode') != 'font-disposal'
+        or result.get('renderingInputSource') != 'candidate' or result.get('templatesInputSource') != 'source-built-candidate'
+        or result.get('actualScreenReader') != 'not-observed' or result.get('publication') is not False
+        or result.get('installedAcceptance') is not False or result.get('renderingPublicInputsQualified') is not False
+        or native.get('requestedPhase') != 'full' or native.get('caller') != context or native.get('producer') != producer):
+        preflight.fail('font-disposal exact full-phase original candidate joins refused')
+    caller = preflight.source_text(root, q['callerSha'], '.github/workflows/templates-external-reference-qualification.yml')
+    job = caller.split('\n  qualify-font-disposal:', 1)
+    if len(job) != 2 or re.findall(r'(?m)^    uses: FS-GG/FS.GG.Templates/.github/workflows/fable-external-reference-source.yml@([0-9a-f]{40})$', job[1]) != [q['templatesSha']] or re.findall(r'(?m)^      templates-source: ([0-9a-f]{40})$', job[1]) != [q['templatesSha']] or '\n      rendering-input-source: font-disposal\n' not in job[1]:
+        preflight.fail('font-disposal actual caller job/callee source differs')
+    selected = ['FS.GG.UI.Scene.0.32.3.nupkg', 'FS.GG.UI.KeyboardInput.0.32.3.nupkg', 'FS.GG.UI.Scene.SvgBrowser.0.32.3.nupkg']
+    consumed = result['producer'].get('archives', [])
+    if len(consumed) != 3 or {row['name']: row['sha256'] for row in consumed} != {name: hashlib.sha256((archives / name).read_bytes()).hexdigest() for name in selected}:
+        preflight.fail('font-disposal consumed original archives differ')
+    for family in result['browserFamilies']:
+        data = read(family + '-browser.json')
+        if hashlib.sha256(data).hexdigest() != result['browserReportSha256'][family]:
+            preflight.fail('font-disposal browser report digest differs')
+        validate_font_browser(json.loads(data, object_pairs_hook=preflight.unique_json_object))
+    if sum(line.startswith('PASS ') for line in read('provider-composition.log').decode().splitlines()) != 186:
+        preflight.fail('font-disposal Provider requires exactly186 assertions')
+    source = read('orca/source-qualification.json')
+    if hashlib.sha256(source).hexdigest() != q['sourceQualificationSha256']:
+        preflight.fail('font-disposal separate source qualification differs')
+    sq = json.loads(source)
+    if sq.get('actualScreenReader') != 'not-observed' or sq.get('producer') != result['producer'] or sq.get('templates') != result['templates']:
+        preflight.fail('font-disposal source qualification cannot claim native AT')
+    raw = read('orca/observation.json')
+    if hashlib.sha256(raw).hexdigest() != q['observationSha256']:
+        preflight.fail('font-disposal accepted AT observation digest differs')
+    observation = json.loads(raw, object_pairs_hook=preflight.unique_json_object)
+    actions = observation.get('actions', [])
+    if (observation.get('result') != 'passed' or observation.get('templates') != result['templates']
+        or observation.get('caller') != context or observation.get('producer') != producer
+        or observation.get('sourceQualificationSha256') != q['sourceQualificationSha256']
+        or observation.get('keyboard') != 'xdotool-X11' or observation.get('speechBoundary') != 'Orca SPEECH OUTPUT'
+        or observation.get('physicalAudioHardware') != 'not-observed'
+        or observation.get('cleanup', {}).get('disposition') != 'observed-empty'
+        or observation['cleanup'].get('unknown') != [] or observation['cleanup'].get('remaining') != []
+        or [action.get('name') for action in actions] != FONT_DISPOSAL_ACTIONS
+        or any(action.get('key') != 'Return' or action.get('atspiFocused') is not True or action.get('directReferenceControl') is not True for action in actions)
+        or any(type(action.get('eventSequence')) is not int for action in actions)
+        or any(a['eventSequence'] >= b['eventSequence'] for a, b in zip(actions, actions[1:]))):
+        preflight.fail('font-disposal accepted15-key AT/custody join refused')
+    evidence = observation.get('evidenceSha256', {})
+    if len(evidence) != 27: preflight.fail('font-disposal exact27 AT evidence members required')
+    for name, sha in evidence.items():
+        if Path(name).name != name or not re.fullmatch('[0-9a-f]{64}', str(sha)) or hashlib.sha256(read('orca/' + name)).hexdigest() != sha:
+            preflight.fail('font-disposal AT evidence changed or unavailable')
+    process = json.loads(read('orca/process-result.json')); bound = json.loads(read('orca/bind-result.json'))
+    companion = json.loads(read('orca/browser-companion-stop-result.json'))
+    if (process.get('exit') != 0 or process.get('firstCause') is not None or process.get('cleanup') != observation['cleanup']
+        or not isinstance(process.get('knownStarts'), dict) or len(process['knownStarts']) != 57 or process.get('reportingErrors') != []
+        or process.get('firstGuardCensus') is not None or process.get('firstRssBudgetCensus') is not None
+        or bound.get('exit') != 0 or bound.get('firstCause') is not None or bound.get('runtimeExit') != 0 or bound.get('cleanup') != observation['cleanup']
+        or companion.get('exit') != 0 or companion.get('firstCause') is not None or companion.get('originalBirthAbsent') is not True or companion.get('reaped') is not True):
+        preflight.fail('font-disposal original AT/binder/companion retirement differs')
+    speech = read('orca/orca-debug.log')
+    for phase in ('unknown', 'reconciled', 'rearmed', 'disposed'):
+        window = observation.get('observations', {}).get(phase, {})
+        start, end = window.get('speechStart'), window.get('speechEnd')
+        if type(start) is not int or type(end) is not int or not 0 <= start < end <= len(speech) or b'SPEECH OUTPUT' not in speech[start:end]:
+            preflight.fail('font-disposal four genuine speech windows required')
+    return {'providerPassed': 186, 'browserPassed': [15, 15, 15], 'atPassed': 15, 'atSpeechWindows': 4, 'atEvidenceMembers': 27, 'atCustodyQualified': True, 'scope': 'sampled known-birth cleanup; no global containment or physical audio claim'}
+
+def acquire_font_disposal(root: Path, binding: dict) -> None:
+    identity = executor_identity(root)
+    out = root / 'artifacts/attempt'; out.mkdir(parents=True, exist_ok=True)
+    def api(path):
+        return subprocess.check_output(['gh', 'api', 'repos/FS-GG/FS.GG.Rendering/' + path], stderr=subprocess.DEVNULL, timeout=60)
+    def packet(run_id, attempt, artifact, source, sha, size, path):
+        run = json.loads(api(f'actions/runs/{run_id}')); meta = json.loads(api(f'actions/artifacts/{artifact}'))
+        if (run.get('id') != run_id or run.get('run_attempt') != attempt or run.get('head_sha') != source or run.get('conclusion') != 'success' or run.get('path') != path
+            or meta.get('id') != artifact or meta.get('expired') is not False or meta.get('workflow_run', {}).get('id') != run_id
+            or meta['workflow_run'].get('head_sha') != source or meta.get('digest') != 'sha256:' + sha or meta.get('size_in_bytes') != size): preflight.fail('font-disposal original run/artifact metadata refused')
+        raw = api(f'actions/artifacts/{artifact}/zip')
+        if len(raw) != size or hashlib.sha256(raw).hexdigest() != sha: preflight.fail('font-disposal original archive bytes differ')
+        return raw
+    raw = packet(binding['producerRun'], binding['producerAttempt'], binding['producerArtifact'], binding['producerSha'], binding['outerSha256'], binding['outerSizeBytes'], '.github/workflows/release.yml')
+    (out / 'original.zip').write_bytes(raw)
+    archives = root / 'artifacts/packages'; archives.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(out / 'original.zip') as z:
+        validate_font_zip(z)
+        names = z.namelist()
+        if len(names) != 20 or len(set(names)) != 20 or any(Path(n).name != n for n in names) or set(names) != {r['file'] for r in json.loads(z.read('release-custody.json'))['archives']} | {'release-custody.json'}:
+            preflight.fail('font-disposal exact19 archives unsafe or substituted')
+        for name in names: (archives / name).write_bytes(z.read(name))
+    if hashlib.sha256((archives / 'release-custody.json').read_bytes()).hexdigest() != binding['custodySha256']: preflight.fail('font-disposal original custody differs')
+    original_plan = out / 'producer-plan.json'; original_plan.write_bytes(source_bytes(root, binding['producerSha'], binding['planPath']))
+    subprocess.run(['python3', str(root / 'scripts/release-custody.py'), 'verify', '--plan', str(original_plan), '--archives', str(archives), '--manifest', str(archives / 'release-custody.json'), '--source-sha', binding['producerSha']], check=True)
+    q = binding['qualification']
+    proof = packet(q['run'], q['attempt'], q['artifact'], q['callerSha'], q['outerSha256'], q['outerSizeBytes'], '.github/workflows/templates-external-reference-qualification.yml')
+    (out / 'qualification.zip').write_bytes(proof)
+    with zipfile.ZipFile(out / 'qualification.zip') as z:
+        validate_font_zip(z)
+        def read(name):
+            matches = [n for n in z.namelist() if n == name or n.endswith('/' + name)]
+            if len(matches) != 1: preflight.fail('font-disposal qualification evidence missing or duplicated')
+            return z.read(matches[0])
+        current = validate_font_disposal_qualification(root, binding, read, archives)
+    facts = {**identity, **current, 'originalCustodyVerified': True, 'nativeTemplatesQualified': True, 'browserUnexpected': 0, 'browserSkipped': 0, 'browserFlaky': 0, 'githubEffectiveWrite': 'unknown-before-attempt'}
+    (out / 'qualification-facts.json').write_text(json.dumps(facts, sort_keys=True) + '\n')
+    (out / 'input-binding.json').write_text(json.dumps({**identity, 'producerSha': binding['producerSha'], 'originalPlanSha256': binding['planSha256'], 'outerSha256': binding['outerSha256'], 'custodySha256': binding['custodySha256'], 'effectId': binding['effectId'], 'qualification': q, 'publication': 'not-yet-observed'}, sort_keys=True) + '\n')
+
+
 def font_disposal_main() -> int:
-    parser = argparse.ArgumentParser(description='Disabled retained0.32.3 subject; preflight only')
+    parser = argparse.ArgumentParser(description='Closed retained0.32.3 subject of the canonical executor')
     parser.add_argument('--font-disposal-attempt', action='store_true', required=True)
     parser.add_argument('--repo-root', type=Path, default=Path.cwd())
     parser.add_argument('--source-sha', default=FONT_DISPOSAL['producerSha'])
@@ -445,18 +683,24 @@ def font_disposal_main() -> int:
     parser.add_argument('--attempt-preflight', action='store_true')
     parser.add_argument('--acquire-bound-artifacts', action='store_true')
     parser.add_argument('--record-event', action='store_true')
+    for field in ('feed', 'package', 'stage', 'result'): parser.add_argument('--event-' + field)
     args = parser.parse_args()
     root = args.repo_root.resolve()
-    executor_identity(root)
-    if args.plan != FONT_DISPOSAL['planPath'] or args.version != FONT_DISPOSAL['version']:
-        preflight.fail('font-disposal mixed source/plan/version refused')
-    # No acquisition/event port exists for this disabled subject. A later reviewed
-    # source change must join genuine qualification before enabling any writer.
-    if args.acquire_bound_artifacts or args.record_event:
-        preflight.fail('font-disposal disabled: acquisition/effects require genuine qualification')
-    validate_font_disposal_attempt(root, args.source_sha, not args.attempt_preflight)
+    identity = executor_identity(root)
+    if args.plan != FONT_DISPOSAL['planPath'] or args.version != FONT_DISPOSAL['version'] or (args.attempt_preflight and (args.acquire_bound_artifacts or args.record_event)):
+        preflight.fail('font-disposal mixed source/plan/effect route refused')
+    binding = validate_font_disposal_attempt(root, args.source_sha, not args.attempt_preflight)
     result = validate(root, args.source_sha, args.plan, args.version, False)
-    result['scope'] = 'disabled immutable attempt preflight only; no acquisition or publication authority'
+    result['planSha256'] = binding['planSha256']
+    if args.acquire_bound_artifacts: acquire_font_disposal(root, binding)
+    if args.record_event:
+        ids = [p['id'] for p in json.loads(source_bytes(root, binding['producerSha'], binding['planPath']))['packages']]
+        if args.event_feed not in ('github', 'nuget') or args.event_package not in ids + ['all19', 'unknown'] or args.event_stage not in ('probe', 'compare', 'push', 'readback', 'interrupted') or args.event_result not in ('requested', 'acknowledged', 'matched', 'failed', 'absent', 'refused'):
+            preflight.fail('font-disposal publisher observation fields refused')
+        event = {'schema': 'fsgg.rendering.publisher-observation/v1', **identity, 'producerSha': binding['producerSha'], 'planSha256': binding['planSha256'], 'custodySha256': binding['custodySha256'], 'effectId': binding['effectId'], 'utc': datetime.now(timezone.utc).isoformat(), 'feed': args.event_feed, 'packageId': args.event_package, 'stage': args.event_stage, 'outcome': args.event_result}
+        path = root / 'artifacts/attempt/publisher-events.jsonl'; path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open('a') as stream: stream.write(json.dumps(event, sort_keys=True) + '\n')
+        return 0
     print(json.dumps(result, sort_keys=True))
     return 0
 
@@ -495,6 +739,8 @@ def successor_main() -> int:
 
 
 if __name__ == '__main__':
+    if os.environ.get('FSGG_RELEASE_ATTEMPT') == '0323' and '--executor-only' not in sys.argv[1:] and '--font-disposal-attempt' not in sys.argv[1:]:
+        sys.argv.append('--font-disposal-attempt')
     if os.environ.get('FSGG_RELEASE_ATTEMPT') == '0322' and '--executor-only' not in sys.argv[1:] and '--successor-attempt' not in sys.argv[1:]:
         sys.argv.append('--successor-attempt')
     raise SystemExit(font_disposal_main() if '--font-disposal-attempt' in sys.argv[1:] else successor_main() if '--successor-attempt' in sys.argv[1:] else main())
