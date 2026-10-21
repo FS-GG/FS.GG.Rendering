@@ -1076,12 +1076,12 @@ class OriginalArtifactFixtureTests(unittest.TestCase):
         self.assertIn('release-custody.py" verify',runner)
 
 
-def native_boundary(scope_only=False, current_attempt=False):
+def native_boundary(scope_only=False, current_attempt=False, font_attempt=False):
     """Selected native mode: actual wrapper, synthetic joins, no credential/network."""
     import time
     start=time.monotonic()
     head='a'*40
-    plan=ROOT/('eng/release/external-authority-recovery-0.32.2.json' if scope_only or current_attempt else 'eng/release/svg-export-prefix-0.32.1.json')
+    plan=ROOT/('eng/release/font-disposal-0.32.3.json' if font_attempt else 'eng/release/external-authority-recovery-0.32.2.json' if scope_only or current_attempt else 'eng/release/svg-export-prefix-0.32.1.json')
     proof={'expectedExecutorSha':head,'executorSha':head,'workflowContextSha':head,
            'workflowSha':head,'workflowRef':'FS-GG/FS.GG.Rendering/.github/workflows/release.yml@refs/heads/main',
            'run':'10','attempt':'1'}
@@ -1130,6 +1130,21 @@ def native_boundary(scope_only=False, current_attempt=False):
                ('current-custody',{}, {'atCustodyQualified':False}, {},'input'),
                ('current-toolchain',{}, {'testToolchainRuntime':'different'}, {},'input'),
                ('current-scope-effect-mixed',{'FSGG_NUGET_SCOPE_ONLY':'true'}, {}, {},'input')]
+    if font_attempt:
+        env.update(FSGG_RELEASE_ATTEMPT='0323')
+        proof.update(originalCustodyVerified=True,nativeTemplatesQualified=True,providerPassed=186,browserPassed=[15,15,15],browserUnexpected=0,browserSkipped=0,browserFlaky=0,atPassed=15,atSpeechWindows=4,atEvidenceMembers=27,atCustodyQualified=True)
+        inputs.update(producerSha='4ec6eafbbbf02264db9b0db4780c590abe0bf9cd',originalPlanSha256='89369de0c0944c66a52c6ed914cef78d6bb7670866baedf85cd8a198c5c46239',outerSha256='84647332c124e511545787c8c3f8634d4f5177068521acfc86c93430ac73ef63',custodySha256='7dbd4329546932c4c1d12767550b7b78aae85e32c81b354935b2c615b3e298c9',effectId='rendering-0323-original39509314882-a1')
+        cases=[('font-positive-no-credential',{}, {}, {},'credential'),
+               ('font-unknown-selection',{'FSGG_RELEASE_ATTEMPT':'unknown'},{},{},'input'),
+               ('font-scope-effect-mixed',{'FSGG_NUGET_SCOPE_ONLY':'true'},{},{},'input')]
+        for field in ('producerSha','originalPlanSha256','outerSha256','custodySha256','effectId'):
+            cases.append(('font-input-'+field,{}, {}, {field:'different'},'input'))
+        for field in ('expectedExecutorSha','executorSha','workflowContextSha','workflowSha','workflowRef','run','attempt'):
+            cases.append(('font-executor-'+field,{}, {field:'different'}, {},'executor'))
+        for field,bad in [('originalCustodyVerified',False),('nativeTemplatesQualified',False),('providerPassed',180),('browserPassed',[8,8,8]),('browserPassed',[15,15,14]),('browserUnexpected',1),('browserSkipped',1),('browserFlaky',1),('atPassed',14),('atSpeechWindows',3),('atEvidenceMembers',26),('atCustodyQualified',False),('testToolchainRuntime','10.0.12'),('testToolchainSdk','10.0.402'),('testToolchainCompiler','bad'),('testToolchainCore','bad')]:
+            cases.append(('font-proof-'+field+'-'+str(bad),{}, {field:bad}, {},'input'))
+        cases += [('font-stripped-plan',{}, {'testPlanBytes':'stripped'}, {},'input'),
+                  ('font-wrong-plan',{}, {'testPlanBytes':'historical'}, {},'input')]
     results=[]
     with tempfile.TemporaryDirectory(prefix='executor-boundary-'  ,dir=os.environ.get('TMPDIR')) as folder:
         root=Path(folder);attempt=root/'artifacts/attempt';attempt.mkdir(parents=True)
@@ -1150,16 +1165,25 @@ def native_boundary(scope_only=False, current_attempt=False):
             else:
                 facts.write_text(json.dumps({**proof,**mutant}))
             (attempt/'input-binding.json').write_text(json.dumps({**inputs,**input_mutant}))
-            if current_attempt:
+            if current_attempt or font_attempt:
                 toolchain=root/'artifacts/toolchain';toolchain.mkdir(exist_ok=True)
                 tool=json.loads((ROOT/'eng/release/external-authority-recovery-0.32.2-attempt.json').read_text())['toolchain']
-                if 'testToolchainRuntime' in mutant:tool['runtimeVersion']=mutant['testToolchainRuntime']
+                if font_attempt:tool['runtimeVersion']='10.0.13'
+                for field,key in [('testToolchainRuntime','runtimeVersion'),('testToolchainSdk','sdkVersion'),('testToolchainCompiler','compilerSha256'),('testToolchainCore','fsharpCoreSha256')]:
+                    if field in mutant:tool[key]=mutant[field]
                 (toolchain/'publish-packages.json').write_text(json.dumps(tool))
             receipt=attempt/'scope.json';receipt.unlink(missing_ok=True)
             command=['/usr/share/dotnet/dotnet','exec','--fx-version','10.0.12',
                      '/usr/share/dotnet/sdk/10.0.401/FSharp/fsi.dll','--nologo','--define:DEBUG','--optimize-',
                      '--exec',str(ROOT/'scripts/release-nuget-verify-key.fsx'),
                      '--plan',str(plan),'--receipt',str(receipt),'--qualification',str(facts),'--census',str(attempt/'census.json')]
+            if font_attempt:
+                # Inherit the workflow's strictly qualified SDK401 installation; no machine-global runtime12 path.
+                command=['dotnet','fsi','--nologo','--define:DEBUG','--optimize-','--exec',str(ROOT/'scripts/release-nuget-verify-key.fsx'),*command[command.index('--plan'):]]
+                if 'testPlanBytes' in mutant:
+                    changed=root/'mutated-plan.json'
+                    changed.write_bytes(plan.read_bytes().strip() if mutant['testPlanBytes']=='stripped' else (ROOT/'eng/release/external-authority-recovery-0.32.2.json').read_bytes())
+                    command[command.index('--plan')+1]=str(changed)
             child=subprocess.run(command,cwd=root,env={**env,**environment},capture_output=True,text=True,timeout=min(15,remaining))
             expected=('NuGet verify-key: unavailable/refused; no publication eligibility' if stage=='unavailable' else
                       'NuGet verify-key: refused stage='+stage+'; no publication eligibility')
@@ -1167,7 +1191,7 @@ def native_boundary(scope_only=False, current_attempt=False):
                 raise AssertionError(name+': actual exit/stage/compilation/receipt refused '+child.stdout+child.stderr)
             results.append({'case':name,'actualExit':child.returncode,'stage':stage,'receiptCreated':False})
     print('SVG_EXECUTOR_BOUNDARY '+json.dumps({'cases':results,'passed':len(results),'actualCredentials':False,
-          'networkSelected':False,'positiveJoinReached':'credential','scopeOnly':scope_only,'currentAttempt':current_attempt,'elapsedSeconds':time.monotonic()-start},sort_keys=True))
+          'networkSelected':False,'positiveJoinReached':'credential','scopeOnly':scope_only,'currentAttempt':current_attempt,'fontAttempt':font_attempt,'elapsedSeconds':time.monotonic()-start},sort_keys=True))
 
 
 class QualifiedFontProofTests(unittest.TestCase):
@@ -1346,8 +1370,46 @@ class QualifiedFontProofTests(unittest.TestCase):
         self.assertIn('accepted source39509314882/a1:17 comparisons vs0.32.1',pub)
 
 
+class FontWriterBoundaryFixtureTests(unittest.TestCase):
+    def test_actual_boundary_launch_uses_selected_sdk_and_closed_positive_inputs(self):
+        class Captured(Exception): pass
+        captured=[]
+        def inspect_child(command, *, cwd, env, **kwargs):
+            captured.append(command)
+            self.assertEqual(['dotnet','fsi'],command[:2])
+            self.assertNotIn('/usr/share/dotnet', ' '.join(command))
+            self.assertEqual('0323',env['FSGG_RELEASE_ATTEMPT'])
+            self.assertEqual('false',env['FSGG_NUGET_SCOPE_ONLY'])
+            self.assertEqual('',env['NUGET_API_KEY'])
+            self.assertNotIn('GITHUB_TOKEN',env)
+            plan=Path(command[command.index('--plan')+1]).read_bytes()
+            self.assertEqual('89369de0c0944c66a52c6ed914cef78d6bb7670866baedf85cd8a198c5c46239',hashlib.sha256(plan).hexdigest())
+            facts=json.loads((cwd/'artifacts/attempt/qualification-facts.json').read_text())
+            self.assertEqual(([15,15,15],15,4,27),(facts['browserPassed'],facts['atPassed'],facts['atSpeechWindows'],facts['atEvidenceMembers']))
+            inputs=json.loads((cwd/'artifacts/attempt/input-binding.json').read_text())
+            self.assertEqual('4ec6eafbbbf02264db9b0db4780c590abe0bf9cd',inputs['producerSha'])
+            self.assertEqual('rendering-0323-original39509314882-a1',inputs['effectId'])
+            self.assertEqual('10.0.13',json.loads((cwd/'artifacts/toolchain/publish-packages.json').read_text())['runtimeVersion'])
+            self.assertLessEqual(kwargs['timeout'],15)
+            raise Captured()
+        with patch.dict(os.environ,{'NUGET_API_KEY':'ambient-not-a-credential','GITHUB_TOKEN':'ambient-not-a-credential'}), patch.object(subprocess,'run',side_effect=inspect_child):
+            with self.assertRaises(Captured):native_boundary(font_attempt=True)
+        self.assertEqual(1,len(captured))
+
+    def test_hosted_boundary_is_in_no_credential_sdk_step(self):
+        text=(ROOT/'.github/workflows/gate.yml').read_text()
+        before,after=text.split('      - name: ApiCompat vs feed baseline',1)
+        step=before.rsplit('      - name: Qualify closed read-only release selectors without credentials',1)[1]
+        self.assertIn('release-toolchain-identity.py --expected-sdk 10.0.401',step)
+        self.assertIn('dotnet fsi --define:DEBUG --exec scripts/test-release-nuget-verify-key.fsx',step)
+        self.assertIn('python3 scripts/test-release-source-guard.py --native-font-disposal-boundary',step)
+        self.assertNotIn('secrets.',step)
+        self.assertNotIn('env:',step)
+
+
 if __name__ == '__main__':
     if sys.argv[1:]==['--native-boundary']: native_boundary()
     elif sys.argv[1:]==['--native-scope-boundary']: native_boundary(True)
     elif sys.argv[1:]==['--native-current-boundary']: native_boundary(False,True)
+    elif sys.argv[1:]==['--native-font-disposal-boundary']: native_boundary(False,False,True)
     else: unittest.main()

@@ -170,3 +170,24 @@ let fontFixture = httpTransportWithHandler "public-test-fixture-key" (new Record
 assert(match inspect fontFixture ids "0.32.1" with Ok(rows,true)->rows.Length=19|_->false)
 assert(requests.Count=beforeFontJoins+19)
 printfn "PASS font-disposal RAW-plan scope-only selection/source/executor/roster joins;19 GETs and no writer authority"
+
+// New writer contract is distinct from both historical receiver populations.
+let fontWriter : FontDisposalJourney = {
+    OriginalCustodyVerified=true; NativeTemplatesQualified=true; ProviderPassed=186
+    BrowserPassed=[15;15;15]; BrowserUnexpected=0; BrowserSkipped=0; BrowserFlaky=0
+    AtPassed=15; AtSpeechWindows=4; AtEvidenceMembers=27; AtCustodyQualified=true }
+assert(fontDisposalJourneyQualified fontWriter)
+assert(admitFontDisposal fontWriter true (List.replicate 19 (Some 200)) "unknown-before-attempt")
+for bad in [{fontWriter with OriginalCustodyVerified=false}; {fontWriter with NativeTemplatesQualified=false};
+            {fontWriter with ProviderPassed=180}; {fontWriter with BrowserPassed=[8;8;8]};
+            {fontWriter with BrowserPassed=[15;15;14]}; {fontWriter with BrowserUnexpected=1};
+            {fontWriter with BrowserSkipped=1}; {fontWriter with BrowserFlaky=1};
+            {fontWriter with AtPassed=14}; {fontWriter with AtSpeechWindows=3};
+            {fontWriter with AtEvidenceMembers=26}; {fontWriter with AtCustodyQualified=false}] do
+    assert(not(fontDisposalJourneyQualified bad))
+    assert(not(admitFontDisposal bad true (List.replicate 19 (Some 200)) "unknown-before-attempt"))
+assert(not(admitFontDisposal fontWriter false (List.replicate 19 (Some 200)) "unknown-before-attempt"))
+assert(not(admitFontDisposal fontWriter true (List.replicate 18 (Some 200)) "unknown-before-attempt"))
+assert(not(admitFontDisposal fontWriter true (List.replicate 19 (Some 403)) "unknown-before-attempt"))
+assert(not(admitFontDisposal fontWriter true (List.replicate 19 (Some 200)) "proven"))
+printfn "PASS separate font-disposal186/45/15/4/27 writer eligibility; historical contracts unchanged"

@@ -802,6 +802,7 @@ jobs:
           python3 scripts/release-toolchain-identity.py --expected-sdk 10.0.401 --receipt artifacts/toolchain/read-selector-controls.json
           dotnet fsi --exec scripts/test-release-package-census.fsx
           dotnet fsi --define:DEBUG --exec scripts/test-release-nuget-verify-key.fsx
+          python3 scripts/test-release-source-guard.py --native-font-disposal-boundary
 
       - name: ApiCompat vs feed baseline
         env:

@@ -22,17 +22,20 @@ try
     let scopeOnly = Environment.GetEnvironmentVariable("FSGG_NUGET_SCOPE_ONLY")="true"
     let selected = Environment.GetEnvironmentVariable("FSGG_RELEASE_ATTEMPT")
     let currentAttempt = selected="0322"
-    if not(String.IsNullOrEmpty selected || selected="0321" || currentAttempt) || (currentAttempt && scopeOnly) then
+    let fontAttempt = selected="0323"
+    if not(String.IsNullOrEmpty selected || selected="0321" || currentAttempt || fontAttempt) || ((currentAttempt || fontAttempt) && scopeOnly) then
         invalidArg "input" "verify-key-attempt-selection-refused"
-    let producer = if currentAttempt then "9b73395658d4683a067d150ca9441b04e802c4af" else "6c9f766fdd91483c2de6f061e75589e94852a265"
-    let outer = if currentAttempt then "7b0532caf431cfa41acaf35555016cf126bc495c5a6e13fe7db6b8fbe7478cca" else "486182db3efd8442c007f66322a7bfb27caf0cb8e3c87bc2521e66dd90a7adee"
-    let custody = if currentAttempt then "85bb1dcdf0378d05ca536d5878b88dedc301ff1524d39d98966e23888aae0120" else "ecd0c5d742fd8d19d5659991e413e92971c1d2cb9aea913faa2bb249f53f577d"
-    let version = if currentAttempt then "0.32.2" else "0.32.1"
+    let producer = if fontAttempt then "4ec6eafbbbf02264db9b0db4780c590abe0bf9cd" elif currentAttempt then "9b73395658d4683a067d150ca9441b04e802c4af" else "6c9f766fdd91483c2de6f061e75589e94852a265"
+    let outer = if fontAttempt then "84647332c124e511545787c8c3f8634d4f5177068521acfc86c93430ac73ef63" elif currentAttempt then "7b0532caf431cfa41acaf35555016cf126bc495c5a6e13fe7db6b8fbe7478cca" else "486182db3efd8442c007f66322a7bfb27caf0cb8e3c87bc2521e66dd90a7adee"
+    let custody = if fontAttempt then "7dbd4329546932c4c1d12767550b7b78aae85e32c81b354935b2c615b3e298c9" elif currentAttempt then "85bb1dcdf0378d05ca536d5878b88dedc301ff1524d39d98966e23888aae0120" else "ecd0c5d742fd8d19d5659991e413e92971c1d2cb9aea913faa2bb249f53f577d"
+    let version = if fontAttempt then "0.32.3" elif currentAttempt then "0.32.2" else "0.32.1"
     // The new plan permits scope-only reads; the historical effect binding remains closed.
     let successor = planHash="ac433609d14d0a672ad42e5f3578afdd6ecf6ee1144c33d5e6aec951535d84f2" ||
                     ((scopeOnly || currentAttempt) && planHash="81571fc65ac117e90467428d2e50e103ec875aa33cb83b054d9056bf4129aa1a") ||
-                    fontDisposalScopePlan scopeOnly planHash
+                    fontDisposalScopePlan scopeOnly planHash ||
+                    (fontAttempt && planHash="89369de0c0944c66a52c6ed914cef78d6bb7670866baedf85cd8a198c5c46239")
     if currentAttempt && planHash<>"81571fc65ac117e90467428d2e50e103ec875aa33cb83b054d9056bf4129aa1a" then invalidArg "plan" "verify-key-current-plan-refused"
+    if fontAttempt && planHash<>"89369de0c0944c66a52c6ed914cef78d6bb7670866baedf85cd8a198c5c46239" then invalidArg "input" "verify-key-font-plan-refused"
     if not successor then invalidArg "plan" "verify-key-plan-refused"
     use plan = JsonDocument.Parse(planBytes)
     let baseline = plan.RootElement.GetProperty("baselineVersion").GetString()
@@ -79,6 +82,21 @@ try
             invalidArg "input" "verify-key-input-binding-refused"
         if currentAttempt && inputs.RootElement.GetProperty("effectId").GetString()<>"rendering-0322-original38200411661-a1" then
             invalidArg "input" "verify-key-current-effect-refused"
+        if fontAttempt && inputs.RootElement.GetProperty("effectId").GetString()<>"rendering-0323-original39509314882-a1" then
+            invalidArg "input" "verify-key-font-effect-refused"
+    let fontJourney =
+        if fontAttempt then
+            let proof = executorFacts.RootElement
+            let flag key = proof.GetProperty(key:string).GetBoolean()
+            let number key = proof.GetProperty(key:string).GetInt32()
+            let journey : FontDisposalJourney = {
+                OriginalCustodyVerified=flag "originalCustodyVerified"; NativeTemplatesQualified=flag "nativeTemplatesQualified"
+                ProviderPassed=number "providerPassed"; BrowserPassed=proof.GetProperty("browserPassed").EnumerateArray() |> Seq.map(fun n -> n.GetInt32()) |> Seq.toList
+                BrowserUnexpected=number "browserUnexpected"; BrowserSkipped=number "browserSkipped"; BrowserFlaky=number "browserFlaky"
+                AtPassed=number "atPassed"; AtSpeechWindows=number "atSpeechWindows"; AtEvidenceMembers=number "atEvidenceMembers"; AtCustodyQualified=flag "atCustodyQualified" }
+            if not(fontDisposalJourneyQualified journey) then invalidArg "input" "verify-key-font-journey-refused"
+            Some journey
+        else None
     let currentJourney =
         if currentAttempt then
             let proof = executorFacts.RootElement
@@ -92,9 +110,9 @@ try
             if not(currentJourneyQualified journey) then invalidArg "input" "verify-key-current-journey-refused"
             Some journey
         else None
-    if currentAttempt then
+    if currentAttempt || fontAttempt then
         use toolchain = JsonDocument.Parse(File.ReadAllBytes("artifacts/toolchain/publish-packages.json"))
-        for (field, expectedValue) in ["sdkVersion","10.0.401"; "runtimeVersion","10.0.12";
+        for (field, expectedValue) in ["sdkVersion","10.0.401"; "runtimeVersion",(if fontAttempt then "10.0.13" else "10.0.12");
                                       "compilerSha256","2bd6190eafa94f47739538467f5a7cd52de233a627789c69f07959d7578e4d6b";
                                       "fsharpCoreSha256","2232698f623c28b8bcca32fa3cc8943cdd8529b20b487b5938106aae1c2ab256"] do
             if toolchain.RootElement.GetProperty(field).GetString()<>expectedValue then
@@ -126,9 +144,12 @@ try
             let number (key: string) = proof.GetProperty(key).GetInt32()
             let facts : Facts = { OriginalCustodyVerified=flag "originalCustodyVerified"; NativeTemplatesQualified=flag "nativeTemplatesQualified"; ProviderPassed=number "providerPassed"; BrowserPassed=proof.GetProperty("browserPassed").EnumerateArray() |> Seq.map(fun n -> n.GetInt32()) |> Seq.toList; BrowserUnexpected=number "browserUnexpected"; BrowserSkipped=number "browserSkipped"; BrowserFlaky=number "browserFlaky"; CompleteReadCensus=census.Organization.Complete && census.Packages.Length=19 && (census.Packages |> List.forall(fun (_,row) -> row.Complete)); NuGetScopeStatuses=observations |> List.map(fun row -> row.HttpStatus); GitHubEffectiveWrite=proof.GetProperty("githubEffectiveWrite").GetString() }
             let eligible =
-                match currentJourney with
-                | Some journey -> admitCurrent journey facts.CompleteReadCensus facts.NuGetScopeStatuses facts.GitHubEffectiveWrite
-                | None -> admit facts
+                match fontJourney with
+                | Some journey -> admitFontDisposal journey facts.CompleteReadCensus facts.NuGetScopeStatuses facts.GitHubEffectiveWrite
+                | None ->
+                    match currentJourney with
+                    | Some journey -> admitCurrent journey facts.CompleteReadCensus facts.NuGetScopeStatuses facts.GitHubEffectiveWrite
+                    | None -> admit facts
             if not eligible then invalidArg "eligibility" "publication-attempt-ineligible"
             printfn "Attempt prerequisites joined; GitHub effective write UNKNOWN before actual acknowledgement/readback"
 with
