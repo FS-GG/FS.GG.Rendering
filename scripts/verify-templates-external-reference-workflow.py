@@ -8,7 +8,7 @@ from pathlib import Path
 import re
 
 HISTORICAL = '6a5dd5305ac6fe26f9f9726c72b1a7e553b0021b'
-FONT_DISPOSAL = '209a1ad1e85b66ea019e609147afcd8aeaf92a9c'
+FONT_DISPOSAL = '357b445a87d803d6d591962b663c091ec35e230d'
 PATH = Path(__file__).resolve().parents[1]/'.github/workflows/templates-external-reference-qualification.yml'
 
 def jobs(text):
