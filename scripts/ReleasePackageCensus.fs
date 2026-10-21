@@ -21,6 +21,7 @@ let selectedPlanTuple = function
     | "eng/release/svg-external-authority-0.32.0.json" -> Ok ("0.32.0", "0.31.0")
     | "eng/release/svg-export-prefix-0.32.1.json" -> Ok ("0.32.1", "0.32.0")
     | "eng/release/external-authority-recovery-0.32.2.json" -> Ok ("0.32.2", "0.32.1")
+    | "eng/release/font-disposal-0.32.3.json" -> Ok ("0.32.3", "0.32.1")
     | _ -> Error "census-plan-path-refused"
 
 type Verdict = Absent | Occupied | Unknown

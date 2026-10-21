@@ -30,7 +30,8 @@ try
     let version = if currentAttempt then "0.32.2" else "0.32.1"
     // The new plan permits scope-only reads; the historical effect binding remains closed.
     let successor = planHash="ac433609d14d0a672ad42e5f3578afdd6ecf6ee1144c33d5e6aec951535d84f2" ||
-                    ((scopeOnly || currentAttempt) && planHash="81571fc65ac117e90467428d2e50e103ec875aa33cb83b054d9056bf4129aa1a")
+                    ((scopeOnly || currentAttempt) && planHash="81571fc65ac117e90467428d2e50e103ec875aa33cb83b054d9056bf4129aa1a") ||
+                    fontDisposalScopePlan scopeOnly planHash
     if currentAttempt && planHash<>"81571fc65ac117e90467428d2e50e103ec875aa33cb83b054d9056bf4129aa1a" then invalidArg "plan" "verify-key-current-plan-refused"
     if not successor then invalidArg "plan" "verify-key-plan-refused"
     use plan = JsonDocument.Parse(planBytes)
