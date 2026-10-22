@@ -60,13 +60,14 @@ class API:
         self.token, self.journal, self.deadline = token, journal, deadline
         self.opener = urllib.request.build_opener(NoRedirect)
 
-    def call(self, method, path, body=None):
+    def call(self, method, path, body=None, cleanup_deadline=None):
         allowed = (method == 'GET' and path.startswith(PREFIX) or
                    method == 'PUT' and any(path == PREFIX + f'actions/workflows/{i}/{v}' for i in FENCES for v in ('disable', 'enable')) or
                    method == 'POST' and path == PREFIX + 'git/refs' and body in [{'ref': r, 'sha': SOURCE} for r in REFS] or
                    method == 'DELETE' and path == '/installation/token')
         need(allowed and '..' not in path and '#' not in path, 'unsupported endpoint or request body')
-        remaining = self.deadline - time.monotonic()
+        need(cleanup_deadline is None or (method == 'DELETE' and path == '/installation/token'), 'cleanup deadline cannot authorize an effect')
+        remaining = (cleanup_deadline if cleanup_deadline is not None else self.deadline) - time.monotonic()
         need(remaining > 0, 'transport budget exhausted')
         self.journal('http-requested', method=method, path=path, body=body)
         request = urllib.request.Request('https://api.github.com' + path,
@@ -89,6 +90,9 @@ class API:
         except (OSError, ValueError, TimeoutError) as error:
             self.journal('http-outcome-unknown', method=method, path=path)
             raise Refused('transport unavailable, malformed or timed out; outcome unknown') from error
+
+    def retire(self, cleanup_deadline):
+        return self.call('DELETE', '/installation/token', cleanup_deadline=cleanup_deadline)
 
     def get(self, path):
         status, value = self.call('GET', PREFIX + path)
@@ -170,6 +174,7 @@ class Settlement:
         self.writer = writer or API(env.get('FSGG_SETTLEMENT_WRITER_TOKEN'), self.record, self.deadline - 60)
         self.identity_check = identity or self.identity
         self.previous = {}
+        self.pending_refs = set()
 
     def record(self, stage, **fields):
         need(len(self.receipt['events']) < 700, 'journal event bound exhausted')
@@ -265,6 +270,7 @@ class Settlement:
                 current = self.refs()
                 need(all(current[r] == SOURCE for r in REFS if known[r] == SOURCE), 'previous ref disappeared')
                 if current[ref] is None:
+                    self.pending_refs.add(ref)
                     self.record('subordinate-create-requested', ref=ref, target=SOURCE)
                     try:
                         status, _ = self.writer.call('POST', PREFIX + 'git/refs', {'ref': ref, 'sha': SOURCE})
@@ -275,6 +281,7 @@ class Settlement:
                     self.fence()
                     current = self.refs()
                     need(current[ref] == SOURCE, 'subordinate create did not converge; no resend')
+                    self.pending_refs.discard(ref)
                 self.record('exact-ref-readback', ref=ref, refs=current)
                 known = current
             self.fence()
@@ -291,14 +298,18 @@ class Settlement:
             # retirement keeps fences closed and records an independently owned cleanup gap.
             retired = False
             try:
-                status, _ = self.writer.call('DELETE', '/installation/token')
+                status, _ = self.writer.retire(self.deadline)
                 need(status == 204, 'writer retirement unknown')
                 retired = True
                 self.record('writer-retired')
             except (Refused, OSError, ValueError, KeyError, TypeError):
                 self.record('cleanup-failure', operation='writer-retirement')
-            restored = retired
-            if retired:
+            restored = retired and not self.pending_refs
+            if self.pending_refs:
+                self.record('cleanup-failure', operation='unresolved-subordinate-create', refs=sorted(self.pending_refs))
+            # An already-admitted App request may outlive credential retirement.
+            # Only exact immutable matching refs make any late create a no-op.
+            if retired and not self.pending_refs:
                 for i, state in self.previous.items():
                     try:
                         current = self.admin.get('actions/workflows/' + str(i))['state']
@@ -311,6 +322,7 @@ class Settlement:
                     except (Refused, OSError, ValueError, KeyError, TypeError):
                         restored = False
                         self.record('cleanup-failure', operation='workflow-restoration', workflow=i)
+            self.receipt['pendingSubordinateRefs'] = sorted(self.pending_refs)
             self.receipt['cleanup'] = 'restored' if restored else 'Unknown-owned-gap'
             self.receipt['result'] = 'passed' if not first_error and restored and self.receipt['sameIntentConvergence'] == 'Verified' else 'refused-or-unknown'
             self.record('completed')

@@ -34,6 +34,9 @@ class FakeAPI:
         self.policy = copy.deepcopy(POLICY); self.active = False; self.census_unknown = False
         self.create = 'accepted'; self.retire = True; self.restore = True; self.hook = lambda *a: None
 
+    def retire(self, cleanup_deadline):
+        return self.call('DELETE', '/installation/token')
+
     def get(self, path):
         return self.call('GET', s.PREFIX + path)[1]
 
@@ -114,6 +117,30 @@ class SettlementTests(unittest.TestCase):
         self.api.create = 'never'
         with self.assertRaises(s.Refused): self.op.run()
         self.assertEqual(1,len(self.writes())); self.assertEqual('Unknown',self.op.receipt['sameIntentConvergence'])
+        self.assertEqual('Unknown-owned-gap',self.op.receipt['cleanup'])
+        self.assertEqual([s.REFS[0]],self.op.receipt['pendingSubordinateRefs'])
+        self.assertTrue(all(state=='disabled_manually' for state in self.api.states.values()))
+
+    def test_uncertain_template_create_remains_fenced_even_after_revocation_and_late_arrival(self):
+        self.api.refs[s.REFS[0]]=s.SOURCE
+        self.api.create='never'
+        with self.assertRaises(s.Refused):self.op.run()
+        self.assertEqual([s.REFS[1]],self.op.receipt['pendingSubordinateRefs'])
+        self.assertEqual('Unknown-owned-gap',self.op.receipt['cleanup'])
+        # Model the admitted request accepting after token retirement/finally.
+        self.api.refs[s.REFS[1]]=s.SOURCE
+        self.assertTrue(all(state=='disabled_manually' for state in self.api.states.values()))
+        self.assertFalse(any(c[0]=='PUT' and c[1].endswith('/enable') for c in self.api.calls))
+
+    def test_acknowledged_create_with_failed_fence_keeps_pending_event_fence(self):
+        original_fence=self.op.fence
+        def fence():
+            if self.writes():raise s.Refused('main moved before readback')
+            original_fence()
+        self.op.fence=fence
+        with self.assertRaises(s.Refused):self.op.run()
+        self.assertEqual([s.REFS[0]],self.op.receipt['pendingSubordinateRefs'])
+        self.assertTrue(all(state=='disabled_manually' for state in self.api.states.values()))
 
     def test_conflict_annotated_out_of_order_and_disappearing_prefix_refuse(self):
         for refs in ({s.REFS[0]:'b'*40},{s.REFS[0]:'annotated'},{s.REFS[2]:s.SOURCE}):
@@ -232,6 +259,18 @@ class AdmissionAndAdapterTests(unittest.TestCase):
         api.deadline=0
         with patch.object(api.opener,'open',side_effect=AssertionError('deadline forbids transport')),self.assertRaises(s.Refused):
             api.call('GET',s.PREFIX+'git/ref/tags/v0.32.3')
+
+    def test_real_adapter_cleanup_reserve_cannot_extend_create_authority(self):
+        api=s.API('private-fixture',lambda *a,**k:None,0)
+        class Response(io.BytesIO):
+            code=204;headers={}
+        with patch.object(api.opener,'open',return_value=Response(b'')) as opening:
+            self.assertEqual((204,None),api.retire(10**20))
+            self.assertEqual(1,opening.call_count)
+        with patch.object(api.opener,'open',side_effect=AssertionError('expired effects remain forbidden')),self.assertRaises(s.Refused):
+            api.call('POST',s.PREFIX+'git/refs',{'ref':s.REFS[0],'sha':s.SOURCE})
+        with self.assertRaises(s.Refused):
+            api.call('POST',s.PREFIX+'git/refs',{'ref':s.REFS[0],'sha':s.SOURCE},cleanup_deadline=10**20)
 
     def test_actual_original_binding_wrong_bytes_and_missing_receipts_refuse(self):
         with tempfile.TemporaryDirectory() as d:

@@ -102,7 +102,10 @@ expiring installation token with contents/workflows write and metadata read. Thi
 source provisions no credential, broadens no grant and changes no repository policy.
 
 Cleanup retires that writer before restoring and independently reading each exact
-prior workflow state. Failed retirement keeps event fences closed; failed restoration
+prior workflow state. An unresolved subordinate create also keeps event fences closed after retirement:
+an already-admitted App request may arrive late and create an event. Exact matching
+readback under immutable policy makes later duplicate creates harmless. Failed
+retirement keeps event fences closed; failed restoration
 is a separate owned cleanup gap, never a passed settlement. An earlier subordinate
 settlement run refuses this initial closed entry. A later continuation needs separately
 reviewed source consuming every original and subordinate result; reruns and fresh
