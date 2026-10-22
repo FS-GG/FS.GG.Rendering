@@ -1336,7 +1336,7 @@ class QualifiedFontProofTests(unittest.TestCase):
             root=Path(d);path=root/g.FONT_DISPOSAL_ATTEMPT;path.parent.mkdir(parents=True);path.write_bytes((ROOT/g.FONT_DISPOSAL_ATTEMPT).read_bytes())
             plan=(ROOT/g.FONT_DISPOSAL['planPath']).read_bytes()
             args=['guard','--font-disposal-attempt','--repo-root',str(root),'--record-event','--event-feed','github','--event-package','all19','--event-stage','push','--event-result','requested']
-            with patch.object(g,'executor_identity',return_value={'executorSha':'a'*40}),patch.object(g,'source_bytes',return_value=plan),patch.object(g,'validate',return_value={}),patch.object(g,'accepted_tag_settlement',return_value={}),patch.object(sys,'argv',args):
+            with patch.object(g,'executor_identity',return_value={'executorSha':'a'*40}),patch.object(g,'source_bytes',return_value=plan),patch.object(g,'validate',return_value={}),patch.object(g,'verified_cached_tag_settlement',return_value={}),patch.object(g,'accepted_tag_settlement',side_effect=AssertionError('record path must not re-authenticate over the network')),patch.object(sys,'argv',args):
                 self.assertEqual(0,g.font_disposal_main())
             event=json.loads((root/'artifacts/attempt/publisher-events.jsonl').read_text())
             self.assertEqual(g.FONT_DISPOSAL['producerSha'],event['producerSha']);self.assertEqual(g.FONT_DISPOSAL['planSha256'],event['planSha256']);self.assertEqual('a'*40,event['executorSha'])
@@ -1345,6 +1345,89 @@ class QualifiedFontProofTests(unittest.TestCase):
                 before=(root/'artifacts/attempt/publisher-events.jsonl').read_bytes()
                 with patch.object(g,'executor_identity',return_value={}),patch.object(g,'source_bytes',return_value=plan),patch.object(g,'validate',return_value={}),patch.object(sys,'argv',bad),self.assertRaises(SystemExit):g.font_disposal_main()
                 self.assertEqual(before,(root/'artifacts/attempt/publisher-events.jsonl').read_bytes())
+
+    IDENTITY={'expectedExecutorSha':'a'*40,'executorSha':'a'*40,'workflowContextSha':'a'*40,'workflowSha':'a'*40,
+        'workflowRef':'FS-GG/FS.GG.Rendering/.github/workflows/release.yml@refs/heads/main','run':'7','attempt':'1'}
+
+    def _cached_settlement_root(self,d):
+        g=self.g;root=Path(d)
+        path=root/g.FONT_DISPOSAL_ATTEMPT;path.parent.mkdir(parents=True);path.write_bytes((ROOT/g.FONT_DISPOSAL_ATTEMPT).read_bytes())
+        receipt={'schema':'fsgg.rendering.tag-settlement/v1','effectId':g.FONT_DISPOSAL['effectId'],'producerSha':g.FONT_DISPOSAL['producerSha'],
+            'originalTransportOutcome':'Unknown','sameIntentConvergence':'Verified','cleanup':'restored','pendingSubordinateRefs':[],'result':'passed',
+            'publication':'not-performed','notification':'not-performed','executorSha':'b'*40,'run':'11','attempt':'1',
+            'workflowRef':'FS-GG/FS.GG.Rendering/.github/workflows/release-tag-settlement.yml@refs/heads/main','refs':g.settlement_refs()}
+        member=json.dumps(receipt).encode()
+        selected={'run':11,'attempt':1,'artifact':12,'artifactSha256':'c'*64,'receiptSha256':hashlib.sha256(member).hexdigest(),'executorSha':'b'*40}
+        attempt=root/'artifacts/attempt';attempt.mkdir(parents=True)
+        (attempt/'accepted-tag-settlement.json').write_bytes(member)
+        joined={**selected,'originalTransportOutcome':'Unknown','sameIntentConvergence':'Verified','cleanup':'restored','effectId':g.FONT_DISPOSAL['effectId']}
+        (attempt/'input-binding.json').write_text(json.dumps({**self.IDENTITY,'producerSha':g.FONT_DISPOSAL['producerSha'],'effectId':g.FONT_DISPOSAL['effectId'],'tagSettlement':joined}))
+        return root,receipt,selected
+
+    def _record_args(self,root):
+        return ['guard','--font-disposal-attempt','--repo-root',str(root),'--record-event','--event-feed','nuget','--event-package','all19','--event-stage','push','--event-result','requested']
+
+    def test_record_event_reuses_authenticated_settlement_with_zero_transport(self):
+        # Exercises the REAL verified_cached_tag_settlement (no mock bypass). Every transport
+        # primitive the module could reach counts and refuses: ~191 publisher records must not
+        # spend GITHUB_TOKEN requests or re-download the settlement archive.
+        import socket
+        g=self.g;plan=(ROOT/g.FONT_DISPOSAL['planPath']).read_bytes();transport=[]
+        def refuse(*a,**k):transport.append(a[:1]);raise AssertionError('record path transport')
+        with tempfile.TemporaryDirectory() as d:
+            root,_,selected=self._cached_settlement_root(d)
+            with patch.dict(os.environ,{'FSGG_ACCEPTED_TAG_SETTLEMENT':json.dumps(selected)}),patch.object(g,'executor_identity',return_value=dict(self.IDENTITY)),patch.object(g,'source_bytes',return_value=plan),patch.object(g,'validate',return_value={}),\
+                 patch.object(g.subprocess,'check_output',side_effect=refuse),patch.object(g.subprocess,'run',side_effect=refuse),patch.object(g.subprocess,'Popen',side_effect=refuse),patch.object(socket.socket,'connect',refuse):
+                for _ in range(191):
+                    with patch.object(sys,'argv',self._record_args(root)):self.assertEqual(0,g.font_disposal_main())
+            self.assertEqual([],transport)
+            self.assertEqual(191,len((root/'artifacts/attempt/publisher-events.jsonl').read_text().splitlines()))
+
+    def test_record_event_refuses_tampered_or_unauthenticated_cached_settlement(self):
+        g=self.g;plan=(ROOT/g.FONT_DISPOSAL['planPath']).read_bytes()
+        def mutate(kind,root,receipt,selected):
+            attempt=root/'artifacts/attempt'
+            if kind=='tampered-bytes':
+                p=attempt/'accepted-tag-settlement.json';p.write_bytes(p.read_bytes()+b' ')
+            if kind=='missing-receipt':(attempt/'accepted-tag-settlement.json').unlink()
+            if kind=='missing-binding':(attempt/'input-binding.json').unlink()
+            if kind in ('claims-rehashed','refs-rehashed','pending-rehashed'):
+                doc=dict(receipt)
+                if kind=='claims-rehashed':doc['sameIntentConvergence']='Unknown'
+                if kind=='refs-rehashed':doc['refs']={**doc['refs'],'refs/tags/v0.32.3':'c'*40}
+                if kind=='pending-rehashed':doc['pendingSubordinateRefs']=['refs/tags/v0.32.3']
+                raw=json.dumps(doc).encode();(attempt/'accepted-tag-settlement.json').write_bytes(raw)
+                selected=dict(selected,receiptSha256=hashlib.sha256(raw).hexdigest())
+                b=json.loads((attempt/'input-binding.json').read_text());b['tagSettlement']['receiptSha256']=selected['receiptSha256'];(attempt/'input-binding.json').write_text(json.dumps(b))
+            if kind=='other-selection':selected=dict(selected,run=99)
+            if kind=='binding-other-attempt':
+                b=json.loads((attempt/'input-binding.json').read_text());b['tagSettlement']['artifact']=13;(attempt/'input-binding.json').write_text(json.dumps(b))
+            if kind=='duplicate-key':
+                p=attempt/'accepted-tag-settlement.json';raw=p.read_bytes().replace(b'{"schema"',b'{"result":"passed","schema"',1);p.write_bytes(raw)
+                selected=dict(selected,receiptSha256=hashlib.sha256(raw).hexdigest())
+                b=json.loads((attempt/'input-binding.json').read_text());b['tagSettlement']['receiptSha256']=selected['receiptSha256'];(attempt/'input-binding.json').write_text(json.dumps(b))
+            if kind=='no-selection':return None
+            return selected
+        for kind in ('tampered-bytes','missing-receipt','missing-binding','claims-rehashed','refs-rehashed','pending-rehashed','other-selection','binding-other-attempt','duplicate-key','no-selection','other-run-identity','other-executor-identity'):
+            with self.subTest(kind=kind),tempfile.TemporaryDirectory() as d:
+                root,receipt,selected=self._cached_settlement_root(d)
+                chosen=mutate(kind,root,receipt,selected)
+                env={'FSGG_ACCEPTED_TAG_SETTLEMENT':'' if chosen is None else json.dumps(chosen)}
+                identity=dict(self.IDENTITY,run='8') if kind=='other-run-identity' else dict(self.IDENTITY,executorSha='d'*40) if kind=='other-executor-identity' else dict(self.IDENTITY)
+                with patch.dict(os.environ,env),patch.object(g,'executor_identity',return_value=identity),patch.object(g,'source_bytes',return_value=plan),patch.object(g,'validate',return_value={}),\
+                     patch.object(g.subprocess,'check_output',side_effect=AssertionError('no transport')),patch.object(sys,'argv',self._record_args(root)),self.assertRaises(SystemExit):
+                    g.font_disposal_main()
+                self.assertFalse((root/'artifacts/attempt/publisher-events.jsonl').exists())
+
+    def test_non_record_font_entry_still_authenticates_settlement_natively(self):
+        g=self.g;plan=(ROOT/g.FONT_DISPOSAL['planPath']).read_bytes()
+        with tempfile.TemporaryDirectory() as d:
+            root,_,_=self._cached_settlement_root(d)
+            with patch.object(g,'executor_identity',return_value={}),patch.object(g,'source_bytes',return_value=plan),patch.object(g,'validate',return_value={}),\
+                 patch.object(g,'accepted_tag_settlement',return_value={}) as native,patch.object(g,'verified_cached_tag_settlement',side_effect=AssertionError('static guard must not trust a cache')),\
+                 patch.object(sys,'argv',['guard','--font-disposal-attempt','--repo-root',str(root),'--executor-fence']):
+                self.assertEqual(0,g.font_disposal_main())
+            native.assert_called_once()
 
     def test_acquisition_joins_native_originals_before_proof_and_never_repacks(self):
         import io

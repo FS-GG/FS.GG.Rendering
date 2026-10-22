@@ -193,3 +193,26 @@ workflow census pins the new workflow and edited gate bytes, and the observer's 
 `observedAs: job-token` and is a comparison only (`digestJoinCandidate` is a necessary-not-sufficient flag); the admission value is
 `readerPolicySha256`, observed as the reader identity (`observedAs: reader-token`), whose bodies can differ from the job token's. The
 original receive-pack outcome stays `Unknown`.
+
+
+## Publisher event records reuse the authenticated settlement (2026-10-22)
+
+The selected 0.32.3 publisher authenticates the accepted settlement natively once, in
+acquisition (`--acquire-bound-artifacts`): run/artifact provenance, archive and receipt
+bytes and the three live immutable refs. The F# precredential entry then joins that receipt
+again. Event records (`--record-event`, about 191 per attempt across the pre-writer census
+and both feed loops) previously re-ran that native authentication each time. Each run made six
+`GITHUB_TOKEN` requests, including one archive download, so the loops needed about 1,150
+requests against the 1,000-per-hour repository limit, inside the irreversible push loops.
+Records now use `verified_cached_tag_settlement` with no transport. It requires the cached
+receipt bytes to hash to the selected `receiptSha256`, requires this attempt's
+`input-binding.json` to carry the same selected coordinates, and re-checks the shared receipt
+claims (`settlement_claims_refused`). A missing, tampered, rehashed-claim, duplicate-key or
+foreign-attempt cache refuses before writing an event. The static guard and acquisition
+still authenticate over the network. `scripts/test-release-source-guard.py` counts and
+refuses every subprocess and socket transport across 191 actual record calls.
+
+After the settlement created the 0.32.3 tags, the read-only `preflight-only` route cannot
+re-qualify this subject: `release-preflight.py` refuses existing tags and the font
+attempt refuses scope-only verification. Post-settlement eligibility is therefore
+established only inside the publish job, before its first writer.
