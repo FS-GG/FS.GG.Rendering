@@ -17,6 +17,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import http.client
 import urllib.error
 import urllib.request
 
@@ -106,7 +107,7 @@ class GET:
             except urllib.error.HTTPError as error:
                 response = error
             with response:
-                event.update(status=response.code, requestId=response.headers.get('x-github-request-id'), observedUtc=utc())
+                event.update(status=response.code, requestId=request_id(response.headers.get('x-github-request-id')), observedUtc=utc())
                 need(not response.headers.get('Link'), 'pagination-continuation-or-unknown')
                 raw = response.read(256 * 1024 + 1)
                 self.budget.bytes += len(raw)
@@ -120,9 +121,14 @@ class GET:
                 return value
         except Refused:
             raise
-        except (OSError, ValueError, TimeoutError):
+        except (OSError, ValueError, TimeoutError, http.client.HTTPException):
             event['outcome'] = 'unknown'
             raise Refused('transport-or-json-unavailable') from None
+
+
+def request_id(value):
+    # Provider-controlled text enters evidence only in GitHub's fixed identifier shape.
+    return value if isinstance(value, str) and re.fullmatch('[0-9A-Fa-f:-]{1,64}', value) else None
 
 
 def local_git(root, *args):
@@ -242,7 +248,7 @@ def workflow_inventory(job):
     pairs = []
     for row in value['workflows']:
         need(isinstance(row, dict) and type(row.get('id')) is int and row['id'] > 0 and isinstance(row.get('path'), str)
-             and re.fullmatch(r'\.github/workflows/[A-Za-z0-9_-]+\.ya?ml', row['path']), 'workflow-identity')
+             and 0 < len(row['path']) <= 256, 'workflow-identity')
         pairs.append((row['id'], row['path']))
     need(len({i for i,p in pairs}) == len(pairs) and len({p for i,p in pairs}) == len(pairs), 'workflow-duplicate')
     return {'complete': True, 'count': len(pairs), 'sha256': digest(json.dumps(sorted(pairs), separators=(',', ':')).encode())}
@@ -264,7 +270,7 @@ def policy_observation(job):
         actors = detail.get('bypass_actors')
         need(not present or isinstance(actors, list), 'policy-bypass-shape')
         # Actor identities need not be serialized to preserve exact empty versus unknown.
-        conditions = detail.get('conditions', {}).get('ref_name')
+        conditions = (detail.get('conditions') or {}).get('ref_name')
         need(conditions is None or isinstance(conditions, dict), 'policy-condition-shape')
         include = conditions.get('include') if conditions is not None else None
         exclude = conditions.get('exclude') if conditions is not None else None
@@ -273,7 +279,7 @@ def policy_observation(job):
         rules = detail.get('rules')
         need(isinstance(rules, list) and all(isinstance(x, dict) and isinstance(x.get('type'), str) for x in rules), 'policy-rule-shape')
         types = [x['type'] for x in rules]
-        need(detail.get('target') in ('tag', 'branch') and detail.get('enforcement') in ('active', 'evaluate', 'disabled')
+        need(detail.get('target') in ('tag', 'branch', 'push') and detail.get('enforcement') in ('active', 'evaluate', 'disabled')
              and all(re.fullmatch('[a-z][a-z_]{0,63}', value) for value in types), 'policy-rule-shape')
         observations.append({'id': row['id'], 'target': detail.get('target'), 'enforcement': detail.get('enforcement'),
             'bypassActorsFieldPresent': present, 'bypassActorsEmpty': actors == [] if present else None,
@@ -281,7 +287,12 @@ def policy_observation(job):
         if (detail.get('target') == 'tag' and detail.get('enforcement') == 'active' and present and actors == []
             and exclude == [] and isinstance(include, list) and {'update', 'deletion'} <= set(types)):
             covered.update(set(include) & set(REFS))
-    return {'available': True, 'complete': True, 'sha256': digest(json.dumps(details, sort_keys=True, separators=(',', ':')).encode()),
+    # The retained digest covers the whole detail body as this job token saw it. Settlement recomputes it
+    # with its administrator identity, whose body can differ (for example bypass_actors visibility), so
+    # root must confirm the digest under that identity; it is joinable only when bypass_actors was visible.
+    return {'available': True, 'complete': True, 'observedAs': 'job-token',
+            'digestJoinCandidate': all('bypass_actors' in d for d in details),
+            'sha256': digest(json.dumps(details, sort_keys=True, separators=(',', ':')).encode()),
             'rulesets': observations, 'immutablePolicyReady': covered == set(REFS)}
 
 
@@ -312,7 +323,7 @@ class Observer:
                 try:
                     value = operation(job); self.report[stage] = value
                     if stage == 'policy': self.report['immutablePolicyReady'] = value['immutablePolicyReady']
-                except Refused as error:
+                except Exception as error:
                     self.gap(stage, error)
             app_id_raw = self.env.pop('FSGG_DISPATCH_APP_ID', '')
             private_key = self.env.pop('FSGG_DISPATCH_APP_PRIVATE_KEY', '')
@@ -325,18 +336,21 @@ class Observer:
             self.report['app'] = app_identity(app.get('/app'), app_id)
             initial = installation_identity(app.get(PREFIX + '/installation'), app_id)
             self.report['installation'] = initial
-            self.report['writerPermissionCeilingCompatible'] = all(
-                grant.get('contents') == 'write' and grant.get('workflows') == 'write'
-                for grant in (self.report['app']['permissions'], initial['permissions']))
             main_ref(job, self.report['executor']['executorSha'])
             final = installation_identity(app.get(PREFIX + '/installation'), app_id)
             need(initial == final, 'installation-moved')
+            self.report['writerPermissionCeilingCompatible'] = all(
+                grant.get('contents') == 'write' and grant.get('workflows') == 'write'
+                for grant in (self.report['app']['permissions'], initial['permissions']))
             self.report['determiningRereadComplete'] = True
-        except (Refused, OSError, ValueError, KeyError, TypeError, AttributeError, subprocess.SubprocessError) as error:
+        except Exception as error:  # reduced to a closed reason by gap(); never traceback text
             self.gap('observer', error)
         finally:
             self.report.update(observedUtc=utc(), requestCount=self.budget.requests, responseBytes=self.budget.bytes,
                 elapsedSeconds=round(time.monotonic() - self.budget.started, 3))
+            if any(g['stage'] == 'observer' for g in self.report['gaps']):
+                # An incomplete determining observation cannot leave positive readiness facts behind.
+                self.report['writerPermissionCeilingCompatible'] = self.report['immutablePolicyReady'] = False
             self.report['result'] = 'observed' if not self.report['gaps'] else 'refused-or-incomplete'
         return self.report
 

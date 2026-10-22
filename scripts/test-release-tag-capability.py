@@ -16,6 +16,7 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import patch
+import http.client
 import urllib.error
 
 sys.dont_write_bytecode = True
@@ -404,7 +405,7 @@ class PolicyAndInventory(unittest.TestCase):
         dup = {'total_count': 2, 'workflows': [WORKFLOWS['workflows'][0], dict(WORKFLOWS['workflows'][0])]}
         observer, _ = observe(Fake(**{c.PREFIX + '/actions/workflows?per_page=100': dup}))
         self.assertEqual([('workflowInventory', 'workflow-duplicate')], reasons(observer))
-        odd = {'total_count': 1, 'workflows': [{'id': 1, 'path': 'x/../.github/workflows/a.yml'}]}
+        odd = {'total_count': 1, 'workflows': [{'id': 1, 'path': ''}]}
         observer, _ = observe(Fake(**{c.PREFIX + '/actions/workflows?per_page=100': odd}))
         self.assertEqual([('workflowInventory', 'workflow-identity')], reasons(observer))
 
@@ -435,6 +436,109 @@ class PolicyAndInventory(unittest.TestCase):
         self.assertEqual(settle.REFS, c.REFS)
         self.assertEqual(settle.REPO, c.REPO)
         self.assertEqual(settle.PREFIX.rstrip('/'), c.PREFIX)
+
+
+class HardeningFindings(unittest.TestCase):
+    """Controls added after independent review of the first candidate."""
+    def test_http_protocol_errors_are_closed_reasons_not_tracebacks(self):
+        for failure in (http.client.BadStatusLine(JOB_TOKEN), http.client.LineTooLong('x'), http.client.IncompleteRead(b'x')):
+            observer, _ = observe(Fake(**{'/app': failure}))
+            self.assertEqual([('observer', 'transport-or-json-unavailable')], reasons(observer))
+            self.assertNotIn(JOB_TOKEN, json.dumps(observer.report))
+
+    def test_unexpected_exception_is_reduced_to_closed_reason_and_stage_isolated(self):
+        observer, _ = observe(Fake(**{c.PREFIX + '/rulesets/1': dict(RULESET, conditions=7)}))
+        self.assertEqual([('policy', 'unavailable')], reasons(observer))
+        self.assertIn('app', observer.report)  # the App observation still ran
+
+    def test_refused_determining_reread_leaves_no_positive_readiness(self):
+        moved = dict(INSTALLATION, permissions={'contents': 'read'})
+        observer, _ = observe(Fake(**{c.PREFIX + '/installation': Seq(INSTALLATION, moved)}))
+        self.assertIs(False, observer.report['writerPermissionCeilingCompatible'])
+        self.assertIs(False, observer.report['immutablePolicyReady'])
+        old = {'ref': 'refs/heads/main', 'object': {'type': 'commit', 'sha': SHA}}
+        new = {'ref': 'refs/heads/main', 'object': {'type': 'commit', 'sha': 'd' * 40}}
+        observer, _ = observe(Fake(**{c.PREFIX + '/git/ref/heads/main': Seq(old, new)}))
+        self.assertIs(False, observer.report['writerPermissionCeilingCompatible'])
+        self.assertIs(False, observer.report['immutablePolicyReady'])
+        self.assertIs(True, observe()[0].report['writerPermissionCeilingCompatible'])  # baseline control
+
+    def test_policy_digest_is_labelled_with_the_observing_identity_and_join_visibility(self):
+        baseline = observe()[0].report['policy']
+        self.assertEqual('job-token', baseline['observedAs']); self.assertIs(True, baseline['digestJoinCandidate'])
+        hidden = {k: v for k, v in RULESET.items() if k != 'bypass_actors'}
+        self.assertIs(False, observe(Fake(**{c.PREFIX + '/rulesets/1': hidden}))[0].report['policy']['digestJoinCandidate'])
+
+    def test_non_tag_rulesets_and_null_conditions_do_not_abort_policy_observation(self):
+        for detail in (dict(RULESET, target='push', conditions=None), dict(RULESET, conditions=None)):
+            observer, _ = observe(Fake(**{c.PREFIX + '/rulesets/1': detail}))
+            self.assertEqual([], reasons(observer)); self.assertFalse(observer.report['immutablePolicyReady'])
+
+    def test_dynamic_workflow_paths_do_not_block_the_digest_settlement_accepts(self):
+        rows = {'total_count': 2, 'workflows': WORKFLOWS['workflows'][:1] + [{'id': 5, 'path': 'dynamic/github-code-scanning/codeql'}]}
+        observer, _ = observe(Fake(**{c.PREFIX + '/actions/workflows?per_page=100': rows}))
+        self.assertEqual([], reasons(observer)); self.assertEqual(2, observer.report['workflowInventory']['count'])
+
+    def test_request_id_is_kept_only_in_github_identifier_shape(self):
+        self.assertEqual('ABCD:12:ef-9', c.request_id('ABCD:12:ef-9'))
+        for hostile in ('ghs_' + 'x' * 30, 'a b', '<script>', '', None, 'A' * 65):
+            self.assertIsNone(c.request_id(hostile))
+
+    def test_hostile_request_id_header_never_reaches_retained_events(self):
+        events = []; adapter = c.GET(JOB_TOKEN, 'job', c.Budget(), events)
+        hostile = Response(); hostile.headers['x-github-request-id'] = JOB_TOKEN
+        adapter.opener = type('O', (), {'open': staticmethod(lambda request, timeout: hostile)})()
+        adapter.get(c.PREFIX)
+        self.assertIsNone(events[0]['requestId']); self.assertNotIn(JOB_TOKEN, json.dumps(events))
+
+    def test_authorization_header_per_role_and_redirect_handler_installed(self):
+        for role, token, path in (('job', JOB_TOKEN, c.PREFIX), ('app', JWT, '/app')):
+            adapter = c.GET(token, role, c.Budget(), [])
+            self.assertTrue(any(isinstance(h, c.NoRedirect) for h in adapter.opener.handlers))
+            seen = []
+            def opener(request, timeout):
+                seen.append(dict(request.header_items())); return Response()
+            adapter.opener = type('O', (), {'open': staticmethod(opener)})()
+            adapter.get(path)
+            self.assertEqual('Bearer ' + token, seen[0]['Authorization'], role)
+            self.assertEqual('2022-11-28', seen[0]['X-github-api-version'])
+        # The App role is signed with the JWT, never the job token.
+        observer, fake = observe()
+        tokens = {role: set() for role in ('job', 'app')}
+        real = Fake.__call__
+        def spy(self, token, role, budget, events):
+            tokens[role].add(token); return real(self, token, role, budget, events)
+        with patch.object(Fake, '__call__', spy):
+            observe(fake)
+        self.assertEqual({JOB_TOKEN}, tokens['job']); self.assertEqual({JWT}, tokens['app'])
+
+    def test_local_checkout_identity_uses_a_real_git_repository(self):
+        env = {'GIT_AUTHOR_NAME': 'a', 'GIT_AUTHOR_EMAIL': 'a@x', 'GIT_COMMITTER_NAME': 'a', 'GIT_COMMITTER_EMAIL': 'a@x', 'PATH': '/usr/bin:/bin'}
+        git = lambda root, *a: subprocess.run(['git', '-C', str(root), *a], check=True, capture_output=True, env=env, text=True).stdout.strip()
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            git(root, 'init', '-q'); (root / 'f').write_text('1'); git(root, 'add', 'f'); git(root, 'commit', '-qm', 'one')
+            head = git(root, 'rev-parse', 'HEAD')
+            self.assertEqual(head, c.local_git(root, 'rev-parse', 'HEAD'))
+            c.local_git(root, 'diff', '--quiet', 'HEAD', '--', 'f')  # clean passes
+            (root / 'f').write_text('2')
+            with self.assertRaises(c.Refused) as caught:
+                c.local_git(root, 'diff', '--quiet', 'HEAD', '--', 'f')
+            self.assertEqual('checkout-unavailable-or-dirty', caught.exception.args[0])
+            # protected_source binds the checkout: a different expected SHA or dirty source refuses.
+            job = Fake()('x' * 40, 'job', c.Budget(), [])
+            with self.assertRaises(c.Refused) as caught:
+                c.protected_source(root, dict(ENV, FSGG_EXPECTED_EXECUTOR_SHA=SHA, GITHUB_SHA=SHA, GITHUB_WORKFLOW_SHA=SHA), job)
+            self.assertEqual('checkout-sha', caught.exception.args[0])
+            pinned = dict(ENV, FSGG_EXPECTED_EXECUTOR_SHA=head, GITHUB_SHA=head, GITHUB_WORKFLOW_SHA=head)
+            with patch.object(c, 'SOURCE_PATHS', ('f',)):
+                fake = Fake(**{c.PREFIX + '/git/ref/heads/main': {'ref': 'refs/heads/main', 'object': {'type': 'commit', 'sha': head}},
+                               c.PREFIX + '/branches/main': {'name': 'main', 'protected': True, 'commit': {'sha': head}}})
+                job = fake('x' * 40, 'job', c.Budget(), [])
+                with self.assertRaises(c.Refused):  # dirty source file
+                    c.protected_source(root, pinned, job)
+                (root / 'f').write_text('1')
+                self.assertEqual(head, c.protected_source(root, pinned, job)['executorSha'])
 
 
 @unittest.skipUnless(shutil.which('openssl') and Path('/usr/bin/openssl').exists(), 'openssl required')
