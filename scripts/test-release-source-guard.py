@@ -1134,7 +1134,7 @@ def native_boundary(scope_only=False, current_attempt=False, font_attempt=False)
         env.update(FSGG_RELEASE_ATTEMPT='0323')
         proof.update(originalCustodyVerified=True,nativeTemplatesQualified=True,providerPassed=186,browserPassed=[15,15,15],browserUnexpected=0,browserSkipped=0,browserFlaky=0,atPassed=15,atSpeechWindows=4,atEvidenceMembers=27,atCustodyQualified=True)
         inputs.update(producerSha='4ec6eafbbbf02264db9b0db4780c590abe0bf9cd',originalPlanSha256='89369de0c0944c66a52c6ed914cef78d6bb7670866baedf85cd8a198c5c46239',outerSha256='84647332c124e511545787c8c3f8634d4f5177068521acfc86c93430ac73ef63',custodySha256='7dbd4329546932c4c1d12767550b7b78aae85e32c81b354935b2c615b3e298c9',effectId='rendering-0323-original39509314882-a1')
-        settlement={'schema':'fsgg.rendering.tag-settlement/v1','effectId':inputs['effectId'],'producerSha':inputs['producerSha'],'originalTransportOutcome':'Unknown','sameIntentConvergence':'Verified','cleanup':'restored','result':'passed','publication':'not-performed','notification':'not-performed','executorSha':'b'*40,'run':'11','attempt':'1','refs':{'refs/tags/'+n:inputs['producerSha'] for n in ['fs-gg-ui/v0.32.3','fs-gg-ui-template/v0.32.3','v0.32.3']}}
+        settlement={'schema':'fsgg.rendering.tag-settlement/v1','effectId':inputs['effectId'],'producerSha':inputs['producerSha'],'originalTransportOutcome':'Unknown','sameIntentConvergence':'Verified','cleanup':'restored','pendingSubordinateRefs':[],'result':'passed','publication':'not-performed','notification':'not-performed','executorSha':'b'*40,'run':'11','attempt':'1','refs':{'refs/tags/'+n:inputs['producerSha'] for n in ['fs-gg-ui/v0.32.3','fs-gg-ui-template/v0.32.3','v0.32.3']}}
         settlement_raw=json.dumps(settlement).encode()
         inputs['tagSettlement']={'receiptSha256':hashlib.sha256(settlement_raw).hexdigest(),'artifactSha256':'c'*64,'executorSha':'b'*40,'run':11,'attempt':1,'artifact':12}
         env['FSGG_ACCEPTED_TAG_SETTLEMENT']=json.dumps(inputs['tagSettlement'])
@@ -1147,7 +1147,7 @@ def native_boundary(scope_only=False, current_attempt=False, font_attempt=False)
             cases.append(('font-executor-'+field,{}, {field:'different'}, {},'executor'))
         for field,bad in [('originalCustodyVerified',False),('nativeTemplatesQualified',False),('providerPassed',180),('browserPassed',[8,8,8]),('browserPassed',[15,15,14]),('browserUnexpected',1),('browserSkipped',1),('browserFlaky',1),('atPassed',14),('atSpeechWindows',3),('atEvidenceMembers',26),('atCustodyQualified',False),('testToolchainRuntime','10.0.12'),('testToolchainSdk','10.0.402'),('testToolchainCompiler','bad'),('testToolchainCore','bad')]:
             cases.append(('font-proof-'+field+'-'+str(bad),{}, {field:bad}, {},'input'))
-        for field in ('originalTransportOutcome','sameIntentConvergence','cleanup','effectId','producerSha','result','executorSha','run','refs'):
+        for field in ('originalTransportOutcome','sameIntentConvergence','cleanup','effectId','producerSha','result','executorSha','run','refs','pendingSubordinateRefs'):
             cases.append(('font-settlement-'+field,{}, {'testSettlementField':field}, {},'input'))
         cases.append(('font-settlement-replaced-bytes',{}, {'testSettlementBytes':True}, {},'input'))
         cases.append(('font-settlement-selection-missing',{'FSGG_ACCEPTED_TAG_SETTLEMENT':''}, {}, {},'input'))

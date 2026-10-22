@@ -296,16 +296,17 @@ class PublisherSettlementTests(unittest.TestCase):
         import zipfile
         guard=s.tags.guard
         receipt={'schema':'fsgg.rendering.tag-settlement/v1','effectId':s.EFFECT,'producerSha':s.SOURCE,
-            'originalTransportOutcome':'Unknown','sameIntentConvergence':'Verified','cleanup':'restored','result':'passed',
+            'originalTransportOutcome':'Unknown','sameIntentConvergence':'Verified','cleanup':'restored','pendingSubordinateRefs':[],'result':'passed',
             'publication':'not-performed','notification':'not-performed','executorSha':'b'*40,'run':'11','attempt':'1',
             'workflowRef':s.WORKFLOW,'refs':{r:s.SOURCE for r in s.REFS}}
-        for mutant in (None,'historical-outcome','convergence','cleanup','effect','annotated-current','wrong-current','wrong-native','changed-bytes'):
+        for mutant in (None,'historical-outcome','convergence','cleanup','effect','annotated-current','wrong-current','wrong-native','changed-bytes','pending-subordinate'):
             with self.subTest(mutant=mutant),tempfile.TemporaryDirectory() as d:
                 root=Path(d);doc=copy.deepcopy(receipt)
                 if mutant=='historical-outcome':doc['originalTransportOutcome']='Rejected'
                 if mutant=='convergence':doc['sameIntentConvergence']='Unknown'
                 if mutant=='cleanup':doc['cleanup']='Unknown-owned-gap'
                 if mutant=='effect':doc['effectId']='new-effect'
+                if mutant=='pending-subordinate':doc['pendingSubordinateRefs']=[s.REFS[1]]
                 member=json.dumps(doc).encode();stream=io.BytesIO()
                 with zipfile.ZipFile(stream,'w') as z:z.writestr('settlement.json',member)
                 raw=stream.getvalue()

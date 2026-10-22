@@ -129,7 +129,7 @@ modeling is deferred: the narrow create-only schedule is covered by before/after
 late-request, lost-response and broken-policy controls without a new toolchain.
 The source/control investment is capped at the existing1800-second source window;
 no CI savings estimate is claimed. Local Python controls qualify source only.
-The expanded46-case actual F# entry suite requires the selected SDK10.0.401/runtime10.0.13
+The expanded47-case actual F# entry suite requires the selected SDK10.0.401/runtime10.0.13
 in existing hosted CI, with a140-second internal bound, before integration or effects.
 Independent review at the exact candidate commit and all required CI remain pending
 at source preparation. Root separately owns policy/capability admission, workflow

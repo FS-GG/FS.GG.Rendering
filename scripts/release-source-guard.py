@@ -705,7 +705,7 @@ def accepted_tag_settlement(root: Path) -> dict:
     receipt = json.loads(receipt_raw)
     refs = {'refs/tags/' + name: FONT_DISPOSAL['producerSha'] for name in ('fs-gg-ui/v0.32.3', 'fs-gg-ui-template/v0.32.3', 'v0.32.3')}
     if (receipt.get('schema') != 'fsgg.rendering.tag-settlement/v1' or receipt.get('effectId') != FONT_DISPOSAL['effectId'] or receipt.get('producerSha') != FONT_DISPOSAL['producerSha']
-        or receipt.get('originalTransportOutcome') != 'Unknown' or receipt.get('sameIntentConvergence') != 'Verified' or receipt.get('cleanup') != 'restored' or receipt.get('result') != 'passed'
+        or receipt.get('originalTransportOutcome') != 'Unknown' or receipt.get('sameIntentConvergence') != 'Verified' or receipt.get('cleanup') != 'restored' or receipt.get('pendingSubordinateRefs') != [] or receipt.get('result') != 'passed'
         or receipt.get('executorSha') != selected['executorSha'] or receipt.get('run') != str(selected['run']) or receipt.get('attempt') != '1'
         or receipt.get('workflowRef') != 'FS-GG/FS.GG.Rendering/.github/workflows/release-tag-settlement.yml@refs/heads/main'
         or receipt.get('refs') != refs or receipt.get('publication') != 'not-performed' or receipt.get('notification') != 'not-performed'):

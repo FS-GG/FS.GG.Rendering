@@ -113,6 +113,8 @@ try
                proof.GetProperty("run").GetString()<>string(selectedSettlement.GetProperty("run").GetInt64()) ||
                proof.GetProperty("attempt").GetString()<>"1" then
                 invalidArg "input" "verify-key-settlement-provenance-refused"
+            if proof.GetProperty("pendingSubordinateRefs").GetArrayLength()<>0 then
+                invalidArg "input" "verify-key-unresolved-subordinate-refused"
             let refs = proof.GetProperty("refs")
             if (refs.EnumerateObject() |> Seq.length)<>3 then invalidArg "input" "verify-key-settlement-refs-refused"
             for name in ["refs/tags/fs-gg-ui/v0.32.3"; "refs/tags/fs-gg-ui-template/v0.32.3"; "refs/tags/v0.32.3"] do
