@@ -46,6 +46,10 @@ on:
         type: boolean
         required: false
         default: false
+      accepted-tag-settlement:
+        description: "Root-accepted settlement JSON coordinates (run, attempt, artifact, artifactSha256, receiptSha256, executorSha); required for held0323 effects."
+        type: string
+        required: false
       font-disposal-attempt:
         description: "Select retained0.32.3 with exact accepted receiver/AT proof; publication still requires explicit authority."
         type: boolean
@@ -83,6 +87,10 @@ on:
         type: boolean
         required: false
         default: false
+      accepted-tag-settlement:
+        description: "Root-accepted settlement JSON coordinates (run, attempt, artifact, artifactSha256, receiptSha256, executorSha); required for held0323 effects."
+        type: string
+        required: false
       font-disposal-attempt:
         description: "Select retained0.32.3 with exact accepted receiver/AT proof; publication still requires explicit authority."
         type: boolean
@@ -113,6 +121,8 @@ permissions:
 
 env:
   FSGG_EXPECTED_EXECUTOR_SHA: ${{ inputs.expected-executor-sha }}
+  FSGG_ACCEPTED_TAG_SETTLEMENT: ${{ inputs.accepted-tag-settlement }}
+  GH_TOKEN: ${{ github.token }}
 
 jobs:
   release-source-guard:

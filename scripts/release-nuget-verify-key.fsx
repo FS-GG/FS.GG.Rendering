@@ -84,6 +84,40 @@ try
             invalidArg "input" "verify-key-current-effect-refused"
         if fontAttempt && inputs.RootElement.GetProperty("effectId").GetString()<>"rendering-0323-original39509314882-a1" then
             invalidArg "input" "verify-key-font-effect-refused"
+    // Held original0323 needs the root-accepted same-intent result before any
+    // credential lookup. Historical transport remains Unknown independently.
+    if fontAttempt then
+        try
+            use inputs = JsonDocument.Parse(File.ReadAllBytes("artifacts/attempt/input-binding.json"))
+            let selectedSettlement = inputs.RootElement.GetProperty("tagSettlement")
+            use accepted = JsonDocument.Parse(Environment.GetEnvironmentVariable("FSGG_ACCEPTED_TAG_SETTLEMENT"))
+            for field in ["run"; "attempt"; "artifact"] do
+                if selectedSettlement.GetProperty(field).GetInt64()<>accepted.RootElement.GetProperty(field).GetInt64() then
+                    invalidArg "input" "verify-key-settlement-selection-refused"
+            for field in ["receiptSha256"; "artifactSha256"; "executorSha"] do
+                if selectedSettlement.GetProperty(field).GetString()<>accepted.RootElement.GetProperty(field).GetString() then
+                    invalidArg "input" "verify-key-settlement-selection-refused"
+            let raw = File.ReadAllBytes("artifacts/attempt/accepted-tag-settlement.json")
+            if Convert.ToHexString(SHA256.HashData raw).ToLowerInvariant()<>selectedSettlement.GetProperty("receiptSha256").GetString() then
+                invalidArg "input" "verify-key-settlement-bytes-refused"
+            use settlement = JsonDocument.Parse(raw)
+            let proof = settlement.RootElement
+            for field, expectedValue in ["schema","fsgg.rendering.tag-settlement/v1";
+                                         "effectId","rendering-0323-original39509314882-a1";
+                                         "producerSha",producer; "originalTransportOutcome","Unknown";
+                                         "sameIntentConvergence","Verified"; "cleanup","restored";
+                                         "result","passed"; "publication","not-performed"; "notification","not-performed"] do
+                if proof.GetProperty(field).GetString()<>expectedValue then
+                    invalidArg "input" "verify-key-settlement-claims-refused"
+            if proof.GetProperty("executorSha").GetString()<>selectedSettlement.GetProperty("executorSha").GetString() ||
+               proof.GetProperty("run").GetString()<>string(selectedSettlement.GetProperty("run").GetInt64()) ||
+               proof.GetProperty("attempt").GetString()<>"1" then
+                invalidArg "input" "verify-key-settlement-provenance-refused"
+            let refs = proof.GetProperty("refs")
+            if (refs.EnumerateObject() |> Seq.length)<>3 then invalidArg "input" "verify-key-settlement-refs-refused"
+            for name in ["refs/tags/fs-gg-ui/v0.32.3"; "refs/tags/fs-gg-ui-template/v0.32.3"; "refs/tags/v0.32.3"] do
+                if refs.GetProperty(name).GetString()<>producer then invalidArg "input" "verify-key-settlement-refs-refused"
+        with _ -> invalidArg "input" "verify-key-settlement-refused"
     let fontJourney =
         if fontAttempt then
             let proof = executorFacts.RootElement

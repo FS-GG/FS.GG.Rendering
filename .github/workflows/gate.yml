@@ -799,6 +799,7 @@ jobs:
 
       - name: Qualify closed read-only release selectors without credentials
         run: |
+          timeout --kill-after=5s 60s python3 scripts/test-settle-original-tags.py
           python3 scripts/release-toolchain-identity.py --expected-sdk 10.0.401 --receipt artifacts/toolchain/read-selector-controls.json
           dotnet fsi --exec scripts/test-release-package-census.fsx
           dotnet fsi --define:DEBUG --exec scripts/test-release-nuget-verify-key.fsx

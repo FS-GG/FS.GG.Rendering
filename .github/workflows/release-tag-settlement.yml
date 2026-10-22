@@ -1,0 +1,74 @@
+name: release-tag-settlement
+# This separate administrative entry must remain enabled while release-tags,
+# release and template-dispatch are fenced. No publication or dispatch follows.
+on:
+  workflow_dispatch:
+    inputs:
+      expected-executor-sha:
+        description: Exact independently reviewed protected executor SHA.
+        required: true
+        type: string
+      admission-json:
+        description: Root-selected bounded admission/capability/policy/inventory evidence (no credentials).
+        required: true
+        type: string
+      admission-sha256:
+        description: SHA256 of exact admission JSON bytes, excluding a terminal newline.
+        required: true
+        type: string
+concurrency:
+  group: release-tags
+  cancel-in-progress: false
+permissions:
+  contents: read
+  actions: read
+jobs:
+  settle:
+    if: github.repository == 'FS-GG/FS.GG.Rendering' && github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    env:
+      FSGG_EXPECTED_EXECUTOR_SHA: ${{ inputs.expected-executor-sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check maintained settlement controls before credentials
+        run: timeout --kill-after=5s 60s python3 scripts/test-settle-original-tags.py
+      - name: Retain exact root admission and original authenticated artifacts
+        env:
+          ADMISSION_JSON: ${{ inputs.admission-json }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/tag-settlement/original
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          raw = os.environ['ADMISSION_JSON'].encode()
+          if len(raw) > 16384: raise SystemExit('admission exceeds bound')
+          Path('artifacts/tag-settlement/admission.json').write_bytes(raw)
+          PY
+          gh api repos/FS-GG/FS.GG.Rendering/actions/artifacts/12319803009/zip > artifacts/tag-settlement/original/12319803009.zip
+          gh api repos/FS-GG/FS.GG.Rendering/actions/artifacts/12318993690/zip > artifacts/tag-settlement/original/12318993690.zip
+      - name: Fence, drain, converge original intent, retire writer and restore
+        env:
+          ADMISSION_SHA256: ${{ inputs.admission-sha256 }}
+          # Root must independently admit narrowly scoped existing capability before
+          # provisioning these bounded, expiring credentials. No token is minted here.
+          FSGG_SETTLEMENT_ADMIN_TOKEN: ${{ secrets.FSGG_SETTLEMENT_ADMIN_TOKEN }}
+          FSGG_SETTLEMENT_WRITER_TOKEN: ${{ secrets.FSGG_SETTLEMENT_WRITER_TOKEN }}
+        run: >-
+          timeout --signal=TERM --kill-after=10s 270s python3 scripts/settle-original-tags.py
+          --admission artifacts/tag-settlement/admission.json
+          --admission-sha256 "$ADMISSION_SHA256"
+          --original-directory artifacts/tag-settlement/original
+      - name: Retain original, subordinate and restoration outcomes
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: original0323-tag-settlement-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/tag-settlement
+          if-no-files-found: error

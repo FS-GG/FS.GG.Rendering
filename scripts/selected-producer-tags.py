@@ -210,6 +210,8 @@ class Operation:
         try:
             if self.mode not in ('check', 'cut'):
                 raise Refused('unsupported operation mode')
+            if self.mode == 'cut' and self.source == guard.FONT_DISPOSAL['producerSha']:
+                raise Refused('held original0323 requires maintained same-original-intent settlement; ordinary cutter refused')
             self.admit()
             initial = probe(self.git, self.refs, self.source)
             ordered_prefix(initial, self.refs)
