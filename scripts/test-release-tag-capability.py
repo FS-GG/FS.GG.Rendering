@@ -15,6 +15,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from unittest.mock import patch
 import http.client
@@ -959,6 +960,19 @@ class ReaderIdentityDigest(unittest.TestCase):
             self.assertEqual('refused-or-incomplete', observer.report['result'], kwargs)
             self.assertEqual(1, len(self.deletes(reader)))
             self.assertNotIn(READER_TOKEN, json.dumps(observer.report))
+
+    def test_revocation_is_bounded_by_the_cleanup_reserve_not_the_spent_effect_budget(self):
+        fake = Fake(); holder = []
+        reader = ReaderFake(fake, on_get=lambda path: setattr(holder[0].budget, 'effect_deadline', time.monotonic() - 1))
+        with tempfile.TemporaryDirectory() as d:
+            observer = new_observer(Path(d), fake, reader=reader); holder.append(observer)
+            with patch.object(c, 'local_git', side_effect=lambda r, *a: SHA if a[:1] == ('rev-parse',) else ''), \
+                    patch.object(Path, 'read_bytes', lambda self: b'source'):
+                observer.run()
+        self.assertEqual([], reasons(observer))
+        self.assert_revoked_once(reader)
+        self.assertEqual('revoked', observer.report['cleanup']['readerToken'])
+        self.assertGreater(observer.budget.deadline, observer.budget.effect_deadline)
 
     def test_revocation_is_a_single_attempt_with_no_retry(self):
         observer, reader = self.run_with({'revoke_code': 500})
