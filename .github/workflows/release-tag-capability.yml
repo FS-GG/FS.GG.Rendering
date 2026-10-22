@@ -1,0 +1,50 @@
+name: release-tag-capability
+# Separate metadata entry: never consume settlement's first-run census.
+on:
+  workflow_dispatch:
+    inputs:
+      expected-executor-sha:
+        description: Exact independently reviewed protected main executor SHA.
+        required: true
+        type: string
+concurrency:
+  group: release-tag-capability
+  cancel-in-progress: false
+permissions:
+  contents: read
+  actions: read
+jobs:
+  observe:
+    if: >-
+      github.repository == 'FS-GG/FS.GG.Rendering' &&
+      github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' &&
+      github.run_attempt == 1 && github.sha == inputs.expected-executor-sha
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    env:
+      FSGG_EXPECTED_EXECUTOR_SHA: ${{ inputs.expected-executor-sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check observer controls before App secrets
+        run: timeout --kill-after=5s 60s python3 -B scripts/test-release-tag-capability.py
+      - name: Guard protected source before App secret exposure
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: timeout --kill-after=5s 60s python3 -B scripts/release-tag-capability.py --guard-only
+      - name: Observe existing dispatcher App metadata without mint or mutation
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          FSGG_DISPATCH_APP_ID: ${{ secrets.FSGG_DISPATCH_APP_ID }}
+          FSGG_DISPATCH_APP_PRIVATE_KEY: ${{ secrets.FSGG_DISPATCH_APP_PRIVATE_KEY }}
+        run: timeout --kill-after=5s 190s python3 -B scripts/release-tag-capability.py
+      - name: Retain sanitized capability report only
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: rendering-tag-capability-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/tag-capability/report.json
+          if-no-files-found: error
