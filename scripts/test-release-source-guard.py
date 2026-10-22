@@ -1346,6 +1346,9 @@ class QualifiedFontProofTests(unittest.TestCase):
                 with patch.object(g,'executor_identity',return_value={}),patch.object(g,'source_bytes',return_value=plan),patch.object(g,'validate',return_value={}),patch.object(sys,'argv',bad),self.assertRaises(SystemExit):g.font_disposal_main()
                 self.assertEqual(before,(root/'artifacts/attempt/publisher-events.jsonl').read_bytes())
 
+    IDENTITY={'expectedExecutorSha':'a'*40,'executorSha':'a'*40,'workflowContextSha':'a'*40,'workflowSha':'a'*40,
+        'workflowRef':'FS-GG/FS.GG.Rendering/.github/workflows/release.yml@refs/heads/main','run':'7','attempt':'1'}
+
     def _cached_settlement_root(self,d):
         g=self.g;root=Path(d)
         path=root/g.FONT_DISPOSAL_ATTEMPT;path.parent.mkdir(parents=True);path.write_bytes((ROOT/g.FONT_DISPOSAL_ATTEMPT).read_bytes())
@@ -1358,7 +1361,7 @@ class QualifiedFontProofTests(unittest.TestCase):
         attempt=root/'artifacts/attempt';attempt.mkdir(parents=True)
         (attempt/'accepted-tag-settlement.json').write_bytes(member)
         joined={**selected,'originalTransportOutcome':'Unknown','sameIntentConvergence':'Verified','cleanup':'restored','effectId':g.FONT_DISPOSAL['effectId']}
-        (attempt/'input-binding.json').write_text(json.dumps({'producerSha':g.FONT_DISPOSAL['producerSha'],'effectId':g.FONT_DISPOSAL['effectId'],'tagSettlement':joined}))
+        (attempt/'input-binding.json').write_text(json.dumps({**self.IDENTITY,'producerSha':g.FONT_DISPOSAL['producerSha'],'effectId':g.FONT_DISPOSAL['effectId'],'tagSettlement':joined}))
         return root,receipt,selected
 
     def _record_args(self,root):
@@ -1373,7 +1376,7 @@ class QualifiedFontProofTests(unittest.TestCase):
         def refuse(*a,**k):transport.append(a[:1]);raise AssertionError('record path transport')
         with tempfile.TemporaryDirectory() as d:
             root,_,selected=self._cached_settlement_root(d)
-            with patch.dict(os.environ,{'FSGG_ACCEPTED_TAG_SETTLEMENT':json.dumps(selected)}),patch.object(g,'executor_identity',return_value={'executorSha':'a'*40}),patch.object(g,'source_bytes',return_value=plan),patch.object(g,'validate',return_value={}),\
+            with patch.dict(os.environ,{'FSGG_ACCEPTED_TAG_SETTLEMENT':json.dumps(selected)}),patch.object(g,'executor_identity',return_value=dict(self.IDENTITY)),patch.object(g,'source_bytes',return_value=plan),patch.object(g,'validate',return_value={}),\
                  patch.object(g.subprocess,'check_output',side_effect=refuse),patch.object(g.subprocess,'run',side_effect=refuse),patch.object(g.subprocess,'Popen',side_effect=refuse),patch.object(socket.socket,'connect',refuse):
                 for _ in range(191):
                     with patch.object(sys,'argv',self._record_args(root)):self.assertEqual(0,g.font_disposal_main())
@@ -1405,13 +1408,14 @@ class QualifiedFontProofTests(unittest.TestCase):
                 b=json.loads((attempt/'input-binding.json').read_text());b['tagSettlement']['receiptSha256']=selected['receiptSha256'];(attempt/'input-binding.json').write_text(json.dumps(b))
             if kind=='no-selection':return None
             return selected
-        for kind in ('tampered-bytes','missing-receipt','missing-binding','claims-rehashed','refs-rehashed','pending-rehashed','other-selection','binding-other-attempt','duplicate-key','no-selection'):
+        for kind in ('tampered-bytes','missing-receipt','missing-binding','claims-rehashed','refs-rehashed','pending-rehashed','other-selection','binding-other-attempt','duplicate-key','no-selection','other-run-identity','other-executor-identity'):
             with self.subTest(kind=kind),tempfile.TemporaryDirectory() as d:
                 root,receipt,selected=self._cached_settlement_root(d)
                 chosen=mutate(kind,root,receipt,selected)
                 env={'FSGG_ACCEPTED_TAG_SETTLEMENT':'' if chosen is None else json.dumps(chosen)}
-                with patch.dict(os.environ,env),patch.object(g,'executor_identity',return_value={}),patch.object(g,'source_bytes',return_value=plan),patch.object(g,'validate',return_value={}),\
-                     patch.object(g.subprocess,'check_output',side_effect=AssertionError('no transport')),patch.object(sys,'argv',self._record_args(root)),self.assertRaises((SystemExit,ValueError)):
+                identity=dict(self.IDENTITY,run='8') if kind=='other-run-identity' else dict(self.IDENTITY,executorSha='d'*40) if kind=='other-executor-identity' else dict(self.IDENTITY)
+                with patch.dict(os.environ,env),patch.object(g,'executor_identity',return_value=identity),patch.object(g,'source_bytes',return_value=plan),patch.object(g,'validate',return_value={}),\
+                     patch.object(g.subprocess,'check_output',side_effect=AssertionError('no transport')),patch.object(sys,'argv',self._record_args(root)),self.assertRaises(SystemExit):
                     g.font_disposal_main()
                 self.assertFalse((root/'artifacts/attempt/publisher-events.jsonl').exists())
 

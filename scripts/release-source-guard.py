@@ -679,7 +679,10 @@ SETTLEMENT_RECEIPT = 'artifacts/attempt/accepted-tag-settlement.json'
 
 def selected_tag_settlement() -> dict:
     """Parse only the root-selected settlement coordinates; no transport."""
-    selected = json.loads(os.environ.get('FSGG_ACCEPTED_TAG_SETTLEMENT', '{}'))
+    try:
+        selected = json.loads(os.environ.get('FSGG_ACCEPTED_TAG_SETTLEMENT', '{}'))
+    except ValueError:
+        preflight.fail('held0323 requires explicit accepted settlement coordinates')
     if not isinstance(selected, dict) or set(selected) != set(SETTLEMENT_FIELDS) or any(type(selected[k]) is not int or selected[k] < 1 for k in ('run', 'attempt', 'artifact')) or selected['attempt'] != 1:
         preflight.fail('held0323 requires explicit accepted settlement coordinates')
     if any(type(selected[k]) is not str or not re.fullmatch('[0-9a-f]{64}', selected[k]) for k in ('artifactSha256', 'receiptSha256')) or type(selected['executorSha']) is not str or not re.fullmatch('[0-9a-f]{40}', selected['executorSha']):
@@ -737,7 +740,10 @@ def accepted_tag_settlement(root: Path) -> dict:
     return {**selected, 'originalTransportOutcome': 'Unknown', 'sameIntentConvergence': 'Verified', 'cleanup': 'restored', 'effectId': FONT_DISPOSAL['effectId']}
 
 
-def verified_cached_tag_settlement(root: Path) -> dict:
+EXECUTOR_FIELDS = ('expectedExecutorSha', 'executorSha', 'workflowContextSha', 'workflowSha', 'workflowRef', 'run', 'attempt')
+
+
+def verified_cached_tag_settlement(root: Path, identity: dict) -> dict:
     """Publisher observation path: reuse the settlement this job already authenticated.
 
     Native provenance, archive bytes and live immutable refs were verified once by acquisition
@@ -758,7 +764,8 @@ def verified_cached_tag_settlement(root: Path) -> dict:
     joined = binding.get('tagSettlement') if isinstance(binding, dict) else None
     if (not isinstance(joined, dict) or any(joined.get(k) != selected[k] for k in SETTLEMENT_FIELDS)
             or joined.get('effectId') != FONT_DISPOSAL['effectId'] or joined.get('sameIntentConvergence') != 'Verified'
-            or binding.get('effectId') != FONT_DISPOSAL['effectId'] or binding.get('producerSha') != FONT_DISPOSAL['producerSha']):
+            or binding.get('effectId') != FONT_DISPOSAL['effectId'] or binding.get('producerSha') != FONT_DISPOSAL['producerSha']
+            or set(identity) != set(EXECUTOR_FIELDS) or any(binding.get(k) != identity[k] for k in EXECUTOR_FIELDS)):
         preflight.fail('cached accepted settlement was not authenticated by this attempt')
     if settlement_claims_refused(receipt, selected):
         preflight.fail('cached accepted settlement assertions differ')
@@ -787,7 +794,7 @@ def font_disposal_main() -> int:
     result['planSha256'] = binding['planSha256']
     if not args.attempt_preflight and not args.acquire_bound_artifacts:
         # Event records reuse this job's authenticated receipt; other entries authenticate natively.
-        if args.record_event: verified_cached_tag_settlement(root)
+        if args.record_event: verified_cached_tag_settlement(root, identity)
         else: accepted_tag_settlement(root)
     if args.acquire_bound_artifacts: acquire_font_disposal(root, binding)
     if args.record_event:
