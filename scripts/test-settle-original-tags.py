@@ -484,6 +484,8 @@ class DerivedCredentialTests(DerivedBase):
                     ('repositories', [{'id': 1, 'name': 'Other', 'full_name': 'FS-GG/Other'}]),
                     ('repositories', [{'id': s.cap.REPO_ID, 'name': 'FS.GG.Rendering', 'full_name': s.REPO}] * 2),
                     ('repositories', [{'id': 5, 'name': 'FS.GG.Rendering', 'full_name': s.REPO}]),
+                    ('repositories', [{'id': s.cap.REPO_ID, 'name': 'FS.GG.Rendering', 'full_name': 'FS-GG/Other'}]),
+                    ('repositories', [{'id': s.cap.REPO_ID, 'name': 'Other', 'full_name': s.REPO}]),
                     ('expires_at', 'tomorrow'), ('expires_at', None), ('token', 'short'), ('token', None)):
                 with self.subTest(role=role, field=field):
                     op = self.build(grants={role: good_grant(role, **{field: value})})
