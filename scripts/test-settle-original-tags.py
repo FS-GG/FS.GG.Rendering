@@ -453,7 +453,7 @@ class DerivedCredentialTests(DerivedBase):
         op = self.build(); result = op.run()
         self.assertEqual('passed', result['result']); self.assertEqual('restored', result['cleanup'])
         self.assertEqual([('reader', s.MINTS['reader']), ('writer', s.MINTS['writer'])], [(m[0], m[2]) for m in self.deriver.mints])
-        self.assertEqual({'administration': 'read', 'metadata': 'read'}, self.deriver.mints[0][2]['permissions'])
+        self.assertEqual({'administration': 'write', 'metadata': 'read'}, self.deriver.mints[0][2]['permissions'])
         self.assertEqual({'contents': 'write', 'workflows': 'write', 'metadata': 'read'}, self.deriver.mints[1][2]['permissions'])
         self.assertEqual(['FS.GG.Rendering'], self.deriver.mints[1][2]['repositories'])
         self.assertTrue(all(m[1] == '/app/installations/777/access_tokens' for m in self.deriver.mints))
@@ -473,8 +473,11 @@ class DerivedCredentialTests(DerivedBase):
     def test_wrong_or_excess_minted_permissions_and_scope_are_refused_before_any_effect_and_still_retired(self):
         for role in ('reader', 'writer'):
             exact = s.MINTS[role]['permissions']
-            wrong = [dict(exact, administration='write') if role == 'reader' else dict(exact, administration='read'),
-                     dict(exact, packages='read'), {k: v for k, v in exact.items() if k != 'metadata'},
+            # The reader's exact set is administration:write (bypass_actors visibility); the writer's is not
+            # allowed any administration. Anything wider or narrower than the exact set is refused for both.
+            wrong = [dict(exact, administration='read'),
+                     dict(exact, packages='read'), dict(exact, contents='read'), dict(exact, contents='write'),
+                     dict(exact, workflows='write'), dict(exact, administration='admin'), {k: v for k, v in exact.items() if k != 'metadata'},
                      {**exact, **{k: 'write' for k in exact if exact[k] == 'read'}}, {**exact, **{k: 'read' for k in exact if exact[k] == 'write'}}, {}]
             for permissions in [w for w in wrong if w != exact]:
                 with self.subTest(role=role, permissions=permissions):
@@ -606,7 +609,7 @@ class DerivedCredentialTests(DerivedBase):
         for secret in (JWT, TOKENS['reader'], TOKENS['writer'], TOKENS['actions'], 'PRIVATE KEY fixture'):
             self.assertNotIn(secret, raw)
         minted = [e for e in op.receipt['events'] if e['stage'] == 'credential-minted']
-        self.assertEqual([{'administration': 'read', 'metadata': 'read'}, {'contents': 'write', 'metadata': 'read', 'workflows': 'write'}], [e['permissions'] for e in minted])
+        self.assertEqual([{'administration': 'write', 'metadata': 'read'}, {'contents': 'write', 'metadata': 'read', 'workflows': 'write'}], [e['permissions'] for e in minted])
 
 
 class RealAdapterDerivationTests(unittest.TestCase):
@@ -710,7 +713,7 @@ class RouteIsolationTests(unittest.TestCase):
         for kind in ('disable', 'enable'):
             self.assertTrue(s.route_allowed('actions', 'PUT', s.PREFIX + f'actions/workflows/{next(iter(s.FENCES))}/{kind}', None))
 
-    def test_admin_read_token_cannot_write_toggle_read_actions_or_mint(self):
+    def test_reader_token_cannot_write_toggle_read_actions_or_mint(self):
         for method, path, body in [('POST', s.PREFIX + 'git/refs', {'ref': s.REFS[0], 'sha': s.SOURCE}), ('PUT', s.PREFIX + f'actions/workflows/{next(iter(s.FENCES))}/disable', None),
                 ('DELETE', s.PREFIX + 'git/refs/tags/v0.32.3', None), ('PATCH', s.PREFIX + 'rulesets/1', {}), ('PUT', s.PREFIX + 'rulesets/1', {}),
                 ('GET', s.PREFIX + 'actions/workflows?per_page=100', None), ('GET', s.PREFIX + 'contents/README.md', None),
@@ -719,6 +722,41 @@ class RouteIsolationTests(unittest.TestCase):
         for method, path in [('GET', s.PREFIX + 'rulesets?includes_parents=true&per_page=100'), ('GET', s.PREFIX + 'rulesets/25621755'),
                 ('GET', s.PREFIX + 'git/ref/tags/fs-gg-ui/v0.32.3'), ('GET', s.PREFIX + 'git/ref/heads/main'), ('DELETE', '/installation/token')]:
             self.assertTrue(s.route_allowed('reader', method, path, None), path)
+
+    def test_write_capable_reader_adapter_still_refuses_every_non_get_method_and_non_ruleset_ref_route(self):
+        # The reader's token carries administration:write only so GitHub discloses bypass_actors. The adapter,
+        # not the token, is the capability boundary: refusal happens before transport for every other request.
+        self.assertEqual('write', s.READER_PERMISSIONS['administration'])
+        rulesets, ref = s.PREFIX + 'rulesets/25621755', s.PREFIX + 'git/ref/tags/v0.32.3'
+        mutating = [(m, p, b) for m in ('POST', 'PUT', 'PATCH', 'DELETE') for p in (
+                s.PREFIX + 'rulesets?includes_parents=true&per_page=100', rulesets, s.PREFIX + 'rulesets', ref, s.PREFIX + 'git/refs',
+                s.PREFIX + 'git/refs/tags/v0.32.3', s.PREFIX + 'branches/main/protection', s.PREFIX + 'hooks', s.PREFIX + 'keys',
+                s.PREFIX + 'collaborators/x', s.PREFIX + 'actions/secrets/X', s.PREFIX + 'actions/workflows/1/disable', s.PREFIX + 'actions/permissions')
+                for b in (None, {}, {'bypass_actors': []})]
+        mutating += [('PUT', '/repos/FS-GG/FS.GG.Rendering', {'archived': True}), ('DELETE', '/repos/FS-GG/FS.GG.Rendering', None),
+                     ('POST', '/app/installations/1/access_tokens', s.MINTS['writer']), ('DELETE', '/installation', None),
+                     ('DELETE', '/installation/token/', None), ('POST', '/installation/token', None), ('PATCH', '/installation/token', None)]
+        for method, path, body in mutating:
+            with self.subTest(method=method, path=path):
+                self.refused('reader', method, path, body)
+        for method, path in [('GET', s.PREFIX + 'branches/main/protection'), ('GET', s.PREFIX + 'rulesets'), ('GET', s.PREFIX + 'rulesets/1/history'),
+                ('GET', s.PREFIX + 'rulesets/x'), ('GET', s.PREFIX + 'hooks'), ('GET', s.PREFIX + 'keys'), ('GET', s.PREFIX + 'collaborators'),
+                ('GET', s.PREFIX + 'actions/secrets'), ('GET', s.PREFIX + 'actions/permissions'), ('GET', s.PREFIX + 'contents/README.md'),
+                ('GET', s.PREFIX + 'git/refs/tags/v0.32.3'), ('GET', s.PREFIX + 'git/ref/pull/1'), ('GET', s.PREFIX + 'git/trees/main'),
+                ('GET', '/repos/FS-GG/FS.GG.Rendering'), ('GET', '/repos/FS-GG/Other/rulesets/1'), ('GET', '/orgs/FS-GG/rulesets'),
+                ('GET', '/orgs/FS-GG/actions/secrets'), ('GET', '/app'), ('GET', s.INSTALLATION_PATH), ('GET', '/installation/repositories'),
+                ('GET', s.PREFIX + 'rulesets?includes_parents=false&per_page=100'), ('GET', s.PREFIX + 'rulesets?includes_parents=true&per_page=100&page=2')]:
+            with self.subTest(method=method, path=path): self.refused('reader', method, path, None)
+        # The only things the adapter reaches are the closed GETs and its own revocation, never with a body.
+        self.assertTrue(s.route_allowed('reader', 'GET', rulesets, None))
+        self.assertTrue(s.route_allowed('reader', 'DELETE', '/installation/token', None))
+        # The refusal happens in the real call path with the token's own role, before any socket use.
+        journal = []
+        api = s.API('credential-fixture', 'reader', lambda stage, **f: journal.append(stage), 10**20)
+        with patch.object(api.opener, 'open', side_effect=AssertionError('must not transport')):
+            for method in ('POST', 'PUT', 'PATCH', 'DELETE'):
+                with self.assertRaises(s.Refused): api.call(method, rulesets, {'bypass_actors': []})
+        self.assertEqual([], journal)
 
     def test_writer_is_create_only_for_the_three_admitted_refs(self):
         for method, path, body in [('GET', s.PREFIX + 'git/ref/heads/main', None), ('GET', s.PREFIX + 'rulesets/1', None),
@@ -732,7 +770,11 @@ class RouteIsolationTests(unittest.TestCase):
         excess = [dict(s.MINTS['writer'], permissions={**s.WRITER_PERMISSIONS, 'administration': 'write'}),
                   dict(s.MINTS['reader'], permissions={**s.READER_PERMISSIONS, 'contents': 'read'}),
                   {'permissions': s.READER_PERMISSIONS}, dict(s.MINTS['reader'], repositories=['Other', 'FS.GG.Rendering']),
-                  dict(s.MINTS['reader'], repositories=[]), {}, None]
+                  dict(s.MINTS['reader'], repositories=[]), {}, None,
+                  # the superseded administration:read reader and any wider/second-permission reader are no longer requestable
+                  dict(s.MINTS['reader'], permissions={'administration': 'read', 'metadata': 'read'}),
+                  dict(s.MINTS['reader'], permissions={**s.READER_PERMISSIONS, 'contents': 'write'}),
+                  dict(s.MINTS['reader'], permissions={'administration': 'write'})]
         for body in excess:
             with self.subTest(body=body): self.refused('app', 'POST', '/app/installations/1/access_tokens', body)
         for method, path, body in [('GET', s.PREFIX + 'rulesets/1', None), ('DELETE', '/installation/token', None), ('POST', s.PREFIX + 'git/refs', {'ref': s.REFS[0], 'sha': s.SOURCE}),
@@ -763,7 +805,7 @@ class RouteIsolationTests(unittest.TestCase):
 
     def test_declared_permission_sets_are_the_exact_reviewed_ones(self):
         self.assertEqual({'contents': 'write', 'workflows': 'write', 'metadata': 'read'}, s.WRITER_PERMISSIONS)
-        self.assertEqual({'administration': 'read', 'metadata': 'read'}, s.READER_PERMISSIONS)
+        self.assertEqual({'administration': 'write', 'metadata': 'read'}, s.READER_PERMISSIONS)
         self.assertEqual(['FS.GG.Rendering'], s.APP_REPOSITORIES)
         self.assertEqual({'reader', 'writer'}, set(s.MINTS))
 

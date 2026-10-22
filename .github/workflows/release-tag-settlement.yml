@@ -65,8 +65,10 @@ jobs:
           ADMISSION_SHA256: ${{ inputs.admission-sha256 }}
           # No user-provisioned secret. The script removes these from its environment, signs one
           # short App JWT only after its local executor guards pass, mints a ruleset/ref reader
-          # (administration:read, metadata:read) and a writer (contents:write, workflows:write,
-          # metadata:read) scoped to this repository, verifies each grant exactly and revokes both.
+          # (administration:write, metadata:read; GitHub shows bypass_actors only to administration
+          # write, and the token is confined to ruleset and git-ref GETs) and a writer
+          # (contents:write, workflows:write, metadata:read) scoped to this repository, verifies
+          # each grant exactly and revokes both.
           GITHUB_TOKEN: ${{ github.token }}
           FSGG_DISPATCH_APP_ID: ${{ secrets.FSGG_DISPATCH_APP_ID }}
           FSGG_DISPATCH_APP_PRIVATE_KEY: ${{ secrets.FSGG_DISPATCH_APP_PRIVATE_KEY }}

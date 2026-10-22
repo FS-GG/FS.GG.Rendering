@@ -99,13 +99,20 @@ administrator/writer capability evidence. A declared capability is not independe
 endpoint-scope verification. No user-provisioned secret exists: inside the job the
 script, only after its local executor guards pass, signs one short App JWT from the
 existing dispatcher App secrets and mints two repository-scoped installation tokens,
-a ruleset/ref reader (administration read, metadata read) and the create-only writer
+a ruleset/ref reader (administration write, metadata read) and the create-only writer
 (contents/workflows write, metadata read). Each mint response must grant exactly the
 requested permissions on exactly this repository or all effects refuse. The job
 `GITHUB_TOKEN` (actions write, contents read) toggles workflow state and reads runs
 only; its route set excludes rulesets, refs and tags. Tokens are masked, never
-journaled, and both are revoked even on failure. This source broadens no App grant
-and changes no repository policy.
+journaled, and both are revoked even on failure. The reader asks for `administration: write`
+because GitHub returns a ruleset's `bypass_actors` (the no-bypass proof) only to a caller with write
+access to repository administration; an `administration: read` reader received bodies without the
+field (observer run 39770740316). The label adds no capability: the job already holds the App private
+key, and the reader adapter refuses locally, before transport, every method other than `GET` and every
+route other than the ruleset listing, ruleset detail and git-ref reads (plus its own revocation). The
+minted grant must still equal `{administration: write, metadata: read}` exactly; `contents`, a second
+permission or a different level is refused and revoked. This source broadens no App grant
+(the installation already holds `administration: write`) and changes no repository policy.
 
 Cleanup retires that writer before restoring and independently reading each exact
 prior workflow state. An unresolved subordinate create also keeps event fences closed after retirement:
@@ -158,7 +165,7 @@ SHA/ref/attempt and the repository identity, and a guard step runs before either
 exposed. The existing dispatcher App ID/key then sign a short-lived App JWT that reads only
 `/app` and the repository installation, twice, with `main` re-read between. Only after those
 determining reads does it mint exactly ONE installation token with settlement's own reader
-request (`mint_token`, `MINTS['reader']`: repository `FS.GG.Rendering`, `administration: read`,
+request (`mint_token`, `MINTS['reader']`: repository `FS.GG.Rendering`, `administration: write`,
 `metadata: read`), judge the mint response exactly as settlement does (an excess or wrong grant is
 refused), read only the two ruleset routes through settlement's `policy_details`, and revoke the
 token (`DELETE /installation/token`) in a `finally` that also runs on SIGTERM, with its own 4-second cleanup

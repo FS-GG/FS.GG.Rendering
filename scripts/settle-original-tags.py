@@ -8,7 +8,7 @@ updates/deletes, run cancellations or automatic continuations.
 No user-provisioned secret exists. Three credentials with disjoint closed route
 sets are derived inside the job: the job GITHUB_TOKEN (workflow state, workflow and
 run reads only), and two separately minted, repository-scoped installation tokens of
-the existing dispatcher App: a read-only ruleset/ref reader and the create-only
+the existing dispatcher App: a GET-only ruleset/ref reader and the create-only
 writer. Each minted token's granted permissions must equal the requested set
 exactly; both are masked, never journaled, and revoked at the end even on failure.
 """
@@ -52,14 +52,23 @@ MAX_BODY = 131072
 # Transport budget is 240 s inside a 270 s command timeout: only token retirement may use the reserve.
 CLEANUP_RESERVE = 22
 WRITER_PERMISSIONS = {'contents': 'write', 'workflows': 'write', 'metadata': 'read'}
-READER_PERMISSIONS = {'administration': 'read', 'metadata': 'read'}
+# GitHub returns a ruleset's `bypass_actors` only to a caller with WRITE access to repository
+# administration (measured: an administration:read reader and the job token received bodies without the
+# field, so the no-bypass proof could never be established). The reader therefore needs
+# administration:write. That is a permission label, not a capability the reader can exercise: the job
+# already holds the App private key that mints any ceiling-permitted token, and this token is confined
+# BEFORE transport by READER_GET/route_allowed to ruleset GETs and git-ref GETs (plus its own
+# revocation). Every other method or route is refused locally, and `granted()` still requires the
+# minted permissions to equal this set exactly, so any wider grant (contents, a second permission, a
+# different level) is refused.
+READER_PERMISSIONS = {'administration': 'write', 'metadata': 'read'}
 APP_REPOSITORIES = ['FS.GG.Rendering']
 MINTS = {'reader': {'repositories': APP_REPOSITORIES, 'permissions': READER_PERMISSIONS},
          'writer': {'repositories': APP_REPOSITORIES, 'permissions': WRITER_PERMISSIONS}}
 INSTALLATION_PATH = cap.PREFIX + '/installation'
 MINT_PATH = re.compile(r'/app/installations/[1-9][0-9]*/access_tokens')
 # Closed per-credential route sets. The job token never reaches rulesets, refs or
-# tags; the ruleset/ref reader never mutates; the writer only creates the admitted
+# tags; the ruleset/ref reader (write-capable by label, GET-only by route) never mutates; the writer only creates the admitted
 # refs; every minted token can only be retired. The job token can never be retired.
 ACTIONS_GET = re.compile(re.escape(PREFIX) + r'actions/(workflows\?per_page=100|workflows/[1-9][0-9]*|'
     r'workflows/[1-9][0-9]*/runs\?(status=[a-z_]+&)?per_page=100|runs/[1-9][0-9]*|jobs/[1-9][0-9]*)')
@@ -296,7 +305,7 @@ class Settlement:
             stream.write(raw); stream.flush(); os.fsync(stream.fileno())
 
     def provision(self):
-        """Derive the read-only ruleset/ref reader and the create-only writer. Reads and mints only."""
+        """Derive the GET-only ruleset/ref reader and the create-only writer. Reads and mints only."""
         if self.reader is not None and self.writer is not None:
             return
         need(self.reader is None and self.writer is None and self.app is not None, 'credential derivation unavailable')
@@ -464,7 +473,7 @@ class Settlement:
                     self.record('writer-retired')
                 except (Refused, OSError, ValueError, KeyError, TypeError):
                     self.record('cleanup-failure', operation='writer-retirement')
-            # The read-only administrative token is retired next, before any restoration that could exhaust
+            # The GET-only (administration-labelled) token is retired next, before any restoration that could exhaust
             # the budget; its outcome never gates trigger restoration.
             reader_retired = self.reader is None
             if not reader_retired:
