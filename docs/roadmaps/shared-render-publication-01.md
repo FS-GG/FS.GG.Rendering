@@ -96,10 +96,16 @@ The separate manual [settlement workflow](../../.github/workflows/release-tag-se
 shares the non-canceling release-tags lock. Root's exact admission bytes/digest name
 policy and workflow-inventory digests, original actor, and separately accepted
 administrator/writer capability evidence. A declared capability is not independent
-endpoint-scope verification: root must establish the existing principal's actual
-bounded routes before admission. Writer metadata admits only a repository-scoped,
-expiring installation token with contents/workflows write and metadata read. This
-source provisions no credential, broadens no grant and changes no repository policy.
+endpoint-scope verification. No user-provisioned secret exists: inside the job the
+script, only after its local executor guards pass, signs one short App JWT from the
+existing dispatcher App secrets and mints two repository-scoped installation tokens,
+a ruleset/ref reader (administration read, metadata read) and the create-only writer
+(contents/workflows write, metadata read). Each mint response must grant exactly the
+requested permissions on exactly this repository or all effects refuse. The job
+`GITHUB_TOKEN` (actions write, contents read) toggles workflow state and reads runs
+only; its route set excludes rulesets, refs and tags. Tokens are masked, never
+journaled, and both are revoked even on failure. This source broadens no App grant
+and changes no repository policy.
 
 Cleanup retires that writer before restoring and independently reading each exact
 prior workflow state. An unresolved subordinate create also keeps event fences closed after retirement:

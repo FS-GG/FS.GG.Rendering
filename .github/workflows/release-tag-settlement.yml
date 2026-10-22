@@ -24,8 +24,15 @@ permissions:
   actions: read
 jobs:
   settle:
-    if: github.repository == 'FS-GG/FS.GG.Rendering' && github.event_name == 'workflow_dispatch'
+    if: >-
+      github.repository == 'FS-GG/FS.GG.Rendering' && github.event_name == 'workflow_dispatch' &&
+      github.ref == 'refs/heads/main' && github.run_attempt == 1 && github.sha == inputs.expected-executor-sha
     runs-on: ubuntu-latest
+    # Administrative workflow state and run reads only. Rulesets, refs and tags are never
+    # reachable with this token; the script derives two separate narrow App installation tokens.
+    permissions:
+      actions: write
+      contents: read
     timeout-minutes: 7
     env:
       FSGG_EXPECTED_EXECUTOR_SHA: ${{ inputs.expected-executor-sha }}
@@ -56,10 +63,13 @@ jobs:
       - name: Fence, drain, converge original intent, retire writer and restore
         env:
           ADMISSION_SHA256: ${{ inputs.admission-sha256 }}
-          # Root must independently admit narrowly scoped existing capability before
-          # provisioning these bounded, expiring credentials. No token is minted here.
-          FSGG_SETTLEMENT_ADMIN_TOKEN: ${{ secrets.FSGG_SETTLEMENT_ADMIN_TOKEN }}
-          FSGG_SETTLEMENT_WRITER_TOKEN: ${{ secrets.FSGG_SETTLEMENT_WRITER_TOKEN }}
+          # No user-provisioned secret. The script removes these from its environment, signs one
+          # short App JWT only after its local executor guards pass, mints a ruleset/ref reader
+          # (administration:read, metadata:read) and a writer (contents:write, workflows:write,
+          # metadata:read) scoped to this repository, verifies each grant exactly and revokes both.
+          GITHUB_TOKEN: ${{ github.token }}
+          FSGG_DISPATCH_APP_ID: ${{ secrets.FSGG_DISPATCH_APP_ID }}
+          FSGG_DISPATCH_APP_PRIVATE_KEY: ${{ secrets.FSGG_DISPATCH_APP_PRIVATE_KEY }}
         run: >-
           timeout --signal=TERM --kill-after=10s 270s python3 scripts/settle-original-tags.py
           --admission artifacts/tag-settlement/admission.json
