@@ -894,6 +894,24 @@ class ReaderIdentityDigest(unittest.TestCase):
             self.assertIn(('readerPolicy', 'route-refused'), reasons(observer), ident)
             self.assertEqual([('GET', settle.PREFIX + POLICY), ('DELETE', '/installation/token')], self.reader_calls(reader), ident)
 
+    def test_write_capable_reader_token_still_reaches_only_get_ruleset_routes_through_the_real_adapter(self):
+        # The reader is minted with administration:write (bypass_actors visibility). The real adapter the observer
+        # uses, not the token, confines it: nothing but ruleset/ref GETs and its own revocation reaches transport.
+        self.assertEqual('write', settle.READER_PERMISSIONS['administration'])
+        observer, reader = self.run_with()
+        self.assertEqual({'GET', 'DELETE'}, {m for _, m, _, _, tok in reader.calls if tok == READER_TOKEN})
+        api = reader.factory(READER_TOKEN, 'reader', lambda *a, **k: None, 10**20)
+        before = len(reader.calls)
+        rulesets = settle.PREFIX + 'rulesets/1'
+        bad = [(m, p, b) for m in ('POST', 'PUT', 'PATCH', 'DELETE') for p in (rulesets, settle.PREFIX + 'rulesets', settle.PREFIX + 'git/refs',
+                   settle.PREFIX + 'branches/main/protection', settle.PREFIX + 'hooks', '/repos/FS-GG/FS.GG.Rendering') for b in (None, {'bypass_actors': []})]
+        bad += [('GET', settle.PREFIX + p, None) for p in ('branches/main/protection', 'hooks', 'collaborators', 'actions/secrets', 'contents/README.md',
+                   'git/refs/tags/v0.32.3', 'rulesets', 'rulesets/1/history')] + [('GET', '/orgs/FS-GG/rulesets', None), ('GET', '/app', None)]
+        for method, path, body in bad:
+            with self.subTest(method=method, path=path), self.assertRaises(settle.Refused):
+                api.call(method, path, body)
+        self.assertEqual(before, len(reader.calls))   # refused before any transport
+
     def test_ruleset_reader_is_closed_and_bounded(self):
         class Api:
             def __init__(self): self.paths = []

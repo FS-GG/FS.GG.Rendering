@@ -184,7 +184,7 @@ is a fact rather than a gate, and `selectedRepositoriesComplete` stays `false` b
 selected-repository set is not enumerated. Root still owns actual endpoint capability checks,
 the metadata dispatch, any narrow writer or policy setup, effect admission, and acceptance.
 
-`python3 scripts/test-release-tag-capability.py` runs 79 local causal controls in the credential-free
+`python3 scripts/test-release-tag-capability.py` runs 80 local causal controls in the credential-free
 gate job before the settlement controls. Each negative control flips one input of a passing
 baseline (guard failure before secret use, moved `main`/installation, each policy weakening,
 route/verb, response bounds, secret canaries including JSON-escaped multi-line keys, a real
