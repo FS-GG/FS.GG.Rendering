@@ -689,7 +689,7 @@ class ReaderIdentityDigest(unittest.TestCase):
         self.assertEqual([], reasons(observer)); self.assertEqual('observed', report['result'])
         posts = [x for x in reader.calls if x[1] == 'POST']
         self.assertEqual([('app', 'POST', '/app/installations/9001/access_tokens', settle.MINTS['reader'], JWT)], posts)
-        self.assertEqual({'repositories': ['FS.GG.Rendering'], 'permissions': {'administration': 'read', 'metadata': 'read'}}, posts[0][3])
+        self.assertEqual({'repositories': ['FS.GG.Rendering'], 'permissions': {'administration': 'write', 'metadata': 'read'}}, posts[0][3])
         self.assertEqual([('GET', settle.PREFIX + 'rulesets?includes_parents=true&per_page=100'),
                           ('GET', settle.PREFIX + 'rulesets/1'), ('DELETE', '/installation/token')], self.reader_calls(reader))
         self.assert_revoked_once(reader)
@@ -699,7 +699,7 @@ class ReaderIdentityDigest(unittest.TestCase):
         self.assertEqual([READER_TOKEN], reader.masked)
         self.assertEqual('mask', reader.order[1])   # masked right after the mint response, before any reader use
         self.assertLess(reader.order.index('mask'), reader.order.index(('reader', 'GET', settle.PREFIX + 'rulesets?includes_parents=true&per_page=100')))
-        self.assertEqual({'administration': 'read', 'metadata': 'read'}, report['readerPolicy']['permissions'])
+        self.assertEqual({'administration': 'write', 'metadata': 'read'}, report['readerPolicy']['permissions'])
         for key in ('workflowMutation', 'tagMutation', 'publication', 'settlementEligible'):
             self.assertIs(False, report[key])
 
@@ -818,7 +818,7 @@ class ReaderIdentityDigest(unittest.TestCase):
         settle_source = (ROOT / 'scripts/settle-original-tags.py').read_text()
         self.assertIn('mint_token(app, path, role', settle_source)       # settlement itself uses the shared function
         self.assertIn('policy_details(api)', settle_source)
-        self.assertEqual({'administration': 'read', 'metadata': 'read'}, settle.READER_PERMISSIONS)
+        self.assertEqual({'administration': 'write', 'metadata': 'read'}, settle.READER_PERMISSIONS)
         # The default (production) loader exposes the same code and constants.
         loaded = c.load_settlement()
         self.assertEqual(settle.MINTS, loaded.MINTS)
@@ -829,9 +829,13 @@ class ReaderIdentityDigest(unittest.TestCase):
     def test_excess_or_wrong_grant_is_refused_and_still_revoked_without_any_use(self):
         good = reader_grant()
         cases = {
-            'administration write': reader_grant(permissions={'administration': 'write', 'metadata': 'read'}),
-            'extra contents': reader_grant(permissions={'administration': 'read', 'metadata': 'read', 'contents': 'read'}),
-            'missing metadata': reader_grant(permissions={'administration': 'read'}),
+            'administration read (superseded exact set)': reader_grant(permissions={'administration': 'read', 'metadata': 'read'}),
+            'extra contents read': reader_grant(permissions={'administration': 'write', 'metadata': 'read', 'contents': 'read'}),
+            'extra contents write': reader_grant(permissions={'administration': 'write', 'metadata': 'read', 'contents': 'write'}),
+            'extra second permission': reader_grant(permissions={'administration': 'write', 'metadata': 'read', 'workflows': 'write'}),
+            'metadata write': reader_grant(permissions={'administration': 'write', 'metadata': 'write'}),
+            'missing metadata': reader_grant(permissions={'administration': 'write'}),
+            'missing administration': reader_grant(permissions={'metadata': 'read'}),
             'all repositories': reader_grant(repository_selection='all'),
             'two repositories': reader_grant(repositories=good['repositories'] * 2),
             'other repository': reader_grant(repositories=[{'id': 1, 'name': 'Other', 'full_name': 'FS-GG/Other'}]),
@@ -889,6 +893,24 @@ class ReaderIdentityDigest(unittest.TestCase):
             observer, reader = self.run_with(fake=Fake(**{c.PREFIX + '/rulesets?includes_parents=true&per_page=100': hostile}))
             self.assertIn(('readerPolicy', 'route-refused'), reasons(observer), ident)
             self.assertEqual([('GET', settle.PREFIX + POLICY), ('DELETE', '/installation/token')], self.reader_calls(reader), ident)
+
+    def test_write_capable_reader_token_still_reaches_only_get_ruleset_routes_through_the_real_adapter(self):
+        # The reader is minted with administration:write (bypass_actors visibility). The real adapter the observer
+        # uses, not the token, confines it: nothing but ruleset/ref GETs and its own revocation reaches transport.
+        self.assertEqual('write', settle.READER_PERMISSIONS['administration'])
+        observer, reader = self.run_with()
+        self.assertEqual({'GET', 'DELETE'}, {m for _, m, _, _, tok in reader.calls if tok == READER_TOKEN})
+        api = reader.factory(READER_TOKEN, 'reader', lambda *a, **k: None, 10**20)
+        before = len(reader.calls)
+        rulesets = settle.PREFIX + 'rulesets/1'
+        bad = [(m, p, b) for m in ('POST', 'PUT', 'PATCH', 'DELETE') for p in (rulesets, settle.PREFIX + 'rulesets', settle.PREFIX + 'git/refs',
+                   settle.PREFIX + 'branches/main/protection', settle.PREFIX + 'hooks', '/repos/FS-GG/FS.GG.Rendering') for b in (None, {'bypass_actors': []})]
+        bad += [('GET', settle.PREFIX + p, None) for p in ('branches/main/protection', 'hooks', 'collaborators', 'actions/secrets', 'contents/README.md',
+                   'git/refs/tags/v0.32.3', 'rulesets', 'rulesets/1/history')] + [('GET', '/orgs/FS-GG/rulesets', None), ('GET', '/app', None)]
+        for method, path, body in bad:
+            with self.subTest(method=method, path=path), self.assertRaises(settle.Refused):
+                api.call(method, path, body)
+        self.assertEqual(before, len(reader.calls))   # refused before any transport
 
     def test_ruleset_reader_is_closed_and_bounded(self):
         class Api:
