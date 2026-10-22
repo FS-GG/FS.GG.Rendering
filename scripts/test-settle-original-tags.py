@@ -4,6 +4,7 @@ import copy
 import datetime
 import hashlib
 import importlib.util
+import http.client
 import io
 import json
 from pathlib import Path
@@ -36,7 +37,7 @@ class FakeAPI:
         self.calls = []; self.by_role = []; self.states = {i: 'active' for i in s.FENCES}; self.refs = {}
         self.policy = copy.deepcopy(POLICY); self.active = False; self.census_unknown = False
         self.create = 'accepted'; self.retire_fail = set(); self.restore = True; self.hook = lambda *a: None
-        self.retired = []
+        self.retired = []; self.cleanup_deadlines = []
 
     def call(self, method, path, body=None, role=None):
         self.calls.append((method, path, body)); self.by_role.append((role, method, path)); self.hook(method, path, body)
@@ -86,6 +87,7 @@ class View:
 
     def retire(self, cleanup_deadline):
         if self.role not in ('reader', 'writer'): raise s.Refused('only a minted installation token can be retired')
+        self.api.cleanup_deadlines.append(cleanup_deadline)
         result = self.call('DELETE', '/installation/token')
         self.retired = True
         return result
@@ -463,7 +465,8 @@ class DerivedCredentialTests(DerivedBase):
         writer_gone = next(i for i, c in enumerate(calls) if c[:2] == ('writer', 'DELETE'))
         first_enable = next(i for i, c in enumerate(calls) if c[1] == 'PUT' and c[2].endswith('/enable'))
         reader_gone = next(i for i, c in enumerate(calls) if c[:2] == ('reader', 'DELETE'))
-        self.assertLess(writer_gone, first_enable); self.assertLess(first_enable, reader_gone)
+        # Both minted credentials are gone before the first trigger is restored; the reader never gates restoration.
+        self.assertLess(writer_gone, reader_gone); self.assertLess(reader_gone, first_enable)
         self.assertIsNone(op.app)  # the App secret is dropped as soon as it signs
         self.assertEqual(1, len(self.signed))
 
@@ -486,7 +489,8 @@ class DerivedCredentialTests(DerivedBase):
                     ('repositories', [{'id': 5, 'name': 'FS.GG.Rendering', 'full_name': s.REPO}]),
                     ('repositories', [{'id': s.cap.REPO_ID, 'name': 'FS.GG.Rendering', 'full_name': 'FS-GG/Other'}]),
                     ('repositories', [{'id': s.cap.REPO_ID, 'name': 'Other', 'full_name': s.REPO}]),
-                    ('expires_at', 'tomorrow'), ('expires_at', None), ('token', 'short'), ('token', None)):
+                    ('expires_at', 'tomorrow'), ('expires_at', None), ('token', 'short'), ('token', None),
+                    ('token', 'ghs_line_one_fixture\nsecond_line_fixture'), ('token', 'ghs token with spaces fixture'), ('token', 'x' * 1100)):
                 with self.subTest(role=role, field=field):
                     op = self.build(grants={role: good_grant(role, **{field: value})})
                     with self.assertRaises(s.Refused): op.run()
@@ -511,13 +515,37 @@ class DerivedCredentialTests(DerivedBase):
             self.assertEqual([], self.deriver.mints); self.assertEqual([], self.writes()); self.assertEqual([], self.api.retired)
         op = self.build(); op.app = ('0', 'k')
         with self.assertRaises(s.Refused): op.run()
-        self.assertEqual([], self.signed[:0]); self.assertEqual([], self.deriver.mints)
+        self.assertEqual([], self.deriver.mints)
+        self.assertEqual([], self.signed)  # a malformed App identity refuses before any signing
 
     def test_no_secret_is_used_before_the_local_executor_guards_pass(self):
         op = self.build(); op.local_check = lambda: (_ for _ in ()).throw(s.Refused('executor context refused'))
         with self.assertRaises(s.Refused): op.run()
         self.assertEqual([], self.signed); self.assertEqual([], self.deriver.mints); self.assertEqual([], self.deriver.masked)
         self.assertEqual([], self.api.calls)
+
+    def test_signing_key_removal_is_required_before_any_credential_is_used(self):
+        op = self.build()
+        def signer(app_id, key, budget, cleanup):
+            cleanup['temporaryKey'] = 'Unknown-owned-gap'; return JWT
+        op.signer = signer
+        with self.assertRaises(s.Refused): op.run()
+        self.assertEqual([], self.deriver.masked); self.assertEqual([], self.deriver.mints); self.assertEqual([], self.writes())
+
+    def test_a_failing_mask_still_leaves_the_minted_token_retirable(self):
+        op = self.build()
+        def mask(token):
+            if token == TOKENS['writer']: raise OSError('stdout closed')
+            self.deriver.masked.append(token)
+        op.mask = mask
+        with self.assertRaises(s.Refused): op.run()
+        self.assertEqual([], self.writes()); self.assertEqual({'writer', 'reader'}, set(self.api.retired))
+
+    def test_token_retirement_may_use_only_the_bounded_cleanup_reserve(self):
+        op = self.build(); op.run()
+        self.assertEqual(2, len(self.api.cleanup_deadlines))
+        self.assertTrue(all(d == op.deadline + s.CLEANUP_RESERVE for d in self.api.cleanup_deadlines))
+        self.assertLess(op.deadline + s.CLEANUP_RESERVE - op.deadline, 270 - 240)  # inside the 270-second command timeout
 
     def test_installation_token_is_not_reused_across_roles_and_distinctness_is_enforced(self):
         op = self.build(grants={'writer': good_grant('writer', token=TOKENS['reader'])})
@@ -713,6 +741,26 @@ class RouteIsolationTests(unittest.TestCase):
         self.assertTrue(s.route_allowed('app', 'GET', s.INSTALLATION_PATH, None))
         for body in s.MINTS.values(): self.assertTrue(s.route_allowed('app', 'POST', '/app/installations/1/access_tokens', body))
 
+    def test_path_traversal_and_fragments_are_refused_for_every_role(self):
+        for role, method, path, body in [
+                ('reader', 'GET', s.PREFIX + 'git/ref/heads/../../../../orgs/FS-GG/members', None),
+                ('reader', 'GET', s.PREFIX + 'rulesets/1#x', None), ('reader', 'GET', s.PREFIX + 'git/ref/heads/main#fragment', None),
+                ('actions', 'GET', s.PREFIX + 'actions/runs/1/../../rulesets/1', None), ('actions', 'GET', s.PREFIX + 'actions/runs/1#x', None),
+                ('writer', 'POST', s.PREFIX + 'git/refs/../refs', {'ref': s.REFS[0], 'sha': s.SOURCE}),
+                ('app', 'POST', '/app/installations/1/../2/access_tokens', s.MINTS['reader'])]:
+            with self.subTest(role=role, path=path):
+                self.assertFalse(s.route_allowed(role, method, path, body))
+                self.refused(role, method, path, body)
+        with patch.object(s, 'READER_GET', re.compile('.*')):  # the explicit guard, not just the patterns, refuses traversal
+            self.assertFalse(s.route_allowed('reader', 'GET', s.PREFIX + 'git/ref/heads/../../x', None))
+            self.assertFalse(s.route_allowed('reader', 'GET', s.PREFIX + 'rulesets/1#x', None))
+
+    def test_http_client_exceptions_are_unknown_outcomes_never_escapes(self):
+        journal = []; api = s.API('credential-fixture', 'writer', lambda stage, **f: journal.append(stage), 10**20)
+        with patch.object(api.opener, 'open', side_effect=http.client.IncompleteRead(b'partial')), self.assertRaises(s.Refused):
+            api.call('POST', s.PREFIX + 'git/refs', {'ref': s.REFS[0], 'sha': s.SOURCE})
+        self.assertEqual('http-outcome-unknown', journal[-1])
+
     def test_declared_permission_sets_are_the_exact_reviewed_ones(self):
         self.assertEqual({'contents': 'write', 'workflows': 'write', 'metadata': 'read'}, s.WRITER_PERMISSIONS)
         self.assertEqual({'administration': 'read', 'metadata': 'read'}, s.READER_PERMISSIONS)
@@ -766,6 +814,10 @@ class RouteIsolationTests(unittest.TestCase):
         self.assertEqual(1, len(holders)); self.assertIn('scripts/settle-original-tags.py', holders[0])
         self.assertLess(next(i for i, x in enumerate(steps) if 'test-settle-original-tags.py' in x), steps.index(holders[0]))
         self.assertIn('GITHUB_TOKEN: ${{ github.token }}', holders[0])
+        condition = job.split('    runs-on:')[0]
+        for needle in ("github.repository == 'FS-GG/FS.GG.Rendering'", "github.event_name == 'workflow_dispatch'", "github.ref == 'refs/heads/main'",
+                       'github.run_attempt == 1', 'github.sha == inputs.expected-executor-sha'):
+            self.assertIn(needle, condition)
 
 
 if __name__=='__main__':unittest.main()

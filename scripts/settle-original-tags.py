@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import datetime
 import hashlib
+import http.client
 import importlib.util
 import io
 import json
@@ -48,6 +49,8 @@ EFFECT = tags.guard.FONT_DISPOSAL['effectId']
 REFS = tuple('refs/tags/' + s for s in ('fs-gg-ui/v0.32.3', 'fs-gg-ui-template/v0.32.3', 'v0.32.3'))
 FENCES = {310031035: 'release-tags.yml', 295951545: 'release.yml', 303545957: 'template-dispatch.yml'}
 MAX_BODY = 131072
+# Transport budget is 240 s inside a 270 s command timeout: only token retirement may use the reserve.
+CLEANUP_RESERVE = 22
 WRITER_PERMISSIONS = {'contents': 'write', 'workflows': 'write', 'metadata': 'read'}
 READER_PERMISSIONS = {'administration': 'read', 'metadata': 'read'}
 APP_REPOSITORIES = ['FS.GG.Rendering']
@@ -130,7 +133,7 @@ class API:
                 self.journal('http-response', method=method, path=path, status=response.code,
                     requestId=response.headers.get('x-github-request-id'), rawBody=kept)
                 return response.code, json.loads(raw) if raw else None
-        except (OSError, ValueError, TimeoutError) as error:
+        except (OSError, ValueError, TimeoutError, http.client.HTTPException) as error:
             self.journal('http-outcome-unknown', method=method, path=path)
             raise Refused('transport unavailable, malformed or timed out; outcome unknown') from error
 
@@ -292,13 +295,17 @@ class Settlement:
             status, grant = app.call('POST', path, MINTS[role])
             need(status == 201, 'installation token mint refused')
             token = grant.get('token') if isinstance(grant, dict) else None
-            need(isinstance(token, str) and 20 < len(token) < 1024, 'minted credential malformed')
+            # One printable, whitespace-free line, so a workflow-command mask covers all of it.
+            need(isinstance(token, str) and re.fullmatch(r'[\x21-\x7e]{20,1023}', token) is not None, 'minted credential malformed')
             # Mask before any other use; the response body is never journaled. The adapter is
-            # held before the grant is judged, so even a refused excess grant is retired.
-            self.mask(token)
-            api = self.api_factory(token, role, self.record, self.deadline - 60 if role == 'writer' else self.deadline)
-            if role == 'reader': self.reader = api
-            else: self.writer = api
+            # held before the grant is judged (and even if masking fails), so a refused excess
+            # grant is still retired.
+            try:
+                self.mask(token)
+            finally:
+                api = self.api_factory(token, role, self.record, self.deadline - 60 if role == 'writer' else self.deadline)
+                if role == 'reader': self.reader = api
+                else: self.writer = api
             self.record('credential-minted', role=role, **granted(grant, MINTS[role]))
         need(len({self.actions.token, self.reader.token, self.writer.token}) == 3, 'credentials must be distinct')
 
@@ -426,12 +433,23 @@ class Settlement:
                 self.record('writer-not-minted')
             else:
                 try:
-                    status, _ = self.writer.retire(self.deadline)
+                    status, _ = self.writer.retire(self.deadline + CLEANUP_RESERVE)
                     need(status == 204, 'writer retirement unknown')
                     retired = True
                     self.record('writer-retired')
                 except (Refused, OSError, ValueError, KeyError, TypeError):
                     self.record('cleanup-failure', operation='writer-retirement')
+            # The read-only administrative token is retired next, before any restoration that could exhaust
+            # the budget; its outcome never gates trigger restoration.
+            reader_retired = self.reader is None
+            if not reader_retired:
+                try:
+                    status, _ = self.reader.retire(self.deadline + CLEANUP_RESERVE)
+                    need(status == 204, 'reader retirement unknown')
+                    reader_retired = True
+                    self.record('reader-retired')
+                except (Refused, OSError, ValueError, KeyError, TypeError):
+                    self.record('cleanup-failure', operation='reader-retirement')
             restored = retired and not self.pending_refs
             if self.pending_refs:
                 self.record('cleanup-failure', operation='unresolved-subordinate-create', refs=sorted(self.pending_refs))
@@ -450,16 +468,6 @@ class Settlement:
                     except (Refused, OSError, ValueError, KeyError, TypeError):
                         restored = False
                         self.record('cleanup-failure', operation='workflow-restoration', workflow=i)
-            # The read-only administrative token is retired last; it never gates trigger restoration.
-            reader_retired = self.reader is None
-            if not reader_retired:
-                try:
-                    status, _ = self.reader.retire(self.deadline)
-                    need(status == 204, 'reader retirement unknown')
-                    reader_retired = True
-                    self.record('reader-retired')
-                except (Refused, OSError, ValueError, KeyError, TypeError):
-                    self.record('cleanup-failure', operation='reader-retirement')
             restored = restored and reader_retired
             self.receipt['pendingSubordinateRefs'] = sorted(self.pending_refs)
             self.receipt['cleanup'] = 'restored' if restored else 'Unknown-owned-gap'

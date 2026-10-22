@@ -24,7 +24,9 @@ permissions:
   actions: read
 jobs:
   settle:
-    if: github.repository == 'FS-GG/FS.GG.Rendering' && github.event_name == 'workflow_dispatch'
+    if: >-
+      github.repository == 'FS-GG/FS.GG.Rendering' && github.event_name == 'workflow_dispatch' &&
+      github.ref == 'refs/heads/main' && github.run_attempt == 1 && github.sha == inputs.expected-executor-sha
     runs-on: ubuntu-latest
     # Administrative workflow state and run reads only. Rulesets, refs and tags are never
     # reachable with this token; the script derives two separate narrow App installation tokens.
