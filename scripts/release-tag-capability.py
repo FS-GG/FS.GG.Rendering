@@ -289,9 +289,9 @@ def policy_observation(job):
             covered.update(set(include) & set(REFS))
     # The retained digest covers the whole detail body as this job token saw it. Settlement recomputes it
     # with its administrator identity, whose body can differ (for example bypass_actors visibility), so
-    # root must confirm the digest under that identity; it is joinable only when bypass_actors was visible.
+    # root must confirm the digest under that identity; bypass_actors visibility is necessary, not sufficient.
     return {'available': True, 'complete': True, 'observedAs': 'job-token',
-            'digestJoinCandidate': all('bypass_actors' in d for d in details),
+            'digestJoinCandidate': bool(details) and all('bypass_actors' in d for d in details),
             'sha256': digest(json.dumps(details, sort_keys=True, separators=(',', ':')).encode()),
             'rulesets': observations, 'immutablePolicyReady': covered == set(REFS)}
 

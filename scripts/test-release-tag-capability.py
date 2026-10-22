@@ -446,6 +446,17 @@ class HardeningFindings(unittest.TestCase):
             self.assertEqual([('observer', 'transport-or-json-unavailable')], reasons(observer))
             self.assertNotIn(JOB_TOKEN, json.dumps(observer.report))
 
+    def test_unexpected_exception_in_app_phase_is_a_closed_incomplete_gap(self):
+        observer, _ = observe(Fake(**{'/app': RuntimeError(JOB_TOKEN)}))
+        self.assertEqual([('observer', 'unavailable')], reasons(observer))
+        self.assertEqual('refused-or-incomplete', observer.report['result'])
+        self.assertNotIn(JOB_TOKEN, json.dumps(observer.report))
+
+    def test_empty_ruleset_census_is_not_a_join_candidate(self):
+        observer, _ = observe(Fake(**{c.PREFIX + '/rulesets?includes_parents=true&per_page=100': []}))
+        self.assertIs(False, observer.report['policy']['digestJoinCandidate'])
+        self.assertIs(False, observer.report['immutablePolicyReady'])
+
     def test_unexpected_exception_is_reduced_to_closed_reason_and_stage_isolated(self):
         observer, _ = observe(Fake(**{c.PREFIX + '/rulesets/1': dict(RULESET, conditions=7)}))
         self.assertEqual([('policy', 'unavailable')], reasons(observer))
