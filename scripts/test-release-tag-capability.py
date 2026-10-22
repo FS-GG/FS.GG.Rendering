@@ -5,9 +5,11 @@ Everything is local: fake transports and a locally generated throwaway RSA key. 
 network request, credential, workflow, ref, package or settlement effect is made.
 Each negative control flips exactly one input of a passing baseline.
 """
+import contextlib
 import copy
 import datetime
 import importlib.util
+import io
 import json
 from pathlib import Path
 import re
@@ -973,6 +975,67 @@ class ReaderIdentityDigest(unittest.TestCase):
         self.assert_revoked_once(reader)
         self.assertEqual('revoked', observer.report['cleanup']['readerToken'])
         self.assertGreater(observer.budget.deadline, observer.budget.effect_deadline)
+
+    def test_sigterm_after_the_observation_deadline_still_sends_the_revocation(self):
+        # Real timeline: `timeout 190s` signals after the observer's 180 s budget has already expired.
+        fake = Fake(); holder = []
+        def expire_and_signal(path):
+            holder[0].budget.deadline = holder[0].budget.effect_deadline = time.monotonic() - 10
+            raise SystemExit(143)
+        reader = ReaderFake(fake, on_get=expire_and_signal)
+        with tempfile.TemporaryDirectory() as d:
+            observer = new_observer(Path(d), fake, reader=reader); holder.append(observer)
+            with patch.object(c, 'local_git', side_effect=lambda r, *a: SHA if a[:1] == ('rev-parse',) else ''), \
+                    patch.object(Path, 'read_bytes', lambda self: b'source'), self.assertRaises(SystemExit):
+                observer.run()
+        self.assert_revoked_once(reader)
+        self.assertEqual('revoked', observer.report['cleanup']['readerToken'])
+        self.assertLess(c.CLEANUP_WINDOW, 5)   # inside `timeout --kill-after=5s`
+
+    def test_a_signalled_run_still_retains_its_sanitized_report_with_the_revocation_outcome(self):
+        fake = Fake(); holder = []
+        def signalled(path):
+            holder[0].budget.deadline = time.monotonic() - 10
+            raise SystemExit(143)
+        reader = ReaderFake(fake, on_get=signalled)
+        with tempfile.TemporaryDirectory() as d:
+            real = c.Observer
+            def factory(root, env):
+                holder.append(real(root, dict(ENV), transport=fake, signer=signer, settlement=settle, api_factory=reader.factory, mask=reader.mask))
+                return holder[0]
+            with patch.object(c, 'Observer', factory), patch.object(sys, 'argv', ['x']), patch.object(c.signal, 'signal'), \
+                    patch.object(c.Path, 'cwd', return_value=Path(d)), patch.object(sys, 'stderr', io.StringIO()), \
+                    patch.object(c, 'local_git', side_effect=lambda r, *a: SHA if a[:1] == ('rev-parse',) else ''), \
+                    patch.object(Path, 'read_bytes', lambda self: b'source'):
+                status = c.main()
+            report = json.loads((Path(d) / c.REPORT).read_text())
+        self.assertEqual(1, status)
+        self.assertEqual('refused-or-incomplete', report['result'])
+        self.assertEqual('revoked', report['cleanup']['readerToken'])
+        self.assertIn({'stage': 'observer', 'reason': 'terminated'}, report['gaps'])
+        for secret in (READER_TOKEN, JWT, JOB_TOKEN):
+            self.assertNotIn(secret, json.dumps(report))
+
+    def test_production_mask_default_masks_the_token_before_its_first_use(self):
+        fake = Fake(); seen = []; out = io.StringIO()
+        reader = ReaderFake(fake, on_get=lambda path: seen.append(out.getvalue()))
+        with tempfile.TemporaryDirectory() as d:
+            observer = c.Observer(Path(d), dict(ENV), transport=fake, signer=signer, settlement=settle, api_factory=reader.factory)  # mask=None
+            with patch.object(c, 'local_git', side_effect=lambda r, *a: SHA if a[:1] == ('rev-parse',) else ''), \
+                    patch.object(Path, 'read_bytes', lambda self: b'source'), contextlib.redirect_stdout(out):
+                observer.run()
+        self.assertEqual([], reasons(observer))
+        self.assertTrue(seen and all('::add-mask::' + READER_TOKEN in text for text in seen))
+        self.assertNotIn(JWT, out.getvalue()); self.assertNotIn(JOB_TOKEN, out.getvalue())
+
+    def test_ruleset_body_values_never_enter_the_report(self):
+        body = dict(RULESET, name='VALUE-NAME-7f3a', bypass_actors=[], source='VALUE-SOURCE-19c2',
+                    created_at='2099-01-01T00:00:00Z', current_user_can_bypass='VALUE-NEVER')
+        observer, _ = self.run_with({'data': {settle.PREFIX + 'rulesets/1': body}})
+        raw = json.dumps(observer.report)
+        for value in ('VALUE-NAME-7f3a', 'VALUE-SOURCE-19c2', '2099-01-01', 'VALUE-NEVER'):
+            self.assertNotIn(value, raw)
+        self.assertIn('current_user_can_bypass', raw)   # names only
 
     def test_revocation_is_a_single_attempt_with_no_retry(self):
         observer, reader = self.run_with({'revoke_code': 500})

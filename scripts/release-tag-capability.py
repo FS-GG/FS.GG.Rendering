@@ -40,6 +40,7 @@ SOURCE_PATHS = ('scripts/release-tag-capability.py', 'scripts/test-release-tag-c
     'eng/release/font-disposal-0.32.3-workflow-fences.json', 'scripts/settle-original-tags.py',
     'scripts/selected-producer-tags.py', 'scripts/release-source-guard.py', 'scripts/release-preflight.py')
 MAX_REQUESTS = 18   # 12 job/App reads + 1 reader mint + at most 4 reader ruleset reads + 1 revocation
+CLEANUP_WINDOW = 4   # seconds; shorter than timeout --kill-after=5s
 POLICY_LISTING = 'rulesets?includes_parents=true&per_page=100'
 REFS = ('refs/tags/fs-gg-ui/v0.32.3', 'refs/tags/fs-gg-ui-template/v0.32.3', 'refs/tags/v0.32.3')
 SAFE_ENV = {'PATH': os.defpath, 'LANG': 'C', 'LC_ALL': 'C'}
@@ -420,7 +421,9 @@ class Observer:
             self.gap('cleanup', Refused('reader-token-unretrievable'))
         for api in held:
             try:
-                status, _ = api.retire(self.budget.deadline)
+                # The SIGTERM that interrupts a hung read arrives after the observation deadline (190 s
+                # timeout vs 180 s budget): revocation gets its own short window ahead of the 5 s kill grace.
+                status, _ = api.retire(max(self.budget.deadline, time.monotonic() + CLEANUP_WINDOW))
                 self.report['cleanup']['readerToken'] = 'revoked' if status == 204 else 'revocation-unconfirmed'
             except Exception:
                 self.report['cleanup']['readerToken'] = 'revocation-unconfirmed'
@@ -484,11 +487,11 @@ class Observer:
                 if form: found.add(form)
         return found
 
-    def retain(self):
+    def retain(self, late=False):
         raw = json.dumps(self.report, sort_keys=True, separators=(',', ':')).encode() + b'\n'
         need(len(raw) <= 65536, 'report-byte-bound')
         need(not any(canary.encode() in raw for canary in self.canaries()), 'report-secret-canary')
-        need(time.monotonic() <= self.budget.deadline, 'report-deadline')
+        need(late or time.monotonic() <= self.budget.deadline, 'report-deadline')
         path = self.root / REPORT
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open('xb') as stream:
@@ -503,9 +506,16 @@ def main():
     if not args.guard_only:
         # The workflow timeout signals SIGTERM; unwind through the reader token's revocation.
         signal.signal(signal.SIGTERM, lambda signum, frame: sys.exit(143))
-    observer.run(args.guard_only)
+    late = False
     try:
-        if not args.guard_only: observer.retain()
+        observer.run(args.guard_only)
+    except SystemExit:
+        # Signalled mid-run: the reader token was already revoked by run()'s unwinding; retain that outcome.
+        late = True
+        observer.gap('observer', Refused('terminated'))
+        observer.report['result'] = 'refused-or-incomplete'
+    try:
+        if not args.guard_only: observer.retain(late)
         return 0 if observer.report['result'] == 'observed' else 1
     except (Refused, OSError, ValueError, TypeError):
         print('release-tag-capability refused; sanitized report unavailable', file=sys.stderr)

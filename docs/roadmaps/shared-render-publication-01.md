@@ -161,8 +161,8 @@ determining reads does it mint exactly ONE installation token with settlement's 
 request (`mint_token`, `MINTS['reader']`: repository `FS.GG.Rendering`, `administration: read`,
 `metadata: read`), judge the mint response exactly as settlement does (an excess or wrong grant is
 refused), read only the two ruleset routes through settlement's `policy_details`, and revoke the
-token (`DELETE /installation/token`) in a `finally` that also runs on SIGTERM, with the cleanup
-reserve beyond the effect budget. It never mints a writer token, disables a workflow, creates a
+token (`DELETE /installation/token`) in a `finally` that also runs on SIGTERM, with its own 4-second cleanup
+window past the spent observation budget. It never mints a writer token, disables a workflow, creates a
 ref or publishes; `installationTokenMinted` is true for exactly that one revoked reader token.
 
 The sanitized report (`fsgg.rendering.tag-capability/v2`) carries the complete workflow-inventory
@@ -177,7 +177,7 @@ is a fact rather than a gate, and `selectedRepositoriesComplete` stays `false` b
 selected-repository set is not enumerated. Root still owns actual endpoint capability checks,
 the metadata dispatch, any narrow writer or policy setup, effect admission, and acceptance.
 
-`python3 scripts/test-release-tag-capability.py` runs 75 local causal controls in the credential-free
+`python3 scripts/test-release-tag-capability.py` runs 79 local causal controls in the credential-free
 gate job before the settlement controls. Each negative control flips one input of a passing
 baseline (guard failure before secret use, moved `main`/installation, each policy weakening,
 route/verb, response bounds, secret canaries including JSON-escaped multi-line keys, a real
