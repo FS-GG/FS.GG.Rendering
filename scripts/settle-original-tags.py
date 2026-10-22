@@ -184,7 +184,8 @@ def admission(raw, expected, env):
     return value
 
 
-def immutable_policy(api, expected):
+def policy_details(api):
+    """Effective/inherited ruleset census and one detail body each, as this credential sees them."""
     rules = api.get('rulesets?includes_parents=true&per_page=100')
     need(isinstance(rules, list) and 0 < len(rules) < 100, 'effective/inherited policy census incomplete')
     details = []
@@ -195,7 +196,14 @@ def immutable_policy(api, expected):
         need(parsed.scheme == 'https' and parsed.netloc == 'api.github.com' and not parsed.query, 'effective policy detail route unknown')
         need(parsed.path == PREFIX + 'rulesets/' + str(rule['id']), 'inherited policy requires separately qualified detail adapter')
         details.append(api.get('rulesets/' + str(rule['id'])))
-    need(digest(json.dumps(details, sort_keys=True, separators=(',', ':')).encode()) == expected, 'effective policy changed')
+    return details
+
+
+def policy_digest(details):
+    return digest(json.dumps(details, sort_keys=True, separators=(',', ':')).encode())
+
+
+def policy_coverage(details):
     covered = set()
     for rule in details:
         if rule.get('target') != 'tag' or rule.get('enforcement') != 'active':
@@ -208,6 +216,12 @@ def immutable_policy(api, expected):
         # Exact includes deliberately refuse unexamined glob semantics.
         covered.update(set(conditions.get('include', [])) & set(REFS))
     need(covered == set(REFS), 'immutable exact-ref update/deletion restrictions or no-bypass proof missing')
+
+
+def immutable_policy(api, expected):
+    details = policy_details(api)
+    need(policy_digest(details) == expected, 'effective policy changed')
+    policy_coverage(details)
 
 
 def mask_credential(token):
@@ -230,6 +244,26 @@ def granted(grant, requested):
         raise Refused('minted credential expiry unavailable') from None
     need(0 < seconds <= 3700, 'minted credential expiry outside the one-hour bound')
     return {'permissions': dict(sorted(grant['permissions'].items())), 'repositories': [REPO], 'expiresAt': expires}
+
+
+def mint_token(app, path, role, mask, api_factory, journal, deadline, hold):
+    """Mint one exact-permission repository-scoped installation token through an App-role adapter.
+
+    The mint response is judged exactly as settlement judges it. `hold` receives the adapter as soon as
+    a well-formed token exists and before its grant is judged (and even if masking fails), so a refused
+    excess grant can still be retired. Returns the adapter and the verified grant summary."""
+    status, grant = app.call('POST', path, MINTS[role])
+    need(status == 201, 'installation token mint refused')
+    token = grant.get('token') if isinstance(grant, dict) else None
+    # One printable, whitespace-free line, so a workflow-command mask covers all of it.
+    need(isinstance(token, str) and re.fullmatch(r'[\x21-\x7e]{20,1023}', token) is not None, 'minted credential malformed')
+    # Mask before any other use; the response body is never journaled.
+    try:
+        mask(token)
+    finally:
+        api = api_factory(token, role, journal, deadline)
+        hold(api)
+    return api, granted(grant, MINTS[role])
 
 
 class Settlement:
@@ -292,21 +326,12 @@ class Settlement:
         path = '/app/installations/' + str(installation['id']) + '/access_tokens'
         # The reader is minted and assigned first so a failed writer mint still retires it.
         for role in ('reader', 'writer'):
-            status, grant = app.call('POST', path, MINTS[role])
-            need(status == 201, 'installation token mint refused')
-            token = grant.get('token') if isinstance(grant, dict) else None
-            # One printable, whitespace-free line, so a workflow-command mask covers all of it.
-            need(isinstance(token, str) and re.fullmatch(r'[\x21-\x7e]{20,1023}', token) is not None, 'minted credential malformed')
-            # Mask before any other use; the response body is never journaled. The adapter is
-            # held before the grant is judged (and even if masking fails), so a refused excess
-            # grant is still retired.
-            try:
-                self.mask(token)
-            finally:
-                api = self.api_factory(token, role, self.record, self.deadline - 60 if role == 'writer' else self.deadline)
+            def hold(api, role=role):
                 if role == 'reader': self.reader = api
                 else: self.writer = api
-            self.record('credential-minted', role=role, **granted(grant, MINTS[role]))
+            api, grant = mint_token(app, path, role, self.mask, self.api_factory, self.record,
+                                    self.deadline - 60 if role == 'writer' else self.deadline, hold)
+            self.record('credential-minted', role=role, **grant)
         need(len({self.actions.token, self.reader.token, self.writer.token}) == 3, 'credentials must be distinct')
 
     def local_identity(self):

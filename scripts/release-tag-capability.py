@@ -1,18 +1,24 @@
 #!/usr/bin/env python3
-"""Protected Rendering capability metadata observer. All remote requests are GET.
+"""Protected Rendering capability observer: GET requests plus exactly one reader mint.
 
-No installation token mint, workflow/ref/package mutation or settlement run. App
-permission ceilings are observations; no read establishes mutation authority.
+After every guard and App metadata read it mints ONE installation token with the same
+reader request settlement uses (`settle-original-tags.py` MINTS['reader']), judges the
+mint response with settlement's own `mint_token`, reads only the two ruleset routes
+settlement's `policy_details` reads, reports the digest that identity sees, and revokes
+the token even on failure. No writer mint, workflow/ref/package mutation or settlement
+run. App permission ceilings are observations; no read establishes mutation authority.
 """
 from __future__ import annotations
 import argparse
 import base64
 from datetime import datetime, timezone
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
 import re
+import signal
 import subprocess
 import sys
 import tempfile
@@ -28,9 +34,14 @@ PREFIX = '/repos/' + REPO
 APP_SLUG = 'fs-gg-cross-repo-dispatch'
 WORKFLOW = REPO + '/.github/workflows/release-tag-capability.yml@refs/heads/main'
 REPORT = 'artifacts/tag-capability/report.json'
+# The reader mint and policy code is loaded from settlement's own source, so those bytes are guarded too.
 SOURCE_PATHS = ('scripts/release-tag-capability.py', 'scripts/test-release-tag-capability.py',
     '.github/workflows/release-tag-capability.yml', '.github/workflows/gate.yml',
-    'eng/release/font-disposal-0.32.3-workflow-fences.json')
+    'eng/release/font-disposal-0.32.3-workflow-fences.json', 'scripts/settle-original-tags.py',
+    'scripts/selected-producer-tags.py', 'scripts/release-source-guard.py', 'scripts/release-preflight.py')
+MAX_REQUESTS = 18   # 12 job/App reads + 1 reader mint + at most 4 reader ruleset reads + 1 revocation
+CLEANUP_WINDOW = 4   # seconds; shorter than timeout --kill-after=5s
+POLICY_LISTING = 'rulesets?includes_parents=true&per_page=100'
 REFS = ('refs/tags/fs-gg-ui/v0.32.3', 'refs/tags/fs-gg-ui-template/v0.32.3', 'refs/tags/v0.32.3')
 SAFE_ENV = {'PATH': os.defpath, 'LANG': 'C', 'LC_ALL': 'C'}
 
@@ -94,7 +105,7 @@ class GET:
                    or (self.role == 'app' and path in ('/app', PREFIX + '/installation')))
         need(allowed, 'route-refused')
         remaining = self.budget.remaining()
-        need(self.budget.requests < 12, 'request-count-bound')
+        need(self.budget.requests < MAX_REQUESTS, 'request-count-bound')
         self.budget.requests += 1
         event = {'path': path, 'requestedUtc': utc(), 'status': None, 'requestId': None}
         self.events.append(event)
@@ -254,7 +265,7 @@ def workflow_inventory(job):
     return {'complete': True, 'count': len(pairs), 'sha256': digest(json.dumps(sorted(pairs), separators=(',', ':')).encode())}
 
 
-def policy_observation(job):
+def policy_observation(job, retained=None):
     listing = job.get(PREFIX + '/rulesets?includes_parents=true&per_page=100')
     need(isinstance(listing, list) and len(listing) <= 3, 'policy-cardinality-bound')
     details, observations, covered, identifiers = [], [], set(), set()
@@ -266,6 +277,7 @@ def policy_observation(job):
         detail = job.get(PREFIX + '/rulesets/' + str(row['id']))
         need(isinstance(detail, dict) and detail.get('id') == row['id'], 'policy-detail-identity')
         details.append(detail)
+        if retained is not None: retained[row['id']] = detail
         present = 'bypass_actors' in detail
         actors = detail.get('bypass_actors')
         need(not present or isinstance(actors, list), 'policy-bypass-shape')
@@ -287,21 +299,60 @@ def policy_observation(job):
         if (detail.get('target') == 'tag' and detail.get('enforcement') == 'active' and present and actors == []
             and exclude == [] and isinstance(include, list) and {'update', 'deletion'} <= set(types)):
             covered.update(set(include) & set(REFS))
-    # The retained digest covers the whole detail body as this job token saw it. Settlement recomputes it
-    # with its administrator identity, whose body can differ (for example bypass_actors visibility), so
-    # root must confirm the digest under that identity; bypass_actors visibility is necessary, not sufficient.
+    # This digest covers the bodies as the JOB token saw them and is not the settlement digest: settlement
+    # recomputes with the minted reader identity, whose bodies can differ. `readerPolicySha256`, observed
+    # through that same mint and code path, is the value for admission; this one is a comparison only.
     return {'available': True, 'complete': True, 'observedAs': 'job-token',
             'digestJoinCandidate': bool(details) and all('bypass_actors' in d for d in details),
             'sha256': digest(json.dumps(details, sort_keys=True, separators=(',', ':')).encode()),
             'rulesets': observations, 'immutablePolicyReady': covered == set(REFS)}
 
 
+def load_settlement():
+    """Settlement's own module: the reader mint, grant judgement, adapter and policy digest are not duplicated."""
+    spec = importlib.util.spec_from_file_location('observer_settlement', Path(__file__).with_name('settle-original-tags.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+class RulesetReader:
+    """The minted reader may reach only the two ruleset routes settlement's policy_details reads."""
+    def __init__(self, api):
+        self.api, self.reads = api, 0
+
+    def get(self, path):
+        need(path == POLICY_LISTING or re.fullmatch('rulesets/[1-9][0-9]*', path) is not None, 'route-refused')
+        need(self.reads < 4, 'request-count-bound')
+        self.reads += 1
+        value = self.api.get(path)
+        if path == POLICY_LISTING:
+            need(isinstance(value, list) and len(value) <= 3, 'policy-cardinality-bound')
+        return value
+
+
+MISSING = object()
+
+
+def reader_fields(detail, job_detail):
+    """Top-level field names of one ruleset body as the reader saw it; names only, never values."""
+    names = [k for k in detail if isinstance(k, str) and re.fullmatch('[a-z][a-z_]{0,63}', k)]
+    result = {'id': detail.get('id') if type(detail.get('id')) is int else None, 'fields': sorted(names),
+              'unnamedFieldCount': len(detail) - len(names)}
+    if isinstance(job_detail, dict):
+        result['fieldsDifferingFromJobToken'] = sorted(k for k in names if detail.get(k, MISSING) != job_detail.get(k, MISSING))
+        result['fieldsOnlyForJobToken'] = sorted(k for k in job_detail if k not in detail and isinstance(k, str) and re.fullmatch('[a-z][a-z_]{0,63}', k))
+    return result
+
+
 class Observer:
-    def __init__(self, root, env, transport=GET, signer=app_jwt):
+    def __init__(self, root, env, transport=GET, signer=app_jwt, settlement=None, api_factory=None, mask=None):
         self.root, self.env, self.transport, self.signer = root, env, transport, signer
+        self.settlement, self.api_factory, self.mask = settlement, api_factory, mask
+        self.job_details = {}
         self.budget = Budget(); self.secrets = []
-        self.report = {'schema': 'fsgg.rendering.tag-capability/v1', 'requestedUtc': utc(),
-            'result': 'pending', 'observations': [], 'gaps': [], 'cleanup': {'temporaryKey': 'not-created'},
+        self.report = {'schema': 'fsgg.rendering.tag-capability/v2', 'requestedUtc': utc(),
+            'result': 'pending', 'observations': [], 'gaps': [], 'cleanup': {'temporaryKey': 'not-created', 'readerToken': 'not-minted'},
             'installationTokenMinted': False, 'workflowMutation': False, 'tagMutation': False,
             'publication': False, 'settlementEligible': False, 'writerPermissionCeilingCompatible': False,
             'selectedRepositoriesComplete': False, 'immutablePolicyReady': False}
@@ -309,6 +360,75 @@ class Observer:
     def gap(self, stage, error):
         # Only our closed reason vocabulary can enter evidence.
         self.report['gaps'].append({'stage': stage, 'reason': error.args[0] if isinstance(error, Refused) else 'unavailable'})
+
+    def journal(self, stage, **fields):
+        """Reader-adapter journal: route, status and request id only; never a body, token or provider text."""
+        if stage == 'http-requested':
+            self.budget.requests += 1
+            self.report['observations'].append({'role': fields.get('role'), 'method': fields.get('method'),
+                'path': fields.get('path') if fields.get('role') != 'app' or fields.get('method') != 'POST' else '<reader-token-mint>',
+                'requestedUtc': utc(), 'status': None, 'requestId': None})
+        elif stage == 'http-response' and self.report['observations']:
+            event = self.report['observations'][-1]
+            event.update(status=fields.get('status'), requestId=request_id(fields.get('requestId')), observedUtc=utc())
+            if event.get('method') == 'POST' and fields.get('status') == 201:
+                self.report['installationTokenMinted'] = True   # a credential now exists and must be revoked
+        elif stage == 'http-outcome-unknown' and self.report['observations']:
+            self.report['observations'][-1]['outcome'] = 'unknown'
+            if fields.get('method') == 'POST':
+                self.report['cleanup']['readerToken'] = 'mint-outcome-unknown'
+
+    def reader_phase(self, jwt, installation_id, job_digest):
+        """Mint ONE reader token, read the ruleset bodies it sees, and always revoke it."""
+        held = []
+        settle = self.settlement or load_settlement()
+        factory = self.api_factory or settle.API
+        mask = self.mask or settle.mask_credential
+        stage = 'reader-mint-refused'
+        try:
+            try:
+                app = factory(jwt, 'app', self.journal, self.budget.effect_deadline)
+                def hold(api):
+                    held.append(api); self.secrets.append(api.token)
+                    self.report['cleanup']['readerToken'] = 'minted-unrevoked'
+                path = '/app/installations/' + str(installation_id) + '/access_tokens'
+                api, grant = settle.mint_token(app, path, 'reader', mask, factory, self.journal, self.budget.effect_deadline, hold)
+                stage = 'reader-policy-unavailable'
+                details = settle.policy_details(RulesetReader(api))
+                digest_value = settle.policy_digest(details)
+                try:
+                    settle.policy_coverage(details); ready = True
+                except Exception:
+                    ready = False
+                observed = {'observedAs': 'reader-token', 'permissions': grant['permissions'],
+                    'sha256': digest_value, 'matchesJobTokenDigest': job_digest == digest_value,
+                    'immutablePolicyReady': ready, 'rulesets': [reader_fields(d, self.job_details.get(d.get('id'))) for d in details]}
+                self.report['readerPolicy'] = observed
+                self.report['readerPolicySha256'] = digest_value
+            except Refused:
+                raise
+            except Exception:
+                raise Refused('reader-credential-refused' if held and stage == 'reader-mint-refused' else stage) from None
+        except Refused as error:
+            self.gap('readerPolicy', error)
+        finally:
+            self.revoke(held)
+
+    def revoke(self, held):
+        if not held and self.report['installationTokenMinted']:
+            # A credential exists that this process cannot name (malformed response); it can only expire.
+            self.report['cleanup']['readerToken'] = 'minted-unretrievable'
+            self.gap('cleanup', Refused('reader-token-unretrievable'))
+        for api in held:
+            try:
+                # The SIGTERM that interrupts a hung read arrives after the observation deadline (190 s
+                # timeout vs 180 s budget): revocation gets its own short window ahead of the 5 s kill grace.
+                status, _ = api.retire(max(self.budget.deadline, time.monotonic() + CLEANUP_WINDOW))
+                self.report['cleanup']['readerToken'] = 'revoked' if status == 204 else 'revocation-unconfirmed'
+            except Exception:
+                self.report['cleanup']['readerToken'] = 'revocation-unconfirmed'
+            if self.report['cleanup']['readerToken'] != 'revoked':
+                self.gap('cleanup', Refused('reader-revocation-unconfirmed'))
 
     def run(self, guard_only=False):
         try:
@@ -319,7 +439,8 @@ class Observer:
             self.report['executor'] = protected_source(self.root, self.env, job)
             if guard_only:
                 return self.report
-            for stage, operation in (('workflowInventory', workflow_inventory), ('policy', policy_observation)):
+            for stage, operation in (('workflowInventory', workflow_inventory),
+                                     ('policy', lambda j: policy_observation(j, self.job_details))):
                 try:
                     value = operation(job); self.report[stage] = value
                     if stage == 'policy': self.report['immutablePolicyReady'] = value['immutablePolicyReady']
@@ -334,7 +455,8 @@ class Observer:
             self.secrets.append(jwt)
             app = self.transport(jwt, 'app', self.budget, self.report['observations'])
             self.report['app'] = app_identity(app.get('/app'), app_id)
-            initial = installation_identity(app.get(PREFIX + '/installation'), app_id)
+            installation = app.get(PREFIX + '/installation')
+            initial = installation_identity(installation, app_id)
             self.report['installation'] = initial
             main_ref(job, self.report['executor']['executorSha'])
             final = installation_identity(app.get(PREFIX + '/installation'), app_id)
@@ -343,6 +465,7 @@ class Observer:
                 grant.get('contents') == 'write' and grant.get('workflows') == 'write'
                 for grant in (self.report['app']['permissions'], initial['permissions']))
             self.report['determiningRereadComplete'] = True
+            self.reader_phase(jwt, installation['id'], self.report.get('policy', {}).get('sha256'))
         except Exception as error:  # reduced to a closed reason by gap(); never traceback text
             self.gap('observer', error)
         finally:
@@ -364,11 +487,11 @@ class Observer:
                 if form: found.add(form)
         return found
 
-    def retain(self):
+    def retain(self, late=False):
         raw = json.dumps(self.report, sort_keys=True, separators=(',', ':')).encode() + b'\n'
         need(len(raw) <= 65536, 'report-byte-bound')
         need(not any(canary.encode() in raw for canary in self.canaries()), 'report-secret-canary')
-        need(time.monotonic() <= self.budget.deadline, 'report-deadline')
+        need(late or time.monotonic() <= self.budget.deadline, 'report-deadline')
         path = self.root / REPORT
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open('xb') as stream:
@@ -380,9 +503,19 @@ def main():
     parser.add_argument('--guard-only', action='store_true')
     args = parser.parse_args()
     observer = Observer(Path.cwd(), dict(os.environ))
-    observer.run(args.guard_only)
+    if not args.guard_only:
+        # The workflow timeout signals SIGTERM; unwind through the reader token's revocation.
+        signal.signal(signal.SIGTERM, lambda signum, frame: sys.exit(143))
+    late = False
     try:
-        if not args.guard_only: observer.retain()
+        observer.run(args.guard_only)
+    except SystemExit:
+        # Signalled mid-run: the reader token was already revoked by run()'s unwinding; retain that outcome.
+        late = True
+        observer.gap('observer', Refused('terminated'))
+        observer.report['result'] = 'refused-or-incomplete'
+    try:
+        if not args.guard_only: observer.retain(late)
         return 0 if observer.report['result'] == 'observed' else 1
     except (Refused, OSError, ValueError, TypeError):
         print('release-tag-capability refused; sanitized report unavailable', file=sys.stderr)

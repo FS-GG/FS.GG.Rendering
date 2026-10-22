@@ -151,30 +151,38 @@ effective-policy evidence that source cannot supply. The manual
 [4709](https://github.com/FS-GG/.github/issues/4709). It is a separate entry: it takes no
 `release-tags` lock, consumes no settlement census and has `contents: read`/`actions: read` only.
 
-Every request is a GET through a closed host/route/credential-role adapter (12-request,
+Every job-token and App-JWT request is a GET through a closed host/route/credential-role adapter (18-request,
 256 KiB-per-response, 2 MiB total and 180-second bounds; redirects, pagination, non-200
 and duplicate JSON keys refuse). The job token first proves protected `main`, executor
 SHA/ref/attempt and the repository identity, and a guard step runs before either App secret is
 exposed. The existing dispatcher App ID/key then sign a short-lived App JWT that reads only
-`/app` and the repository installation, twice, with `main` re-read between. It never mints an
-installation token, disables a workflow, creates a ref or publishes.
+`/app` and the repository installation, twice, with `main` re-read between. Only after those
+determining reads does it mint exactly ONE installation token with settlement's own reader
+request (`mint_token`, `MINTS['reader']`: repository `FS.GG.Rendering`, `administration: read`,
+`metadata: read`), judge the mint response exactly as settlement does (an excess or wrong grant is
+refused), read only the two ruleset routes through settlement's `policy_details`, and revoke the
+token (`DELETE /installation/token`) in a `finally` that also runs on SIGTERM, with its own 4-second cleanup
+window past the spent observation budget. It never mints a writer token, disables a workflow, creates a
+ref or publishes; `installationTokenMinted` is true for exactly that one revoked reader token.
 
-The sanitized report carries the complete workflow-inventory and effective-policy digests in the
-exact forms `scripts/settle-original-tags.py` recomputes, so root can place them in its
-admission bytes; a control joins both implementations on identical input. Ceilings
+The sanitized report (`fsgg.rendering.tag-capability/v2`) carries the complete workflow-inventory
+digest and `readerPolicySha256`, the effective-policy digest observed by the reader identity
+settlement will use, computed by settlement's own `policy_digest`, so root can place them in its
+admission bytes; a control joins both implementations on identical input. The per-ruleset
+body field-name set, the fields that differ from the job-token body and the reader-side
+`immutablePolicyReady` are reported; no token, body value or provider text is. Ceilings
 (`contents`/`workflows` write) are observations, not mutation authority:
 `writerPermissionCeilingCompatible` does not make settlement eligible, `immutablePolicyReady`
 is a fact rather than a gate, and `selectedRepositoriesComplete` stays `false` because the
 selected-repository set is not enumerated. Root still owns actual endpoint capability checks,
 the metadata dispatch, any narrow writer or policy setup, effect admission, and acceptance.
 
-`python3 scripts/test-release-tag-capability.py` runs 46 local causal controls in the credential-free
+`python3 scripts/test-release-tag-capability.py` runs 79 local causal controls in the credential-free
 gate job before the settlement controls. Each negative control flips one input of a passing
 baseline (guard failure before secret use, moved `main`/installation, each policy weakening,
 route/verb, response bounds, secret canaries including JSON-escaped multi-line keys, a real
 RS256 signature plus tampered-message control, workflow permissions and secret scope). The reviewed
-workflow census pins the new workflow and edited gate bytes. The policy digest is computed from the ruleset bodies visible to the job token and is labelled
-`observedAs: job-token`; settlement recomputes it with its administrator identity, whose bodies can differ
-(for example `bypass_actors` visibility), so root must confirm that digest under that identity before
-placing it in admission bytes (`digestJoinCandidate` is a necessary-not-sufficient candidate flag: `true` only when `bypass_actors` was visible in a non-empty census). The
+workflow census pins the new workflow and edited gate bytes, and the observer's checkout guard also covers the settlement sources it loads. The job-token policy digest remains labelled
+`observedAs: job-token` and is a comparison only (`digestJoinCandidate` is a necessary-not-sufficient flag); the admission value is
+`readerPolicySha256`, observed as the reader identity (`observedAs: reader-token`), whose bodies can differ from the job token's. The
 original receive-pack outcome stays `Unknown`.
