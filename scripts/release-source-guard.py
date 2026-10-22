@@ -634,6 +634,7 @@ def validate_font_disposal_qualification(root: Path, binding: dict, read, archiv
 
 def acquire_font_disposal(root: Path, binding: dict) -> None:
     identity = executor_identity(root)
+    settlement = accepted_tag_settlement(root)
     out = root / 'artifacts/attempt'; out.mkdir(parents=True, exist_ok=True)
     def api(path):
         return subprocess.check_output(['gh', 'api', 'repos/FS-GG/FS.GG.Rendering/' + path], stderr=subprocess.DEVNULL, timeout=60)
@@ -669,7 +670,53 @@ def acquire_font_disposal(root: Path, binding: dict) -> None:
         current = validate_font_disposal_qualification(root, binding, read, archives)
     facts = {**identity, **current, 'originalCustodyVerified': True, 'nativeTemplatesQualified': True, 'browserUnexpected': 0, 'browserSkipped': 0, 'browserFlaky': 0, 'githubEffectiveWrite': 'unknown-before-attempt'}
     (out / 'qualification-facts.json').write_text(json.dumps(facts, sort_keys=True) + '\n')
-    (out / 'input-binding.json').write_text(json.dumps({**identity, 'producerSha': binding['producerSha'], 'originalPlanSha256': binding['planSha256'], 'outerSha256': binding['outerSha256'], 'custodySha256': binding['custodySha256'], 'effectId': binding['effectId'], 'qualification': q, 'publication': 'not-yet-observed'}, sort_keys=True) + '\n')
+    (out / 'input-binding.json').write_text(json.dumps({**identity, 'producerSha': binding['producerSha'], 'originalPlanSha256': binding['planSha256'], 'outerSha256': binding['outerSha256'], 'custodySha256': binding['custodySha256'], 'effectId': binding['effectId'], 'qualification': q, 'tagSettlement': settlement, 'publication': 'not-yet-observed'}, sort_keys=True) + '\n')
+
+
+def accepted_tag_settlement(root: Path) -> dict:
+    """Acquire only the root-selected successful settlement; never settle during publish."""
+    selected = json.loads(os.environ.get('FSGG_ACCEPTED_TAG_SETTLEMENT', '{}'))
+    fields = {'run', 'attempt', 'artifact', 'artifactSha256', 'receiptSha256', 'executorSha'}
+    if set(selected) != fields or any(type(selected[k]) is not int or selected[k] < 1 for k in ('run', 'attempt', 'artifact')) or selected['attempt'] != 1:
+        preflight.fail('held0323 requires explicit accepted settlement coordinates')
+    if any(not re.fullmatch('[0-9a-f]{64}', selected[k]) for k in ('artifactSha256', 'receiptSha256')) or not re.fullmatch('[0-9a-f]{40}', selected['executorSha']):
+        preflight.fail('accepted settlement digest/source malformed')
+    def api(path):
+        return subprocess.check_output(['gh', 'api', 'repos/FS-GG/FS.GG.Rendering/' + path], stderr=subprocess.DEVNULL, timeout=30)
+    run = json.loads(api('actions/runs/' + str(selected['run'])))
+    meta = json.loads(api('actions/artifacts/' + str(selected['artifact'])))
+    if (run.get('id') != selected['run'] or run.get('run_attempt') != 1 or run.get('status') != 'completed' or run.get('conclusion') != 'success'
+        or run.get('event') != 'workflow_dispatch' or run.get('head_sha') != selected['executorSha'] or run.get('path') != '.github/workflows/release-tag-settlement.yml'
+        or meta.get('id') != selected['artifact'] or meta.get('expired') is not False or meta.get('digest') != 'sha256:' + selected['artifactSha256']
+        or meta.get('workflow_run', {}).get('id') != selected['run'] or meta.get('workflow_run', {}).get('head_sha') != selected['executorSha']
+        or not 0 < meta.get('size_in_bytes', 0) <= 8 * 1024 * 1024):
+        preflight.fail('accepted settlement native provenance differs')
+    raw = api('actions/artifacts/' + str(selected['artifact']) + '/zip')
+    if len(raw) != meta['size_in_bytes'] or hashlib.sha256(raw).hexdigest() != selected['artifactSha256']:
+        preflight.fail('accepted settlement archive differs')
+    import io
+    with zipfile.ZipFile(io.BytesIO(raw)) as z:
+        validate_font_zip(z)
+        names = [n for n in z.namelist() if n == 'settlement.json' or n.endswith('/settlement.json')]
+        if len(names) != 1: preflight.fail('accepted settlement receipt missing or duplicated')
+        receipt_raw = z.read(names[0])
+    if hashlib.sha256(receipt_raw).hexdigest() != selected['receiptSha256']:
+        preflight.fail('accepted settlement receipt bytes differ')
+    receipt = json.loads(receipt_raw)
+    refs = {'refs/tags/' + name: FONT_DISPOSAL['producerSha'] for name in ('fs-gg-ui/v0.32.3', 'fs-gg-ui-template/v0.32.3', 'v0.32.3')}
+    if (receipt.get('schema') != 'fsgg.rendering.tag-settlement/v1' or receipt.get('effectId') != FONT_DISPOSAL['effectId'] or receipt.get('producerSha') != FONT_DISPOSAL['producerSha']
+        or receipt.get('originalTransportOutcome') != 'Unknown' or receipt.get('sameIntentConvergence') != 'Verified' or receipt.get('cleanup') != 'restored' or receipt.get('pendingSubordinateRefs') != [] or receipt.get('result') != 'passed'
+        or receipt.get('executorSha') != selected['executorSha'] or receipt.get('run') != str(selected['run']) or receipt.get('attempt') != '1'
+        or receipt.get('workflowRef') != 'FS-GG/FS.GG.Rendering/.github/workflows/release-tag-settlement.yml@refs/heads/main'
+        or receipt.get('refs') != refs or receipt.get('publication') != 'not-performed' or receipt.get('notification') != 'not-performed'):
+        preflight.fail('accepted settlement independent assertions/cleanup differ')
+    for ref, sha in refs.items():
+        current = json.loads(api('git/ref/' + ref.removeprefix('refs/')))
+        if current.get('ref') != ref or current.get('object', {}).get('type') != 'commit' or current.get('object', {}).get('sha') != sha:
+            preflight.fail('accepted settlement current immutable ref differs')
+    out = root / 'artifacts/attempt'; out.mkdir(parents=True, exist_ok=True)
+    (out / 'accepted-tag-settlement.json').write_bytes(receipt_raw)
+    return {**selected, 'originalTransportOutcome': 'Unknown', 'sameIntentConvergence': 'Verified', 'cleanup': 'restored', 'effectId': FONT_DISPOSAL['effectId']}
 
 
 def font_disposal_main() -> int:
@@ -692,6 +739,8 @@ def font_disposal_main() -> int:
     binding = validate_font_disposal_attempt(root, args.source_sha, not args.attempt_preflight)
     result = validate(root, args.source_sha, args.plan, args.version, False)
     result['planSha256'] = binding['planSha256']
+    if not args.attempt_preflight and not args.acquire_bound_artifacts:
+        accepted_tag_settlement(root)
     if args.acquire_bound_artifacts: acquire_font_disposal(root, binding)
     if args.record_event:
         ids = [p['id'] for p in json.loads(source_bytes(root, binding['producerSha'], binding['planPath']))['packages']]

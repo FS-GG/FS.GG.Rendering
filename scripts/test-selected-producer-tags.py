@@ -434,9 +434,11 @@ class QualifiedFontTagTests(unittest.TestCase):
             validate.assert_called_once_with(ROOT,source,tags.guard.FONT_DISPOSAL['planPath'],'0.32.3',require_publication_ready=False)
         with tempfile.TemporaryDirectory() as d:
             git=FakeGit()
-            result=tags.Operation(Path(d),'cut',source,'0.32.3',ENV,git,lambda *args:binding).run()
+            result=tags.Operation(Path(d),'check',source,'0.32.3',ENV,git,lambda *args:binding).run()
             self.assertEqual('passed',result['result'])
-            self.assertEqual([source+':refs/tags/'+name for name in ['fs-gg-ui/v0.32.3','fs-gg-ui-template/v0.32.3','v0.32.3']],[row[-1] for row in git.pushes])
+            self.assertEqual([],git.pushes)
+            with self.assertRaisesRegex(tags.Refused,'same-original-intent settlement'):
+                tags.Operation(Path(d),'cut',source,'0.32.3',ENV,git,lambda *args:binding).run()
             self.assertEqual('not-performed',result['publication'])
             diff=next(call for call in git.calls if call[0]=='diff')
             self.assertIn(tags.guard.FONT_DISPOSAL_ATTEMPT,diff)

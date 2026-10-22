@@ -1,0 +1,34 @@
+{
+  "schema": "fsgg.rendering.original-tag-intent/v1",
+  "effectId": "rendering-0323-original39509314882-a1",
+  "run": 39541842303,
+  "attempt": 1,
+  "job": 119031172204,
+  "executorSha": "765eda5c6d75f11134c2d3011f0d9868e98c3f19",
+  "producerSha": "4ec6eafbbbf02264db9b0db4780c590abe0bf9cd",
+  "originalTransportOutcome": "Unknown",
+  "firstRef": "refs/tags/fs-gg-ui/v0.32.3",
+  "requestedUtc": "2026-10-21T04:02:47.727566+00:00",
+  "unknownUtc": "2026-10-21T04:02:48.642629+00:00",
+  "artifacts": [
+    {
+      "id": 12319803009,
+      "name": "selected-producer-tags-plan-39541842303-1",
+      "sha256": "b7340815d853ff28cbf50baedc0ed817dec4c82b10d1533433ecad2cb48375f9",
+      "size": 2817,
+      "member": "check.json",
+      "memberSha256": "913f75bf75dad2b93b460153773154883508ec936071974c6b5c5a0635827cce",
+      "memberSize": 7998
+    },
+    {
+      "id": 12318993690,
+      "name": "selected-producer-tags-cut-39541842303-1",
+      "sha256": "14de55dabfe8b2e37c6b6f0f8e8d9f4e427857a2a7535a0f73253513c0a24bef",
+      "size": 3108,
+      "member": "cut.json",
+      "memberSha256": "8060df060457e6ae6f69590e1ab2329eea40197808b81974e5b9074b27c19491",
+      "memberSize": 9393
+    }
+  ],
+  "actorId": 1645484
+}

@@ -866,7 +866,7 @@ class DisabledFontAttemptTests(unittest.TestCase):
     def test_qualified_route_and_mixed_preflight_refuses_before_acquisition(self):
         g=self.g
         for extra,ok in [(['--attempt-preflight'],True),([],True),(['--acquire-bound-artifacts'],True),(['--attempt-preflight','--acquire-bound-artifacts'],False)]:
-            with self.subTest(extra=extra),patch.object(sys,'argv',['guard','--font-disposal-attempt','--repo-root',str(ROOT),*extra]),patch.object(g,'executor_identity',return_value={}),patch.object(g,'source_bytes',return_value=(ROOT/g.FONT_DISPOSAL['planPath']).read_bytes()),patch.object(g,'validate',return_value={}),patch.object(g,'acquire_font_disposal') as acquire:
+            with self.subTest(extra=extra),patch.object(sys,'argv',['guard','--font-disposal-attempt','--repo-root',str(ROOT),*extra]),patch.object(g,'executor_identity',return_value={}),patch.object(g,'source_bytes',return_value=(ROOT/g.FONT_DISPOSAL['planPath']).read_bytes()),patch.object(g,'validate',return_value={}),patch.object(g,'acquire_font_disposal') as acquire,patch.object(g,'accepted_tag_settlement',return_value={}):
                 if ok:self.assertEqual(0,g.font_disposal_main())
                 else:
                     with self.assertRaises(SystemExit):g.font_disposal_main()
@@ -1134,6 +1134,10 @@ def native_boundary(scope_only=False, current_attempt=False, font_attempt=False)
         env.update(FSGG_RELEASE_ATTEMPT='0323')
         proof.update(originalCustodyVerified=True,nativeTemplatesQualified=True,providerPassed=186,browserPassed=[15,15,15],browserUnexpected=0,browserSkipped=0,browserFlaky=0,atPassed=15,atSpeechWindows=4,atEvidenceMembers=27,atCustodyQualified=True)
         inputs.update(producerSha='4ec6eafbbbf02264db9b0db4780c590abe0bf9cd',originalPlanSha256='89369de0c0944c66a52c6ed914cef78d6bb7670866baedf85cd8a198c5c46239',outerSha256='84647332c124e511545787c8c3f8634d4f5177068521acfc86c93430ac73ef63',custodySha256='7dbd4329546932c4c1d12767550b7b78aae85e32c81b354935b2c615b3e298c9',effectId='rendering-0323-original39509314882-a1')
+        settlement={'schema':'fsgg.rendering.tag-settlement/v1','effectId':inputs['effectId'],'producerSha':inputs['producerSha'],'originalTransportOutcome':'Unknown','sameIntentConvergence':'Verified','cleanup':'restored','pendingSubordinateRefs':[],'result':'passed','publication':'not-performed','notification':'not-performed','executorSha':'b'*40,'run':'11','attempt':'1','refs':{'refs/tags/'+n:inputs['producerSha'] for n in ['fs-gg-ui/v0.32.3','fs-gg-ui-template/v0.32.3','v0.32.3']}}
+        settlement_raw=json.dumps(settlement).encode()
+        inputs['tagSettlement']={'receiptSha256':hashlib.sha256(settlement_raw).hexdigest(),'artifactSha256':'c'*64,'executorSha':'b'*40,'run':11,'attempt':1,'artifact':12}
+        env['FSGG_ACCEPTED_TAG_SETTLEMENT']=json.dumps(inputs['tagSettlement'])
         cases=[('font-positive-no-credential',{}, {}, {},'credential'),
                ('font-unknown-selection',{'FSGG_RELEASE_ATTEMPT':'unknown'},{},{},'input'),
                ('font-scope-effect-mixed',{'FSGG_NUGET_SCOPE_ONLY':'true'},{},{},'input')]
@@ -1143,13 +1147,19 @@ def native_boundary(scope_only=False, current_attempt=False, font_attempt=False)
             cases.append(('font-executor-'+field,{}, {field:'different'}, {},'executor'))
         for field,bad in [('originalCustodyVerified',False),('nativeTemplatesQualified',False),('providerPassed',180),('browserPassed',[8,8,8]),('browserPassed',[15,15,14]),('browserUnexpected',1),('browserSkipped',1),('browserFlaky',1),('atPassed',14),('atSpeechWindows',3),('atEvidenceMembers',26),('atCustodyQualified',False),('testToolchainRuntime','10.0.12'),('testToolchainSdk','10.0.402'),('testToolchainCompiler','bad'),('testToolchainCore','bad')]:
             cases.append(('font-proof-'+field+'-'+str(bad),{}, {field:bad}, {},'input'))
+        for field in ('originalTransportOutcome','sameIntentConvergence','cleanup','effectId','producerSha','result','executorSha','run','refs','pendingSubordinateRefs'):
+            cases.append(('font-settlement-'+field,{}, {'testSettlementField':field}, {},'input'))
+        cases.append(('font-settlement-replaced-bytes',{}, {'testSettlementBytes':True}, {},'input'))
+        cases.append(('font-settlement-selection-missing',{'FSGG_ACCEPTED_TAG_SETTLEMENT':''}, {}, {},'input'))
+        cases.append(('font-settlement-selection-mismatch',{'FSGG_ACCEPTED_TAG_SETTLEMENT':'{}'}, {}, {},'input'))
+        cases.append(('font-settlement-missing',{}, {}, {'tagSettlement':{}},'input'))
         cases += [('font-stripped-plan',{}, {'testPlanBytes':'stripped'}, {},'input'),
                   ('font-wrong-plan',{}, {'testPlanBytes':'historical'}, {},'input')]
     results=[]
     with tempfile.TemporaryDirectory(prefix='executor-boundary-'  ,dir=os.environ.get('TMPDIR')) as folder:
         root=Path(folder);attempt=root/'artifacts/attempt';attempt.mkdir(parents=True)
         for name,environment,mutant,input_mutant,stage in cases:
-            remaining=85-(time.monotonic()-start)
+            remaining=(140 if font_attempt else 85)-(time.monotonic()-start)
             if remaining<=0:raise RuntimeError('native-boundary-original-deadline')
             facts=attempt/'qualification-facts.json'
             if scope_only:
@@ -1164,7 +1174,15 @@ def native_boundary(scope_only=False, current_attempt=False, font_attempt=False)
                 (preflight/'executor-binding.json').write_text(json.dumps(proof))
             else:
                 facts.write_text(json.dumps({**proof,**mutant}))
-            (attempt/'input-binding.json').write_text(json.dumps({**inputs,**input_mutant}))
+            if font_attempt:
+                observed=copy.deepcopy(settlement)
+                if 'testSettlementField' in mutant:observed[mutant['testSettlementField']]='different'
+                observed_raw=json.dumps(observed).encode()
+                selected=copy.deepcopy(inputs)
+                selected['tagSettlement']['receiptSha256']=hashlib.sha256(observed_raw).hexdigest()
+                (attempt/'accepted-tag-settlement.json').write_bytes(observed_raw+(b' ' if mutant.get('testSettlementBytes') else b''))
+            else:selected=inputs
+            (attempt/'input-binding.json').write_text(json.dumps({**selected,**input_mutant}))
             if current_attempt or font_attempt:
                 toolchain=root/'artifacts/toolchain';toolchain.mkdir(exist_ok=True)
                 tool=json.loads((ROOT/'eng/release/external-authority-recovery-0.32.2-attempt.json').read_text())['toolchain']
@@ -1184,6 +1202,8 @@ def native_boundary(scope_only=False, current_attempt=False, font_attempt=False)
                     changed=root/'mutated-plan.json'
                     changed.write_bytes(plan.read_bytes().strip() if mutant['testPlanBytes']=='stripped' else (ROOT/'eng/release/external-authority-recovery-0.32.2.json').read_bytes())
                     command[command.index('--plan')+1]=str(changed)
+            if font_attempt:
+                env['FSGG_ACCEPTED_TAG_SETTLEMENT']=json.dumps(selected['tagSettlement'])
             child=subprocess.run(command,cwd=root,env={**env,**environment},capture_output=True,text=True,timeout=min(15,remaining))
             expected=('NuGet verify-key: unavailable/refused; no publication eligibility' if stage=='unavailable' else
                       'NuGet verify-key: refused stage='+stage+'; no publication eligibility')
@@ -1316,7 +1336,7 @@ class QualifiedFontProofTests(unittest.TestCase):
             root=Path(d);path=root/g.FONT_DISPOSAL_ATTEMPT;path.parent.mkdir(parents=True);path.write_bytes((ROOT/g.FONT_DISPOSAL_ATTEMPT).read_bytes())
             plan=(ROOT/g.FONT_DISPOSAL['planPath']).read_bytes()
             args=['guard','--font-disposal-attempt','--repo-root',str(root),'--record-event','--event-feed','github','--event-package','all19','--event-stage','push','--event-result','requested']
-            with patch.object(g,'executor_identity',return_value={'executorSha':'a'*40}),patch.object(g,'source_bytes',return_value=plan),patch.object(g,'validate',return_value={}),patch.object(sys,'argv',args):
+            with patch.object(g,'executor_identity',return_value={'executorSha':'a'*40}),patch.object(g,'source_bytes',return_value=plan),patch.object(g,'validate',return_value={}),patch.object(g,'accepted_tag_settlement',return_value={}),patch.object(sys,'argv',args):
                 self.assertEqual(0,g.font_disposal_main())
             event=json.loads((root/'artifacts/attempt/publisher-events.jsonl').read_text())
             self.assertEqual(g.FONT_DISPOSAL['producerSha'],event['producerSha']);self.assertEqual(g.FONT_DISPOSAL['planSha256'],event['planSha256']);self.assertEqual('a'*40,event['executorSha'])
@@ -1349,7 +1369,7 @@ class QualifiedFontProofTests(unittest.TestCase):
                     workflow='.github/workflows/templates-external-reference-qualification.yml' if subject is q else '.github/workflows/release.yml'
                     if '/runs/' in path:return json.dumps({'id':subject['run'],'run_attempt':1,'head_sha':'b'*40 if wrong else subject['callerSha'],'conclusion':'success','path':workflow}).encode()
                     return json.dumps({'id':subject['artifact'],'expired':False,'workflow_run':{'id':subject['run'],'head_sha':subject['callerSha']},'digest':'sha256:'+subject['outerSha256'],'size_in_bytes':subject['outerSizeBytes']}).encode()
-                with patch.object(g,'executor_identity',return_value={}),patch.object(g.subprocess,'check_output',side_effect=api),patch.object(g.subprocess,'run') as verify,patch.object(g,'source_bytes',return_value=b'original raw plan'),patch.object(g,'validate_font_disposal_qualification',return_value={'atPassed':15}) as validate:
+                with patch.object(g,'executor_identity',return_value={}),patch.object(g.subprocess,'check_output',side_effect=api),patch.object(g.subprocess,'run') as verify,patch.object(g,'source_bytes',return_value=b'original raw plan'),patch.object(g,'validate_font_disposal_qualification',return_value={'atPassed':15}) as validate,patch.object(g,'accepted_tag_settlement',return_value={'receiptSha256':'a'*64}):
                     if wrong:
                         with self.assertRaises(SystemExit):g.acquire_font_disposal(root,b)
                         verify.assert_not_called();validate.assert_not_called();self.assertFalse(any(p.endswith('/zip') for p in calls))
