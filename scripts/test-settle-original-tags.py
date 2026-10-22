@@ -545,7 +545,7 @@ class DerivedCredentialTests(DerivedBase):
         op = self.build(); op.run()
         self.assertEqual(2, len(self.api.cleanup_deadlines))
         self.assertTrue(all(d == op.deadline + s.CLEANUP_RESERVE for d in self.api.cleanup_deadlines))
-        self.assertLess(op.deadline + s.CLEANUP_RESERVE - op.deadline, 270 - 240)  # inside the 270-second command timeout
+        self.assertTrue(0 < s.CLEANUP_RESERVE < 270 - 240)  # a real reserve, inside the 270-second command timeout
 
     def test_installation_token_is_not_reused_across_roles_and_distinctness_is_enforced(self):
         op = self.build(grants={'writer': good_grant('writer', token=TOKENS['reader'])})
