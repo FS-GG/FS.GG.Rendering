@@ -32,7 +32,7 @@ class FakeAPI:
     def __init__(self):
         self.calls = []; self.states = {i: 'active' for i in s.FENCES}; self.refs = {}
         self.policy = copy.deepcopy(POLICY); self.active = False; self.census_unknown = False
-        self.create = 'accepted'; self.retire = True; self.restore = True; self.hook = lambda *a: None
+        self.create = 'accepted'; self.retire_ok = True; self.restore = True; self.hook = lambda *a: None
 
     def retire(self, cleanup_deadline):
         return self.call('DELETE', '/installation/token')
@@ -67,7 +67,7 @@ class FakeAPI:
             if self.create in ('lost', 'never'): raise s.Refused('transport unknown')
             return (422 if self.create == 'conflict' else 201), {'ref': body['ref']}
         if method == 'DELETE':
-            if not self.retire: raise s.Refused('retirement unavailable')
+            if not self.retire_ok: raise s.Refused('retirement unavailable')
             return 204, None
         raise AssertionError((method, path))
 
@@ -183,7 +183,7 @@ class SettlementTests(unittest.TestCase):
         with self.assertRaises(s.Refused):self.op.run()
         self.assertEqual('Verified',self.op.receipt['sameIntentConvergence'])
         self.assertEqual('Unknown-owned-gap',self.op.receipt['cleanup'])
-        self.api=FakeAPI();self.op.admin=self.op.writer=self.api;self.api.active=True;self.api.retire=False
+        self.api=FakeAPI();self.op.admin=self.op.writer=self.api;self.api.active=True;self.api.retire_ok=False
         with self.assertRaises(s.Refused):self.op.run()
         self.assertTrue(any(e['stage']=='first-failure' for e in self.op.receipt['events']))
         self.assertFalse(any(c[0]=='PUT' and c[1].endswith('/enable') for c in self.api.calls))
