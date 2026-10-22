@@ -35,7 +35,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: timeout --kill-after=5s 60s python3 -B scripts/release-tag-capability.py --guard-only
-      - name: Observe existing dispatcher App metadata without mint or mutation
+      - name: Observe dispatcher App metadata and the reader-identity ruleset digest (one reader token, revoked; no mutation)
         env:
           GITHUB_TOKEN: ${{ github.token }}
           FSGG_DISPATCH_APP_ID: ${{ secrets.FSGG_DISPATCH_APP_ID }}
