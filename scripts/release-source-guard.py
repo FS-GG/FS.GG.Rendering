@@ -673,14 +673,36 @@ def acquire_font_disposal(root: Path, binding: dict) -> None:
     (out / 'input-binding.json').write_text(json.dumps({**identity, 'producerSha': binding['producerSha'], 'originalPlanSha256': binding['planSha256'], 'outerSha256': binding['outerSha256'], 'custodySha256': binding['custodySha256'], 'effectId': binding['effectId'], 'qualification': q, 'tagSettlement': settlement, 'publication': 'not-yet-observed'}, sort_keys=True) + '\n')
 
 
+SETTLEMENT_FIELDS = ('run', 'attempt', 'artifact', 'artifactSha256', 'receiptSha256', 'executorSha')
+SETTLEMENT_RECEIPT = 'artifacts/attempt/accepted-tag-settlement.json'
+
+
+def selected_tag_settlement() -> dict:
+    """Parse only the root-selected settlement coordinates; no transport."""
+    selected = json.loads(os.environ.get('FSGG_ACCEPTED_TAG_SETTLEMENT', '{}'))
+    if not isinstance(selected, dict) or set(selected) != set(SETTLEMENT_FIELDS) or any(type(selected[k]) is not int or selected[k] < 1 for k in ('run', 'attempt', 'artifact')) or selected['attempt'] != 1:
+        preflight.fail('held0323 requires explicit accepted settlement coordinates')
+    if any(type(selected[k]) is not str or not re.fullmatch('[0-9a-f]{64}', selected[k]) for k in ('artifactSha256', 'receiptSha256')) or type(selected['executorSha']) is not str or not re.fullmatch('[0-9a-f]{40}', selected['executorSha']):
+        preflight.fail('accepted settlement digest/source malformed')
+    return selected
+
+
+def settlement_refs() -> dict:
+    return {'refs/tags/' + name: FONT_DISPOSAL['producerSha'] for name in ('fs-gg-ui/v0.32.3', 'fs-gg-ui-template/v0.32.3', 'v0.32.3')}
+
+
+def settlement_claims_refused(receipt, selected: dict) -> bool:
+    """Pure receipt assertions shared by native acquisition and the cached record path."""
+    return (not isinstance(receipt, dict) or receipt.get('schema') != 'fsgg.rendering.tag-settlement/v1' or receipt.get('effectId') != FONT_DISPOSAL['effectId'] or receipt.get('producerSha') != FONT_DISPOSAL['producerSha']
+        or receipt.get('originalTransportOutcome') != 'Unknown' or receipt.get('sameIntentConvergence') != 'Verified' or receipt.get('cleanup') != 'restored' or receipt.get('pendingSubordinateRefs') != [] or receipt.get('result') != 'passed'
+        or receipt.get('executorSha') != selected['executorSha'] or receipt.get('run') != str(selected['run']) or receipt.get('attempt') != '1'
+        or receipt.get('workflowRef') != 'FS-GG/FS.GG.Rendering/.github/workflows/release-tag-settlement.yml@refs/heads/main'
+        or receipt.get('refs') != settlement_refs() or receipt.get('publication') != 'not-performed' or receipt.get('notification') != 'not-performed')
+
+
 def accepted_tag_settlement(root: Path) -> dict:
     """Acquire only the root-selected successful settlement; never settle during publish."""
-    selected = json.loads(os.environ.get('FSGG_ACCEPTED_TAG_SETTLEMENT', '{}'))
-    fields = {'run', 'attempt', 'artifact', 'artifactSha256', 'receiptSha256', 'executorSha'}
-    if set(selected) != fields or any(type(selected[k]) is not int or selected[k] < 1 for k in ('run', 'attempt', 'artifact')) or selected['attempt'] != 1:
-        preflight.fail('held0323 requires explicit accepted settlement coordinates')
-    if any(not re.fullmatch('[0-9a-f]{64}', selected[k]) for k in ('artifactSha256', 'receiptSha256')) or not re.fullmatch('[0-9a-f]{40}', selected['executorSha']):
-        preflight.fail('accepted settlement digest/source malformed')
+    selected = selected_tag_settlement()
     def api(path):
         return subprocess.check_output(['gh', 'api', 'repos/FS-GG/FS.GG.Rendering/' + path], stderr=subprocess.DEVNULL, timeout=30)
     run = json.loads(api('actions/runs/' + str(selected['run'])))
@@ -703,12 +725,8 @@ def accepted_tag_settlement(root: Path) -> dict:
     if hashlib.sha256(receipt_raw).hexdigest() != selected['receiptSha256']:
         preflight.fail('accepted settlement receipt bytes differ')
     receipt = json.loads(receipt_raw)
-    refs = {'refs/tags/' + name: FONT_DISPOSAL['producerSha'] for name in ('fs-gg-ui/v0.32.3', 'fs-gg-ui-template/v0.32.3', 'v0.32.3')}
-    if (receipt.get('schema') != 'fsgg.rendering.tag-settlement/v1' or receipt.get('effectId') != FONT_DISPOSAL['effectId'] or receipt.get('producerSha') != FONT_DISPOSAL['producerSha']
-        or receipt.get('originalTransportOutcome') != 'Unknown' or receipt.get('sameIntentConvergence') != 'Verified' or receipt.get('cleanup') != 'restored' or receipt.get('pendingSubordinateRefs') != [] or receipt.get('result') != 'passed'
-        or receipt.get('executorSha') != selected['executorSha'] or receipt.get('run') != str(selected['run']) or receipt.get('attempt') != '1'
-        or receipt.get('workflowRef') != 'FS-GG/FS.GG.Rendering/.github/workflows/release-tag-settlement.yml@refs/heads/main'
-        or receipt.get('refs') != refs or receipt.get('publication') != 'not-performed' or receipt.get('notification') != 'not-performed'):
+    refs = settlement_refs()
+    if settlement_claims_refused(receipt, selected):
         preflight.fail('accepted settlement independent assertions/cleanup differ')
     for ref, sha in refs.items():
         current = json.loads(api('git/ref/' + ref.removeprefix('refs/')))
@@ -716,6 +734,34 @@ def accepted_tag_settlement(root: Path) -> dict:
             preflight.fail('accepted settlement current immutable ref differs')
     out = root / 'artifacts/attempt'; out.mkdir(parents=True, exist_ok=True)
     (out / 'accepted-tag-settlement.json').write_bytes(receipt_raw)
+    return {**selected, 'originalTransportOutcome': 'Unknown', 'sameIntentConvergence': 'Verified', 'cleanup': 'restored', 'effectId': FONT_DISPOSAL['effectId']}
+
+
+def verified_cached_tag_settlement(root: Path) -> dict:
+    """Publisher observation path: reuse the settlement this job already authenticated.
+
+    Native provenance, archive bytes and live immutable refs were verified once by acquisition
+    in this same job (and joined again by the F# precredential entry). Each of ~191 event
+    records must not repeat those GITHUB_TOKEN reads: they would exhaust the per-repository
+    rate limit inside the feed loops. This path performs NO transport; it re-joins the cached
+    receipt bytes to the selected digest, the receipt claims, and this job's input binding.
+    """
+    selected = selected_tag_settlement()
+    try:
+        raw = (root / SETTLEMENT_RECEIPT).read_bytes()
+        binding = json.loads((root / 'artifacts/attempt/input-binding.json').read_bytes(), object_pairs_hook=preflight.unique_json_object)
+        receipt = json.loads(raw, object_pairs_hook=preflight.unique_json_object)
+    except (OSError, ValueError):
+        preflight.fail('cached accepted settlement unavailable; acquisition must authenticate it first')
+    if hashlib.sha256(raw).hexdigest() != selected['receiptSha256']:
+        preflight.fail('cached accepted settlement bytes differ from the selected receipt')
+    joined = binding.get('tagSettlement') if isinstance(binding, dict) else None
+    if (not isinstance(joined, dict) or any(joined.get(k) != selected[k] for k in SETTLEMENT_FIELDS)
+            or joined.get('effectId') != FONT_DISPOSAL['effectId'] or joined.get('sameIntentConvergence') != 'Verified'
+            or binding.get('effectId') != FONT_DISPOSAL['effectId'] or binding.get('producerSha') != FONT_DISPOSAL['producerSha']):
+        preflight.fail('cached accepted settlement was not authenticated by this attempt')
+    if settlement_claims_refused(receipt, selected):
+        preflight.fail('cached accepted settlement assertions differ')
     return {**selected, 'originalTransportOutcome': 'Unknown', 'sameIntentConvergence': 'Verified', 'cleanup': 'restored', 'effectId': FONT_DISPOSAL['effectId']}
 
 
@@ -740,7 +786,9 @@ def font_disposal_main() -> int:
     result = validate(root, args.source_sha, args.plan, args.version, False)
     result['planSha256'] = binding['planSha256']
     if not args.attempt_preflight and not args.acquire_bound_artifacts:
-        accepted_tag_settlement(root)
+        # Event records reuse this job's authenticated receipt; other entries authenticate natively.
+        if args.record_event: verified_cached_tag_settlement(root)
+        else: accepted_tag_settlement(root)
     if args.acquire_bound_artifacts: acquire_font_disposal(root, binding)
     if args.record_event:
         ids = [p['id'] for p in json.loads(source_bytes(root, binding['producerSha'], binding['planPath']))['packages']]
