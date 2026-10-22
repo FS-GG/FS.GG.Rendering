@@ -134,3 +134,38 @@ in existing hosted CI, with a140-second internal bound, before integration or ef
 Independent review at the exact candidate commit and all required CI remain pending
 at source preparation. Root separately owns policy/capability admission, workflow
 state effects, settlement selection and full4709 acceptance.
+
+
+## Read-only dispatcher App capability observer (2026-10-22)
+
+The settlement entry above needs separately accepted writer/administrator capability and
+effective-policy evidence that source cannot supply. The manual
+[observer workflow](../../.github/workflows/release-tag-capability.yml) and
+[script](../../scripts/release-tag-capability.py) collect only that metadata for Delivery
+[4709](https://github.com/FS-GG/.github/issues/4709). It is a separate entry: it takes no
+`release-tags` lock, consumes no settlement census and has `contents: read`/`actions: read` only.
+
+Every request is a GET through a closed host/route/credential-role adapter (12-request,
+256 KiB-per-response, 2 MiB total and 180-second bounds; redirects, pagination, non-200
+and duplicate JSON keys refuse). The job token first proves protected `main`, executor
+SHA/ref/attempt and the repository identity, and a guard step runs before either App secret is
+exposed. The existing dispatcher App ID/key then sign a short-lived App JWT that reads only
+`/app` and the repository installation, twice, with `main` re-read between. It never mints an
+installation token, disables a workflow, creates a ref or publishes.
+
+The sanitized report carries the complete workflow-inventory and effective-policy digests in the
+exact forms `scripts/settle-original-tags.py` recomputes, so root can place them in its
+admission bytes; a control joins both implementations on identical input. Ceilings
+(`contents`/`workflows` write) are observations, not mutation authority:
+`writerPermissionCeilingCompatible` does not make settlement eligible, `immutablePolicyReady`
+is a fact rather than a gate, and `selectedRepositoriesComplete` stays `false` because the
+selected-repository set is not enumerated. Root still owns actual endpoint capability checks,
+the metadata dispatch, any narrow writer or policy setup, effect admission, and acceptance.
+
+`python3 scripts/test-release-tag-capability.py` runs 34 local causal controls in the credential-free
+gate job before the settlement controls. Each negative control flips one input of a passing
+baseline (guard failure before secret use, moved `main`/installation, each policy weakening,
+route/verb, response bounds, secret canaries including JSON-escaped multi-line keys, a real
+RS256 signature plus tampered-message control, workflow permissions and secret scope). The reviewed
+workflow census pins the new workflow and edited gate bytes. The original receive-pack outcome stays
+`Unknown`.
