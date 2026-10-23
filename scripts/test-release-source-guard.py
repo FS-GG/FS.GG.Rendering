@@ -1159,7 +1159,9 @@ def native_boundary(scope_only=False, current_attempt=False, font_attempt=False)
     with tempfile.TemporaryDirectory(prefix='executor-boundary-'  ,dir=os.environ.get('TMPDIR')) as folder:
         root=Path(folder);attempt=root/'artifacts/attempt';attempt.mkdir(parents=True)
         for name,environment,mutant,input_mutant,stage in cases:
-            remaining=(140 if font_attempt else 85)-(time.monotonic()-start)
+            # Wall budget for every native case compiling the fsx; hosted runners took 104.6 s at 9e8bd516
+            # and exceeded 140 s after fc2b177e (local 80.5 s -> 83.5 s). Per-case cap stays 15 s.
+            remaining=(280 if font_attempt else 85)-(time.monotonic()-start)
             if remaining<=0:raise RuntimeError('native-boundary-original-deadline')
             facts=attempt/'qualification-facts.json'
             if scope_only:
