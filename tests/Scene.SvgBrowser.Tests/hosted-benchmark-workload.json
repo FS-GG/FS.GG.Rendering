@@ -1,0 +1,49 @@
+{
+  "schema": "fsgg.svg-hosted-software-benchmark/v1",
+  "decision": "https://github.com/FS-GG/.github/issues/4645#issuecomment-6359585794",
+  "fixture": {
+    "glyph": "public-circle",
+    "licence": "public",
+    "licensedGlyphPermitted": false,
+    "appearance": "two faction colours, health bar per unit, selection outline on every tenth unit, one camera group"
+  },
+  "records": [
+    { "representation": "shared-symbol", "counts": [100, 250, 500] },
+    { "representation": "expanded-geometry", "counts": [100] }
+  ],
+  "saturationCounts": [500],
+  "motions": ["static", "camera-only", "sparse-10", "sparse-50", "churn-10"],
+  "sustainedChurn": { "representation": "shared-symbol", "count": 250, "motion": "churn-10", "calibrationSeconds": 300 },
+  "method": {
+    "trials": 3,
+    "armOrders": ["baseline-first", "candidate-first", "baseline-first"],
+    "recordOrders": ["forward", "reverse", "forward"],
+    "warmupTicks": 20,
+    "measuredTicks": 100,
+    "cpuAffinity": "browser and driver on one logical CPU; static server on another",
+    "browser": { "family": "chromium", "args": ["--disable-gpu"], "viewport": [1280, 720], "deviceScaleFactor": 1 },
+    "statistic": "per record: median over trials of (candidate median / baseline median) of the timed update samples",
+    "resolutionFloorMultiple": 10
+  },
+  "tolerance": {
+    "rule": "max(spreadMultiplier * spread, minimum)",
+    "spreadMultiplier": 2,
+    "minimum": 0.10,
+    "spread": "A/A calibration: largest |statistic - 1| over the gated records"
+  },
+  "budgets": {
+    "version": "v1",
+    "hostedVerdict": "not-evaluated",
+    "judgedOnly": "SVG-COHERENCE-01.7 on the Home host",
+    "values": {
+      "B1": "frame time p95 <= 16.67 ms at 60 Hz",
+      "B2": "250 visible units committed; 100 regression point; 500 and 1000 saturation",
+      "B3": "licensed tactical composition and rifleman glyph as shared symbols; expanded <= 100 functional only",
+      "B4": "10% sparse motion plus camera-only; 50% and 100% measured, not promised",
+      "B5": "update CPU per tick at 250 p95 <= 8.33 ms",
+      "B6": "input to updated-surface capture p95 <= 100 ms ordinary, <= 150 ms dense",
+      "B7": "missed-frame ratio (rAF interval > 25 ms) <= 0.05 sustained",
+      "B8": "owned resources after dispose 0; extent cost ratio <= 1.20; zero live-node growth"
+    }
+  }
+}

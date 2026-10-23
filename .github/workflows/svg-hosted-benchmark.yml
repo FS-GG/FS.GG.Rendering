@@ -1,0 +1,112 @@
+name: svg-hosted-benchmark
+
+# Hosted public-fixture SVG software benchmark (FS-GG/.github#4645, decision comment 6359585794).
+# Public fixture only: the licensed tactical/rifleman geometry is never placed on hosted runners.
+# Read-only: no secrets, no package or report publication. Budgets B1-B8 are judged only at .7 on Home.
+#   pull_request       one-trial A/B smoke (PR base producer vs head producer); no tolerance, no verdict.
+#   workflow_dispatch  calibration (A/A, three interleaved trials) or gate (A/B with a calibrated tolerance).
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tests/Scene.SvgBrowser.Tests/hosted-benchmark-*'
+      - 'tests/Scene.SvgBrowser.Tests/run-hosted-benchmark.sh'
+      - 'tests/Scene.SvgBrowser.Tests/build-fixture.sh'
+      - 'tests/Scene.SvgBrowser.Tests/serve-fixture.mjs'
+      - 'tests/Scene.SvgBrowser.Tests/Program.fs'
+      - '.github/workflows/svg-hosted-benchmark.yml'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'calibration (A/A of this ref) or gate (A/B)'
+        type: choice
+        options: [calibration, gate]
+        default: calibration
+      baseline_sha:
+        description: 'gate only: full baseline producer commit SHA'
+        required: false
+      candidate_sha:
+        description: 'gate only: full candidate producer commit SHA'
+        required: false
+      tolerance:
+        description: 'gate only: tolerance from an A/A calibration (fraction, e.g. 0.12)'
+        required: false
+      sustained_seconds:
+        description: 'sustained churn seconds per arm run (decision: 300)'
+        required: false
+        default: '300'
+
+concurrency:
+  group: svg-hosted-benchmark-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    name: Hosted public-fixture software benchmark
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - name: Checkout exact harness revision
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: tests/Scene.SvgBrowser.Tests/package-lock.json
+      - name: Restore harness packages and the pinned Chromium
+        working-directory: tests/Scene.SvgBrowser.Tests
+        run: |
+          npm ci
+          npx playwright-core install --with-deps chromium
+      - name: Run benchmark
+        env:
+          EVENT: ${{ github.event_name }}
+          MODE: ${{ inputs.mode }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASELINE_SHA: ${{ inputs.baseline_sha }}
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          TOLERANCE: ${{ inputs.tolerance }}
+          SUSTAINED: ${{ inputs.sustained_seconds }}
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/svg-hosted-benchmark"
+          echo "runner: $(nproc) logical CPUs, $(free -g | awk '/^Mem:/{print $2}') GiB, image ${ImageOS:-?} ${ImageVersion:-?}"
+          script=tests/Scene.SvgBrowser.Tests/run-hosted-benchmark.sh
+          if [[ "$EVENT" == pull_request ]]; then
+            HOSTED_BENCHMARK_SUSTAINED_SECONDS=10 bash "$script" smoke "$out" "$PR_BASE_SHA" "$PR_HEAD_SHA"
+          elif [[ "$MODE" == calibration ]]; then
+            HOSTED_BENCHMARK_SUSTAINED_SECONDS="$SUSTAINED" bash "$script" calibration "$out"
+          else
+            [[ "$TOLERANCE" =~ ^[0-9]+(\.[0-9]+)?$ ]] || { echo "gate requires a numeric calibrated tolerance" >&2; exit 2; }
+            HOSTED_BENCHMARK_SUSTAINED_SECONDS="$SUSTAINED" HOSTED_BENCHMARK_TOLERANCE="$TOLERANCE" \
+              bash "$script" gate "$out" "$BASELINE_SHA" "$CANDIDATE_SHA"
+          fi
+      - name: Job summary
+        if: always()
+        run: |
+          summary="$RUNNER_TEMP/svg-hosted-benchmark/summary.md"
+          if [[ -f "$summary" ]]; then cat "$summary" >> "$GITHUB_STEP_SUMMARY"; else echo "No benchmark summary was produced." >> "$GITHUB_STEP_SUMMARY"; fi
+      - name: Upload run evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: svg-hosted-benchmark-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/svg-hosted-benchmark/runs/
+            ${{ runner.temp }}/svg-hosted-benchmark/logs/
+            ${{ runner.temp }}/svg-hosted-benchmark/summary.*
+          retention-days: 30
+          if-no-files-found: warn

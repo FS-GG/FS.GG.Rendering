@@ -7,6 +7,7 @@ if [[ -n "${SVG_SCENE_ORIGINAL_CANDIDATE_DIR:-}${SVG_SCENE_ORIGINAL_CUSTODY:-}${
 else
   node "$repo/tests/Scene.SvgBrowser.Tests/reconciliation-source-test.mjs"
   node "$repo/tests/Scene.SvgBrowser.Tests/suite-control-test.mjs"
+  node "$repo/tests/Scene.SvgBrowser.Tests/hosted-benchmark-control-test.mjs"
 fi
 output="${1:-$repo/readiness/svg-scene-02-5/browser-observations.json}"
 work="$(mktemp -d "${TMPDIR:-/tmp}/scene-svg-browser.XXXXXX")"

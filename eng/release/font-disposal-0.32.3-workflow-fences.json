@@ -43,6 +43,7 @@
     ".github/workflows/skill-view-check.yml": "dea53e33bfd056facb8007b073390894e0a61b037378bed292246e88d847962f",
     ".github/workflows/skills-package.yml": "dbe2f1d66c429641e4b3b8662813aaa551c26989e3192b14f863eb36be11c8ef",
     ".github/workflows/svg-browser.yml": "cfab6efbe8af2286b2ea5317fa10ff206f06124caa13926716d4fcbdb44293fc",
+    ".github/workflows/svg-hosted-benchmark.yml": "f7e6b4297d975a5e799371fb29cdf45417f93d40f52e056c282336bebc14c93b",
     ".github/workflows/svg-retained-qualification.yml": "cd4678101cbdd5a5af25ae0fea99e22bbfdc239b44ba71fe8a39dcbdef6b9df1",
     ".github/workflows/svg-scale-contract.yml": "19f3b7a15e5ccf24c6ad88534faefea1152910c9e1838ce3d8af1497b07157d6",
     ".github/workflows/svg-scale-spatial.yml": "a19e39df67f9d5d99c7324be14c552b95f1ca4f5c1dd4c401093e7dd8a997e84",
