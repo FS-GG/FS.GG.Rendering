@@ -660,6 +660,71 @@ let instanceResearchDocument (variant: string) (revision: int) (ids: string arra
         ViewBox = { X = 0.0; Y = 0.0; Width = 410.0; Height = 510.0 }
         Children = children }
 
+// Hosted software benchmark only: the public circle stands in for the licensed glyph.
+// Each unit carries faction colour, a health bar and an optional selection outline under one camera.
+let hostedBenchmarkDocument
+    (variant: string)
+    (cameraX: float)
+    (cameraY: float)
+    (ids: string array)
+    (xs: float array)
+    (ys: float array)
+    (factions: int array)
+    (health: int array)
+    (selected: bool array)
+    =
+    if variant <> "shared-symbol" && variant <> "expanded-geometry" then
+        invalidArg "variant" "Unknown hosted benchmark representation."
+    let count = ids.Length
+    if count > 500 || [ xs.Length; ys.Length; factions.Length; health.Length; selected.Length ] |> List.exists ((<>) count) then
+        invalidArg "ids" "Hosted benchmark state must have matching arrays and at most 500 units."
+    if factions |> Array.exists (fun value -> value <> 0 && value <> 1) then invalidArg "factions" "Unknown faction."
+    if health |> Array.exists (fun value -> value < 0 || value > 10) then invalidArg "health" "Health is 0..10."
+    let fills = [| color 70uy 130uy 220uy; color 220uy 80uy 60uy |]
+    let element id content =
+        { Id = id; SemanticId = None; Visible = true; Transform = SvgAffine.identity
+          ClipId = None; MaskId = None; Presentation = None; Content = content }
+    let glyph faction = SvgElementContent.SceneLeaf { Nodes = [ SceneNode.Circle({ X = 0.0; Y = 0.0 }, 4.0, fills[faction]) ] }
+    let symbolViewport = { X = -5.0; Y = -5.0; Width = 10.0; Height = 10.0 }
+    let outline =
+        SvgElementContent.SceneLeaf
+            { Nodes =
+                [ rectangle (-6.0) (-6.0) 12.0 1.0 (color 250uy 210uy 40uy)
+                  rectangle (-6.0) 5.0 12.0 1.0 (color 250uy 210uy 40uy)
+                  rectangle (-6.0) (-5.0) 1.0 10.0 (color 250uy 210uy 40uy)
+                  rectangle 5.0 -5.0 1.0 10.0 (color 250uy 210uy 40uy) ] }
+    let unit index id =
+        let body =
+            if variant = "shared-symbol" then SvgElementContent.SymbolInstance($"bench-faction-{factions[index]}", Some symbolViewport)
+            else glyph factions[index]
+        let bar =
+            SvgElementContent.SceneLeaf
+                { Nodes =
+                    [ rectangle (-5.0) (-9.0) 10.0 2.0 (color 60uy 60uy 60uy)
+                      rectangle (-5.0) (-9.0) (float health[index]) 2.0 (color 60uy 190uy 90uy) ] }
+        let children =
+            [ element $"{id}/glyph" body
+              element $"{id}/health" bar ]
+            @ (if selected[index] then [ element $"{id}/outline" outline ] else [])
+        { (element id (SvgElementContent.Group children)) with
+            SemanticId = Some id
+            Transform = SvgAffine.translate xs[index] ys[index] }
+    let camera =
+        { (element "bench-camera" (SvgElementContent.Group(ids |> Array.mapi unit |> Array.toList))) with
+            Transform = SvgAffine.translate cameraX cameraY }
+    { PortableDocumentFixture.document with
+        Definitions =
+            if variant = "shared-symbol" then
+                [ for faction in 0..1 ->
+                      { Id = $"bench-faction-{faction}"
+                        Content =
+                          SvgDefinitionContent.Symbol(
+                              Some symbolViewport,
+                              [ element $"bench-faction-{faction}-geometry" (glyph faction) ]) } ]
+            else []
+        ViewBox = { X = 0.0; Y = 0.0; Width = 410.0; Height = 510.0 }
+        Children = [ camera ] }
+
 let performanceDocument kind selection cameraStep changedObject =
     let objectCount =
         if kind = "dense" then 200
@@ -1264,6 +1329,21 @@ let api =
             "replaceInstanceResearchDocument"
             ==> fun (variant: string) (revision: int) (ids: string array) (xs: float array) (ys: float array) ->
                 documentHost.Value.Replace(instanceResearchDocument variant revision ids xs ys) |> documentError
+            "replaceHostedBenchmarkDocument"
+            ==> fun
+                    (variant: string)
+                    (cameraX: float)
+                    (cameraY: float)
+                    (ids: string array)
+                    (xs: float array)
+                    (ys: float array)
+                    (factions: int array)
+                    (health: int array)
+                    (selected: bool array) ->
+                documentHost.Value.Replace(
+                    hostedBenchmarkDocument variant cameraX cameraY ids xs ys factions health selected
+                )
+                |> documentError
             "replaceOriginalDocument"
             ==> fun () -> documentHost.Value.Replace(PortableDocumentFixture.document) |> documentError
             "documentHit"
