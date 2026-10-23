@@ -1,6 +1,7 @@
 // Hosted public-fixture software benchmark: deterministic unit states and the in-page record runner.
 // The driver injects these exact bytes into the packed fixture page; Node controls import them.
-// Only the synchronous compiled document replacement is timed. Oracles run outside timed spans.
+// Timed span: the fixture's F# document construction plus the synchronous compiled Replace (one call).
+// State generation, oracles, export and the frame wait run outside timed spans.
 
 export const benchmarkMotions = ["static", "camera-only", "sparse-10", "sparse-50", "churn-10"];
 const strides = { "sparse-10": 10, "sparse-50": 2, "churn-10": 10 };
@@ -81,8 +82,9 @@ export async function runBenchmarkRecord(w, spec) {
     require(apply(arrays(benchmarkState(spec, 0))) === null, "initial state refused");
     mountedRoot = rootOf();
     const initialNodes = oracle(benchmarkState(spec, 0));
-    await nextFrame();
-    const updateMs = [], frameMs = [];
+    let previousFrame = await nextFrame(), oracleRan = false;
+    // frameIntervalMs: consecutive rAF callback timestamps (the update included); intervals spanning an oracle are skipped.
+    const updateMs = [], frameIntervalMs = [];
     let tick = 0, oracleTicks = 0;
     const started = w.performance.now();
     while (sustained ? w.performance.now() - started < spec.sustainedMilliseconds : tick < spec.warmupTicks + spec.measuredTicks) {
@@ -93,17 +95,17 @@ export async function runBenchmarkRecord(w, spec) {
       const error = apply(args);
       const t1 = w.performance.now();
       require(error === null, `tick ${tick} refused: ${error}`);
-      await nextFrame();
-      const t2 = w.performance.now();
-      if (sustained || tick > spec.warmupTicks) { updateMs.push(t1 - t0); frameMs.push(t2 - t1); }
+      const frame = await nextFrame();
+      if (sustained || tick > spec.warmupTicks) { updateMs.push(t1 - t0); if (!oracleRan) frameIntervalMs.push(frame - previousFrame); }
+      previousFrame = frame; oracleRan = false;
       require(rootOf() === mountedRoot, "root rebuilt");
-      if (tick === spec.warmupTicks || tick % 25 === 0) { oracle(state); oracleTicks++; }
+      if (tick === spec.warmupTicks || tick % 25 === 0) { oracle(state); oracleTicks++; oracleRan = true; }
     }
     const finalNodes = oracle(benchmarkState(spec, tick)); oracleTicks++;
     liveMatchesExport();
     if (!sustained) require(updateMs.length === spec.measuredTicks, "measured tick coverage");
     require(finalNodes === initialNodes, "live node count changed");
-    return { ...spec, ticks: tick, warmupTicks: sustained ? 0 : spec.warmupTicks, updateMs, frameMs, nodes: { initial: initialNodes, final: finalNodes }, oracleTicks, scope: "synchronous compiled document replacement; oracle, export and frame wait outside the timed span" };
+    return { ...spec, ticks: tick, warmupTicks: sustained ? 0 : spec.warmupTicks, updateMs, frameIntervalMs, nodes: { initial: initialNodes, final: finalNodes }, oracleTicks, scope: "harness F# document construction plus synchronous compiled Replace; state generation, oracle, export and frame wait outside the timed span" };
   } finally {
     f.documentDispose();
     require(!rootOf(), "disposed root retained");

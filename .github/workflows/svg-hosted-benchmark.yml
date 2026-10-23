@@ -90,7 +90,7 @@ jobs:
           elif [[ "$MODE" == calibration ]]; then
             HOSTED_BENCHMARK_SUSTAINED_SECONDS="$SUSTAINED" bash "$script" calibration "$out"
           else
-            [[ "$TOLERANCE" =~ ^0\.[0-9]+$ ]] || { echo "gate requires a numeric calibrated tolerance" >&2; exit 2; }
+            [[ "$TOLERANCE" =~ ^[0-9]+(\.[0-9]+)?$ ]] || { echo "gate requires a numeric calibrated tolerance" >&2; exit 2; }
             HOSTED_BENCHMARK_SUSTAINED_SECONDS="$SUSTAINED" HOSTED_BENCHMARK_TOLERANCE="$TOLERANCE" \
               bash "$script" gate "$out" "$BASELINE_SHA" "$CANDIDATE_SHA"
           fi

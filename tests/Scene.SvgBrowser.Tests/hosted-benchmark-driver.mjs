@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import { runSchema, validateWorkload, workloadRecords } from "./hosted-benchmark-analysis.mjs";
 
-const usage = "Usage: hosted-benchmark-driver.mjs --base-url URL --manifest-sha256 DIGEST --trial N --arm baseline|candidate --position 0|1 --record-order forward|reverse --sustained-seconds S --out RESULT [--executable PATH]";
+const usage = "Usage: hosted-benchmark-driver.mjs --base-url URL --manifest-sha256 DIGEST --trial N --arm baseline|candidate --position 0|1 --record-order forward|reverse --sustained-seconds S --producer-revision SHA --out RESULT [--executable PATH]";
 const argument = (name) => { const i = process.argv.indexOf(name); if (i < 0 || i + 1 >= process.argv.length) throw new Error(`${name} required. ${usage}`); return process.argv[i + 1]; };
 const here = dirname(fileURLToPath(import.meta.url));
 const sha256 = (bytes) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
@@ -18,9 +18,9 @@ const harness = { driverSha256: sha256(readFileSync(fileURLToPath(import.meta.ur
 const base = new URL(argument("--base-url"));
 if (!["127.0.0.1", "localhost"].includes(base.hostname)) throw new Error("Hosted benchmark serves only a loopback fixture");
 const expectedManifest = argument("--manifest-sha256"), trial = Number(argument("--trial")), arm = argument("--arm"), position = Number(argument("--position"));
-const recordOrder = argument("--record-order"), sustainedSeconds = Number(argument("--sustained-seconds")), out = argument("--out");
+const recordOrder = argument("--record-order"), sustainedSeconds = Number(argument("--sustained-seconds")), out = argument("--out"), producerRevision = argument("--producer-revision");
 if (!/^sha256:[0-9a-f]{64}$/.test(expectedManifest) || ![1, 2, 3].includes(trial) || !["baseline", "candidate"].includes(arm) || ![0, 1].includes(position)
-  || !["forward", "reverse"].includes(recordOrder) || !Number.isInteger(sustainedSeconds) || sustainedSeconds < 0 || sustainedSeconds > 600) throw new Error(usage);
+  || !/^[0-9a-f]{40}$/.test(producerRevision) || !["forward", "reverse"].includes(recordOrder) || !Number.isInteger(sustainedSeconds) || sustainedSeconds < 0 || sustainedSeconds > 600) throw new Error(usage);
 // Default: the Playwright-pinned headless shell (Playwright's own headless default), resolved so it can be hashed.
 const headlessShell = () => {
   const root = process.env.PLAYWRIGHT_BROWSERS_PATH || resolve(homedir(), ".cache/ms-playwright");
@@ -35,7 +35,7 @@ const deadlineMilliseconds = 900000 + sustainedSeconds * 1000;
 const browser = await chromium.launch({ headless: true, args: workload.method.browser.args, executablePath, timeout: 30000 });
 const deadline = setTimeout(() => { console.error(`hosted benchmark driver deadline exceeded: ${deadlineMilliseconds}ms`); browser.close().finally(() => process.exit(124)); }, deadlineMilliseconds);
 for (const signal of ["SIGTERM", "SIGINT"]) process.once(signal, () => browser.close().finally(() => process.exit(signal === "SIGTERM" ? 143 : 130)));
-const result = { schema: runSchema, trial, arm, position, recordOrder, harness, publicFixture: true, outcome: "running", startedAtUtc: new Date().toISOString(),
+const result = { schema: runSchema, trial, arm, position, recordOrder, producerRevision, harness, publicFixture: true, outcome: "running", startedAtUtc: new Date().toISOString(),
   claims: { budgetsEvaluated: false, gpuQualified: false, licensedGlyphMeasured: false, performanceAccepted: false } };
 try {
   const [width, height] = workload.method.browser.viewport;

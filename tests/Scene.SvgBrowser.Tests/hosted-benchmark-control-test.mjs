@@ -49,21 +49,22 @@ const digest = (c) => `sha256:${c.repeat(64)}`;
 const harness = { driverSha256: digest("1"), pageSha256: digest("2"), analysisSha256: digest("3"), workloadSha256: digest("4") };
 const records = workloadRecords(workload);
 assert.equal(records.length, 20);
-const makeRun = ({ trial, arm, position, scale = () => 1, manifest = digest("a"), sustainedSeconds = 0 }) => {
+const makeRun = ({ trial, arm, position, scale = () => 1, manifest = digest("a"), producer = "c".repeat(40), sustainedSeconds = 0 }) => {
   const order = workload.method.recordOrders[trial - 1], rows = [...records];
   if (order === "reverse") rows.reverse();
   const start = Date.UTC(2026, 9, 23, 0, trial * 10 + position * 5);
   const series = (name) => Array.from({ length: 100 }, (_, i) => 2 * scale(name) * (1 + (i % 5) / 100));
-  return { schema: runSchema, trial, arm, position, recordOrder: order, harness, publicFixture: true, outcome: "completed", integrity: "verified-before-and-after", manifestSha256: manifest,
+  return { schema: runSchema, trial, arm, position, recordOrder: order, producerRevision: producer, sourceSha256: digest(producer[0]), environment: { cpuAffinity: "1", executableSha256: digest("e"), browser: "151.0.7922.34", runnerImage: "ubuntu24" }, harness, publicFixture: true, outcome: "completed", integrity: "verified-before-and-after", manifestSha256: manifest,
     clockResolutionMs: 0.005, startedAtUtc: new Date(start).toISOString(), completedAtUtc: new Date(start + 60000).toISOString(),
     claims: { budgetsEvaluated: false, gpuQualified: false, licensedGlyphMeasured: false, performanceAccepted: false },
-    records: rows.map((r) => ({ ...r, warmupTicks: 20, updateMs: series(`${r.representation}/${r.count}/${r.motion}`), frameMs: Array(100).fill(16.7), nodes: { initial: 10, final: 10 } })),
-    sustained: sustainedSeconds ? { ...workload.sustainedChurn, sustainedMilliseconds: sustainedSeconds * 1000, ticks: 3, updateMs: series(sustainedKey(workload)), frameMs: [16, 17, 30], nodes: { initial: 9, final: 9 } } : null };
+    records: rows.map((r) => ({ ...r, warmupTicks: 20, updateMs: series(`${r.representation}/${r.count}/${r.motion}`), frameIntervalMs: Array(96).fill(16.7), nodes: { initial: 10, final: 10 } })),
+    sustained: sustainedSeconds ? { ...workload.sustainedChurn, sustainedMilliseconds: sustainedSeconds * 1000, ticks: 3, updateMs: series(sustainedKey(workload)), frameIntervalMs: [16, 17, 30], nodes: { initial: 9, final: 9 } } : null };
 };
-const trialRuns = (candidateScale = () => () => 1, options = {}) => [1, 2, 3].flatMap((trial) => {
+const trialRuns = (candidateScale = () => () => 1, options = {}, candidateProducer = "c".repeat(40)) => [1, 2, 3].flatMap((trial) => {
   const baselineFirst = trial !== 2;
-  return [makeRun({ trial, arm: "baseline", position: baselineFirst ? 0 : 1, ...options }), makeRun({ trial, arm: "candidate", position: baselineFirst ? 1 : 0, scale: candidateScale(trial), ...options })];
+  return [makeRun({ trial, arm: "baseline", position: baselineFirst ? 0 : 1, ...options }), makeRun({ trial, arm: "candidate", position: baselineFirst ? 1 : 0, scale: candidateScale(trial), producer: candidateProducer, ...options })];
 });
+const abRuns = (candidateScale) => trialRuns(candidateScale, {}, "d".repeat(40));
 
 // Identical arms: spread 0, the 10% minimum binds.
 let summary = analyse(trialRuns(), workload, { mode: "calibration", sustainedSeconds: 0 });
@@ -89,12 +90,16 @@ const floorRuns = trialRuns().map((r) => ({ ...r, records: r.records.map((row) =
 summary = analyse(floorRuns, workload, { mode: "calibration", sustainedSeconds: 0 });
 assert.equal(summary.excludedRecordCount, 4);
 // Gate verdicts.
-summary = analyse(trialRuns(() => (name) => (name === target ? 1.2 : 1)), workload, { mode: "gate", tolerance: 0.14, sustainedSeconds: 0 });
+summary = analyse(abRuns(() => (name) => (name === target ? 1.2 : 1)), workload, { mode: "gate", tolerance: 0.14, sustainedSeconds: 0 });
 assert.deepEqual([summary.gate.verdict, summary.gate.regressions], ["regression", [target]]);
-summary = analyse(trialRuns(() => (name) => (name === target ? 1.1 : 1)), workload, { mode: "gate", tolerance: 0.14, sustainedSeconds: 0 });
+assert.deepEqual([summary.arms.baseline.producerRevision, summary.arms.candidate.producerRevision], ["c".repeat(40), "d".repeat(40)]);
+// Saturation (500) changes are reported, not gated.
+summary = analyse(abRuns(() => (name) => (name === "shared-symbol/500/static" ? 1.5 : 1)), workload, { mode: "gate", tolerance: 0.14, sustainedSeconds: 0 });
+assert.deepEqual([summary.gate.verdict, summary.gate.saturationRegressions], ["pass", ["shared-symbol/500/static"]]);
+summary = analyse(abRuns(() => (name) => (name === target ? 1.1 : 1)), workload, { mode: "gate", tolerance: 0.14, sustainedSeconds: 0 });
 assert.equal(summary.gate.verdict, "pass");
 // One-trial smoke sets nothing.
-const smoke = [makeRun({ trial: 1, arm: "baseline", position: 0 }), makeRun({ trial: 1, arm: "candidate", position: 1, manifest: digest("b") })];
+const smoke = [makeRun({ trial: 1, arm: "baseline", position: 0 }), makeRun({ trial: 1, arm: "candidate", position: 1, manifest: digest("b"), producer: "d".repeat(40) })];
 summary = analyse(smoke, workload, { mode: "smoke", sustainedSeconds: 0 });
 assert.ok(!summary.tolerance && !summary.gate && summary.smoke.verdict === "none");
 console.log("hosted benchmark tolerance max(2 x spread, 10%), resolution floor and gate verdicts: passed");
@@ -115,6 +120,13 @@ refuse(runs.map((r, i) => (i === 0 ? { ...r, publicFixture: false } : r)), /clai
 refuse(runs.map((r, i) => (i === 1 ? { ...r, startedAtUtc: runs[0].startedAtUtc } : r)), /overlapped/);
 refuse(runs, /sustained/, { mode: "calibration", sustainedSeconds: 5 });
 refuse(runs, /calibrated tolerance/, { mode: "gate", sustainedSeconds: 0 });
+refuse(runs, /two producer revisions/, { mode: "gate", tolerance: 0.2, sustainedSeconds: 0 });
+refuse(abRuns(), /one artifact/);
+refuse(runs.map((r, i) => (i === 2 ? { ...r, environment: { ...r.environment, executableSha256: digest("f") } } : r)), /differ in executableSha256/);
+refuse(runs.map((r) => ({ ...r, environment: { ...r.environment, cpuAffinity: "0-3" } })), /single-CPU affinity/);
+refuse(runs.map((r, i) => (i === 0 ? { ...r, producerRevision: "" } : r)), /producer revision/);
+refuse(abRuns().map((r, i) => (i === 3 ? { ...r, producerRevision: "e".repeat(40) } : r)), /producer changed/, { mode: "gate", tolerance: 0.2, sustainedSeconds: 0 });
+refuse(runs.map((r, i) => (i === 0 ? { ...r, records: r.records.map((row, j) => (j === 0 ? { ...row, frameIntervalMs: [NaN] } : row)) } : r)), /frame intervals/);
 refuse(runs, /calibrated tolerance/, { mode: "gate", tolerance: 0.05, sustainedSeconds: 0 });
 refuse(runs, /only a gate/, { mode: "calibration", tolerance: 0.2, sustainedSeconds: 0 });
 assert.equal(median([3, 1, 2]), 2); assert.equal(median([4, 1, 2, 3]), 2.5);

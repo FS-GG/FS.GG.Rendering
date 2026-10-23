@@ -692,7 +692,7 @@ let hostedBenchmarkDocument
                 [ rectangle (-6.0) (-6.0) 12.0 1.0 (color 250uy 210uy 40uy)
                   rectangle (-6.0) 5.0 12.0 1.0 (color 250uy 210uy 40uy)
                   rectangle (-6.0) (-5.0) 1.0 10.0 (color 250uy 210uy 40uy)
-                  rectangle 5.0 -5.0 1.0 10.0 (color 250uy 210uy 40uy) ] }
+                  rectangle 5.0 (-5.0) 1.0 10.0 (color 250uy 210uy 40uy) ] }
     let unit index id =
         let body =
             if variant = "shared-symbol" then SvgElementContent.SymbolInstance($"bench-faction-{factions[index]}", Some symbolViewport)

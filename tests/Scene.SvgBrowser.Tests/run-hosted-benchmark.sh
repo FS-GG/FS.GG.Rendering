@@ -18,6 +18,11 @@ case "$mode" in
   smoke) [[ $# -eq 4 ]] || usage; trials=1; sustained="${HOSTED_BENCHMARK_SUSTAINED_SECONDS:-10}" ;;
   *) usage ;;
 esac
+if [[ "$mode" != calibration ]]; then
+  # Gate and smoke compare two named producers; a blank or repeated SHA would compare nothing.
+  [[ "$3" =~ ^[0-9a-f]{40}$ && "$4" =~ ^[0-9a-f]{40}$ ]] || { echo "$mode requires two full 40-hex producer SHAs" >&2; exit 2; }
+  [[ "$3" != "$4" ]] || { echo "$mode requires two different producer SHAs" >&2; exit 2; }
+fi
 [[ "$sustained" =~ ^[0-9]+$ && "$sustained" -le 600 ]] || { echo "sustained seconds must be 0..600" >&2; exit 2; }
 if [[ -n "${SVG_SCENE_ORIGINAL_CANDIDATE_DIR:-}${SVG_SCENE_ORIGINAL_CUSTODY:-}${SVG_SCENE_ORIGINAL_CUSTODY_SHA256:-}${SVG_SCENE_ORIGINAL_SOURCE_SHA:-}" ]]; then
   echo "hosted benchmark refuses original-candidate custody inputs" >&2; exit 2
@@ -39,7 +44,11 @@ trap cleanup EXIT
 producers=(src/Scene src/Scene.SvgBrowser src/KeyboardInput)
 build_arm() {
   local arm="$1" revision="$2" tree="$work/tree-$1"
-  if [[ -z "$revision" ]]; then tree="$repo"
+  if [[ -z "$revision" ]]; then
+    # Calibration builds this checkout; its producer sources must equal the committed HEAD they are labelled with.
+    tree="$repo"; revision="$(git -C "$repo" rev-parse HEAD)"
+    git -C "$repo" diff --quiet HEAD -- "${producers[@]}" && [[ -z "$(git -C "$repo" ls-files --others --exclude-standard -- "${producers[@]}")" ]] \
+      || { echo "calibration producer sources differ from HEAD" >&2; exit 2; }
   else
     [[ "$revision" =~ ^[0-9a-f]{40}$ ]] || { echo "$arm revision must be a full commit SHA" >&2; exit 2; }
     mkdir -p "$work"
@@ -65,6 +74,7 @@ if [[ "$mode" == calibration ]]; then
   serve_arm baseline 47811
   declare -A url=([baseline]="http://127.0.0.1:47811/" [candidate]="http://127.0.0.1:47811/")
   declare -A digest=([baseline]="$(manifest_digest baseline)" [candidate]="$(manifest_digest baseline)")
+  declare -A producer=([baseline]="$(cat "$work/fixture-baseline/producer-revision")" [candidate]="$(cat "$work/fixture-baseline/producer-revision")")
 else
   build_arm baseline "$3"
   build_arm candidate "$4"
@@ -72,6 +82,7 @@ else
   serve_arm candidate 47812
   declare -A url=([baseline]="http://127.0.0.1:47811/" [candidate]="http://127.0.0.1:47812/")
   declare -A digest=([baseline]="$(manifest_digest baseline)" [candidate]="$(manifest_digest candidate)")
+  declare -A producer=([baseline]="$3" [candidate]="$4")
 fi
 
 orders=(baseline-first candidate-first baseline-first)
@@ -82,7 +93,7 @@ for trial in $(seq 1 "$trials"); do
     arm="${arms[$position]}"
     taskset -c 1 node "$here/hosted-benchmark-driver.mjs" --base-url "${url[$arm]}" --manifest-sha256 "${digest[$arm]}" \
       --trial "$trial" --arm "$arm" --position "$position" --record-order "${record_orders[$((trial - 1))]}" \
-      --sustained-seconds "$sustained" --out "$out/runs/run-t$trial-$arm.json"
+      --sustained-seconds "$sustained" --producer-revision "${producer[$arm]}" --out "$out/runs/run-t$trial-$arm.json"
   done
 done
 
