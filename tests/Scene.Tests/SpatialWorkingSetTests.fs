@@ -140,6 +140,11 @@ let private visibleBlock =
         // just beyond the edge: shares the viewport's chunks but must not be selected
         box "just-outside" 200.000001 40.0 8.0 8.0
         box "just-outside-left" -8.000001 60.0 8.0 8.0
+        // the same inclusive edges on the vertical axis
+        box "edge-top" 40.0 200.0 8.0 8.0
+        box "edge-bottom" 60.0 -8.0 8.0 8.0
+        box "just-outside-top" 80.0 200.000001 8.0 8.0
+        box "just-outside-bottom" 100.0 -8.000001 8.0 8.0
         box "tall" 120.0 -30.0 6.0 400.0
     ]
 
@@ -312,7 +317,15 @@ let tests =
 
                 Expect.equal
                     (first.Entries |> List.map _.Id)
-                    [ "single"; "wide"; "edge-right"; "edge-left"; "tall" ]
+                    [
+                        "single"
+                        "wide"
+                        "edge-right"
+                        "edge-left"
+                        "edge-top"
+                        "edge-bottom"
+                        "tall"
+                    ]
                     "inclusive boundary hits are selected and just-outside entries are not"
 
             testCase "sparse late ordinals are selected in source order"
@@ -527,14 +540,14 @@ let tests =
                 let small = 1000
                 let hundred = 100
 
-                let visibleAt ordinal k =
+                let visibleAt k =
                     box $"visible-{k}" (float (k % 10) * 36.0) (float (k / 10) * 36.0) 8.0 8.0
 
                 let first count total =
-                    populate total [ for k in 0 .. count - 1 -> k, visibleAt k k ]
+                    populate total [ for k in 0 .. count - 1 -> k, visibleAt k ]
 
                 let last count total =
-                    populate total [ for k in 0 .. count - 1 -> total - count + k, visibleAt k k ]
+                    populate total [ for k in 0 .. count - 1 -> total - count + k, visibleAt k ]
 
                 let build entries =
                     SpatialWorkingSet.create 64.0 entries
@@ -544,8 +557,7 @@ let tests =
                 let largeLast = build (last hundred large)
                 let smallFirst = build (first hundred small)
 
-                let single ordinal total =
-                    populate total [ ordinal, visibleAt ordinal 0 ]
+                let single ordinal total = populate total [ ordinal, visibleAt 0 ]
 
                 let largeSingleLast = build (single (large - 1) large)
                 let smallSingleFirst = build (single 0 small)

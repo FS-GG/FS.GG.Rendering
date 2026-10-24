@@ -16,7 +16,7 @@ the returned entry/value records are unchanged.
 - An independent linear reference (walks every source entry per query, shares no data structure with the index)
   is joined to the real index on selected identities and order, record identity, visited-chunk,
   candidate and total counters for: the same visible population at the beginning and end of a 5,000-entry
-  source; sparse late ordinals in 8,000; multi-chunk overlap with deduplication; boundary hits and
+  source; sparse late ordinals in 8,000; multi-chunk overlap with deduplication; boundary hits on both axes and
   just-outside entries; offscreen, missing and visible pins at late ordinals; repeated and interleaved queries.
 - Refusal order for a large invalid population and early query refusal are pinned.
 - A structure control asserts exactly one private `SpatialEntry[]` is retained.
@@ -33,7 +33,7 @@ per cell, raw per-round observations in `readiness/svg-coherence-1469/raw/` and 
 `summary.txt`. Every cell's selected identities, hash, visited/candidate/total counters are identical between
 baseline and candidate across all four runs and equal an independent linear reference.
 
-Median microseconds per `SpatialWorkingSet.query` call (baseline -> candidate; run-to-run medians within about 3%):
+Median microseconds per `SpatialWorkingSet.query` call (baseline -> candidate; run-to-run medians of a cell differ by up to about 8%):
 
 | entries | 1 visible, first | 1 visible, last | 100 visible, first | 100 visible, last | 1 late pin |
 |---|---|---|---|---|---|
@@ -49,9 +49,11 @@ No cell regressed beyond run-to-run noise (the largest candidate/baseline median
 Adverse and limits:
 
 - `create` gains one `Array.ofList` pass. Median allocation changed by about +0.2% (for example 1,584,095,232 B ->
-  1,586,495,240 B at 300,000) and median create time was within noise (the large-N baseline create
-  medians were higher in these runs, so no create regression is shown; creation time is dominated by the unchanged
-  quadratic-append bucket construction and is not claimed to improve).
+  1,586,495,240 B at 300,000). Median create time was lower for the candidate at the two largest sizes in every
+  run (750 -> 320 ms at 100,000 and 1,512 -> 1,052 ms at 300,000; equal within noise at 1,000 and 10,000). The
+  create code differs only by that one pass, so the cause of the difference is unexplained (possibly GC or
+  allocation-state order effects); no create-time improvement is claimed and no create regression was observed.
+  Creation time is dominated by the unchanged quadratic-append bucket construction.
 - Timings are from one shared development host, not the calibrated hosted benchmark; no timing threshold or
   Home B1-B8 verdict is inferred.
 
