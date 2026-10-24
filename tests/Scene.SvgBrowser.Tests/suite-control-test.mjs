@@ -227,3 +227,142 @@ console.log("actual lexical caller: default + both orders pass; original shadowi
 
 const maintainedRunner=fs.readFileSync(new URL("./run.sh",import.meta.url),"utf8");
 assert(maintainedRunner.includes('node "$repo/tests/Scene.SvgBrowser.Tests/suite-control-test.mjs"'),"normal packed runner must execute the inexpensive caller regression");
+
+// Run the actual appearance caller expressions at an inert boundary. This catches
+// omission/wrong-window/lost-receipt wiring; actual DOM behavior belongs to both browser routes.
+const appearanceModule = await import("./document-reconciliation-control.js");
+const appearanceWitness = appearanceModule.instanceAppearanceControl;
+assert.equal(typeof appearanceWitness,"function");
+const packedAppearanceSource = fs.readFileSync(new URL("./browser-test.mjs",import.meta.url),"utf8");
+function appearanceSelfCallerBinding(source) {
+  const start = source.indexOf("export function documentReconciliationControl(");
+  const end = source.indexOf("export function countInstanceResearchUpdate(",start);
+  assert(start >= 0 && end > start,"actual document caller boundary");
+  const caller = source.slice(start,end);
+  const call = caller.match(/    const instanceAppearance = [^\n]+;/)?.[0];
+  const returned = caller.match(/    return \{ noOp,[^\n]+;/)?.[0];
+  assert(call && returned,"actual appearance call/receipt missing");
+  const w = {}, receipt = {actualWitness:true}; let calls = 0;
+  const execute = runInNewContext(`(w => {${call}\n${returned}})`,{
+    instanceAppearanceControl(actual) { assert.equal(actual,w);calls++;return receipt; },
+    noOp:null,changed:null,repeat:null,repair:null,reordered:null,restored:null,invalid:null,reconstruction:null,
+    structuralResult:null,definitionIsolation:null,instanceResearch:null,disposedRoots:[],listeners:[],frames:new Set(),
+  });
+  assert.equal(execute(w).instanceAppearance,receipt,"self-running receipt lost");
+  assert.equal(calls,1,"self-running actual witness call count");
+}
+async function appearancePackedCallerBinding(source) {
+  const call = source.match(/  documentEvidence\.instanceAppearance = [^\n]+;/)?.[0];
+  assert(call,"actual packed appearance call missing");
+  const receipt = {actualWitness:true}, documentEvidence = {}; let calls = 0;
+  const execute = runInNewContext(`(async () => {${call}})`,{
+    documentEvidence,instanceAppearanceControl:appearanceWitness,
+    page:{async evaluate(actual) { assert.equal(actual,appearanceWitness);calls++;return receipt; }},
+  });
+  await execute();
+  assert.equal(documentEvidence.instanceAppearance,receipt,"packed receipt lost or not awaited");
+  assert.equal(calls,1,"packed actual witness call count");
+  assert(source.includes('import { definitionIsolationControl, instanceAppearanceControl } from "./document-reconciliation-control.js";'),"packed actual witness import missing");
+}
+appearanceSelfCallerBinding(reconciliationSource);
+await appearancePackedCallerBinding(packedAppearanceSource);
+for (const [from,to] of [
+  ["const instanceAppearance = instanceAppearanceControl(w);","const instanceAppearance = {};"],
+  ["instanceAppearanceControl(w);","instanceAppearanceControl({});"],
+  ["definitionIsolation, instanceAppearance, instanceResearch,","definitionIsolation, instanceResearch,"],
+]) {
+  const mutant = reconciliationSource.replace(from,to);assert.notEqual(mutant,reconciliationSource);
+  assert.throws(()=>appearanceSelfCallerBinding(mutant));
+}
+for (const [from,to] of [
+  ["documentEvidence.instanceAppearance = await page.evaluate(instanceAppearanceControl);","documentEvidence.instanceAppearance = {};"],
+  ["await page.evaluate(instanceAppearanceControl)","await page.evaluate(() => ({}))"],
+  ["documentEvidence.instanceAppearance = await page.evaluate(instanceAppearanceControl);","documentEvidence.instanceAppearance = page.evaluate(instanceAppearanceControl);"],
+]) {
+  const mutant = packedAppearanceSource.replace(from,to);assert.notEqual(mutant,packedAppearanceSource);
+  await assert.rejects(()=>appearancePackedCallerBinding(mutant));
+}
+console.log("appearance actual self-running/packed callers: both bound; omission/window/receipt/identity/await mutants refused (inert)");
+
+// The hosted caller reuses the existing compiled seventeen-case driver. Execute
+// its actual acceptance/retirement functions with inert inputs, never Playwright.
+const performanceCaller = fs.readFileSync(new URL('./run-performance.sh', import.meta.url), 'utf8');
+const selfRunningPure = performanceCaller.slice(performanceCaller.indexOf('function requireSelfRunningResult('), performanceCaller.indexOf('// END_SELF_RUNNING_PURE_CONTROLS'));
+assert(selfRunningPure.includes('async function retireBoth('));
+const selfRunningFunctions = runInNewContext(`(() => { ${selfRunningPure}; return { requireSelfRunningResult, requireFixtureReady, retireBoth }; })()`, { assert });
+const controlsContract = (await import('./suite-contract.js')).suiteContract;
+const seventeen = controlsContract.cases.flatMap(kind => Array.from({length: ['ordinary', 'dense', 'extent-near', 'extent-far'].includes(kind) ? controlsContract.method.repetitions : 1}, (_, repetition) => ({ kind, repetition })));
+const inertManifest = { artifactId: digest, sourceSha256: digest, files: [] };
+const completeSelfRunning = {
+  schema: 'fsgg.svg-coherence.page-results/v1', outcome: 'container-controls-completed', integrity: 'verified-before-and-after',
+  artifact: inertManifest, manifestSha256: digest,
+  cases: seventeen.map(row => ({ ...row, outcome: 'pass', integrity: 'verified-before-and-after' })),
+  claims: { gpuQualified: false, performanceAccepted: false, representativeSoldierQualified: false },
+  driver: { downloadObserved: true, browserCleanup: 'observed-closed', executableSha256: digest },
+};
+const acceptSelfRunning = value => selfRunningFunctions.requireSelfRunningResult(value, inertManifest, digest, seventeen, digest);
+acceptSelfRunning(completeSelfRunning);
+for (const mutate of [
+  value => value.cases.pop(), value => value.cases.reverse(), value => value.cases[0].repetition++,
+  value => value.cases[0].outcome = 'failed', value => value.cases[0].integrity = 'unknown',
+  value => value.artifact.sourceSha256 = 'foreign', value => value.manifestSha256 = 'foreign',
+  value => value.driver.browserCleanup = 'unknown', value => value.driver.downloadObserved = false,
+  value => value.driver.executableSha256 = 'foreign', value => value.claims.gpuQualified = true,
+]) {
+  const value = structuredClone(completeSelfRunning); mutate(value);
+  assert.throws(() => acceptSelfRunning(value));
+}
+const ready = {pid: 123, staticRoot: '/inert/dist', url: 'http://127.0.0.1:47813/suite.html'};
+selfRunningFunctions.requireFixtureReady(ready, ready.pid, ready.staticRoot, ready.url);
+for (const key of ['pid', 'staticRoot', 'url']) assert.throws(() => selfRunningFunctions.requireFixtureReady({...ready, [key]: 'foreign'}, ready.pid, ready.staticRoot, ready.url));
+for (const failureAt of ['driver', 'server', 'both', 'none']) {
+  const calls = [], failures = [], original = new Error('original product failure');
+  let first = original;
+  await selfRunningFunctions.retireBoth('driver', 'server', async label => {
+    calls.push(label); if (failureAt === label || failureAt === 'both') throw new Error(`${label} cleanup failed`);
+  }, error => { if (!first) first = error; else failures.push(error); });
+  assert.deepEqual(calls, ['driver', 'server']); assert.equal(first, original);
+  assert.equal(failures.length, failureAt === 'both' ? 2 : failureAt === 'none' ? 0 : 1);
+}
+const actualRetireText = performanceCaller.slice(performanceCaller.indexOf('const retire = async entry =>'), performanceCaller.indexOf('\ntry {\n  assert(path.isAbsolute(output)'));
+assert(actualRetireText.includes("signal(entry, 'SIGKILL')"));
+for (const termCompletes of [true, false]) {
+  const signals = [], failures = [];
+  const entry = {label: 'inert-child', closed: false, eof: [false, false], done: Promise.resolve()};
+  const retireActual = runInNewContext(`(() => { ${actualRetireText}; return retire; })()`, {
+    assert, end: 240000, performance: {now: () => 180000}, noteFailure: error => failures.push(error),
+    signal: (row, name) => { signals.push(name); if (termCompletes || name === 'SIGKILL') { row.closed = true; row.eof = [true, true]; } },
+    within: async () => { if (!entry.closed) throw new Error('inert TERM timeout'); },
+  });
+  await retireActual(entry);
+  assert.deepEqual(signals, termCompletes ? ['SIGTERM'] : ['SIGTERM', 'SIGKILL']);
+  assert.equal(failures.length, termCompletes ? 0 : 1, 'TERM timeout remains a failure after KILL');
+  await assert.rejects(() => retireActual({...entry, eof: [true, false]}), /EOF unknown/);
+}
+function requireHostedSelfRunningBinding(shell, workflow) {
+  const build = 'bash "$repo/tests/Scene.SvgBrowser.Tests/build-fixture.sh" "$work"';
+  assert.equal(shell.split(build).length - 1, 1, 'single existing build');
+  const after = shell.indexOf('if ! cmp "$source_manifest" "$source_manifest_after"; then');
+  const caller = shell.indexOf("<<'SELF_RUNNING_CALLER'");
+  assert(after > shell.indexOf(build) && caller > after, 'caller must follow measurement stasis');
+  assert(shell.includes(': "${SVG_SCENE_SELF_RUNNING_OUTPUT:?hosted self-running output required}"'));
+  assert(shell.includes("path.join(work, 'Browser/drive-suite.mjs'), '--base-url'"));
+  assert(shell.includes("path.join(work, 'Browser/serve-fixture.mjs'), '--dist'"));
+  assert(shell.includes('requireSelfRunningResult(JSON.parse(fs.readFileSync(output'));
+  assert(shell.includes('await retireBoth(driver ??'));
+  const step = workflow.slice(workflow.indexOf('- name: Qualify frozen SVG scale workloads'), workflow.indexOf('- name: Upload browser observation'));
+  assert(step.includes('SVG_SCENE_SELF_RUNNING_OUTPUT: ${{ runner.temp }}/svg-browser-observations.self-running.json'));
+  assert(step.includes('SVG_SCENE_SELF_RUNNING_CANDIDATE: ${{ github.event.pull_request.head.sha || github.sha }}'));
+  assert(step.includes('run: bash tests/Scene.SvgBrowser.Tests/run-performance.sh'));
+  assert(workflow.includes('${{ runner.temp }}/svg-browser-observations*.json'));
+  assert(workflow.includes('${{ runner.temp }}/svg-browser-observations.self-running*.log'));
+}
+const hostedWorkflow = fs.readFileSync(new URL('../../.github/workflows/svg-browser.yml', import.meta.url), 'utf8');
+requireHostedSelfRunningBinding(performanceCaller, hostedWorkflow);
+for (const text of ['await retireBoth(driver ??', 'requireSelfRunningResult(JSON.parse(fs.readFileSync(output', ': "${SVG_SCENE_SELF_RUNNING_OUTPUT:?hosted self-running output required}"']) {
+  assert.throws(() => requireHostedSelfRunningBinding(performanceCaller.replace(text, 'omitted'), hostedWorkflow));
+}
+for (const text of ['SVG_SCENE_SELF_RUNNING_OUTPUT:', 'SVG_SCENE_SELF_RUNNING_CANDIDATE:', 'svg-browser-observations.self-running*.log']) {
+  assert.throws(() => requireHostedSelfRunningBinding(performanceCaller, hostedWorkflow.replace(text, 'omitted')));
+}
+console.log('hosted self-running actual acceptance/readiness/retirement and CI bindings: seventeen cases, causal refusals, both cleanup attempts and original failure retained (inert)');

@@ -213,6 +213,199 @@ export function definitionIsolationControl(w = window) {
   return definitionIsolation;
 }
 
+// Finite public-fixture correctness, shared verbatim by both real browser callers.
+// Keep self-contained for page.evaluate; documentHit proves semantic routing, not pixels/GPU.
+export function instanceAppearanceControl(w = window) {
+  const f = w.svgFoundation, doc = w.document;
+  const require = (condition, detail) => { if (!condition) throw Error(`instance-appearance gate: ${detail}`); };
+  const rootOf = () => doc.querySelector("#document-fixture svg"), root = rootOf();
+  require(root, "document not mounted");
+  const canonical = node => [node.namespaceURI, node.localName,
+    [...node.attributes].map(a => [a.name,a.value]).sort((a,b) => a[0].localeCompare(b[0])),
+    node.children.length ? null : node.textContent, [...node.children].map(canonical)];
+  const exported = () => {
+    const parsed = new w.DOMParser().parseFromString(f.documentExport(), "image/svg+xml");
+    require(!parsed.querySelector("parsererror"), "export invalid");
+    return canonical(parsed.documentElement);
+  };
+  const liveMatchesExport = () => require(JSON.stringify(canonical(rootOf())) === JSON.stringify(exported()), "live/export mismatch");
+  const original = JSON.stringify(exported());
+  const subtree = node => [node, ...[...node.childNodes].flatMap(subtree)];
+  const ids = Array.from({length:10}, (_,i) => `appearance-${i}`);
+  const base = ids.map((id,i) => ({id,x:24+i*32,y:32,faction:i%2,health:6,selected:false}));
+  const steps = [
+    {name:"initial",faction:0,health:6,selected:false,x:24,y:32},
+    {name:"faction",faction:1,health:6,selected:false,x:24,y:32},
+    {name:"health-zero",faction:1,health:0,selected:false,x:24,y:32},
+    {name:"health-ten",faction:1,health:10,selected:false,x:24,y:32},
+    {name:"outline-add",faction:1,health:10,selected:true,x:24,y:32},
+    {name:"outline-remove",faction:1,health:10,selected:false,x:24,y:32},
+    {name:"combined",faction:0,health:3,selected:true,x:32,y:36},
+    {name:"identical-repeat",faction:0,health:3,selected:true,x:32,y:36},
+    {name:"restore",faction:0,health:6,selected:false,x:24,y:32},
+  ];
+  let observer, firstFailure, result;
+  const representations = [];
+  try {
+    liveMatchesExport();
+    for (const representation of ["shared-symbol","expanded-geometry"]) {
+      const apply = state => f.replaceHostedBenchmarkDocument(representation,0,0,
+        state.map(u=>u.id),state.map(u=>u.x),state.map(u=>u.y),
+        state.map(u=>u.faction),state.map(u=>u.health),state.map(u=>u.selected));
+      const stateFor = step => base.map((u,i) => i === 0 ? {...u,...step} : {...u});
+      require(apply(stateFor(steps[0])) === null, "initial replacement refused");
+      const camera = root.querySelector("[data-fsgg-element-id='bench-camera']");
+      require(camera, "camera missing");
+      const units = () => [...camera.children].filter(n=>n.hasAttribute("data-fsgg-element-id"));
+      const keyed = () => new Map(units().map(n=>[n.getAttribute("data-fsgg-element-id"),n]));
+      const initialUnits = keyed(), target = initialUnits.get(ids[0]);
+      require(initialUnits.size === 10 && target, "initial unit population");
+      const part = (node, name) => [...node.children].find(n=>n.getAttribute("data-fsgg-element-id") === `${node.getAttribute("data-fsgg-element-id")}/${name}`);
+      const symbols = [...root.querySelectorAll("defs > symbol")];
+      const definition = faction => symbols.find(n=>n.firstElementChild?.getAttribute("data-fsgg-element-id") === `bench-faction-${faction}-geometry`);
+      require(symbols.length === (representation === "shared-symbol" ? 2 : 0), "definition population");
+      const protectedRoots = [...root.querySelectorAll("defs"),...ids.slice(1).map(id=>initialUnits.get(id))];
+      const snapshots = protectedRoots.map(node=>({node,nodes:subtree(node),markup:node.outerHTML,parent:node.parentNode}));
+      const stableTarget = subtree(target), retiredOutlines = [];
+      const hit = (u,node) => {
+        node.scrollIntoView({block:"center",inline:"center"});
+        require(f.documentHit(u.x,u.y) === u.id, `semantic hit ${u.id}`);
+      };
+      const assertProtected = () => {
+        const current = keyed();
+        require(ids.slice(1).every(id=>current.get(id) === initialUnits.get(id)), "unrelated owner rebuilt");
+        for (const snapshot of snapshots) {
+          const actual = subtree(snapshot.node);
+          require(snapshot.node.parentNode === snapshot.parent && root.contains(snapshot.node)
+            && actual.length === snapshot.nodes.length && actual.every((n,i)=>n === snapshot.nodes[i])
+            && snapshot.node.outerHTML === snapshot.markup, "unrelated subtree changed");
+        }
+      };
+      const affectsProtected = record => protectedRoots.some(node => record.target === node || node.contains(record.target)
+        || [...record.addedNodes,...record.removedNodes].some(changed=>changed === node || changed.contains(node)));
+      observer = new w.MutationObserver(() => {});
+      observer.observe(root,{subtree:true,childList:true,attributes:true,characterData:true,attributeOldValue:true});
+      const assertNoProtectedMutation = records => require(records.filter(affectsProtected).length === 0, "unrelated mutation observed");
+      const assertState = state => {
+        require(rootOf() === root && root.querySelector("[data-fsgg-element-id='bench-camera']") === camera, "root/camera rebuilt");
+        require(root.getAttribute("viewBox") === "0 0 410 510" && camera.getAttribute("transform") === "matrix(1 0 0 1 0 0)", "viewport/camera changed");
+        require(JSON.stringify(units().map(n=>n.getAttribute("data-fsgg-element-id"))) === JSON.stringify(ids), "unit population/order");
+        const current = keyed();
+        for (const u of state) {
+          const node = current.get(u.id), glyph = part(node,"glyph"), health = part(node,"health"), outline = part(node,"outline");
+          require(node === initialUnits.get(u.id), "surviving unit owner rebuilt");
+          require(node.getAttribute("transform") === `matrix(1 0 0 1 ${u.x} ${u.y})`, "unit translation");
+          require(JSON.stringify([...node.children].map(n=>n.getAttribute("data-fsgg-element-id"))) ===
+            JSON.stringify([`${u.id}/glyph`,`${u.id}/health`,...(u.selected ? [`${u.id}/outline`] : [])]), "part membership/order");
+          const colour = u.faction ? "rgb(220 80 60)" : "rgb(70 130 220)";
+          const circle = representation === "shared-symbol" ? definition(u.faction)?.querySelector("circle") : glyph?.querySelector("circle");
+          require(circle && Number(circle.getAttribute("cx")) === 0 && Number(circle.getAttribute("cy")) === 0
+            && Number(circle.getAttribute("r")) === 4 && circle.getAttribute("fill") === colour, "faction geometry/colour");
+          if (representation === "shared-symbol") {
+            const use = glyph?.querySelector("use"), symbol = definition(u.faction);
+            require(symbol && use?.getAttribute("href") === `#${symbol.id}`, "faction reference");
+            require(symbol.getAttribute("viewBox") === "-5 -5 10 10"
+              && ["x","y","width","height"].map(n=>use.getAttribute(n)).join(" ") === "-5 -5 10 10", "symbol viewport");
+          }
+          const bars = [...(health?.querySelectorAll("rect") ?? [])];
+          require(bars.length === 2 && bars.every((n,i)=>
+            Number(n.getAttribute("x")) === -5 && Number(n.getAttribute("y")) === -9
+            && Number(n.getAttribute("height")) === 2 && Number(n.getAttribute("width")) === (i ? u.health : 10)
+            && n.getAttribute("fill") === (i ? "rgb(60 190 90)" : "rgb(60 60 60)")), "health geometry");
+          const outlineRects = [...(outline?.querySelectorAll("rect") ?? [])];
+          const edges = [[-6,-6,12,1],[-6,5,12,1],[-6,-5,1,10],[5,-5,1,10]];
+          require(Boolean(outline) === u.selected && outlineRects.length === (u.selected ? 4 : 0)
+            && outlineRects.every((n,i)=>["x","y","width","height"].every((a,j)=>Number(n.getAttribute(a)) === edges[i][j])
+              && n.getAttribute("fill") === "rgb(250 210 40)"), "outline geometry/order");
+          hit(u,node);
+        }
+        require(root.querySelectorAll("rect").length === 20 + (representation === "shared-symbol" ? 10 : 0) + (state[0].selected ? 4 : 0), "state rectangle population");
+        require(root.querySelectorAll("circle").length === (representation === "shared-symbol" ? 2 : 10), "circle population");
+        const actualTarget = subtree(target);
+        require(stableTarget.every(n=>actualTarget.includes(n)), "surviving target descendant rebuilt");
+        require(retiredOutlines.every(n=>!n.isConnected && !root.contains(n)), "removed outline retained");
+        assertProtected();liveMatchesExport();
+      };
+      const controls = [], observations = [];
+      // Each control mutates the actual observed DOM. Cleanup preserves the original failure.
+      const kill = (name, detail, mutate, restore, check) => {
+        let failure, killed = false;
+        try {
+          mutate();
+          try { check(); } catch(error) {
+            if (error.message !== `instance-appearance gate: ${detail}`) throw error;
+            killed = true;
+          }
+          require(killed, `${name} mutant survived`);
+        } catch(error) { failure = error; }
+        finally {
+          try { restore(); } catch(error) { failure ??= error; }
+          observer.takeRecords();
+        }
+        if (failure) throw failure;
+        controls.push({name,outcome:"killed"});
+      };
+      let priorOutline;
+      for (const step of steps) {
+        const state = stateFor(step);
+        observer.takeRecords();
+        const previousOutline = part(target,"outline");
+        require(apply(state) === null, `${step.name} replacement refused`);
+        const records = observer.takeRecords(), currentOutline = part(target,"outline");
+        assertNoProtectedMutation(records);
+        if (previousOutline && !step.selected) retiredOutlines.push(previousOutline);
+        if (previousOutline && step.selected) require(currentOutline === previousOutline, "surviving outline rebuilt");
+        assertState(state);
+        if (step.name === "initial" || step.name === "identical-repeat") require(records.length === 0, "identical replacement mutated DOM");
+        observations.push({name:step.name,target:{faction:step.faction,health:step.health,selected:step.selected,x:step.x,y:step.y},
+          unitCount:10,unrelatedInstances:9,unrelatedMutations:0,rectangles:20+(representation === "shared-symbol" ? 10 : 0)+(step.selected ? 4 : 0),
+          mutations:records.length,liveExportEqual:true,semanticHits:10});
+        if (step.name === "faction") {
+          const node = representation === "shared-symbol" ? part(target,"glyph").querySelector("use") : part(target,"glyph").querySelector("circle");
+          const attribute = representation === "shared-symbol" ? "href" : "fill", actual = node.getAttribute(attribute);
+          kill("stale-faction", representation === "shared-symbol" ? "faction reference" : "faction geometry/colour",
+            ()=>node.setAttribute(attribute,representation === "shared-symbol" ? `#${definition(0).id}` : "rgb(70 130 220)"),
+            ()=>node.setAttribute(attribute,actual), ()=>assertState(state));
+        }
+        if (step.name === "health-zero" || step.name === "health-ten") {
+          const bar = part(target,"health").querySelectorAll("rect")[1], width = bar.getAttribute("width");
+          kill(`stale-${step.name}`,"health geometry",()=>bar.setAttribute("width",step.health === 0 ? "6" : "0"),()=>bar.setAttribute("width",width),()=>assertState(state));
+        }
+        if (step.name === "outline-add") {
+          priorOutline = currentOutline; const next = currentOutline.nextSibling;
+          kill("stale-outline-absent","part membership/order",()=>target.removeChild(currentOutline),()=>target.insertBefore(currentOutline,next),()=>assertState(state));
+        }
+        if (step.name === "outline-remove") {
+          kill("stale-outline-retained","part membership/order",()=>target.appendChild(priorOutline),()=>target.removeChild(priorOutline),()=>assertState(state));
+        }
+        if (step.name === "combined") {
+          const neighbour = initialUnits.get(ids[1]), parent = neighbour.parentNode, next = neighbour.nextSibling, clone = neighbour.cloneNode(true);
+          kill("clone-unrelated-instance","unrelated owner rebuilt",()=>neighbour.replaceWith(clone),()=>clone.replaceWith(neighbour),assertProtected);
+          kill("remove-reinsert-unrelated-instance","unrelated mutation observed",
+            ()=>{parent.removeChild(neighbour);parent.insertBefore(neighbour,next);},()=>{},()=>{assertProtected();assertNoProtectedMutation(observer.takeRecords());});
+          kill("redundant-unrelated-write","unrelated mutation observed",()=>neighbour.setAttribute("transform",neighbour.getAttribute("transform")),()=>{},()=>assertNoProtectedMutation(observer.takeRecords()));
+          kill("redundant-identical-write","identical replacement mutated DOM",()=>target.setAttribute("transform",target.getAttribute("transform")),()=>{},()=>require(observer.takeRecords().length === 0,"identical replacement mutated DOM"));
+        }
+        assertState(state);assertNoProtectedMutation(observer.takeRecords());
+      }
+      observer.disconnect();observer = null;
+      representations.push({representation,steps:observations,controls,retiredOutlines:retiredOutlines.length,
+        unrelatedSubtreesRetained:true,survivingTargetNodesRetained:true,identicalReplacementNoWrites:true});
+    }
+    result = {representations,scope:"finite functional compiled Replace; documentHit semantic routing; no painted-pixel, GPU or performance claim"};
+  } catch(error) { firstFailure = error; }
+  finally {
+    observer?.disconnect();
+    try {
+      require(f.replaceOriginalDocument() === null, "original restoration refused");
+      require(rootOf() === root && JSON.stringify(exported()) === original, "original restoration differs");
+      liveMatchesExport();
+    } catch(error) { firstFailure ??= error; }
+  }
+  if (firstFailure) throw firstFailure;
+  return {...result,originalRestored:true,observersDisconnected:true};
+}
+
 // Uses the actual compiled document host; no renderer implementation is reproduced here.
 export function documentReconciliationControl(w, representationOrder = "shared-first") {
   const f = w.svgFoundation, doc = w.document;
@@ -317,6 +510,7 @@ export function documentReconciliationControl(w, representationOrder = "shared-f
     replaceStructure("unkeyed-changed",["control-unkeyed"]);
     const structuralResult={steps:structural,mutants:structuralMutants,topmostOriginal,topmostReverse,unkeyedWrappersRetained:true};
     const definitionIsolation = definitionIsolationControl(w);
+    const instanceAppearance = instanceAppearanceControl(w);
     const instanceResearch = instanceResearchControl(f,rootOf,liveMatchesExport,require,count,()=>w.performance.now(),representationOrder);
     validateInstanceResearchResult(instanceResearch,representationOrder);
     require(f.replaceOriginalDocument() === null, "restore original after instance research");liveMatchesExport();
@@ -325,7 +519,7 @@ export function documentReconciliationControl(w, representationOrder = "shared-f
     const disposedRoots = [];
     for(let cycle=0;cycle<5;cycle++) { f.documentMount();require(rootOf(), "remount failed after namespace release");disposedRoots.push(f.documentDispose());require(!rootOf(), "disposed root retained"); }
     require(disposedRoots.every(n => n === 0) && listeners.length === 0 && frames.size === 0, "document effects retained after disposal");
-    return { noOp, changed, repeat, repair, reordered, restored, invalid, reconstruction, structural:structuralResult, definitionIsolation, instanceResearch, disposedRoots, ownedListeners:listeners.length, ownedFrames:frames.size, scope:"effects registered after fixture bootstrap; foundation controls excluded", countersRestored:true };
+    return { noOp, changed, repeat, repair, reordered, restored, invalid, reconstruction, structural:structuralResult, definitionIsolation, instanceAppearance, instanceResearch, disposedRoots, ownedListeners:listeners.length, ownedFrames:frames.size, scope:"effects registered after fixture bootstrap; foundation controls excluded", countersRestored:true };
   } finally {
     f.documentDispose();
     for(const id of frames)cancel.call(w,id);

@@ -371,3 +371,52 @@ is required by normal SVG CI without running the full research stream. This catc
 that helper-only order/parser tests miss. It establishes source binding behavior,
 not renderer correctness or replacement timing. The original failed qualification
 remains retained and a fresh complete three-trial qualification is still required.
+
+## Per-instance appearance witness (.3/.4)
+
+[Rendering #1467](https://github.com/FS-GG/FS.GG.Rendering/issues/1467) adds a
+finite correctness witness through the existing compiled
+`replaceHostedBenchmarkDocument` seam. The same self-contained
+`instanceAppearanceControl` runs in the self-running document control and the
+ordinary packed-browser caller. Ten public units use both shared symbols and
+expanded geometry; one changes faction, health to zero and ten, selection outline,
+and combined appearance/translation, then repeats and restores its state.
+
+Each state checks independent geometry, colour/reference, part order, semantic
+hit identity and live/export equivalence. Definitions and the nine unrelated
+complete subtrees retain identity and markup with zero scoped mutation, including
+parent-recorded moves and redundant writes. Target descendants survive and removed
+outline owners detach. Selection adds or removes four rectangles; the witness
+checks the expected population per state rather than a constant count. Actual DOM
+mutants exercise stale appearance, unrelated cloning/moving and redundant writes.
+Cleanup disconnects the observer and restores the original document while keeping
+the first failure.
+
+The existing `suite-control-test.mjs` exercises the actual self-running and packed
+caller expressions with inert boundaries, including omitted calls, wrong witness
+or window, and lost/unawaited receipts. These source controls do not qualify the
+renderer. Actual compiled self-running and Chromium/Firefox/WebKit execution,
+independent exact-candidate review, required CI and protected delivery remain
+required. `documentHit` establishes semantic routing through the existing viewport
+proxy contract, not painted pixels or GPU behavior. This witness changes no
+producer API, calibrated hosted workload, harness or timing budget and
+makes no performance, licensed-glyph, publication or adoption claim. The full
+parent .3–.8 promise and prior accepted milestones remain unchanged.
+
+The hosted SVG job also selects the existing seventeen-case self-running suite
+after performance measurement and its source-stasis check. It reuses that job's
+already packaged fixture and matching Playwright Chromium, invoking the unchanged
+`serve-fixture.mjs` and `drive-suite.mjs` without another restore, pack, Fable or
+Vite build. Its separate 240-second stage reserves 60 seconds for retirement.
+The normal observation artifact retains all seventeen results, the packaged
+manifest/source join, and server/driver intent, birth, exit, pipe EOF and cleanup
+records. Passing requires the driver's awaited browser close; a forced or unknown
+retirement cannot qualify. A failure preserves its original cause and secondary
+cleanup failures. This software functional gate grants no performance or GPU claim.
+
+Pipeline preflight uses the existing inert source-control suite for required CI
+binding, ordered full-case acceptance, artifact/browser identity and cleanup on
+both paths. This linear reuse does not need a separate model or executor. The
+controls run before the existing costly build/browser work; exact-head hosted
+execution and retained result inspection remain required, with no claimed CI
+savings from the source change alone.

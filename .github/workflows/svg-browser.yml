@@ -115,6 +115,8 @@ jobs:
       - name: Qualify frozen SVG scale workloads on the hosted diagnostic environment
         env:
           SVG_SCENE_PERFORMANCE_MODE: diagnostic
+          SVG_SCENE_SELF_RUNNING_OUTPUT: ${{ runner.temp }}/svg-browser-observations.self-running.json
+          SVG_SCENE_SELF_RUNNING_CANDIDATE: ${{ github.event.pull_request.head.sha || github.sha }}
         run: bash tests/Scene.SvgBrowser.Tests/run-performance.sh "$RUNNER_TEMP/svg-scale-qualification.json"
       - name: Upload browser observation
         if: always()
@@ -124,6 +126,7 @@ jobs:
           path: |
             ${{ runner.temp }}/svg-browser-observations*.json
             ${{ runner.temp }}/svg-browser-observations*.orca.log
+            ${{ runner.temp }}/svg-browser-observations.self-running*.log
             ${{ runner.temp }}/svg-browser-observations*.exported.svg
             ${{ runner.temp }}/svg-scale-qualification.json
           if-no-files-found: warn
