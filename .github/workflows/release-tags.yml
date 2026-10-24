@@ -123,11 +123,11 @@ jobs:
           if-no-files-found: error
 
   selected-tag-cut:
-    name: Cut only selected producer tags
+    name: Cut only selected producer tags [org-publication-writer]
     needs: selected-tag-plan
     if: github.repository == 'FS-GG/FS.GG.Rendering' && github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    timeout-minutes: 36
     permissions:
       contents: write
     env:
@@ -135,6 +135,11 @@ jobs:
       SELECTED_SOURCE_SHA: ${{ inputs.source-sha }}
       SELECTED_VERSION: ${{ inputs.version }}
     steps:
+      - name: Acquire org publication writer lock
+        uses: FS-GG/.github/.github/actions/publication-writer-lock@c799a9f9b21d52eb9766cf0950722e3e55145d39 # ADR-0097
+        with:
+          max-wait-minutes: 30
+        timeout-minutes: 32
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
@@ -426,13 +431,18 @@ jobs:
 
   # #681 — THE PUSH, and nothing else. Reachable only after `validate` went green.
   cut:
-    name: Cut the pending release tags
+    name: Cut the pending release tags [org-publication-writer]
     needs: [plan, validate]
     if: needs.plan.outputs.has-pending == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write   # push the tag triple
     steps:
+      - name: Acquire org publication writer lock
+        uses: FS-GG/.github/.github/actions/publication-writer-lock@c799a9f9b21d52eb9766cf0950722e3e55145d39 # ADR-0097
+        with:
+          max-wait-minutes: 30
+        timeout-minutes: 32
       - uses: actions/checkout@v7
         with:
           # `persist-credentials` (default true) leaves the GITHUB_TOKEN on `origin`, so the pushes below

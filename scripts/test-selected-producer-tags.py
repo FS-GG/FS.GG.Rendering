@@ -73,13 +73,16 @@ def check_workflow(text):
     for job in ('selected-tag-plan', 'selected-tag-cut'):
         block = jobs[job]
         need(re.findall(r'^    if: (.+)$', block, re.M) == [dispatch_if], f'{job}: dispatch-only condition differs')
-        need('    timeout-minutes: 6\n' in block, f'{job}: missing finite job bound')
+        # The tag-cutting job takes the org publication writer lock (ADR-0097): its 6 minute working
+        # budget is unchanged and its bound rises by exactly the declared 30 minute wait.
+        need(('    timeout-minutes: 36\n' if job == 'selected-tag-cut' else '    timeout-minutes: 6\n') in block, f'{job}: missing finite job bound')
         need('ref: ${{ github.sha }}' in block, f'{job}: checkout must use event SHA')
         need('FSGG_EXPECTED_EXECUTOR_SHA: ${{ inputs.expected-executor-sha }}' in block, f'{job}: missing executor input')
         need('SELECTED_SOURCE_SHA: ${{ inputs.source-sha }}' in block and
              'SELECTED_VERSION: ${{ inputs.version }}' in block, f'{job}: missing subject inputs')
         uses = re.findall(r'^\s+(?:- )?uses: (.+)$', block, re.M)
-        need(uses == ['actions/checkout@v7', 'actions/upload-artifact@v7'],
+        lock = ['FS-GG/.github/.github/actions/publication-writer-lock@c799a9f9b21d52eb9766cf0950722e3e55145d39 # ADR-0097'] if job == 'selected-tag-cut' else []
+        need(uses == lock + ['actions/checkout@v7', 'actions/upload-artifact@v7'],
              f'{job}: unexpected action outside checkout and evidence upload')
         need(not re.search(r'\b(dotnet|gh|curl|git push|secrets\.|id-token|packages:|create-github-app-token)\b', block),
              f'{job}: unexpected authority/native command')
