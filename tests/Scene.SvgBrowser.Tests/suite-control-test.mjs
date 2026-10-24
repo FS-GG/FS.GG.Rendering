@@ -227,3 +227,59 @@ console.log("actual lexical caller: default + both orders pass; original shadowi
 
 const maintainedRunner=fs.readFileSync(new URL("./run.sh",import.meta.url),"utf8");
 assert(maintainedRunner.includes('node "$repo/tests/Scene.SvgBrowser.Tests/suite-control-test.mjs"'),"normal packed runner must execute the inexpensive caller regression");
+
+// Run the actual appearance caller expressions at an inert boundary. This catches
+// omission/wrong-window/lost-receipt wiring; actual DOM behavior belongs to both browser routes.
+const appearanceModule = await import("./document-reconciliation-control.js");
+const appearanceWitness = appearanceModule.instanceAppearanceControl;
+assert.equal(typeof appearanceWitness,"function");
+const packedAppearanceSource = fs.readFileSync(new URL("./browser-test.mjs",import.meta.url),"utf8");
+function appearanceSelfCallerBinding(source) {
+  const start = source.indexOf("export function documentReconciliationControl(");
+  const end = source.indexOf("export function countInstanceResearchUpdate(",start);
+  assert(start >= 0 && end > start,"actual document caller boundary");
+  const caller = source.slice(start,end);
+  const call = caller.match(/    const instanceAppearance = [^\n]+;/)?.[0];
+  const returned = caller.match(/    return \{ noOp,[^\n]+;/)?.[0];
+  assert(call && returned,"actual appearance call/receipt missing");
+  const w = {}, receipt = {actualWitness:true}; let calls = 0;
+  const execute = runInNewContext(`(w => {${call}\n${returned}})`,{
+    instanceAppearanceControl(actual) { assert.equal(actual,w);calls++;return receipt; },
+    noOp:null,changed:null,repeat:null,repair:null,reordered:null,restored:null,invalid:null,reconstruction:null,
+    structuralResult:null,definitionIsolation:null,instanceResearch:null,disposedRoots:[],listeners:[],frames:new Set(),
+  });
+  assert.equal(execute(w).instanceAppearance,receipt,"self-running receipt lost");
+  assert.equal(calls,1,"self-running actual witness call count");
+}
+async function appearancePackedCallerBinding(source) {
+  const call = source.match(/  documentEvidence\.instanceAppearance = [^\n]+;/)?.[0];
+  assert(call,"actual packed appearance call missing");
+  const receipt = {actualWitness:true}, documentEvidence = {}; let calls = 0;
+  const execute = runInNewContext(`(async () => {${call}})`,{
+    documentEvidence,instanceAppearanceControl:appearanceWitness,
+    page:{async evaluate(actual) { assert.equal(actual,appearanceWitness);calls++;return receipt; }},
+  });
+  await execute();
+  assert.equal(documentEvidence.instanceAppearance,receipt,"packed receipt lost or not awaited");
+  assert.equal(calls,1,"packed actual witness call count");
+  assert(source.includes('import { definitionIsolationControl, instanceAppearanceControl } from "./document-reconciliation-control.js";'),"packed actual witness import missing");
+}
+appearanceSelfCallerBinding(reconciliationSource);
+await appearancePackedCallerBinding(packedAppearanceSource);
+for (const [from,to] of [
+  ["const instanceAppearance = instanceAppearanceControl(w);","const instanceAppearance = {};"],
+  ["instanceAppearanceControl(w);","instanceAppearanceControl({});"],
+  ["definitionIsolation, instanceAppearance, instanceResearch,","definitionIsolation, instanceResearch,"],
+]) {
+  const mutant = reconciliationSource.replace(from,to);assert.notEqual(mutant,reconciliationSource);
+  assert.throws(()=>appearanceSelfCallerBinding(mutant));
+}
+for (const [from,to] of [
+  ["documentEvidence.instanceAppearance = await page.evaluate(instanceAppearanceControl);","documentEvidence.instanceAppearance = {};"],
+  ["await page.evaluate(instanceAppearanceControl)","await page.evaluate(() => ({}))"],
+  ["documentEvidence.instanceAppearance = await page.evaluate(instanceAppearanceControl);","documentEvidence.instanceAppearance = page.evaluate(instanceAppearanceControl);"],
+]) {
+  const mutant = packedAppearanceSource.replace(from,to);assert.notEqual(mutant,packedAppearanceSource);
+  await assert.rejects(()=>appearancePackedCallerBinding(mutant));
+}
+console.log("appearance actual self-running/packed callers: both bound; omission/window/receipt/identity/await mutants refused (inert)");

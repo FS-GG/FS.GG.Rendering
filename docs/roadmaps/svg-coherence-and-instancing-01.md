@@ -371,3 +371,34 @@ is required by normal SVG CI without running the full research stream. This catc
 that helper-only order/parser tests miss. It establishes source binding behavior,
 not renderer correctness or replacement timing. The original failed qualification
 remains retained and a fresh complete three-trial qualification is still required.
+
+## Per-instance appearance witness (.3/.4)
+
+[Rendering #1467](https://github.com/FS-GG/FS.GG.Rendering/issues/1467) adds a
+finite correctness witness through the existing compiled
+`replaceHostedBenchmarkDocument` seam. The same self-contained
+`instanceAppearanceControl` runs in the self-running document control and the
+ordinary packed-browser caller. Ten public units use both shared symbols and
+expanded geometry; one changes faction, health to zero and ten, selection outline,
+and combined appearance/translation, then repeats and restores its state.
+
+Each state checks independent geometry, colour/reference, part order, semantic
+hit identity and live/export equivalence. Definitions and the nine unrelated
+complete subtrees retain identity and markup with zero scoped mutation, including
+parent-recorded moves and redundant writes. Target descendants survive and removed
+outline owners detach. Selection adds or removes four rectangles; the witness
+checks the expected population per state rather than a constant count. Actual DOM
+mutants exercise stale appearance, unrelated cloning/moving and redundant writes.
+Cleanup disconnects the observer and restores the original document while keeping
+the first failure.
+
+The existing `suite-control-test.mjs` exercises the actual self-running and packed
+caller expressions with inert boundaries, including omitted calls, wrong witness
+or window, and lost/unawaited receipts. These source controls do not qualify the
+renderer. Actual compiled self-running and Chromium/Firefox/WebKit execution,
+independent exact-candidate review, required CI and protected delivery remain
+required. `documentHit` establishes semantic routing through the existing viewport
+proxy contract, not painted pixels or GPU behavior. This witness changes no
+producer API, calibrated hosted workload, harness, timing budget or workflow and
+makes no performance, licensed-glyph, publication or adoption claim. The full
+parent .3–.8 promise and prior accepted milestones remain unchanged.
