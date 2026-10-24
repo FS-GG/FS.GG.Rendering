@@ -39,11 +39,7 @@ type SpatialWorkingSetIssue =
 
 /// Immutable deterministic chunk index. Construction is available through <c>SpatialWorkingSet.create</c>.
 type SpatialWorkingSetIndex<'value> =
-    private | SpatialWorkingSetIndex of
-        float *
-        SpatialEntry<'value> list *
-        Map<int64 * int64, int list> *
-        Map<string, int>
+    private | SpatialWorkingSetIndex of float * SpatialEntry<'value>[] * Map<int64 * int64, int list> * Map<string, int>
 
 [<RequireQualifiedAccess>]
 module SpatialWorkingSet =
