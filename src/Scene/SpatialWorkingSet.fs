@@ -37,11 +37,7 @@ type SpatialWorkingSetIssue =
     | QueryChunkLimitExceeded of limit: int
 
 type SpatialWorkingSetIndex<'value> =
-    private | SpatialWorkingSetIndex of
-        float *
-        SpatialEntry<'value> list *
-        Map<int64 * int64, int list> *
-        Map<string, int>
+    private | SpatialWorkingSetIndex of float * SpatialEntry<'value>[] * Map<int64 * int64, int list> * Map<string, int>
 
 [<RequireQualifiedAccess>]
 module SpatialWorkingSet =
@@ -144,7 +140,10 @@ module SpatialWorkingSet =
                 |> List.map (fun (index, entry) -> entry.Id, index)
                 |> Map.ofList
 
-            Ok(SpatialWorkingSetIndex(chunkSize, entries, buckets, identities))
+            // Retain the validated entries once, in source order, as private random-access storage so a
+            // query selects by ordinal and reports the total without walking the source list. The array
+            // is never exposed or mutated after construction.
+            Ok(SpatialWorkingSetIndex(chunkSize, Array.ofList entries, buckets, identities))
 
     let query query (SpatialWorkingSetIndex(chunkSize, entries, buckets, identities)) =
         let issues =
