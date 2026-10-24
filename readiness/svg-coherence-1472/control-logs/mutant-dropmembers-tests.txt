@@ -1,0 +1,10 @@
+  Failed SVG spatial working set.identical visible population gives the reference result at the beginning and the end of a larger source list [34 ms]
+  Failed SVG spatial working set.sparse late ordinals are selected in source order [38 ms]
+  Failed SVG spatial working set.offscreen and missing pinned identities follow the reference at late ordinals [21 ms]
+  Failed SVG spatial working set.repeated queries do not change the index or each other [9 ms]
+  Failed SVG spatial working set.result entries and values are the caller's own records [1 ms]
+  Failed SVG spatial working set.a population sharing one chunk follows the reference with pins at every position [15 ms]
+  Failed SVG spatial working set.a deterministic mixed population of dense and chunk-spanning entries follows the reference [6 ms]
+  Failed SVG spatial working set.every bucket lists exactly its member ordinals in ascending source order [5 ms]
+  Failed SVG spatial working set.lookup cost does not depend on source position or source length [4 s]
+Failed!  - Failed:     9, Passed:   142, Skipped:     0, Total:   151, Duration: 4 s - Scene.Tests.dll (net10.0)

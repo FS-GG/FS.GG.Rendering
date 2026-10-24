@@ -1,0 +1,3 @@
+  Failed SVG spatial working set.construction cost does not grow quadratically with the population of one chunk [16 s]
+30000 entries in one chunk: 2884.1ms against 77.8ms for 30000 spread entries. Expected a (2884.0872) to be less than b (311.2912).
+Failed!  - Failed:     1, Passed:   150, Skipped:     0, Total:   151, Duration: 19 s - Scene.Tests.dll (net10.0)
