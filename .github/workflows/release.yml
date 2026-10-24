@@ -571,7 +571,7 @@ jobs:
 
   publication-preflight:
     needs: release-source-guard
-    name: Protected publication preflight (no mutation)
+    name: Protected publication preflight (no mutation) [org-publication-writer]
     runs-on: ubuntu-latest
     if: >-
       github.repository == 'FS-GG/FS.GG.Rendering' &&
@@ -585,6 +585,11 @@ jobs:
       RELEASE_PLAN: ${{ inputs.font-disposal-attempt && 'eng/release/font-disposal-0.32.3.json' || inputs.bound-attempt && 'eng/release/svg-export-prefix-0.32.1.json' || 'eng/release/external-authority-recovery-0.32.2.json' }}
       RELEASE_BASELINE: ${{ inputs.bound-attempt && '0.32.0' || '0.32.1' }}
     steps:
+      - name: Acquire org publication writer lock
+        uses: FS-GG/.github/.github/actions/publication-writer-lock@c799a9f9b21d52eb9766cf0950722e3e55145d39 # ADR-0097
+        with:
+          max-wait-minutes: 30
+        timeout-minutes: 32
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
@@ -734,7 +739,7 @@ jobs:
           retention-days: 90
 
   publish-packages:
-    name: Publish FS.GG.UI.* to org GitHub Packages (release-only)
+    name: Publish FS.GG.UI.* to org GitHub Packages (release-only) [org-publication-writer]
     runs-on: ubuntu-latest
     # `!inputs.validate-only` — #681. On `release-tags.yml`'s PRE-CUT call this workflow runs its
     # validators and ships nothing; the publish happens on the second call, after the tags are cut.
@@ -759,6 +764,11 @@ jobs:
       FSGG_RELEASE_ATTEMPT: ${{ inputs.font-disposal-attempt && '0323' || inputs.successor-attempt && '0322' || '0321' }}
       PRODUCER_PLAN: artifacts/attempt/producer-plan.json
     steps:
+      - name: Acquire org publication writer lock
+        uses: FS-GG/.github/.github/actions/publication-writer-lock@c799a9f9b21d52eb9766cf0950722e3e55145d39 # ADR-0097
+        with:
+          max-wait-minutes: 30
+        timeout-minutes: 32
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}

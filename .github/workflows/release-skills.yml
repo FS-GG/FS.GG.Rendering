@@ -43,15 +43,20 @@ concurrency:
 
 jobs:
   publish:
-    name: Pack & publish FS.GG.Rendering.Skills
+    name: Pack & publish FS.GG.Rendering.Skills [org-publication-writer]
     if: github.repository == 'FS-GG/FS.GG.Rendering'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 50
     permissions:
       contents: read
       packages: write
       id-token: write   # ADR-0013: mint the GitHub OIDC token for nuget.org Trusted Publishing
     steps:
+      - name: Acquire org publication writer lock
+        uses: FS-GG/.github/.github/actions/publication-writer-lock@c799a9f9b21d52eb9766cf0950722e3e55145d39 # ADR-0097
+        with:
+          max-wait-minutes: 30
+        timeout-minutes: 32
       - uses: actions/checkout@v7
 
       - uses: actions/setup-dotnet@v6
