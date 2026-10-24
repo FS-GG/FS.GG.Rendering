@@ -626,4 +626,188 @@ let tests =
                     "one late pinned entry in 300000 vs one early visible entry in 1000"
                     (pinnedQuery, pinnedLast)
                     (visibleQuery, smallSingleFirst)
+
+            testCase "a population sharing one chunk follows the reference with pins at every position"
+            <| fun _ ->
+                // Every entry lies inside chunk (0, 0) of a 64-unit grid, so one bucket holds the whole
+                // population. A narrow viewport inside that chunk makes all of them candidates and selects
+                // only those whose bounds touch it.
+                let total = 3000
+
+                let entries =
+                    [
+                        for i in 0 .. total - 1 ->
+                            box $"dense-{i}" (float (i % 50)) (float ((i / 50) % 50) * 0.5) 4.0 4.0
+                    ]
+
+                let q = query (rect 10.0 10.0 6.0 6.0) 0.0 [] 4
+
+                let _, result = expectReference 64.0 entries q "one dense chunk"
+
+                Expect.equal result.CandidateCount total "the whole population is a candidate"
+                Expect.equal result.VisitedChunkCount 1 "a single chunk is visited"
+                Expect.isLessThan result.Entries.Length total "only touching entries are selected"
+                Expect.isGreaterThan result.Entries.Length 0 "some entries are selected"
+
+                Expect.equal
+                    (result.Entries |> List.map _.Id)
+                    (result.Entries |> List.map _.Id |> List.sortBy (fun id -> int (id.Substring 6)))
+                    "selected entries keep source order"
+
+                let pins = [ "dense-0"; $"dense-{total - 1}"; $"dense-{total / 2}"; "absent" ]
+
+                expectReference 64.0 entries (query (rect 10.0 10.0 6.0 6.0) 0.0 pins 4) "pins in a dense chunk"
+                |> ignore
+
+                expectReference
+                    64.0
+                    entries
+                    (query (rect 0.0 0.0 64.0 64.0) 5.0 [] 16)
+                    "whole dense chunk with overscan"
+                |> ignore
+
+            testCase "a deterministic mixed population of dense and chunk-spanning entries follows the reference"
+            <| fun _ ->
+                // Seeded pseudo-random rectangles of very different sizes in a world a few chunks wide, so
+                // buckets are dense and entries span partial and overlapping chunk sets.
+                let random = Random 20261025
+
+                let entries =
+                    [
+                        for i in 0..1999 ->
+                            let width =
+                                if i % 17 = 0 then
+                                    40.0 + random.NextDouble() * 140.0
+                                else
+                                    random.NextDouble() * 12.0
+
+                            let height =
+                                if i % 23 = 0 then
+                                    40.0 + random.NextDouble() * 140.0
+                                else
+                                    random.NextDouble() * 12.0
+
+                            box
+                                $"mixed-{i}"
+                                (-200.0 + random.NextDouble() * 600.0)
+                                (-200.0 + random.NextDouble() * 600.0)
+                                width
+                                height
+                    ]
+
+                let viewports =
+                    [
+                        rect 0.0 0.0 64.0 64.0
+                        rect -10.0 -10.0 20.0 20.0
+                        rect 63.0 63.0 2.0 2.0
+                        rect 64.0 0.0 0.0 0.0
+                        rect 100.0 -150.0 130.0 90.0
+                        rect -200.0 -200.0 600.0 600.0
+                        rect 300.0 300.0 40.0 40.0
+                    ]
+
+                for chunk in [ 16.0; 64.0; 200.0 ] do
+                    for v in viewports do
+                        for overscan in [ 0.0; 7.5 ] do
+                            for pins in [ []; [ "mixed-0"; "mixed-1999"; "mixed-1000"; "missing" ] ] do
+                                expectReference
+                                    chunk
+                                    entries
+                                    (query v overscan pins 100000)
+                                    $"chunk {chunk} viewport {v} overscan {overscan} pins {pins.Length}"
+                                |> ignore
+
+            testCase "every bucket lists exactly its member ordinals in ascending source order"
+            <| fun _ ->
+                // Structure control against an independent direct scan. Query results are sorted by ordinal,
+                // so a bucket that lost its order would not change them; this pins the construction itself.
+                let random = Random 7
+                let size = 32.0
+
+                let entries =
+                    [
+                        for i in 0..799 ->
+                            box
+                                $"member-{i}"
+                                (random.NextDouble() * 300.0)
+                                (random.NextDouble() * 300.0)
+                                (random.NextDouble() * 90.0)
+                                (random.NextDouble() * 90.0)
+                    ]
+
+                let index =
+                    SpatialWorkingSet.create size entries
+                    |> Result.defaultWith (fun issues -> failtestf "%A" issues)
+
+                let bucketField =
+                    typeof<SpatialWorkingSetIndex<string>>
+                        .GetFields(BindingFlags.Instance ||| BindingFlags.NonPublic ||| BindingFlags.Public)
+                    |> Array.filter (fun field -> field.FieldType = typeof<Map<int64 * int64, int list>>)
+
+                Expect.equal bucketField.Length 1 "exactly one private bucket map is retained"
+
+                let actual =
+                    Option.ofObj (bucketField[0].GetValue index) |> Option.get :?> Map<int64 * int64, int list>
+
+                let expected = Collections.Generic.Dictionary<int64 * int64, ResizeArray<int>>()
+
+                entries
+                |> List.iteri (fun ordinal e ->
+                    let first start = int64 (floor (start / size))
+                    let last start length = int64 (floor ((start + length) / size))
+
+                    for x in first e.Bounds.X .. last e.Bounds.X e.Bounds.Width do
+                        for y in first e.Bounds.Y .. last e.Bounds.Y e.Bounds.Height do
+                            match expected.TryGetValue((x, y)) with
+                            | true, members -> members.Add ordinal
+                            | _ -> expected[(x, y)] <- ResizeArray [ ordinal ])
+
+                Expect.equal actual.Count expected.Count "the same chunks are populated"
+
+                for KeyValue(key, members) in expected do
+                    Expect.equal
+                        (Map.find key actual)
+                        (List.ofSeq members)
+                        $"bucket {key} holds its ordinals in ascending order"
+
+            testCase "construction cost does not grow quadratically with the population of one chunk"
+            <| fun _ ->
+                // Control for the per-bucket append. With `values @ [ index ]` the cost of building one
+                // bucket of n entries is quadratic, so a single-chunk population is orders of magnitude slower
+                // than a spread population of the same size and doubling it roughly quadruples the time. The
+                // minimum over a few rounds absorbs scheduler and GC noise; the bounds are deliberately loose.
+                let dense n =
+                    [
+                        for i in 0 .. n - 1 -> box $"dense-{i}" (float (i % 60)) (float ((i / 60) % 60)) 2.0 2.0
+                    ]
+
+                let spread n =
+                    [ for i in 0 .. n - 1 -> box $"spread-{i}" (float i * 100.0) 0.0 8.0 8.0 ]
+
+                let milliseconds entries =
+                    let one () =
+                        let start = Stopwatch.GetTimestamp()
+
+                        SpatialWorkingSet.create 64.0 entries
+                        |> Result.defaultWith (fun issues -> failtestf "%A" issues)
+                        |> ignore
+
+                        Stopwatch.GetElapsedTime(start).TotalMilliseconds
+
+                    one () |> ignore
+                    [ for _ in 1..3 -> one () ] |> List.min
+
+                let denseSmall = milliseconds (dense 15000)
+                let denseLarge = milliseconds (dense 30000)
+                let spreadLarge = milliseconds (spread 30000)
+
+                Expect.isLessThan
+                    denseLarge
+                    (max (spreadLarge * 4.0) (spreadLarge + 150.0))
+                    $"30000 entries in one chunk: {denseLarge:F1}ms against {spreadLarge:F1}ms for 30000 spread entries"
+
+                Expect.isLessThan
+                    denseLarge
+                    (max (denseSmall * 3.2) (denseSmall + 150.0))
+                    $"doubling a one-chunk population: {denseSmall:F1}ms to {denseLarge:F1}ms"
         ]

@@ -1,0 +1,65 @@
+runs: create {'baseline': 2, 'candidate': 2} query {'baseline': 2, 'candidate': 2}
+runtime .NET 10.0.12, processorCount 3, rounds 9
+create-harness semantic/counter join identical across all runs: True | every cell matches the independent linear reference: True
+
+SpatialWorkingSet.create, median over all rounds of all runs (baseline -> candidate); alloc is bytes per create
+layout                         N |    base ms    cand ms   ratio |   base MB   cand MB   ratio | per-run medians base / cand (ms)
+spread-1-per-chunk          1000 |      1.351      0.975   0.722 |      3.39      2.72   0.802 | [1.359, 1.34] / [0.989, 0.973]
+spread-1-per-chunk         10000 |     26.972     19.493   0.723 |     41.80     33.00   0.790 | [27.21, 26.956] / [19.496, 19.449]
+spread-1-per-chunk        100000 |    370.405    275.451   0.744 |    494.50    386.45   0.782 | [368.75, 370.62] / [279.043, 274.702]
+spread-1-per-chunk        300000 |   1036.709    883.148   0.852 |   1590.23   1258.34   0.791 | [1039.327, 1036.526] / [892.622, 878.533]
+grid-4-per-chunk            1000 |      1.061      0.503   0.474 |      2.87      1.60   0.558 | [1.065, 1.056] / [0.503, 0.502]
+grid-4-per-chunk           10000 |     22.296      8.555   0.384 |     38.98     18.81   0.483 | [22.319, 22.243] / [8.623, 8.483]
+grid-4-per-chunk          100000 |    308.311    130.471   0.423 |    500.05    221.98   0.444 | [308.229, 308.821] / [132.129, 130.001]
+soldiers-grid-36             250 |      0.233      0.102   0.440 |      0.65      0.35   0.536 | [0.233, 0.233] / [0.101, 0.103]
+soldiers-grid-36            1000 |      1.495      0.559   0.374 |      3.67      1.70   0.464 | [1.495, 1.48] / [0.554, 0.56]
+soldiers-grid-36           10000 |     27.707     10.182   0.367 |     50.26     20.98   0.417 | [27.871, 27.692] / [10.048, 10.216]
+cluster-100-per-chunk       1000 |      0.933      0.364   0.390 |      3.74      1.28   0.343 | [0.944, 0.923] / [0.355, 0.366]
+cluster-100-per-chunk      10000 |     18.157      6.166   0.340 |     44.79     14.95   0.334 | [18.186, 18.128] / [6.125, 6.179]
+cluster-100-per-chunk     100000 |    278.781     82.965   0.298 |    532.31    170.13   0.320 | [280.877, 278.294] / [82.653, 83.74]
+one-chunk                   1000 |      3.165      0.363   0.115 |     17.88      1.28   0.072 | [3.244, 3.078] / [0.359, 0.369]
+one-chunk                   5000 |     68.193      2.650   0.039 |    410.09      7.10   0.017 | [69.875, 66.163] / [2.621, 2.66]
+one-chunk                  20000 |   1149.934     12.641   0.011 |   6443.03     31.03   0.005 | [1165.412, 1121.681] / [12.648, 12.634]
+one-chunk                  40000 |   4826.886     36.424   0.008 |  25689.16     65.16   0.003 | [4956.184, 4710.012] / [36.179, 36.575]
+mixed-spanning             20000 |     55.885     14.027   0.251 |    104.62     33.45   0.320 | [55.802, 55.969] / [13.76, 14.053]
+
+query (#1469 harness, unchanged cells), median microseconds per call; a ratio near 1 means no query change
+query-harness semantic/counter join identical across all runs: True | linear reference match all: True
+  visible1-first                        1000      18.10 ->     18.68   ratio  1.032
+  visible1-middle                       1000      18.17 ->     17.38   ratio  0.957
+  visible1-last                         1000      19.65 ->     20.70   ratio  1.053
+  visible100-first                      1000      31.68 ->     32.30   ratio  1.020
+  visible100-last                       1000      34.30 ->     34.58   ratio  1.008
+  visible100-sparse-late                1000      30.63 ->     30.25   ratio  0.987
+  pinned1-last                          1000      21.68 ->     21.69   ratio  1.000
+  visible100-first-pinned1-last         1000      31.86 ->     31.74   ratio  0.996
+  visible100-last-pinned1-last          1000      35.13 ->     34.72   ratio  0.988
+  visible1-first                      100000      28.91 ->     28.36   ratio  0.981
+  visible1-middle                     100000      28.94 ->     28.42   ratio  0.982
+  visible1-last                       100000      30.25 ->     29.62   ratio  0.979
+  visible100-first                    100000      41.41 ->     40.81   ratio  0.986
+  visible100-last                     100000      43.51 ->     43.12   ratio  0.991
+  visible100-sparse-late              100000      44.19 ->     44.06   ratio  0.997
+  pinned1-last                        100000      31.70 ->     31.78   ratio  1.002
+  visible100-first-pinned1-last       100000      41.79 ->     41.92   ratio  1.003
+  visible100-last-pinned1-last        100000      44.37 ->     43.93   ratio  0.990
+  visible1-first                      300000      30.72 ->     30.44   ratio  0.991
+  visible1-middle                     300000      31.77 ->     31.61   ratio  0.995
+  visible1-last                       300000      32.05 ->     31.55   ratio  0.984
+  visible100-first                    300000      43.46 ->     42.74   ratio  0.983
+  visible100-last                     300000      44.91 ->     45.95   ratio  1.023
+  visible100-sparse-late              300000      45.68 ->     44.72   ratio  0.979
+  pinned1-last                        300000      33.46 ->     33.34   ratio  0.997
+  visible100-first-pinned1-last       300000      42.99 ->     43.62   ratio  1.015
+  visible100-last-pinned1-last        300000      45.29 ->     45.71   ratio  1.009
+largest candidate/baseline query median ratio over all 36 cells: 1.053
+
+create-harness creation block of the #1469 harness (spread layout, median ms / bytes), as a cross-check
+  N=   1000 baseline :     2.483 ms       3396224 B
+  N=   1000 candidate:     1.017 ms       2722568 B
+  N=  10000 baseline :    23.366 ms      41774288 B
+  N=  10000 candidate:    17.303 ms      32977536 B
+  N= 100000 baseline :   290.574 ms     492858520 B
+  N= 100000 candidate:   232.173 ms     384813280 B
+  N= 300000 baseline :   927.377 ms    1586495272 B
+  N= 300000 candidate:   738.644 ms    1254609592 B
