@@ -9,7 +9,7 @@ import re
 
 HISTORICAL = '6a5dd5305ac6fe26f9f9726c72b1a7e553b0021b'
 FONT_DISPOSAL = '752a2ac1fa996c3235ac0330ffbcefb6b8301cb4'
-CURRENT_PUBLIC = 'cf95dcdd276fe0a8af7a3b201110f9cae35266da'
+CURRENT_PUBLIC = '59ce6af8b63a816d931e3a2e3f5c1ba890e9427d'
 PATH = Path(__file__).resolve().parents[1]/'.github/workflows/templates-external-reference-qualification.yml'
 
 def jobs(text):
