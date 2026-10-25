@@ -71,9 +71,9 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.rendering-input-source == 'current-public-composition' }}
     needs: static
     name: Current published composition and held AT journey
-    uses: FS-GG/FS.GG.Templates/.github/workflows/fable-external-reference-source.yml@e5f6924bc57293c2f6f864be53f76815af5d26ff
+    uses: FS-GG/FS.GG.Templates/.github/workflows/fable-external-reference-source.yml@3ececb44da3f8498ac9a295f67a7dffd10964a36
     with:
-      templates-source: e5f6924bc57293c2f6f864be53f76815af5d26ff
+      templates-source: 3ececb44da3f8498ac9a295f67a7dffd10964a36
       rendering-input-source: current-public-composition
       current-public-at-admission: ''
       native-input-facility: ${{ inputs.native-input-facility }}
