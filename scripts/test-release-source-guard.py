@@ -1284,8 +1284,16 @@ class QualifiedFontProofTests(unittest.TestCase):
         g=self.g
         with tempfile.TemporaryDirectory() as d:
             root=Path(d);b,members,result,observation=self.fixture(root)
-            caller=(ROOT/'.github/workflows/templates-external-reference-qualification.yml').read_text()
-            with patch.object(g.preflight,'source_text',return_value=caller):
+            # The accepted proof binds the original caller, not today's independently
+            # evolving source routes. CI fetches this exact immutable source alongside
+            # the original producer plans; production acceptance/constants stay intact.
+            caller_path='.github/workflows/templates-external-reference-qualification.yml'
+            caller_sha=b['qualification']['callerSha']
+            caller=g.preflight.source_text(ROOT,caller_sha,caller_path)
+            def original_caller(source_root,source_sha,path):
+                self.assertEqual((ROOT,caller_sha,caller_path),(source_root,source_sha,path))
+                return caller
+            with patch.object(g.preflight,'source_text',side_effect=original_caller):
                 facts=g.validate_font_disposal_qualification(ROOT,b,members.__getitem__,root)
                 self.assertEqual([15,15,15],facts['browserPassed']);self.assertEqual(15,facts['atPassed']);self.assertEqual(4,facts['atSpeechWindows'])
                 for name in ['qualification.json','chromium-browser.json','orca/source-qualification.json','orca/observation.json','orca/bind-result.json']:
