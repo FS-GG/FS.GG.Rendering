@@ -8,7 +8,8 @@ from pathlib import Path
 import re
 
 HISTORICAL = '6a5dd5305ac6fe26f9f9726c72b1a7e553b0021b'
-FONT_DISPOSAL = '752a2ac1fa996c3235ac0330ffbcefb6b8301cb4'
+FONT_DISPOSAL = '2f8d400a6a670568044d607a1ac0eb2c7c655a29'
+CURRENT_PUBLIC = '59ce6af8b63a816d931e3a2e3f5c1ba890e9427d'
 PATH = Path(__file__).resolve().parents[1]/'.github/workflows/templates-external-reference-qualification.yml'
 
 def jobs(text):
@@ -29,7 +30,7 @@ def schema(text):
         required=re.findall(r'^        required: (.+)$',row,re.M);assert not required or required==['false']
         options=re.findall(r'^          - (.+)$',row,re.M)
         result[key]=(types[0],defaults[0],options)
-    assert result=={'rendering-input-source':('choice','candidate',['candidate','font-disposal']),'preflight-only':('boolean','true',[])}, 'safe dispatch defaults/types/options required'
+    assert result=={'rendering-input-source':('choice','candidate',['candidate','font-disposal','current-public-composition']),'preflight-only':('boolean','true',[])}, 'safe dispatch defaults/types/options required'
     return result
 
 def dispatch(text,request,event='workflow_dispatch'):
@@ -69,18 +70,20 @@ def validate_context(text, environment):
 def validate(text):
     assert re.search(r'^permissions:\n  contents: read\n  actions: read\n',text,re.M)
     assert not re.search(r'(contents|actions|packages|id-token): write|secrets:|secrets\.|environment:|continue-on-error|concurrency:',text)
-    assert set(jobs(text))=={'static','qualify','qualify-font-disposal'}
+    assert set(jobs(text))=={'static','qualify','qualify-font-disposal','qualify-current-public-composition'}
     assert re.findall(r'^      - run: (.+)$',jobs(text)['static'],re.M)==['python3 scripts/verify-templates-external-reference-workflow.py'], 'production static entrypoint must validate actual context'
     for handoff in ['QUALIFICATION_EVENT: ${{ github.event_name }}','QUALIFICATION_INPUT_SOURCE: ${{ inputs.rendering-input-source }}','QUALIFICATION_PREFLIGHT_JSON: ${{ toJSON(inputs.preflight-only) }}']:
         assert handoff in jobs(text)['static'], 'actual dispatch context handoff required'
     schema(text)
-    for name,pin,mode in [('qualify',HISTORICAL,'candidate'),('qualify-font-disposal',FONT_DISPOSAL,'font-disposal')]:
+    for name,pin,mode in [('qualify',HISTORICAL,'candidate'),('qualify-font-disposal',FONT_DISPOSAL,'font-disposal'),('qualify-current-public-composition',CURRENT_PUBLIC,'current-public-composition')]:
         body=jobs(text)[name]
         assert re.findall(r'^    uses: FS-GG/FS.GG.Templates/\.github/workflows/fable-external-reference-source\.yml@([0-9a-f]{40})$',body,re.M)==[pin], 'immutable selected workflow pin required'
         assert re.findall(r'^      templates-source: (.+)$',body,re.M)==[pin], 'workflow/checkout identity differs'
         assert re.findall(r'^      rendering-input-source: (.+)$',body,re.M)==[mode], 'closed receiver subject differs'
         assert '    needs: static\n' in body
-    for mode,job in [('candidate','qualify'),('font-disposal','qualify-font-disposal')]:
+        if mode == 'current-public-composition':
+            assert re.findall(r'^      current-public-at-admission: (.+)$', body, re.M) == ["''"], 'current native admission must remain empty'
+    for mode,job in [('candidate','qualify'),('font-disposal','qualify-font-disposal'),('current-public-composition','qualify-current-public-composition')]:
         for full in [False,True]:
             assert dispatch(text,{'ref':'main','inputs':{'rendering-input-source':mode,'preflight-only':not full}})==(job,full)
     assert dispatch(text,{'ref':'main','inputs':{}})==('qualify',False)
@@ -105,6 +108,9 @@ def controls(text):
     ])
     for rejected in ['0'*40,'775853887a88a3c72e726daa475a49053e84c4bd','92944277a8d27b15759dd8e5803acf4c4e0ae162','0d945052250eb53056a5b4a87fe742efd1b7a0a2','b005c26e43cd4a823577ff94e1ee6da2cfed58d4','208e5bffe99153375f7d3e2e1c84653104883cd3']:
         bad.append(text.replace(HISTORICAL,rejected))
+    # Original40172407851 failed eager GHA resolution of this API-readable intermediate pin.
+    bad.append(text.replace(FONT_DISPOSAL, '752a2ac1fa996c3235ac0330ffbcefb6b8301cb4'))
+    bad.extend([text.replace(CURRENT_PUBLIC, '0'*40), text.replace('@'+CURRENT_PUBLIC, '@main'), text.replace("current-public-at-admission: ''", "current-public-at-admission: selected"), text.replace(" && inputs.rendering-input-source != 'current-public-composition'", ''), text.replace("inputs.rendering-input-source == 'current-public-composition'", "inputs.rendering-input-source != 'current-public-composition'")])
     for mutation in bad:
         try:validate(mutation)
         except (AssertionError,ValueError,IndexError):pass
@@ -117,7 +123,7 @@ def controls(text):
         try:dispatch(text,request)
         except AssertionError:pass
         else:raise AssertionError('invalid request shape accepted')
-    for mode,job in [('candidate','qualify'),('font-disposal','qualify-font-disposal')]:
+    for mode,job in [('candidate','qualify'),('font-disposal','qualify-font-disposal'),('current-public-composition','qualify-current-public-composition')]:
         for phase in [False,True]:
             assert validate_context(text,{'QUALIFICATION_EVENT':'workflow_dispatch','QUALIFICATION_INPUT_SOURCE':mode,'QUALIFICATION_PREFLIGHT_JSON':json.dumps(phase)})==(job,not phase)
     assert validate_context(text,{'QUALIFICATION_EVENT':'pull_request'})==('qualify',False)
@@ -130,7 +136,7 @@ def controls(text):
         try:validate(mutation)
         except AssertionError:pass
         else:raise AssertionError('missing context handoff accepted')
-    print(f'PASS actual dispatch schema/defaults, four finite subject/phase branches, PR refusal, {len(bad)+9} caller/request refusals and 9 actual-context/handoff refusals')
+    print(f'PASS actual dispatch schema/defaults, six finite subject/phase branches, PR refusal, {len(bad)+9} caller/request refusals and 9 actual-context/handoff refusals')
 
 if __name__=='__main__':
     assert sys.argv[1:] in [[],['--self-test']], 'unknown verifier option'
