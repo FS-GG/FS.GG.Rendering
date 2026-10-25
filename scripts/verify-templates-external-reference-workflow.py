@@ -8,7 +8,7 @@ from pathlib import Path
 import re
 
 HISTORICAL = '6a5dd5305ac6fe26f9f9726c72b1a7e553b0021b'
-FONT_DISPOSAL = '752a2ac1fa996c3235ac0330ffbcefb6b8301cb4'
+FONT_DISPOSAL = '2f8d400a6a670568044d607a1ac0eb2c7c655a29'
 CURRENT_PUBLIC = '59ce6af8b63a816d931e3a2e3f5c1ba890e9427d'
 PATH = Path(__file__).resolve().parents[1]/'.github/workflows/templates-external-reference-qualification.yml'
 
@@ -108,6 +108,8 @@ def controls(text):
     ])
     for rejected in ['0'*40,'775853887a88a3c72e726daa475a49053e84c4bd','92944277a8d27b15759dd8e5803acf4c4e0ae162','0d945052250eb53056a5b4a87fe742efd1b7a0a2','b005c26e43cd4a823577ff94e1ee6da2cfed58d4','208e5bffe99153375f7d3e2e1c84653104883cd3']:
         bad.append(text.replace(HISTORICAL,rejected))
+    # Original40172407851 failed eager GHA resolution of this API-readable intermediate pin.
+    bad.append(text.replace(FONT_DISPOSAL, '752a2ac1fa996c3235ac0330ffbcefb6b8301cb4'))
     bad.extend([text.replace(CURRENT_PUBLIC, '0'*40), text.replace('@'+CURRENT_PUBLIC, '@main'), text.replace("current-public-at-admission: ''", "current-public-at-admission: selected"), text.replace(" && inputs.rendering-input-source != 'current-public-composition'", ''), text.replace("inputs.rendering-input-source == 'current-public-composition'", "inputs.rendering-input-source != 'current-public-composition'")])
     for mutation in bad:
         try:validate(mutation)
