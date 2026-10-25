@@ -733,6 +733,10 @@ let tests =
                                 (random.NextDouble() * 300.0)
                                 (random.NextDouble() * 90.0)
                                 (random.NextDouble() * 90.0)
+                        // 1,200 unit boxes inside one chunk, so one bucket is larger than any other and holds
+                        // more than a thousand members
+                        for i in 0..1199 ->
+                            box $"cluster-{i}" (320.0 + float (i % 20)) (320.0 + float ((i / 20) % 20)) 1.0 1.0
                     ]
 
                 let index =

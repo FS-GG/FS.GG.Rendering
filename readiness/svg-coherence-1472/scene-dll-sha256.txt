@@ -1,0 +1,3 @@
+e6c9ea59046458ce695a7d45f52f43ea6796e1a940ecc21272fa6edae25f767e  baseline FS.GG.UI.Scene.dll (main 8574c14d)
+2662227fd6df3caf7cbc23d7d74c7d9529d4149c59b1f1f09de6272a768438dd  candidate FS.GG.UI.Scene.dll (design measured in raw/)
+4388804a8be773d75a091c63f9e9c4a3f2c2dcc629e1a5b2e88674070813b2c4  rejected first-design candidate (raw-rejected-list-rev/)

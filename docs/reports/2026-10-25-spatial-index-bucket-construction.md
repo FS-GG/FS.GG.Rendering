@@ -25,8 +25,9 @@ every counter. New cases, all passing on the candidate (151 tests in `Scene.Test
   ordinal, and a whole-chunk query with overscan;
 - a seeded mixed population (2,000 rectangles, some very wide or tall) queried at three chunk sizes, seven viewports
   including degenerate and edge-touching ones, two overscans and with and without pins;
-- a structure control that compares every private bucket with an independent direct scan: the same chunks are
-  populated and each bucket lists exactly its member ordinals in ascending order;
+- a structure control that compares every private bucket with an independent direct scan over 800 scattered rectangles
+  and a 1,200-member cluster in one chunk: the same chunks are populated and each bucket lists exactly its member
+  ordinals in ascending order;
 - a construction-cost control: 30,000 entries in one chunk against 30,000 spread entries, and 15,000 against 30,000
   entries in one chunk, minimum over rounds, with deliberately loose bounds.
 
@@ -38,13 +39,16 @@ Control sensitivity on this source (logs in `readiness/svg-coherence-1472/contro
 | Mutant: buckets left in descending order | the structure control fails |
 | Mutant: a later member replaces the bucket instead of joining it | nine controls fail |
 | Mutant: only the first row of chunks is registered for an entry | four controls fail |
+| Mutant: buckets of more than 1,000 members left in descending order | the structure control fails (added after review showed the earlier controls could not see this) |
 | Mutant: a key recorded twice in the first-appearance list | no control fails; the mutant is behaviourally equivalent (the second `Map.add` of a key replaces its own value) |
 
 ## Isolated before/after measurement (CLR)
 
 Same harness source for both arms (`readiness/svg-coherence-1472/CreateBench.fs` for construction; the unchanged
 #1469 query harness `readiness/svg-coherence-1469/Bench.fs` for query), same method; only the referenced
-`FS.GG.UI.Scene.dll` differs (baseline sha256 `e6c9ea59...`, candidate `2662227f...`). Release, .NET 10.0.401 SDK with
+`FS.GG.UI.Scene.dll` differs (the measured baseline and candidate assemblies had sha256 `e6c9ea59...` and
+`2662227f...`, recorded in `scene-dll-sha256.txt`; a rebuild from the same source differs in bytes because builds embed
+paths). Release, .NET 10.0.401 SDK with
 the 10.0.12 runtime, pinned to 3 CPUs, run order baseline, candidate, candidate, baseline, 9 interleaved rounds per
 construction cell (12 per query cell), concurrent and server GC off. Raw per-round observations are in
 `readiness/svg-coherence-1472/raw/` and the joined summary is `summary.txt`. In every cell the selected identities,
@@ -97,11 +101,13 @@ keeps the original key order. The rejected design's raw observations and summary
 
 - One shared development host with 3 pinned CPUs. Timings are not the calibrated hosted benchmark and imply no timing
   threshold or Home B1-B8 verdict.
-- Construction cost is paid when a world or index is created, not per frame. The supported 250-soldier workload shape
-  (about one entry per 64-unit chunk or a few) gains 0.13 ms per create from this change; the large gains are for
-  dense populations, where one chunk holds thousands of entries. No product speedup claim follows.
-- The real M9 packed Fable/browser consumer is qualified by the exact-head hosted `svg-browser` workflow on the pull
-  request. That result shows the packed consumer unchanged; it does not measure construction.
+- Construction cost is paid when a world or index is created, not per frame. The synthetic 250-entry grid of 8-unit boxes
+  at spacing 36 (about three entries per 64-unit chunk; nothing ties it to the real soldier workload's density) gains
+  0.13 ms per create from this change; the large gains are for dense populations, where one chunk holds thousands of
+  entries. No product speedup claim follows.
+- The real M9 packed Fable/browser consumer is exercised by the exact-head hosted `svg-browser` workflow on the pull
+  request; its result is recorded there and is read as pending until that check completes. A passing result shows the
+  packed consumer unchanged; it does not measure construction.
 - No publication, installed or retained adoption, GPU or licensed-glyph claim follows. The other source hotspots in the
   owning plan (browser host replace, reconciliation sibling search, interaction synchronization, cache ownership) and
   incremental index updates remain open.

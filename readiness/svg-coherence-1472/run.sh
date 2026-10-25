@@ -7,6 +7,7 @@ BASE="$1"; CAND="$2"; WORK="$3"; ROUNDS="${4:-9}"; CPUS="${CPUS:-9-11}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 Q1469="$HERE/../svg-coherence-1469"
 mkdir -p "$WORK/raw"
+sha256sum "$BASE/FS.GG.UI.Scene.dll" "$CAND/FS.GG.UI.Scene.dll" > "$WORK/raw/scene-dll-sha256.txt"
 export TMPDIR="$WORK/tmp"; mkdir -p "$TMPDIR"
 export DOTNET_NOLOGO=1 DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_TieredPGO=0
 for arm in baseline candidate; do
