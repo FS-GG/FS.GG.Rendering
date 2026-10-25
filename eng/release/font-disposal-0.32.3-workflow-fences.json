@@ -50,7 +50,7 @@
     ".github/workflows/template-base-skill-union.yml": "852e005e89f112bb506dbe1e65c2d5cfdd1fe27cbffeb14ccc12dbbc631fd899",
     ".github/workflows/template-dispatch.yml": "e386f0fcb8dace82fb775dec9dafb13d80a2afe3a5f19f3c962eff6fd3b85534",
     ".github/workflows/template-pin-staleness-sweep.yml": "9c4c06382e96e6c3971588635166f240ec580da128b00b02050d3f3a86797a5f",
-    ".github/workflows/templates-external-reference-qualification.yml": "64d981840f95f831900618ba7396f3a51c51fba2a7d41d1922e846325b71cd75",
+    ".github/workflows/templates-external-reference-qualification.yml": "5fd6ef8c47cbed33467ba54e83478ae9bb8fbdbdb3db93e0ae1c61eb2a2dd7c8",
     ".github/workflows/v2-ci-ordinary-settlement.yml": "afc12a2ef52c437dd063e3868df9b7dbced7cf86b87b0f7c40c5d5cc6422c8ca"
   },
   "disabledWorkflowIds": [
