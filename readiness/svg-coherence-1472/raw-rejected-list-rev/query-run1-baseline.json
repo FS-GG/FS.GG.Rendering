@@ -1,0 +1,1141 @@
+{
+  "creation": [
+    {
+      "allocatedBytes": [
+        3396224,
+        3396224,
+        3396224,
+        3396224,
+        3396224,
+        3396224,
+        3396224
+      ],
+      "createMs": [
+        1.453936,
+        1.38795,
+        1.420002,
+        2.5801980625,
+        2.394776,
+        2.461202,
+        2.453718
+      ],
+      "n": 1000
+    },
+    {
+      "allocatedBytes": [
+        41774288,
+        41774288,
+        41774288,
+        41774288,
+        41774288,
+        41774288,
+        41774288
+      ],
+      "createMs": [
+        23.020303,
+        22.420772,
+        22.469765,
+        23.650381,
+        23.208109,
+        23.559047,
+        23.43981
+      ],
+      "n": 10000
+    },
+    {
+      "allocatedBytes": [
+        492858520,
+        492858520,
+        492858520,
+        492858520,
+        492858520,
+        492858520,
+        492858520
+      ],
+      "createMs": [
+        289.57326,
+        289.976408,
+        290.656231,
+        288.073838,
+        293.232391,
+        292.172074,
+        293.400872
+      ],
+      "n": 100000
+    },
+    {
+      "allocatedBytes": [
+        1586495272,
+        1586495272,
+        1586495272,
+        1586495272,
+        1586495272,
+        1586495272,
+        1586495272
+      ],
+      "createMs": [
+        961.567006,
+        937.76618,
+        931.541178,
+        937.702108,
+        935.704878,
+        945.5946320625,
+        937.8084710625
+      ],
+      "n": 300000
+    }
+  ],
+  "framework": ".NET 10.0.12",
+  "label": "baseline",
+  "processorCount": 3,
+  "queryNsPerCall": [
+    {
+      "cell": "visible1-first",
+      "iterationsPerSample": 200,
+      "n": 1000,
+      "samplesNs": [
+        18898.1,
+        17861.735,
+        17954.7053125,
+        17416.935,
+        19664.31,
+        17245.705,
+        17963.7196875,
+        21123.935,
+        19530.055,
+        20049.69,
+        20296.96,
+        20061.7646875
+      ]
+    },
+    {
+      "cell": "visible1-middle",
+      "iterationsPerSample": 200,
+      "n": 1000,
+      "samplesNs": [
+        17841.44,
+        17330.165,
+        25332.89,
+        18900.605,
+        17307.775,
+        20058.01,
+        19327.82,
+        17212.095,
+        17211.04,
+        17325.4096875,
+        20676.585,
+        18495.3853125
+      ]
+    },
+    {
+      "cell": "visible1-last",
+      "iterationsPerSample": 200,
+      "n": 1000,
+      "samplesNs": [
+        26738.065,
+        21262.8,
+        19602.94,
+        18731.18,
+        21304.83,
+        18835.785,
+        19714.555,
+        19867.595,
+        21419.2953125,
+        19650.58,
+        19801.72,
+        19931.47
+      ]
+    },
+    {
+      "cell": "visible100-first",
+      "iterationsPerSample": 200,
+      "n": 1000,
+      "samplesNs": [
+        41134.705,
+        33046.465,
+        56976.8903125,
+        40368.79,
+        40567.02,
+        32836.765,
+        32106.325,
+        32422.18,
+        30478.33,
+        32841.675,
+        35777.015,
+        33187.03
+      ]
+    },
+    {
+      "cell": "visible100-last",
+      "iterationsPerSample": 200,
+      "n": 1000,
+      "samplesNs": [
+        37737.99,
+        34731.62,
+        37398.1903125,
+        34796.795,
+        38000.99,
+        35985.3546875,
+        35071.115,
+        34877.85,
+        37210.635,
+        34974.185,
+        35823.5946875,
+        36514.21
+      ]
+    },
+    {
+      "cell": "visible100-sparse-late",
+      "iterationsPerSample": 200,
+      "n": 1000,
+      "samplesNs": [
+        30236.47,
+        31866.27,
+        33051.725,
+        31815.875,
+        30956.39,
+        32267.135,
+        31749.1953125,
+        31925.2303125,
+        33025.58,
+        32099.3653125,
+        33488.005,
+        33756.265
+      ]
+    },
+    {
+      "cell": "pinned1-last",
+      "iterationsPerSample": 200,
+      "n": 1000,
+      "samplesNs": [
+        23914.24,
+        20613.86,
+        20151.385,
+        20003.805,
+        25166.23,
+        20466.985,
+        20379.82,
+        22454.315,
+        22594.2796875,
+        22071.59,
+        20876.71,
+        23323.47
+      ]
+    },
+    {
+      "cell": "visible100-first-pinned1-last",
+      "iterationsPerSample": 200,
+      "n": 1000,
+      "samplesNs": [
+        34720.495,
+        34121.81,
+        32607.575,
+        32535.94,
+        36510.855,
+        36178.72,
+        32436.955,
+        33853.5,
+        32899.535,
+        32998.975,
+        34529.285,
+        34367.88
+      ]
+    },
+    {
+      "cell": "visible100-last-pinned1-last",
+      "iterationsPerSample": 200,
+      "n": 1000,
+      "samplesNs": [
+        37283.675,
+        36731.725,
+        35448.585,
+        35137.19,
+        38458.86,
+        36579.0846875,
+        34899.09,
+        37457.355,
+        36052.93,
+        35750.56,
+        37693.4053125,
+        35859.765
+      ]
+    },
+    {
+      "cell": "visible1-first",
+      "iterationsPerSample": 200,
+      "n": 10000,
+      "samplesNs": [
+        22748.025,
+        22589.675,
+        24240.615,
+        24437.5403125,
+        23284.095,
+        25300.18,
+        24409.5853125,
+        26048.45,
+        23551.855,
+        25547,
+        25532.62,
+        23136.11
+      ]
+    },
+    {
+      "cell": "visible1-middle",
+      "iterationsPerSample": 200,
+      "n": 10000,
+      "samplesNs": [
+        26322.2746875,
+        26204.3,
+        24865.405,
+        24011.575,
+        27406.085,
+        25572.25,
+        24237.7046875,
+        26227.34,
+        27380.335,
+        23786.1946875,
+        25205.65,
+        27031.12
+      ]
+    },
+    {
+      "cell": "visible1-last",
+      "iterationsPerSample": 200,
+      "n": 10000,
+      "samplesNs": [
+        24334.945,
+        25495.9,
+        26567.7896875,
+        26315.36,
+        23787.1,
+        26678.755,
+        25527.56,
+        24498.655,
+        24634.565,
+        26291.265,
+        25813.105,
+        23805.685
+      ]
+    },
+    {
+      "cell": "visible100-first",
+      "iterationsPerSample": 200,
+      "n": 10000,
+      "samplesNs": [
+        38736.8903125,
+        37445.285,
+        36717.0953125,
+        37572.075,
+        37150.725,
+        37290.485,
+        36557.6946875,
+        39468.98,
+        37845.445,
+        37560.6,
+        37827.16,
+        37715.5
+      ]
+    },
+    {
+      "cell": "visible100-last",
+      "iterationsPerSample": 200,
+      "n": 10000,
+      "samplesNs": [
+        40374.6553125,
+        40647.775,
+        40110.705,
+        39473.895,
+        39847.755,
+        40322.96,
+        39330.5696875,
+        41330.020625,
+        41318.7,
+        40478.8546875,
+        42198.925,
+        42267.555
+      ]
+    },
+    {
+      "cell": "visible100-sparse-late",
+      "iterationsPerSample": 200,
+      "n": 10000,
+      "samplesNs": [
+        41156.695,
+        46056.265,
+        39299.355,
+        39560.91,
+        39937.3196875,
+        40289.04,
+        40104.045,
+        40870.5,
+        40497.54,
+        40313.59,
+        40615.565,
+        41388.585
+      ]
+    },
+    {
+      "cell": "pinned1-last",
+      "iterationsPerSample": 200,
+      "n": 10000,
+      "samplesNs": [
+        27606.1646875,
+        29102.265,
+        25575.005,
+        25200.99,
+        27401.675,
+        26084.77,
+        25178.35,
+        27940.05,
+        28657.315,
+        27495.605,
+        26401.675,
+        28899.175
+      ]
+    },
+    {
+      "cell": "visible100-first-pinned1-last",
+      "iterationsPerSample": 200,
+      "n": 10000,
+      "samplesNs": [
+        38548.23,
+        38133.29,
+        37593.265,
+        40762.54,
+        37917.28,
+        42616.77,
+        39917.435,
+        38263.79,
+        38512.815,
+        37698.5103125,
+        38263.69,
+        42608.405
+      ]
+    },
+    {
+      "cell": "visible100-last-pinned1-last",
+      "iterationsPerSample": 200,
+      "n": 10000,
+      "samplesNs": [
+        41716.255,
+        41051.095,
+        40987.37,
+        41953.66,
+        40313.54,
+        41712.095,
+        40763.4496875,
+        40522.69,
+        40360.78,
+        40727.23,
+        41760.39,
+        40767.1
+      ]
+    },
+    {
+      "cell": "visible1-first",
+      "iterationsPerSample": 20,
+      "n": 100000,
+      "samplesNs": [
+        29810.7,
+        29028.75,
+        28610.4,
+        29022.7,
+        29074.3,
+        28377.446875,
+        28539.3,
+        28904.45,
+        28930.5,
+        28956.103125,
+        29808.7,
+        28724.15
+      ]
+    },
+    {
+      "cell": "visible1-middle",
+      "iterationsPerSample": 20,
+      "n": 100000,
+      "samplesNs": [
+        29224.65,
+        29833.25,
+        50371.8,
+        49944.5,
+        28506.2,
+        28272.8,
+        28087.95,
+        28093.95,
+        28197.65,
+        28469.65,
+        28424.55,
+        41081.7
+      ]
+    },
+    {
+      "cell": "visible1-last",
+      "iterationsPerSample": 20,
+      "n": 100000,
+      "samplesNs": [
+        30466,
+        31014.5,
+        30240.553125,
+        42570,
+        30688.85,
+        29897.9,
+        29780.65,
+        30331.7,
+        32204.8,
+        30404.3,
+        30516.55,
+        30493
+      ]
+    },
+    {
+      "cell": "visible100-first",
+      "iterationsPerSample": 20,
+      "n": 100000,
+      "samplesNs": [
+        42289.45,
+        42183.75,
+        41554.55,
+        43821.35,
+        41458.35,
+        42740.3,
+        61250,
+        59785.2,
+        41243.45,
+        43490.25,
+        65525.65,
+        42205.8
+      ]
+    },
+    {
+      "cell": "visible100-last",
+      "iterationsPerSample": 20,
+      "n": 100000,
+      "samplesNs": [
+        44781.65,
+        44862.85,
+        44338.85,
+        43902,
+        43966.15,
+        45202.5,
+        43351.45,
+        72856.6,
+        44337.3,
+        48543.85,
+        44599.85,
+        44158.5
+      ]
+    },
+    {
+      "cell": "visible100-sparse-late",
+      "iterationsPerSample": 20,
+      "n": 100000,
+      "samplesNs": [
+        45167.403125,
+        66602.2,
+        45246.6,
+        46728.4,
+        44751.6,
+        46072.65,
+        44150.5,
+        69486.15,
+        43712.65,
+        44849.346875,
+        45406.9,
+        44320.8
+      ]
+    },
+    {
+      "cell": "pinned1-last",
+      "iterationsPerSample": 20,
+      "n": 100000,
+      "samplesNs": [
+        54657,
+        31719.8,
+        31505.45,
+        31514.95,
+        31831.05,
+        32020.4,
+        31975.8,
+        48124,
+        35238.55,
+        32163.2,
+        32307.95,
+        31615.646875
+      ]
+    },
+    {
+      "cell": "visible100-first-pinned1-last",
+      "iterationsPerSample": 20,
+      "n": 100000,
+      "samplesNs": [
+        42895.1,
+        42537.4,
+        41469.4,
+        40708.45,
+        63220.75,
+        41784.5,
+        55732.546875,
+        64272.746875,
+        42604.05,
+        42575,
+        45133.35,
+        47794.9
+      ]
+    },
+    {
+      "cell": "visible100-last-pinned1-last",
+      "iterationsPerSample": 20,
+      "n": 100000,
+      "samplesNs": [
+        46054.6,
+        45924.35,
+        43992.2,
+        43585.9,
+        44834.3,
+        45590.246875,
+        44621.4,
+        44433.05,
+        65645.4,
+        44660.45,
+        47135.646875,
+        46410.303125
+      ]
+    },
+    {
+      "cell": "visible1-first",
+      "iterationsPerSample": 20,
+      "n": 300000,
+      "samplesNs": [
+        34166.95,
+        30725.45,
+        30195.45,
+        29654.903125,
+        30234.05,
+        30337.2,
+        29807.2,
+        39535.2,
+        29808.2,
+        51346.2,
+        30139.3,
+        50912.35
+      ]
+    },
+    {
+      "cell": "visible1-middle",
+      "iterationsPerSample": 20,
+      "n": 300000,
+      "samplesNs": [
+        32549.45,
+        32018.9,
+        31395.246875,
+        31356.65,
+        32090.05,
+        31764.45,
+        31542.503125,
+        32472.75,
+        31644.2,
+        31713.303125,
+        31962.85,
+        31669.75
+      ]
+    },
+    {
+      "cell": "visible1-last",
+      "iterationsPerSample": 20,
+      "n": 300000,
+      "samplesNs": [
+        32292.45,
+        32056.953125,
+        31439.8,
+        41360.646875,
+        31991.4,
+        31242.45,
+        31110.65,
+        34846.75,
+        31548.55,
+        35086.75,
+        32351.55,
+        31505.453125
+      ]
+    },
+    {
+      "cell": "visible100-first",
+      "iterationsPerSample": 20,
+      "n": 300000,
+      "samplesNs": [
+        43671.6,
+        43411.05,
+        63596.5,
+        66754,
+        44087.35,
+        131463.6,
+        43190.65,
+        45146.4,
+        44524.7,
+        47115.6,
+        43084.45,
+        42900.1
+      ]
+    },
+    {
+      "cell": "visible100-last",
+      "iterationsPerSample": 20,
+      "n": 300000,
+      "samplesNs": [
+        45801.15,
+        45929.9,
+        45642.8,
+        47626.05,
+        46055.1,
+        47444.25,
+        53251.3,
+        45288.153125,
+        46333.15,
+        47110.15,
+        74200.6,
+        52092.1
+      ]
+    },
+    {
+      "cell": "visible100-sparse-late",
+      "iterationsPerSample": 20,
+      "n": 300000,
+      "samplesNs": [
+        50256.05,
+        46613.7,
+        46278.5,
+        45046.7,
+        46162.353125,
+        46570.546875,
+        66996.45,
+        56395.75,
+        48676.6,
+        47655.65,
+        47697.75,
+        47444.25
+      ]
+    },
+    {
+      "cell": "pinned1-last",
+      "iterationsPerSample": 20,
+      "n": 300000,
+      "samplesNs": [
+        37378.65,
+        33827.353125,
+        33393,
+        32861.5,
+        33056.9,
+        33390.003125,
+        33009.8,
+        37653.1,
+        32857.003125,
+        33202.15,
+        37709.25,
+        35794.6
+      ]
+    },
+    {
+      "cell": "visible100-first-pinned1-last",
+      "iterationsPerSample": 20,
+      "n": 300000,
+      "samplesNs": [
+        44170.55,
+        117175.9,
+        52612.6,
+        43951.65,
+        43296.9,
+        44494.65,
+        43015.296875,
+        43769.75,
+        44121.95,
+        44033.75,
+        47862.05,
+        50696.45
+      ]
+    },
+    {
+      "cell": "visible100-last-pinned1-last",
+      "iterationsPerSample": 20,
+      "n": 300000,
+      "samplesNs": [
+        131045.25,
+        48049.9,
+        46578.6,
+        50162.95,
+        46107.2,
+        52305.546875,
+        46443.35,
+        54449.1,
+        46096.7,
+        46282.05,
+        47379.15,
+        46866.65
+      ]
+    }
+  ],
+  "rounds": 12,
+  "runtime": "10.0.12",
+  "semantic": [
+    {
+      "candidates": 1,
+      "cell": "visible1-first",
+      "idsHash": "0BCEA661D82BB001",
+      "matchesLinearReference": true,
+      "n": 1000,
+      "selected": 1,
+      "total": 1000,
+      "visited": 49
+    },
+    {
+      "candidates": 1,
+      "cell": "visible1-middle",
+      "idsHash": "0BCEA661D82BB001",
+      "matchesLinearReference": true,
+      "n": 1000,
+      "selected": 1,
+      "total": 1000,
+      "visited": 49
+    },
+    {
+      "candidates": 1,
+      "cell": "visible1-last",
+      "idsHash": "0BCEA661D82BB001",
+      "matchesLinearReference": true,
+      "n": 1000,
+      "selected": 1,
+      "total": 1000,
+      "visited": 49
+    },
+    {
+      "candidates": 100,
+      "cell": "visible100-first",
+      "idsHash": "6032AA39CB5562B0",
+      "matchesLinearReference": true,
+      "n": 1000,
+      "selected": 100,
+      "total": 1000,
+      "visited": 49
+    },
+    {
+      "candidates": 100,
+      "cell": "visible100-last",
+      "idsHash": "6032AA39CB5562B0",
+      "matchesLinearReference": true,
+      "n": 1000,
+      "selected": 100,
+      "total": 1000,
+      "visited": 49
+    },
+    {
+      "candidates": 100,
+      "cell": "visible100-sparse-late",
+      "idsHash": "6032AA39CB5562B0",
+      "matchesLinearReference": true,
+      "n": 1000,
+      "selected": 100,
+      "total": 1000,
+      "visited": 49
+    },
+    {
+      "candidates": 0,
+      "cell": "pinned1-last",
+      "idsHash": "7AB991254FF49EAD",
+      "matchesLinearReference": true,
+      "n": 1000,
+      "selected": 1,
+      "total": 1000,
+      "visited": 49
+    },
+    {
+      "candidates": 100,
+      "cell": "visible100-first-pinned1-last",
+      "idsHash": "E4AD4F4BF77EB6FF",
+      "matchesLinearReference": true,
+      "n": 1000,
+      "selected": 101,
+      "total": 1000,
+      "visited": 49
+    },
+    {
+      "candidates": 100,
+      "cell": "visible100-last-pinned1-last",
+      "idsHash": "E4AD4F4BF77EB6FF",
+      "matchesLinearReference": true,
+      "n": 1000,
+      "selected": 101,
+      "total": 1000,
+      "visited": 49
+    },
+    {
+      "candidates": 1,
+      "cell": "visible1-first",
+      "idsHash": "0BCEA661D82BB001",
+      "matchesLinearReference": true,
+      "n": 10000,
+      "selected": 1,
+      "total": 10000,
+      "visited": 49
+    },
+    {
+      "candidates": 1,
+      "cell": "visible1-middle",
+      "idsHash": "0BCEA661D82BB001",
+      "matchesLinearReference": true,
+      "n": 10000,
+      "selected": 1,
+      "total": 10000,
+      "visited": 49
+    },
+    {
+      "candidates": 1,
+      "cell": "visible1-last",
+      "idsHash": "0BCEA661D82BB001",
+      "matchesLinearReference": true,
+      "n": 10000,
+      "selected": 1,
+      "total": 10000,
+      "visited": 49
+    },
+    {
+      "candidates": 100,
+      "cell": "visible100-first",
+      "idsHash": "6032AA39CB5562B0",
+      "matchesLinearReference": true,
+      "n": 10000,
+      "selected": 100,
+      "total": 10000,
+      "visited": 49
+    },
+    {
+      "candidates": 100,
+      "cell": "visible100-last",
+      "idsHash": "6032AA39CB5562B0",
+      "matchesLinearReference": true,
+      "n": 10000,
+      "selected": 100,
+      "total": 10000,
+      "visited": 49
+    },
+    {
+      "candidates": 100,
+      "cell": "visible100-sparse-late",
+      "idsHash": "6032AA39CB5562B0",
+      "matchesLinearReference": true,
+      "n": 10000,
+      "selected": 100,
+      "total": 10000,
+      "visited": 49
+    },
+    {
+      "candidates": 0,
+      "cell": "pinned1-last",
+      "idsHash": "7AB991254FF49EAD",
+      "matchesLinearReference": true,
+      "n": 10000,
+      "selected": 1,
+      "total": 10000,
+      "visited": 49
+    },
+    {
+      "candidates": 100,
+      "cell": "visible100-first-pinned1-last",
+      "idsHash": "E4AD4F4BF77EB6FF",
+      "matchesLinearReference": true,
+      "n": 10000,
+      "selected": 101,
+      "total": 10000,
+      "visited": 49
+    },
+    {
+      "candidates": 100,
+      "cell": "visible100-last-pinned1-last",
+      "idsHash": "E4AD4F4BF77EB6FF",
+      "matchesLinearReference": true,
+      "n": 10000,
+      "selected": 101,
+      "total": 10000,
+      "visited": 49
+    },
+    {
+      "candidates": 1,
+      "cell": "visible1-first",
+      "idsHash": "0BCEA661D82BB001",
+      "matchesLinearReference": true,
+      "n": 100000,
+      "selected": 1,
+      "total": 100000,
+      "visited": 49
+    },
+    {
+      "candidates": 1,
+      "cell": "visible1-middle",
+      "idsHash": "0BCEA661D82BB001",
+      "matchesLinearReference": true,
+      "n": 100000,
+      "selected": 1,
+      "total": 100000,
+      "visited": 49
+    },
+    {
+      "candidates": 1,
+      "cell": "visible1-last",
+      "idsHash": "0BCEA661D82BB001",
+      "matchesLinearReference": true,
+      "n": 100000,
+      "selected": 1,
+      "total": 100000,
+      "visited": 49
+    },
+    {
+      "candidates": 100,
+      "cell": "visible100-first",
+      "idsHash": "6032AA39CB5562B0",
+      "matchesLinearReference": true,
+      "n": 100000,
+      "selected": 100,
+      "total": 100000,
+      "visited": 49
+    },
+    {
+      "candidates": 100,
+      "cell": "visible100-last",
+      "idsHash": "6032AA39CB5562B0",
+      "matchesLinearReference": true,
+      "n": 100000,
+      "selected": 100,
+      "total": 100000,
+      "visited": 49
+    },
+    {
+      "candidates": 100,
+      "cell": "visible100-sparse-late",
+      "idsHash": "6032AA39CB5562B0",
+      "matchesLinearReference": true,
+      "n": 100000,
+      "selected": 100,
+      "total": 100000,
+      "visited": 49
+    },
+    {
+      "candidates": 0,
+      "cell": "pinned1-last",
+      "idsHash": "7AB991254FF49EAD",
+      "matchesLinearReference": true,
+      "n": 100000,
+      "selected": 1,
+      "total": 100000,
+      "visited": 49
+    },
+    {
+      "candidates": 100,
+      "cell": "visible100-first-pinned1-last",
+      "idsHash": "E4AD4F4BF77EB6FF",
+      "matchesLinearReference": true,
+      "n": 100000,
+      "selected": 101,
+      "total": 100000,
+      "visited": 49
+    },
+    {
+      "candidates": 100,
+      "cell": "visible100-last-pinned1-last",
+      "idsHash": "E4AD4F4BF77EB6FF",
+      "matchesLinearReference": true,
+      "n": 100000,
+      "selected": 101,
+      "total": 100000,
+      "visited": 49
+    },
+    {
+      "candidates": 1,
+      "cell": "visible1-first",
+      "idsHash": "0BCEA661D82BB001",
+      "matchesLinearReference": true,
+      "n": 300000,
+      "selected": 1,
+      "total": 300000,
+      "visited": 49
+    },
+    {
+      "candidates": 1,
+      "cell": "visible1-middle",
+      "idsHash": "0BCEA661D82BB001",
+      "matchesLinearReference": true,
+      "n": 300000,
+      "selected": 1,
+      "total": 300000,
+      "visited": 49
+    },
+    {
+      "candidates": 1,
+      "cell": "visible1-last",
+      "idsHash": "0BCEA661D82BB001",
+      "matchesLinearReference": true,
+      "n": 300000,
+      "selected": 1,
+      "total": 300000,
+      "visited": 49
+    },
+    {
+      "candidates": 100,
+      "cell": "visible100-first",
+      "idsHash": "6032AA39CB5562B0",
+      "matchesLinearReference": true,
+      "n": 300000,
+      "selected": 100,
+      "total": 300000,
+      "visited": 49
+    },
+    {
+      "candidates": 100,
+      "cell": "visible100-last",
+      "idsHash": "6032AA39CB5562B0",
+      "matchesLinearReference": true,
+      "n": 300000,
+      "selected": 100,
+      "total": 300000,
+      "visited": 49
+    },
+    {
+      "candidates": 100,
+      "cell": "visible100-sparse-late",
+      "idsHash": "6032AA39CB5562B0",
+      "matchesLinearReference": true,
+      "n": 300000,
+      "selected": 100,
+      "total": 300000,
+      "visited": 49
+    },
+    {
+      "candidates": 0,
+      "cell": "pinned1-last",
+      "idsHash": "7AB991254FF49EAD",
+      "matchesLinearReference": true,
+      "n": 300000,
+      "selected": 1,
+      "total": 300000,
+      "visited": 49
+    },
+    {
+      "candidates": 100,
+      "cell": "visible100-first-pinned1-last",
+      "idsHash": "E4AD4F4BF77EB6FF",
+      "matchesLinearReference": true,
+      "n": 300000,
+      "selected": 101,
+      "total": 300000,
+      "visited": 49
+    },
+    {
+      "candidates": 100,
+      "cell": "visible100-last-pinned1-last",
+      "idsHash": "E4AD4F4BF77EB6FF",
+      "matchesLinearReference": true,
+      "n": 300000,
+      "selected": 101,
+      "total": 300000,
+      "visited": 49
+    }
+  ]
+}

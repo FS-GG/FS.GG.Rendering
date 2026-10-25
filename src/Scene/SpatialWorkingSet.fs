@@ -117,21 +117,39 @@ module SpatialWorkingSet =
         if not issues.IsEmpty then
             Error issues
         else
+            // Collect each chunk's member ordinals in one forward pass over a hash table instead of re-adding
+            // to an immutable map and appending to the bucket's list for every member. The previous append
+            // (`values @ [ index ]`) copied the whole bucket per insertion, which is quadratic in the population
+            // of one chunk. Keys are recorded in order of first appearance and added to the map in that order,
+            // so the map has exactly the shape and bucket contents the previous incremental build produced.
             let buckets =
+                let members =
+                    System.Collections.Generic.Dictionary<struct (int64 * int64), int list>()
+
+                let firstAppearance = System.Collections.Generic.List<struct (int64 * int64)>()
+
                 entries
-                |> List.indexed
-                |> List.fold
-                    (fun state (index, entry) ->
-                        seq {
-                            for x in chunkRange chunkSize entry.Bounds.X entry.Bounds.Width do
-                                for y in chunkRange chunkSize entry.Bounds.Y entry.Bounds.Height do
-                                    yield x, y
-                        }
-                        |> Seq.fold
-                            (fun current key ->
-                                let values = Map.tryFind key current |> Option.defaultValue []
-                                Map.add key (values @ [ index ]) current)
-                            state)
+                |> List.iteri (fun index entry ->
+                    for x in chunkRange chunkSize entry.Bounds.X entry.Bounds.Width do
+                        for y in chunkRange chunkSize entry.Bounds.Y entry.Bounds.Height do
+                            let key = struct (x, y)
+
+                            match members.TryGetValue key with
+                            | true, values -> members[key] <- index :: values
+                            | _ ->
+                                members[key] <- [ index ]
+                                firstAppearance.Add key)
+
+                // Ordinals were prepended, so each bucket is descending; a single-member bucket needs no copy.
+                firstAppearance
+                |> Seq.fold
+                    (fun current (struct (x, y) as key) ->
+                        let values =
+                            match members[key] with
+                            | [ _ ] as single -> single
+                            | descending -> List.rev descending
+
+                        Map.add (x, y) values current)
                     Map.empty
 
             let identities =
