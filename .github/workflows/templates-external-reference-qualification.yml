@@ -15,6 +15,10 @@ on:
           - font-disposal
           - current-public-composition
         default: candidate
+      native-input-facility:
+        description: Exact reviewed Noble native-input facility JSON; empty supplies no pins or admission
+        type: string
+        default: ''
       preflight-only:
         description: Verify original archive transport only; false runs full three-family qualification
         type: boolean
@@ -39,6 +43,7 @@ jobs:
           QUALIFICATION_EVENT: ${{ github.event_name }}
           QUALIFICATION_INPUT_SOURCE: ${{ inputs.rendering-input-source }}
           QUALIFICATION_PREFLIGHT_JSON: ${{ toJSON(inputs.preflight-only) }}
+          QUALIFICATION_NATIVE_INPUT_FACILITY: ${{ inputs.native-input-facility }}
   qualify:
     if: ${{ github.event_name != 'workflow_dispatch' || (inputs.rendering-input-source != 'font-disposal' && inputs.rendering-input-source != 'current-public-composition') }}
     needs: static
@@ -66,9 +71,10 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.rendering-input-source == 'current-public-composition' }}
     needs: static
     name: Current published composition and held AT journey
-    uses: FS-GG/FS.GG.Templates/.github/workflows/fable-external-reference-source.yml@59ce6af8b63a816d931e3a2e3f5c1ba890e9427d
+    uses: FS-GG/FS.GG.Templates/.github/workflows/fable-external-reference-source.yml@e5f6924bc57293c2f6f864be53f76815af5d26ff
     with:
-      templates-source: 59ce6af8b63a816d931e3a2e3f5c1ba890e9427d
+      templates-source: e5f6924bc57293c2f6f864be53f76815af5d26ff
       rendering-input-source: current-public-composition
       current-public-at-admission: ''
+      native-input-facility: ${{ inputs.native-input-facility }}
       preflight-only: ${{ inputs.preflight-only }}

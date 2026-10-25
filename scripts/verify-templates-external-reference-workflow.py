@@ -9,7 +9,7 @@ import re
 
 HISTORICAL = '6a5dd5305ac6fe26f9f9726c72b1a7e553b0021b'
 FONT_DISPOSAL = '2f8d400a6a670568044d607a1ac0eb2c7c655a29'
-CURRENT_PUBLIC = '59ce6af8b63a816d931e3a2e3f5c1ba890e9427d'
+CURRENT_PUBLIC = 'e5f6924bc57293c2f6f864be53f76815af5d26ff'
 PATH = Path(__file__).resolve().parents[1]/'.github/workflows/templates-external-reference-qualification.yml'
 
 def jobs(text):
@@ -22,7 +22,7 @@ def schema(text):
     pairs=re.findall(r'^      ([A-Za-z_][A-Za-z0-9_-]*):\n(.*?)(?=^      [A-Za-z_][A-Za-z0-9_-]*:|\Z)',block,re.M|re.S)
     assert len(pairs)==len(dict(pairs)), 'duplicate dispatch input'
     rows=dict(pairs)
-    assert set(rows)=={'rendering-input-source','preflight-only'}, 'closed dispatch keys required'
+    assert set(rows)=={'rendering-input-source','preflight-only','native-input-facility'}, 'closed dispatch keys required'
     result={}
     for key,row in rows.items():
         types=re.findall(r'^        type: (\w+)$',row,re.M);defaults=re.findall(r'^        default: (.+)$',row,re.M)
@@ -30,7 +30,7 @@ def schema(text):
         required=re.findall(r'^        required: (.+)$',row,re.M);assert not required or required==['false']
         options=re.findall(r'^          - (.+)$',row,re.M)
         result[key]=(types[0],defaults[0],options)
-    assert result=={'rendering-input-source':('choice','candidate',['candidate','font-disposal','current-public-composition']),'preflight-only':('boolean','true',[])}, 'safe dispatch defaults/types/options required'
+    assert result=={'rendering-input-source':('choice','candidate',['candidate','font-disposal','current-public-composition']),'preflight-only':('boolean','true',[]),'native-input-facility':('string',"''",[])}, 'safe dispatch defaults/types/options required'
     return result
 
 def dispatch(text,request,event='workflow_dispatch'):
@@ -40,9 +40,12 @@ def dispatch(text,request,event='workflow_dispatch'):
     assert type(request['inputs']) is dict and set(request['inputs'])<=set(fields), 'unknown dispatch input'
     values={}
     for key,(kind,default,options) in fields.items():
-        value=request['inputs'].get(key, default=='true' if kind=='boolean' else default)
-        assert (type(value) is bool if kind=='boolean' else type(value) is str and value in options), 'dispatch type/choice refused'
+        fallback = default=='true' if kind=='boolean' else '' if kind=='string' else default
+        value=request['inputs'].get(key, fallback)
+        assert (type(value) is bool if kind=='boolean' else type(value) is str and
+                (len(value.encode('utf-8')) <= 65536 if kind=='string' else value in options)), 'dispatch type/choice/bound refused'
         values[key]=value
+    assert not values['native-input-facility'] or values['rendering-input-source']=='current-public-composition', 'facility input belongs only to current-public mode'
     selected=[]
     for name,body in jobs(text).items():
         if not name.startswith('qualify'):continue
@@ -64,7 +67,8 @@ def validate_context(text, environment):
     if event=='pull_request':
         return dispatch(text,{'ref':'main','inputs':{}},event)
     inputs={'rendering-input-source':environment.get('QUALIFICATION_INPUT_SOURCE'),
-            'preflight-only':json.loads(environment.get('QUALIFICATION_PREFLIGHT_JSON','null'))}
+            'preflight-only':json.loads(environment.get('QUALIFICATION_PREFLIGHT_JSON','null')),
+            'native-input-facility':environment.get('QUALIFICATION_NATIVE_INPUT_FACILITY')}
     return dispatch(text,{'ref':'main','inputs':inputs},event)
 
 def validate(text):
@@ -72,7 +76,7 @@ def validate(text):
     assert not re.search(r'(contents|actions|packages|id-token): write|secrets:|secrets\.|environment:|continue-on-error|concurrency:',text)
     assert set(jobs(text))=={'static','qualify','qualify-font-disposal','qualify-current-public-composition'}
     assert re.findall(r'^      - run: (.+)$',jobs(text)['static'],re.M)==['python3 scripts/verify-templates-external-reference-workflow.py'], 'production static entrypoint must validate actual context'
-    for handoff in ['QUALIFICATION_EVENT: ${{ github.event_name }}','QUALIFICATION_INPUT_SOURCE: ${{ inputs.rendering-input-source }}','QUALIFICATION_PREFLIGHT_JSON: ${{ toJSON(inputs.preflight-only) }}']:
+    for handoff in ['QUALIFICATION_EVENT: ${{ github.event_name }}','QUALIFICATION_INPUT_SOURCE: ${{ inputs.rendering-input-source }}','QUALIFICATION_PREFLIGHT_JSON: ${{ toJSON(inputs.preflight-only) }}','QUALIFICATION_NATIVE_INPUT_FACILITY: ${{ inputs.native-input-facility }}']:
         assert handoff in jobs(text)['static'], 'actual dispatch context handoff required'
     schema(text)
     for name,pin,mode in [('qualify',HISTORICAL,'candidate'),('qualify-font-disposal',FONT_DISPOSAL,'font-disposal'),('qualify-current-public-composition',CURRENT_PUBLIC,'current-public-composition')]:
@@ -83,6 +87,9 @@ def validate(text):
         assert '    needs: static\n' in body
         if mode == 'current-public-composition':
             assert re.findall(r'^      current-public-at-admission: (.+)$', body, re.M) == ["''"], 'current native admission must remain empty'
+            assert re.findall(r'^      native-input-facility: (.+)$',body,re.M)==['${{ inputs.native-input-facility }}'], 'exact opaque facility handoff required'
+        else:
+            assert 'native-input-facility:' not in body, 'historical callee cannot receive new facility input'
     for mode,job in [('candidate','qualify'),('font-disposal','qualify-font-disposal'),('current-public-composition','qualify-current-public-composition')]:
         for full in [False,True]:
             assert dispatch(text,{'ref':'main','inputs':{'rendering-input-source':mode,'preflight-only':not full}})==(job,full)
@@ -111,6 +118,23 @@ def controls(text):
     # Original40172407851 failed eager GHA resolution of this API-readable intermediate pin.
     bad.append(text.replace(FONT_DISPOSAL, '752a2ac1fa996c3235ac0330ffbcefb6b8301cb4'))
     bad.extend([text.replace(CURRENT_PUBLIC, '0'*40), text.replace('@'+CURRENT_PUBLIC, '@main'), text.replace("current-public-at-admission: ''", "current-public-at-admission: selected"), text.replace(" && inputs.rendering-input-source != 'current-public-composition'", ''), text.replace("inputs.rendering-input-source == 'current-public-composition'", "inputs.rendering-input-source != 'current-public-composition'")])
+    bad.extend([text.replace(CURRENT_PUBLIC,'59ce6af8b63a816d931e3a2e3f5c1ba890e9427d'),
+        text.replace('native-input-facility: ${{ inputs.native-input-facility }}','native-input-facility: fixed'),
+        text.replace("        default: ''","        default: supplied"),
+        text.replace('          QUALIFICATION_NATIVE_INPUT_FACILITY: ${{ inputs.native-input-facility }}\n','')])
+    for payload in ['', '{"source":"exact opaque fixture"}', 'x'*65536, 'é'*32768]:
+        for phase in [False,True]:
+            request={'ref':'main','inputs':{'rendering-input-source':'current-public-composition','preflight-only':phase,'native-input-facility':payload}}
+            assert dispatch(text,request)==('qualify-current-public-composition',not phase)
+            assert validate_context(text,{'QUALIFICATION_EVENT':'workflow_dispatch','QUALIFICATION_INPUT_SOURCE':'current-public-composition',
+                'QUALIFICATION_PREFLIGHT_JSON':json.dumps(phase),'QUALIFICATION_NATIVE_INPUT_FACILITY':payload})==('qualify-current-public-composition',not phase)
+    native_refusals=0
+    for mode,payload in [('candidate','{}'),('font-disposal','{}'),('current-public-composition',True),
+                         ('current-public-composition',{}),('current-public-composition',None),
+                         ('current-public-composition','x'*65537),('current-public-composition','é'*32769)]:
+        try:dispatch(text,{'ref':'main','inputs':{'rendering-input-source':mode,'native-input-facility':payload}})
+        except AssertionError:native_refusals+=1
+        else:raise AssertionError('invalid facility boundary accepted')
     for mutation in bad:
         try:validate(mutation)
         except (AssertionError,ValueError,IndexError):pass
@@ -125,18 +149,23 @@ def controls(text):
         else:raise AssertionError('invalid request shape accepted')
     for mode,job in [('candidate','qualify'),('font-disposal','qualify-font-disposal'),('current-public-composition','qualify-current-public-composition')]:
         for phase in [False,True]:
-            assert validate_context(text,{'QUALIFICATION_EVENT':'workflow_dispatch','QUALIFICATION_INPUT_SOURCE':mode,'QUALIFICATION_PREFLIGHT_JSON':json.dumps(phase)})==(job,not phase)
+            assert validate_context(text,{'QUALIFICATION_EVENT':'workflow_dispatch','QUALIFICATION_INPUT_SOURCE':mode,'QUALIFICATION_PREFLIGHT_JSON':json.dumps(phase),'QUALIFICATION_NATIVE_INPUT_FACILITY':''})==(job,not phase)
     assert validate_context(text,{'QUALIFICATION_EVENT':'pull_request'})==('qualify',False)
-    for environment in [{},{'QUALIFICATION_EVENT':'push'}, {'QUALIFICATION_EVENT':'workflow_dispatch','QUALIFICATION_INPUT_SOURCE':'unknown','QUALIFICATION_PREFLIGHT_JSON':'true'}, {'QUALIFICATION_EVENT':'workflow_dispatch','QUALIFICATION_INPUT_SOURCE':'font-disposal','QUALIFICATION_PREFLIGHT_JSON':'"false"'}, {'QUALIFICATION_EVENT':'workflow_dispatch','QUALIFICATION_INPUT_SOURCE':'font-disposal','QUALIFICATION_PREFLIGHT_JSON':'null'}, {'QUALIFICATION_EVENT':'workflow_dispatch','QUALIFICATION_INPUT_SOURCE':'font-disposal','QUALIFICATION_PREFLIGHT_JSON':'{'}]:
+    bad_contexts = [{},{'QUALIFICATION_EVENT':'push'}, {'QUALIFICATION_EVENT':'workflow_dispatch','QUALIFICATION_INPUT_SOURCE':'unknown','QUALIFICATION_PREFLIGHT_JSON':'true'}, {'QUALIFICATION_EVENT':'workflow_dispatch','QUALIFICATION_INPUT_SOURCE':'font-disposal','QUALIFICATION_PREFLIGHT_JSON':'"false"'}, {'QUALIFICATION_EVENT':'workflow_dispatch','QUALIFICATION_INPUT_SOURCE':'font-disposal','QUALIFICATION_PREFLIGHT_JSON':'null'}, {'QUALIFICATION_EVENT':'workflow_dispatch','QUALIFICATION_INPUT_SOURCE':'font-disposal','QUALIFICATION_PREFLIGHT_JSON':'{'}]
+    for environment in bad_contexts:
+        environment['QUALIFICATION_NATIVE_INPUT_FACILITY']=''
         try:validate_context(text,environment)
         except (AssertionError,ValueError):pass
         else:raise AssertionError('invalid actual dispatch context accepted')
-    for key in ['QUALIFICATION_EVENT','QUALIFICATION_INPUT_SOURCE','QUALIFICATION_PREFLIGHT_JSON']:
+    try:validate_context(text,{'QUALIFICATION_EVENT':'workflow_dispatch','QUALIFICATION_INPUT_SOURCE':'current-public-composition','QUALIFICATION_PREFLIGHT_JSON':'true'})
+    except AssertionError:pass
+    else:raise AssertionError('missing actual facility context became default')
+    for key in ['QUALIFICATION_EVENT','QUALIFICATION_INPUT_SOURCE','QUALIFICATION_PREFLIGHT_JSON','QUALIFICATION_NATIVE_INPUT_FACILITY']:
         mutation=re.sub(r'^          '+key+r':.*\n','',text,flags=re.M)
         try:validate(mutation)
         except AssertionError:pass
         else:raise AssertionError('missing context handoff accepted')
-    print(f'PASS actual dispatch schema/defaults, six finite subject/phase branches, PR refusal, {len(bad)+9} caller/request refusals and 9 actual-context/handoff refusals')
+    print(f'PASS actual dispatch schema/defaults, six finite subject/phase branches, PR refusal, {len(bad)+9} caller/request refusals and 11 actual-context/handoff refusals; {native_refusals} facility type/UTF8/scope refusals')
 
 if __name__=='__main__':
     assert sys.argv[1:] in [[],['--self-test']], 'unknown verifier option'
