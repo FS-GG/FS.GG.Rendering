@@ -9,7 +9,7 @@ import re
 
 HISTORICAL = '6a5dd5305ac6fe26f9f9726c72b1a7e553b0021b'
 FONT_DISPOSAL = '2f8d400a6a670568044d607a1ac0eb2c7c655a29'
-CURRENT_PUBLIC = '3ececb44da3f8498ac9a295f67a7dffd10964a36'
+CURRENT_PUBLIC = '789658f6ba487d839567df6ee556c7a21ede2bd8'
 PATH = Path(__file__).resolve().parents[1]/'.github/workflows/templates-external-reference-qualification.yml'
 
 def jobs(text):
@@ -119,7 +119,7 @@ def controls(text):
     bad.append(text.replace(FONT_DISPOSAL, '752a2ac1fa996c3235ac0330ffbcefb6b8301cb4'))
     bad.extend([text.replace(CURRENT_PUBLIC, '0'*40), text.replace('@'+CURRENT_PUBLIC, '@main'), text.replace("current-public-at-admission: ''", "current-public-at-admission: selected"), text.replace(" && inputs.rendering-input-source != 'current-public-composition'", ''), text.replace("inputs.rendering-input-source == 'current-public-composition'", "inputs.rendering-input-source != 'current-public-composition'")])
     bad.extend([text.replace(CURRENT_PUBLIC,'59ce6af8b63a816d931e3a2e3f5c1ba890e9427d'),
-        text.replace(CURRENT_PUBLIC,'e5f6924bc57293c2f6f864be53f76815af5d26ff'),
+        text.replace(CURRENT_PUBLIC,'3ececb44da3f8498ac9a295f67a7dffd10964a36'),
         text.replace('native-input-facility: ${{ inputs.native-input-facility }}','native-input-facility: fixed'),
         text.replace("        default: ''","        default: supplied"),
         text.replace('          QUALIFICATION_NATIVE_INPUT_FACILITY: ${{ inputs.native-input-facility }}\n','')])
