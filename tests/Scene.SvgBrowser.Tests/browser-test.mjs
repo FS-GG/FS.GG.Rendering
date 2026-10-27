@@ -94,6 +94,8 @@ try {
     throw new Error(`fixture API unavailable: ${consoleErrors.join("\n") || error.message}`);
   });
   publicFixtureViewportEvidence = await page.evaluate(publicFixtureViewportControl);
+  // The lifecycle witness disposes its host; restore the original fixture for existing cases.
+  await page.evaluate(() => { window.svgFoundation.documentMount(); window.scrollTo(0, 0); });
   focusReconciliationEvidence = await producerFocusCompositionControl(page, true);
   const mountedSession = await page.evaluate(() => window.svgFoundation.sessionMount());
   if (mountedSession.listeners !== 2 || mountedSession.frames !== 1 || mountedSession.requests !== 0 || mountedSession.status !== "Running") {
