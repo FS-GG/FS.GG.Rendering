@@ -1344,6 +1344,19 @@ let api =
                     hostedBenchmarkDocument variant cameraX cameraY ids xs ys factions health selected
                 )
                 |> documentError
+            // Test-only camera variant of the existing public-circle document constructor.
+            "replacePublicFixtureViewport"
+            ==> fun (variant: string) (zoom: float) (cameraX: float) (cameraY: float)
+                    (ids: string array) (xs: float array) (ys: float array) ->
+                if zoom <> 1.0 && zoom <> 2.0 then invalidArg "zoom" "Unknown witness zoom."
+                let count = ids.Length
+                let candidate =
+                    hostedBenchmarkDocument variant cameraX cameraY ids xs ys
+                        (Array.zeroCreate count) (Array.create count 10) (Array.create count false)
+                let children =
+                    candidate.Children |> List.map (fun camera ->
+                        { camera with Transform = { camera.Transform with A = zoom; D = zoom } })
+                documentHost.Value.Replace({ candidate with Children = children }) |> documentError
             "replaceOriginalDocument"
             ==> fun () -> documentHost.Value.Replace(PortableDocumentFixture.document) |> documentError
             "documentHit"
