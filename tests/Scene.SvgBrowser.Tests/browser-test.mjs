@@ -1,3 +1,4 @@
+import { suspensionRecoveryControl } from "./suspension-recovery-control.mjs";
 import { publicFixtureViewportControl } from "./public-fixture-viewport-control.mjs";
 import { cameraRevisionControl } from "./camera-revision-control.mjs";
 import { definitionIsolationControl, instanceAppearanceControl } from "./document-reconciliation-control.js";
@@ -88,6 +89,7 @@ let animationEvidence;
 let focusReconciliationEvidence;
 let cameraRevisionEvidence;
 let publicFixtureViewportEvidence;
+let suspensionRecoveryEvidence;
 try {
   await page.goto(`http://127.0.0.1:${address.port}/`, { waitUntil: "networkidle" });
   await page.waitForFunction(() => window.svgFoundation !== undefined, undefined, { timeout: 5000 }).catch((error) => {
@@ -96,6 +98,7 @@ try {
   publicFixtureViewportEvidence = await page.evaluate(publicFixtureViewportControl);
   // The lifecycle witness disposes its host; restore the original fixture for existing cases.
   await page.evaluate(() => { window.svgFoundation.documentMount(); window.scrollTo(0, 0); });
+  suspensionRecoveryEvidence = await page.evaluate(suspensionRecoveryControl);
   focusReconciliationEvidence = await producerFocusCompositionControl(page, true);
   const mountedSession = await page.evaluate(() => window.svgFoundation.sessionMount());
   if (mountedSession.listeners !== 2 || mountedSession.frames !== 1 || mountedSession.requests !== 0 || mountedSession.status !== "Running") {
@@ -911,6 +914,7 @@ const evidence = {
     focusReconciliation: focusReconciliationEvidence,
     cameraRevisionIsolation: cameraRevisionEvidence,
     publicFixtureViewport: publicFixtureViewportEvidence,
+    suspensionRecovery: suspensionRecoveryEvidence,
   },
   browserMatrix: browserMatrixEvidence,
   document: { ...documentEvidence, exportedSvg: undefined },
