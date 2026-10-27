@@ -468,5 +468,5 @@ let tests =
             "Feature 109 performance-scenario corpus — scheduled deterministic metrics goldens (US2, SC-005/006)"
             cases
     else
-        // PendingTest: owner=FS-GG/FS.GG.Rendering#1047 review-by=2026-10-26
+        // PendingTest: owner=FS-GG/FS.GG.Rendering#1047 review-by=2026-11-02
         ptestList "Feature 109 performance-scenario corpus — runs in pending-tests.yml scheduled cadence" cases

@@ -18,25 +18,34 @@ such skip. Three kinds live here:
 - `tests/Elmish.Tests/Feature109BaselineReportTests.fs` — "non-golden timing/allocation
   baselines" (`ptestList` in the default tier, active on the scheduled tier).
 
-**Owner/review**: `FS-GG/FS.GG.Rendering#1047`, review by **2026-10-26**. The
+**Owner/review**: `FS-GG/FS.GG.Rendering#1047`, review by **2026-11-02**. The
 `pending-tests.yml` Monday cadence sets `FSGG_SCHEDULED_PENDING_TESTS=1`, regenerates the
 environment-dependent evidence in an isolated job, asserts both suites, and uploads the result.
 The default PR tier keeps them pending so wall-clock/allocation evidence cannot become a merge gate.
 `PendingTestOwnershipTests` fails once the review date expires.
 
+**Reviewed 2026-10-27**: the [26 October scheduled run](https://github.com/FS-GG/FS.GG.Rendering/actions/runs/40312471519)
+at `775505f82d4391360c2b5ee610be0ffeaa4f385a` passed all 308 tests with no failures or skips,
+using the scheduled flag and both regeneration flags, and uploaded its evidence. The
+[owner review](https://github.com/FS-GG/FS.GG.Rendering/issues/1047#issuecomment-6436025407)
+retains this cadence and the unchanged assertions. Rendering maintenance and the active programme
+coordinator own the next Monday review on 2 November, or earlier review if the cadence fails,
+misses a run, its flags/evidence drift, or a supported tier change is proposed. The original
+27 October expired-review failure remains retained; this review does not promote timing or
+allocation evidence into PR acceptance.
+
 **Review when**: the scheduled evidence should be promoted, split, or retired. A capable
 faithful-vsync runner may justify a separate host cadence, but is not required for this
 deterministic offscreen/count evidence.
 
-## 2. Documentation-fence whole-corpus drive → compilation-model decision
+## 2. Documentation-fence whole-corpus drive — active
 
-- `tests/DocFences.Tests/DriveTests.fs` — full published-skill fence compilation (`ptestList`).
-
-**Owner/review**: `FS-GG/FS.GG.Rendering#1050`, review by **2026-10-26**. That decision owns
-the choice between per-document concatenation, a shared product prelude, and an explicitly
-self-contained corpus. `PendingTestOwnershipTests` fails once the review date expires.
-
-**Un-skip when**: Rendering#1050 chooses and implements the compilation model.
+`tests/DocFences.Tests/DriveTests.fs` uses an active `testList` under the compilation model
+established by Rendering#1050 and refreshed by Rendering#1256. The complete inventory classifies
+fences as `SelfContained` or `Contextual` with a reason. Every self-contained fence compiles
+against the published pins; contextual snippets retain their symbol oracle. This is no longer
+an unconditional pending suite. Its existing unpublished-pin release-window waiver remains
+conditional on the actual restore result.
 
 ## 3. Parity samples not imported → Stage R4 — unconditional — 4
 
