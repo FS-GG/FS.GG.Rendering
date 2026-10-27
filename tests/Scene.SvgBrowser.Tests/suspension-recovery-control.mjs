@@ -63,11 +63,13 @@ export async function suspensionRecoveryControl(w = window) {
   const sameScene = (before, code) => { const after = scene(); check(JSON.stringify(after) === JSON.stringify(before), code, { before: receipt(before), after: receipt(after) }); };
   const identity = () => {
     const root = rootOf(), layer = root.querySelector('[data-scene-layer-id="units"]'), beta = root.querySelector('[data-scene-object-id="beta"]');
-    const nodes = [beta, ...beta.querySelectorAll('*')];
-    return () => check(rootOf() === root && root.querySelector('[data-scene-layer-id="units"]') === layer
+    const nodes = [beta, ...beta.querySelectorAll('*')], markup = beta.outerHTML;
+    return () => { check(rootOf() === root && root.querySelector('[data-scene-layer-id="units"]') === layer
       && root.querySelector('[data-scene-object-id="beta"]') === beta && beta.isConnected
       && [beta, ...beta.querySelectorAll('*')].every((node, i) => node === nodes[i])
       && beta.querySelectorAll('*').length + 1 === nodes.length, 'UNAFFECTED_IDENTITY');
+      check(beta.outerHTML === markup, 'UNAFFECTED_CONTENT', { expectedMarkup: markup, actualMarkup: beta.outerHTML });
+    };
   };
   const forceRetire = name => {
     for (const [id, row] of frames) if (row.owner === name) { native.cancel.call(w, id); frames.delete(id); }
@@ -106,15 +108,19 @@ export async function suspensionRecoveryControl(w = window) {
         const start = await frame(); let end;
         do { end = await frame(); } while (end.timestamp - start.timestamp < 1100);
         check(advances(f.sessionObserve()).length === advances(suspended).length && f.sessionObserve().requests === 0, 'SUSPENDED_INERT');
+        sameScene(before, 'SUSPENDED_SCENE'); retained();
         if (kind === 'clock') fault = { owner: name, kind, shiftNext: true };
         const resumed = kind === 'missing-resume' ? f.sessionObserve() : owned(name, () => f.sessionResume());
         check(resumed.status === 'Running' && resumed.frames === 1, 'RESUME_RUNNING', { status: resumed.status, frames: resumed.frames, actual: census(name) });
+        sameScene(before, 'RESUME_SCENE'); retained();
         const first = await frame(() => f.sessionObserve()), second = await frame(() => f.sessionObserve());
         const oldAdvances = advances(suspended), firstAdvances = advances(first.value), secondAdvances = advances(second.value);
         const expectedElapsed = Math.round((second.timestamp - first.timestamp) * 1000);
         check(first.value.status === 'Running' && firstAdvances.length === oldAdvances.length
           && second.value.status === 'Running' && secondAdvances.length === oldAdvances.length + 1
           && expectedElapsed > 0 && Math.abs(secondAdvances.at(-1) - expectedElapsed) <= 1, 'CLOCK_BOUNDARY', { nativeTimestamps: [first.timestamp, second.timestamp], firstStatus: first.value.status, secondStatus: second.value.status, beforeAdvanceCount: oldAdvances.length, firstAdvanceCount: firstAdvances.length, secondAdvanceCount: secondAdvances.length, expectedElapsed, lastAdvance: secondAdvances.at(-1) ?? null });
+        if (kind === 'resume-content') rootOf().querySelector('[data-scene-object-id="alpha"] rect').setAttribute('width', '999');
+        sameScene(before, 'RESUME_SCENE'); retained();
         check(second.value.requests === 1 && second.value.frames === 1 && second.value.listeners === 2 && census(name).frames === 1 && census(name).listeners === 2, 'LOCAL_RECOVERED_OWNERSHIP');
         const freshPending = f.sessionObserve(), staleBefore = scene();
         check(pending.generation === freshPending.generation - 1, 'PREVIOUS_GENERATION_MAPPING');
@@ -123,6 +129,7 @@ export async function suspensionRecoveryControl(w = window) {
         sameScene(staleBefore, 'STALE_SCENE');
         check(stale.requests === 1 && stale.revision === freshPending.revision && stale.generation === freshPending.generation, 'STALE_PENDING');
         const revision = 3 + cycle, applied = owned(name, () => f.sessionCompleteCurrent(revision, `fresh-${cycle}`));
+        if (kind === 'beta-content') rootOf().querySelector('[data-scene-object-id="beta"] circle').setAttribute('fill', 'rgb(1 2 3)');
         const after = scene();
         check(applied.revision === revision && after.revision === revision && after.width === String(20 + revision) && after.markup !== staleBefore.markup, 'FRESH_APPLIED'); retained();
         check(applied.listeners === 2 && applied.frames === 1 && (applied.requests === 0 || applied.requests === 1) && JSON.stringify(census(name)) === JSON.stringify(baseline), 'LOCAL_CYCLE_BOUNDED');
@@ -157,6 +164,7 @@ export async function suspensionRecoveryControl(w = window) {
         sameScene(before, 'EXTERNAL_INVALIDATE_SCENE'); retained();
         const current = owned(name, () => f.externalDemand());
         check(current.requests === 1 && current.acquisition !== old.acquisition && current.generation !== old.generation && current.listeners === 2 && JSON.stringify(census(name)) === JSON.stringify(baseline), 'EXTERNAL_FRESH_PENDING');
+        sameScene(before, 'EXTERNAL_DEMAND_SCENE'); retained();
         owned(name, () => kind === 'external-stale'
           ? f.externalComplete(current.generation, current.acquisition, current.epoch, 99, `old-${cycle}`)
           : f.externalComplete(old.generation, old.acquisition, old.epoch, 99, `old-${cycle}`));
@@ -209,13 +217,15 @@ export async function suspensionRecoveryControl(w = window) {
     await reject('missing-reactivation', 'RESUME_RUNNING', () => local('missing-reactivation', 1, 'missing-resume'));
     await reject('local-stale-misrouting', 'STALE_SCENE', () => local('local-stale-misrouting', 1, 'local-stale'));
     await reject('external-stale-misrouting', 'EXTERNAL_STALE_SCENE', () => external('external-stale-misrouting', 1, 'external-stale'));
+    await reject('local-beta-content-corruption', 'UNAFFECTED_CONTENT', () => local('local-beta-content-corruption', 1, 'beta-content'));
+    await reject('local-resume-content-corruption', 'RESUME_SCENE', () => local('local-resume-content-corruption', 1, 'resume-content'));
     await reject('corrupted-resumed-timestamp', 'CLOCK_BOUNDARY', () => local('corrupted-resumed-timestamp', 1, 'clock'));
     await reject('local-listener-leak', 'DISPOSAL_LISTENER', () => disposalFault('local-listener-leak', 'listener-leak'));
     await reject('external-listener-leak', 'DISPOSAL_LISTENER', () => disposalFault('external-listener-leak', 'listener-leak', true));
     await reject('local-frame-leak', 'DISPOSAL_FRAME', () => disposalFault('local-frame-leak', 'frame-leak'));
     const localResult = await local('local-positive', 6);
     const externalResult = await external('external-positive', 6);
-    check(controls.length === 7, 'CONTROL_CENSUS');
+    check(controls.length === 9, 'CONTROL_CENSUS');
     return { result: 'pass', local: localResult, external: externalResult, controls,
       nativeFrameLog: frameLog.filter(row => row.owner.endsWith('-positive')),
       scope: 'Controlled software blur and explicit caller recovery; native timestamps on the normal path. No real OS background, transport, native engine, product, heap, GPU or performance acceptance.' };
