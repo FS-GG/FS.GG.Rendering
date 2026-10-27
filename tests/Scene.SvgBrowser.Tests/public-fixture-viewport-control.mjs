@@ -10,6 +10,16 @@ export function publicFixtureViewportControl(w = window) {
   const canonical = node => [node.namespaceURI, node.localName,
     [...node.attributes].map(a => [a.name, a.value]).sort((a, b) => a[0].localeCompare(b[0])),
     node.children.length ? null : node.textContent, [...node.children].map(canonical)];
+  const firstDifference = (expected, actual, path = []) => {
+    if (Array.isArray(expected) && Array.isArray(actual)) {
+      for (let i = 0; i < Math.max(expected.length, actual.length); i++) {
+        const difference = firstDifference(expected[i], actual[i], [...path, i]);
+        if (difference) return difference;
+      }
+      return null;
+    }
+    return expected === actual ? null : { path, exported: expected ?? null, live: actual ?? null };
+  };
   const idsOf = root => [...nodeOf(root, 'bench-camera').children].map(n => n.getAttribute('data-fsgg-element-id'));
   const counts = root => ({ nodes: root.querySelectorAll('*').length + 1, definitions: definitions(root).length, listeners: listeners.size, frames: pending.size });
   const baseline = [{ id: 'viewport-stable', x: 60, y: 100 }, { id: 'viewport-edge', x: 470, y: 100 }];
@@ -44,7 +54,8 @@ export function publicFixtureViewportControl(w = window) {
     try { inspect(); } catch (error) { caught = error.message.startsWith('public fixture viewport:'); }
     finally { restore(); }
     require(caught, `causal control did not reject ${name}`);
-    inspect(); return name;
+    try { inspect(); } catch (error) { throw Error(`public fixture viewport: control restoration ${name}: ${error.message}`); }
+    return name;
   };
   const results = [];
   try {
@@ -90,7 +101,8 @@ export function publicFixtureViewportControl(w = window) {
         }
         const exported = exportDocument();
         require(JSON.stringify(idsOf(exported)) === JSON.stringify(units.map(u => u.id)), 'full accepted export population');
-        require(JSON.stringify(canonical(exported)) === JSON.stringify(canonical(root)), 'full accepted export geometry/definitions');
+        const exportDifference = firstDifference(canonical(exported), canonical(root));
+        require(!exportDifference, `full accepted export geometry/definitions: ${JSON.stringify(exportDifference)}`);
         require(counts(root).listeners === 0 && counts(root).frames === 0, 'document owned resources');
       };
       inspect(baseline);
@@ -103,9 +115,11 @@ export function publicFixtureViewportControl(w = window) {
       controls.push(rejected('stale-definition', () => defsContainer.append(extraDef), () => inspect(baseline), () => extraDef.remove()));
       const clone = stable.cloneNode(true);
       controls.push(rejected('reconstruction', () => stable.replaceWith(clone), () => inspect(baseline), () => clone.replaceWith(stable)));
-      const priorStyle = stable.getAttribute('style');
-      controls.push(rejected('wrong-visibility', () => stable.style.visibility = 'hidden', () => inspect(baseline), () => {
-        if (priorStyle === null) stable.removeAttribute('style'); else stable.setAttribute('style', priorStyle);
+      // Mutate SVG presentation directly: CSSOM style access may materialize an empty
+      // style attribute after removal, which would itself contaminate export equality.
+      const priorVisibility = stable.getAttribute('visibility');
+      controls.push(rejected('wrong-visibility', () => stable.setAttribute('visibility', 'hidden'), () => inspect(baseline), () => {
+        if (priorVisibility === null) stable.removeAttribute('visibility'); else stable.setAttribute('visibility', priorVisibility);
       }));
       for (const [name, descendant] of [
         ['health-descendant-reconstruction', nodeOf(root, `${baseline[0].id}/health`).firstElementChild],

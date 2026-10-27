@@ -260,5 +260,5 @@ let tests =
             "Feature 109 scheduled non-golden timing/allocation baselines (US4, FR-016/017/018/019, SC-007/009)"
             cases
     else
-        // PendingTest: owner=FS-GG/FS.GG.Rendering#1047 review-by=2026-10-26
+        // PendingTest: owner=FS-GG/FS.GG.Rendering#1047 review-by=2026-11-02
         ptestList "Feature 109 timing/allocation baselines — runs in pending-tests.yml scheduled cadence" cases
