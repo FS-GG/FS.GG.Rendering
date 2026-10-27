@@ -6,6 +6,10 @@ export function publicFixtureViewportControl(w = window) {
   const rootOf = () => container.querySelector('svg');
   const nodeOf = (root, id) => [...root.querySelectorAll('[data-fsgg-element-id]')].find(n => n.getAttribute('data-fsgg-element-id') === id);
   const definitions = root => [...root.querySelectorAll('defs > *')];
+  const treeNodes = node => [node, ...node.querySelectorAll('*')];
+  const canonical = node => [node.namespaceURI, node.localName,
+    [...node.attributes].map(a => [a.name, a.value]).sort((a, b) => a[0].localeCompare(b[0])),
+    node.children.length ? null : node.textContent, [...node.children].map(canonical)];
   const idsOf = root => [...nodeOf(root, 'bench-camera').children].map(n => n.getAttribute('data-fsgg-element-id'));
   const counts = root => ({ nodes: root.querySelectorAll('*').length + 1, definitions: definitions(root).length, listeners: listeners.size, frames: pending.size });
   const baseline = [{ id: 'viewport-stable', x: 60, y: 100 }, { id: 'viewport-edge', x: 470, y: 100 }];
@@ -57,10 +61,16 @@ export function publicFixtureViewportControl(w = window) {
       const root = rootOf(); root.scrollIntoView({ block: 'start' });
       const stable = nodeOf(root, baseline[0].id), stableGlyph = nodeOf(root, `${baseline[0].id}/glyph`);
       const defs = definitions(root), initial = counts(root);
+      const unaffected = [...baseline.map(u => nodeOf(root, u.id)), ...defs].map(node => ({ node, descendants: treeNodes(node) }));
       const inspect = (units, x = 0, zoom = 1, removed = []) => {
         require(rootOf() === root, 'root reconstructed');
         require(nodeOf(root, baseline[0].id) === stable && nodeOf(root, `${baseline[0].id}/glyph`) === stableGlyph, 'unaffected node reconstructed');
         require(JSON.stringify(idsOf(root)) === JSON.stringify(units.map(u => u.id)), 'population includes stale removed nodes');
+        for (const retained of unaffected) {
+          const current = treeNodes(retained.node);
+          require(retained.node.isConnected && current.length === retained.descendants.length
+            && current.every((node, i) => node === retained.descendants[i]), 'unaffected descendant reconstructed');
+        }
         require(definitions(root).length === defs.length && definitions(root).every((n, i) => n === defs[i]), 'definition stale/reconstructed');
         require(nodeOf(root, 'bench-camera').getAttribute('transform') === `matrix(${zoom} 0 0 ${zoom} ${x} 0)`, 'camera geometry');
         for (const unit of units) {
@@ -80,6 +90,7 @@ export function publicFixtureViewportControl(w = window) {
         }
         const exported = exportDocument();
         require(JSON.stringify(idsOf(exported)) === JSON.stringify(units.map(u => u.id)), 'full accepted export population');
+        require(JSON.stringify(canonical(exported)) === JSON.stringify(canonical(root)), 'full accepted export geometry/definitions');
         require(counts(root).listeners === 0 && counts(root).frames === 0, 'document owned resources');
       };
       inspect(baseline);
@@ -92,7 +103,27 @@ export function publicFixtureViewportControl(w = window) {
       controls.push(rejected('stale-definition', () => defsContainer.append(extraDef), () => inspect(baseline), () => extraDef.remove()));
       const clone = stable.cloneNode(true);
       controls.push(rejected('reconstruction', () => stable.replaceWith(clone), () => inspect(baseline), () => clone.replaceWith(stable)));
-      controls.push(rejected('wrong-visibility', () => stable.style.visibility = 'hidden', () => inspect(baseline), () => stable.style.removeProperty('visibility')));
+      const priorStyle = stable.getAttribute('style');
+      controls.push(rejected('wrong-visibility', () => stable.style.visibility = 'hidden', () => inspect(baseline), () => {
+        if (priorStyle === null) stable.removeAttribute('style'); else stable.setAttribute('style', priorStyle);
+      }));
+      for (const [name, descendant] of [
+        ['health-descendant-reconstruction', nodeOf(root, `${baseline[0].id}/health`).firstElementChild],
+        ['offscreen-descendant-reconstruction', nodeOf(root, `${baseline[1].id}/glyph`).firstElementChild],
+        ...(defs.length ? [['definition-descendant-reconstruction', defs[0].firstElementChild]] : []),
+      ]) {
+        const descendantClone = descendant.cloneNode(true);
+        controls.push(rejected(name, () => descendant.replaceWith(descendantClone), () => inspect(baseline), () => descendantClone.replaceWith(descendant)));
+      }
+      const originalExport = f.documentExport;
+      controls.push(rejected('truncated-export', () => {
+        f.documentExport = () => {
+          const exported = new w.DOMParser().parseFromString(originalExport(), 'image/svg+xml');
+          // Preserve every instance ID while dropping off-viewport accepted glyph content.
+          nodeOf(exported.documentElement, `${baseline[1].id}/glyph`).replaceChildren();
+          return new w.XMLSerializer().serializeToString(exported);
+        };
+      }, () => inspect(baseline), () => { f.documentExport = originalExport; }));
       if (defs.length) {
         const definitionClone = defs[0].cloneNode(true);
         controls.push(rejected('definition-reconstruction', () => defs[0].replaceWith(definitionClone), () => inspect(baseline), () => definitionClone.replaceWith(defs[0])));
