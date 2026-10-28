@@ -65,13 +65,44 @@ let scopeSourceFromReceipt (context: ScopeContext) (receipt: JsonElement) =
 
 // Exact English primary-source text at NuGetGalleryc25bab0, ServicesStrings.resx.
 // This diagnostic never turns a rejected response into scope or writer eligibility.
-type private RefusalDiagnostic = VerificationScopePolicy | Unclassified
+// Only closed tags can leave the parser; arbitrary header/body text never does.
+type private Media = Missing | Text | Html | Json | Other
+type private EncodingKind = Unspecified | Utf8 | OtherEncoding | Encoded
+type private Size = Unknown | Bounded | DeclaredOversize | StreamOversize
+type private ReadDisposition = Empty | Unmatched | Reflection | NonUtf8 | Timeout | ReadFailure | NotRead | LimitReached
+
+type private RefusalDiagnostic = VerificationScopePolicy | Unclassified of Media * EncodingKind * Size * ReadDisposition
+
+let effectiveAccountAccepted account = String.Equals(account, "Paradigma11", StringComparison.Ordinal)
+
+let private diagnosticOutcome = function
+    | VerificationScopePolicy -> "security-policy-verification-scope-required"
+    | Unclassified(media, encoding, size, disposition) ->
+        let m = match media with Missing->"missing" | Text->"text" | Html->"html" | Json->"json" | Other->"other"
+        let e = match encoding with Unspecified->"unspecified" | Utf8->"utf8" | OtherEncoding->"other" | Encoded->"encoded"
+        let s = match size with Unknown->"unknown" | Bounded->"bounded" | DeclaredOversize->"declared-oversize" | StreamOversize->"stream-oversize"
+        let r = match disposition with Empty->"empty" | Unmatched->"unmatched" | Reflection->"reflection" | NonUtf8->"non-utf8" | Timeout->"timeout" | ReadFailure->"read-failure" | NotRead->"not-read" | LimitReached->"limit-reached"
+        "authorization-unproven:m-"+m+":e-"+e+":s-"+s+":r-"+r
 
 let private refusalDiagnostic (key: string) (response: HttpResponseMessage) (cancellation: CancellationToken) =
+    let mutable media = Missing
+    let mutable encoding = Unspecified
+    let mutable size = Unknown
+    let unclassified disposition = Unclassified(media, encoding, size, disposition)
     try
+        match response.Content.Headers.ContentType |> Option.ofObj with
+        | None -> ()
+        | Some contentType ->
+            media <- match Option.ofObj contentType.MediaType |> Option.map(fun value -> value.ToLowerInvariant()) with
+                     | Some "text/plain" -> Text | Some "text/html" -> Html | Some "application/json" -> Json | _ -> Other
+            encoding <- match Option.ofObj contentType.CharSet |> Option.map(fun value -> value.Trim('"').ToLowerInvariant()) with
+                        | None | Some "" -> Unspecified | Some "utf-8" -> Utf8 | _ -> OtherEncoding
+        if response.Content.Headers.ContentEncoding.Count>0 then encoding <- Encoded
         let limit = 4096
         let length = response.Content.Headers.ContentLength
-        if length.HasValue && (length.Value < 0L || length.Value > int64 limit) then Unclassified
+        if length.HasValue && (length.Value < 0L || length.Value > int64 limit) then
+            size <- DeclaredOversize
+            unclassified NotRead
         else
             use stream = response.Content.ReadAsStreamAsync(cancellation).WaitAsync(cancellation).GetAwaiter().GetResult()
             let bytes = Array.zeroCreate<byte> (limit + 1)
@@ -80,14 +111,22 @@ let private refusalDiagnostic (key: string) (response: HttpResponseMessage) (can
             while not ended && count < bytes.Length do
                 let received = stream.ReadAsync(bytes.AsMemory(count, bytes.Length - count), cancellation).AsTask().WaitAsync(cancellation).GetAwaiter().GetResult()
                 if received = 0 then ended <- true else count <- count + received
-            if not ended || count > limit then Unclassified
+            if not ended || count > limit then
+                size <- StreamOversize
+                unclassified LimitReached
             else
-                let body = UTF8Encoding(false, true).GetString(bytes, 0, count)
-                let policy = "A package verification key is required to push symbols. Please contact support@nuget.org to get more details."
-                if body.Contains(key, StringComparison.Ordinal) then Unclassified
-                elif body.Trim([| ' '; '\t'; '\r'; '\n' |]) = policy then VerificationScopePolicy
-                else Unclassified
-    with _ -> Unclassified
+                size <- Bounded
+                if count=0 then unclassified Empty
+                else
+                    let body = UTF8Encoding(false, true).GetString(bytes, 0, count)
+                    let policy = "A package verification key is required to push symbols. Please contact support@nuget.org to get more details."
+                    if body.Contains(key, StringComparison.Ordinal) then unclassified Reflection
+                    elif body.Trim([| ' '; '\t'; '\r'; '\n' |]) = policy then VerificationScopePolicy
+                    else unclassified Unmatched
+    with
+    | :? DecoderFallbackException -> unclassified NonUtf8
+    | :? OperationCanceledException -> unclassified Timeout
+    | _ -> unclassified ReadFailure
 
 let httpTransportWithHandler (key: string) (handler: HttpMessageHandler) : Transport =
     let client = new HttpClient(handler, true)
@@ -104,9 +143,7 @@ let httpTransportWithHandler (key: string) (handler: HttpMessageHandler) : Trans
                 let outcome =
                     if status = 200 then "authorized"
                     elif status = 400 then
-                        match refusalDiagnostic key response deadline.Token with
-                        | VerificationScopePolicy -> "security-policy-verification-scope-required"
-                        | Unclassified -> "authorization-unproven"
+                        refusalDiagnostic key response deadline.Token |> diagnosticOutcome
                     else "authorization-unproven"
                 { PackageId=id; HttpStatus=Some status; Outcome=outcome }
         with _ -> { PackageId=id; HttpStatus=None; Outcome="transport-unavailable" }

@@ -692,6 +692,10 @@ jobs:
         run: python3 scripts/release-source-guard.py --retained-successor --attempt-preflight --source-sha 4ede04be66cedffc8551cd14045bab714aa358a7 --plan eng/release/palette-heading-0.32.4.json --version 0.32.4
       - name: Recheck executor before OIDC authority
         run: python3 scripts/release-source-guard.py --executor-only
+      - name: Verify effective NuGet account before login
+        env:
+          FSGG_NUGET_ACCOUNT: ${{ secrets.NUGET_USER || 'Paradigma11' }}
+        run: dotnet fsi --exec scripts/release-nuget-verify-key.fsx --check-account
       - name: NuGet login preflight (OIDC only; existing-ID verification GETs)
         id: nuget-preflight-login
         uses: NuGet/login@v1
@@ -1082,6 +1086,11 @@ jobs:
 
       - name: Recheck executor before OIDC authority
         run: python3 scripts/release-source-guard.py --executor-only
+      - name: Verify effective NuGet account before login
+        if: steps.ver.outputs.push == 'true'
+        env:
+          FSGG_NUGET_ACCOUNT: ${{ secrets.NUGET_USER || 'Paradigma11' }}
+        run: dotnet fsi --exec scripts/release-nuget-verify-key.fsx --check-account
       - name: NuGet login (OIDC → short-lived nuget.org key)
         if: steps.ver.outputs.push == 'true'
         id: nuget-login
