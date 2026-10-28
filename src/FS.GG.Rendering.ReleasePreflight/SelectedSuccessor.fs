@@ -66,7 +66,10 @@ module SelectedSuccessor =
     let private hash (raw: string) =
         System.Security.Cryptography.SHA256.HashData(Text.Encoding.UTF8.GetBytes raw)
         |> Convert.ToHexString |> fun value -> value.ToLowerInvariant()
-    let private text (root: JsonElement) (key: string) = root.GetProperty(key).GetString()
+    let private text (root: JsonElement) (key: string) =
+        root.GetProperty(key).GetString()
+        |> Option.ofObj
+        |> Option.defaultWith (fun () -> invalidArg "evidence" ("null-text-" + key))
     let private json raw = JsonDocument.Parse(raw: string)
     let private need condition reason = if not condition then invalidArg "evidence" reason
     let private archivedRows (rows: JsonElement) =
