@@ -1646,6 +1646,62 @@ class RetainedSuccessorTransportTests(unittest.TestCase):
             with self.subTest(refs=text),patch.object(self.subject.preflight,'git',return_value=text):
                 with self.assertRaises(SystemExit):self.subject.retained_producer_tags(ROOT,source)
 
+    def test_actual_detached_executor_fetches_missing_retained_producer_before_acquisition(self):
+        workflow=(ROOT/'.github/workflows/release.yml').read_text()
+        body=re.search(r'^  publication-preflight:\n(.*?)(?=^  [a-z-]+:|\Z)',workflow,re.M|re.S).group(1)
+        fetch='      - name: Fetch and bind the exact candidate source without executing it'
+        acquire='      - name: Acquire and interpret the selected retained inputs without writer admission'
+        self.assertLess(body.index(fetch),body.index(acquire))
+        self.assertLess(body.index(acquire),body.index('      - name: Recheck executor before OIDC authority'))
+        self.assertLess(body.index(acquire),body.index('      - name: NuGet login preflight'))
+        step=body.split(fetch,1)[1].split('      - name:',1)[0]
+        script='\n'.join(line[10:] for line in step.split('        run: |\n',1)[1].splitlines())
+        producer='4ede04be66cedffc8551cd14045bab714aa358a7'
+        executor='41ef831827ee1d49528c84bb3f1678d495f89375'
+        gate=(ROOT/'.github/workflows/gate.yml').read_text()
+        acquisition=re.search(r'^        run: (git fetch --no-tags --depth=1 origin 730923[^\n]+)$',gate,re.M).group(1)
+        self.assertIn(producer,acquisition.split())
+        self.assertIn(executor,acquisition.split())
+        self.assertLess(gate.index(acquisition),gate.index('python3 scripts/test-release-source-guard.py'))
+        plan='eng/release/palette-heading-0.32.4.json'
+        scripts=[('publication-preflight',script)]
+        tags=(ROOT/'.github/workflows/release-tags.yml').read_text()
+        for name in ('selected-tag-plan','selected-tag-cut'):
+            job=re.search(r'^  '+name+r':\n(.*?)(?=^  [a-z-]+:|\Z)',tags,re.M|re.S).group(1)
+            marker='      - name: Fetch exact selected producer source without executing it'
+            self.assertEqual(1,job.count(marker))
+            self.assertLess(job.index(marker),job.index('python3 scripts/selected-producer-tags.py'))
+            step=job.split(marker,1)[1].split('      - name:',1)[0]
+            scripts.append((name,'\n'.join(line[10:] for line in step.split('        run: |\n',1)[1].splitlines())))
+        for name,script in scripts:
+            with self.subTest(job=name),tempfile.TemporaryDirectory() as folder:
+                checkout=Path(folder)/'executor'
+                def git(*args,check=True):
+                    return subprocess.run(['git','-C',str(checkout),*args],check=check,capture_output=True,text=True,timeout=60)
+                subprocess.run(['git','init','--quiet',str(checkout)],check=True,capture_output=True,timeout=10)
+                git('config','gc.auto','0')
+                git('config','maintenance.auto','false')
+                git('remote','add','origin',str(ROOT))
+                # Each real executor starts without producer custody; no job shares a checkout.
+                git('fetch','--quiet','--no-tags','--depth=1','origin',executor)
+                git('checkout','--quiet','--detach','FETCH_HEAD')
+                self.assertEqual(executor,git('rev-parse','HEAD').stdout.strip())
+                self.assertNotEqual(0,git('cat-file','-e',producer+'^{commit}',check=False).returncode)
+                with self.assertRaises(subprocess.CalledProcessError) as missing:
+                    self.subject.source_bytes(checkout,producer,plan)
+                self.assertEqual(128,missing.exception.returncode)
+                env={**os.environ,'REQUESTED_SOURCE':producer,'SELECTED_SOURCE_SHA':producer,'GITHUB_SHA':executor,'GITHUB_OUTPUT':str(Path(folder)/'outputs')}
+                if name!='publication-preflight':
+                    for invalid in ('main','--upload-pack=wrong',producer.upper()):
+                        result=subprocess.run(['bash','-c',script],cwd=checkout,env={**env,'SELECTED_SOURCE_SHA':invalid},capture_output=True,text=True,timeout=10)
+                        self.assertEqual(3,result.returncode,result.stderr)
+                        self.assertNotEqual(0,git('cat-file','-e',producer+'^{commit}',check=False).returncode)
+                fetched=subprocess.run(['bash','-c',script],cwd=checkout,env=env,capture_output=True,text=True,timeout=60)
+                self.assertEqual(0,fetched.returncode,fetched.stderr)
+                if name=='publication-preflight':self.assertEqual('sha='+producer+'\n',Path(env['GITHUB_OUTPUT']).read_text())
+                self.assertEqual(executor,git('rev-parse','HEAD').stdout.strip())
+                self.assertEqual('4bcbb1c756a799ab634e14d1fc9191ac51a8cd5d3537aec75eeab1c1d545deaa',hashlib.sha256(self.subject.source_bytes(checkout,producer,plan)).hexdigest())
+
     def test_retention_allows_identical_bytes_and_refuses_replacement(self):
         with tempfile.TemporaryDirectory() as folder:
             path=Path(folder)/'original.zip'

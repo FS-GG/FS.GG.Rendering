@@ -673,9 +673,6 @@ jobs:
           name: rendering-release-toolchain-${{ github.job }}-${{ github.sha }}
           path: artifacts/toolchain/${{ github.job }}.json
           if-no-files-found: error
-      - name: Acquire and interpret the selected retained inputs without writer admission
-        if: inputs.retained-successor
-        run: python3 scripts/release-source-guard.py --retained-successor --attempt-preflight --source-sha 4ede04be66cedffc8551cd14045bab714aa358a7 --plan eng/release/palette-heading-0.32.4.json --version 0.32.4
       - name: Fetch and bind the exact candidate source without executing it
         id: source
         shell: bash
@@ -690,6 +687,9 @@ jobs:
           git fetch --no-tags origin "$source_sha"
           git cat-file -e "$source_sha^{commit}"
           echo "sha=$source_sha" >> "$GITHUB_OUTPUT"
+      - name: Acquire and interpret the selected retained inputs without writer admission
+        if: inputs.retained-successor
+        run: python3 scripts/release-source-guard.py --retained-successor --attempt-preflight --source-sha 4ede04be66cedffc8551cd14045bab714aa358a7 --plan eng/release/palette-heading-0.32.4.json --version 0.32.4
       - name: Recheck executor before OIDC authority
         run: python3 scripts/release-source-guard.py --executor-only
       - name: NuGet login preflight (OIDC only; existing-ID verification GETs)

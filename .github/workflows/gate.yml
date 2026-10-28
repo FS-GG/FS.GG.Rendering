@@ -779,7 +779,7 @@ jobs:
       - name: Fetch immutable producer plans and qualified caller for release guard controls
         # Historical producer plans and the committed successor fixture use exact source bytes.
         # The depth-1 checkout needs each exact commit, including the accepted historical caller, with no floating ref.
-        run: git fetch --no-tags --depth=1 origin 730923fe9d27174e879566f21dab14a1b03d761a 6c9f766fdd91483c2de6f061e75589e94852a265 d3b819a71eabcc0f557bcd23677dfd4397439428 9b73395658d4683a067d150ca9441b04e802c4af 4ec6eafbbbf02264db9b0db4780c590abe0bf9cd 4e48c97533554ccece8db3db828c4cc327464050
+        run: git fetch --no-tags --depth=1 origin 730923fe9d27174e879566f21dab14a1b03d761a 6c9f766fdd91483c2de6f061e75589e94852a265 d3b819a71eabcc0f557bcd23677dfd4397439428 9b73395658d4683a067d150ca9441b04e802c4af 4ec6eafbbbf02264db9b0db4780c590abe0bf9cd 4e48c97533554ccece8db3db828c4cc327464050 4ede04be66cedffc8551cd14045bab714aa358a7 41ef831827ee1d49528c84bb3f1678d495f89375
 
       - name: Require a fresh private SDK root for read-selector controls
         shell: bash
