@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline source/plan and workflow admission mutants; launches no .NET or browser."""
+"""Source/plan admission mutants; the selected0324 entry uses an available exact SDK, never a browser."""
 import importlib.util
 import hashlib
 import copy
@@ -218,6 +218,12 @@ class InertSuccessorTests(unittest.TestCase):
         with self.assertRaises(SystemExit): guard.validate(ROOT, head, PLAN, '0.32.0')
         with self.assertRaises(SystemExit): guard.validate(ROOT, head, self.PLAN, '0.32.1', True)
 
+    def test_actual_historical0323_source_selection_remains_accepted(self):
+        spec=importlib.util.spec_from_file_location('actual_historical_font_guard',ROOT/'scripts/release-source-guard.py')
+        subject=importlib.util.module_from_spec(spec);spec.loader.exec_module(subject)
+        result=subject.validate(ROOT,'4ec6eafbbbf02264db9b0db4780c590abe0bf9cd','eng/release/font-disposal-0.32.3.json','0.32.3')
+        self.assertEqual(('pass','0.32.3','0.32.1'),tuple(result[key] for key in ('result','version','baselineVersion')))
+
     def test_actual_current_workflow_entry_admits_only_source_and_readonly_modes(self):
         head = guard.preflight.git(ROOT, 'rev-parse', 'HEAD')
         release = (ROOT/'.github/workflows/release.yml').read_text()
@@ -234,22 +240,34 @@ class InertSuccessorTests(unittest.TestCase):
                    'GITHUB_REPOSITORY':'FS-GG/FS.GG.Rendering','GITHUB_RUN_ID':'1','GITHUB_RUN_ATTEMPT':'1'}
             # Execute the actual shell entry and actual guard. Source/preflight may
             # pass this static boundary; publisher/tag calls must stop before it.
-            for source, preflight, version, tag in [('true','false','0.32.3',''),
+            for source, preflight, version, tag in [('true','false','0.32.4',''),
+                    ('false','true','0.32.4',''), ('false','false','0.32.4',''),
+                    ('true','true','0.32.4',''), ('false','false','','v0.32.4'),
+                    ('true','false','0.32.3',''),
                     ('false','true','0.32.3',''), ('false','false','0.32.3',''),
                     ('true','true','0.32.3',''), ('false','false','','v0.32.3'),
                     ('true','false','0.32.2',''),
                     ('false','true','0.32.2',''), ('false','false','0.32.2',''),
                     ('false','false','','v0.32.2'), ('true','false','0.32.0','')]:
                 marker.unlink(missing_ok=True)
+                typed_source = version=='0.32.4' and source=='true' and preflight=='false'
+                if typed_source:
+                    try:
+                        sdk=subprocess.run(['dotnet','--version'],cwd=ROOT,env=env,capture_output=True,text=True,timeout=10)
+                    except FileNotFoundError:
+                        sdk=None
+                    if sdk is None or sdk.returncode!=0 or sdk.stdout.strip()!='10.0.401':
+                        with self.subTest(version=version):self.skipTest('actual0324 typed entry requires the exact installed SDK10.0.401')
+                        continue
                 env.update(SOURCE_ONLY=source, PREFLIGHT_ONLY=preflight, INPUT_VERSION=version, EVENT_TAG=tag)
                 result = subprocess.run(['bash', '-c', script+'\nprintf reached > "$EFFECT_MARKER"'],
-                                        cwd=ROOT, env=env, capture_output=True, text=True, timeout=10)
+                                        cwd=ROOT, env=env, capture_output=True, text=True, timeout=30 if typed_source else 10)
                 with self.subTest(source=source, preflight=preflight, version=version, tag=tag):
-                    allowed = version=='0.32.3' and source=='true' and preflight=='false'
+                    allowed = typed_source
                     self.assertEqual(allowed, result.returncode==0, result.stdout+result.stderr)
                     self.assertEqual(allowed, marker.exists(), result.stdout+result.stderr)
                     if allowed:
-                        self.assertEqual(['plan=eng/release/font-disposal-0.32.3.json','version=0.32.3','baseline=0.32.1'],Path(env['GITHUB_OUTPUT']).read_text().splitlines())
+                        self.assertEqual(['plan=eng/release/palette-heading-0.32.4.json','version=0.32.4','baseline=0.32.3'],Path(env['GITHUB_OUTPUT']).read_text().splitlines())
                     if not allowed: self.assertTrue('release-preflight:' in result.stderr+result.stdout or 'source qualification only' in result.stderr+result.stdout)
             for flag in ('BOUND_ATTEMPT','SUCCESSOR_ATTEMPT'):
                 marker.unlink(missing_ok=True)
