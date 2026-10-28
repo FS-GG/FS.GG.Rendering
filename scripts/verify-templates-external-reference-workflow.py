@@ -10,7 +10,7 @@ import re
 HISTORICAL = '6a5dd5305ac6fe26f9f9726c72b1a7e553b0021b'
 FONT_DISPOSAL = '2f8d400a6a670568044d607a1ac0eb2c7c655a29'
 CURRENT_PUBLIC = '789658f6ba487d839567df6ee556c7a21ede2bd8'
-PALETTE = '71e1692a27878947a99e21f354e6dcc47329b44d'
+PALETTE = '72a54c27f49eff90f1c86bc68e7a8ed8bfd9a431'
 PALETTE_PRODUCER = '4ede04be66cedffc8551cd14045bab714aa358a7'
 PATH = Path(__file__).resolve().parents[1]/'.github/workflows/templates-external-reference-qualification.yml'
 
