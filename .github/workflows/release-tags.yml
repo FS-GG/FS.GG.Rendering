@@ -67,16 +67,20 @@ on:
   # push-triggered release/template dispatch; publication and notification remain separate admissions.
   workflow_dispatch:
     inputs:
+      successor-unresolved-send:
+        description: "Held by default; Root must reconcile any prior successor tag send before cutting."
+        type: boolean
+        default: true
       expected-executor-sha:
         description: "Exact reviewed protected executor SHA (filled after this workflow merges)."
         required: true
         type: string
       source-sha:
-        description: "Closed retained producer: original6c9/0.32.1 or original9b733956/0.32.2 or disabledoriginal4ec/0.32.3; genuine joined qualification required."
+        description: "Closed retained producer: original6c9/0.32.1 or original9b733956/0.32.2 or disabledoriginal4ec/0.32.3 or retained4ede/0.32.4; genuine joined qualification required."
         required: true
         type: string
       version:
-        description: "Closed coherent version: 0.32.1, 0.32.2 or disabled0.32.3 matching the selected original producer."
+        description: "Closed coherent version: 0.32.1, 0.32.2, disabled0.32.3 or retained0.32.4 matching the selected original producer."
         required: true
         type: string
 
@@ -98,16 +102,34 @@ jobs:
     timeout-minutes: 6
     permissions:
       contents: read
+      actions: read
     env:
       FSGG_EXPECTED_EXECUTOR_SHA: ${{ inputs.expected-executor-sha }}
       SELECTED_SOURCE_SHA: ${{ inputs.source-sha }}
       SELECTED_VERSION: ${{ inputs.version }}
+      FSGG_SUCCESSOR_UNRESOLVED_SEND: ${{ inputs.successor-unresolved-send }}
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
+      - name: Select isolated interpreter for retained successor policy
+        if: inputs.version == '0.32.4'
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="${RUNNER_TEMP:?}/selected-tag-dotnet-10.0.401"
+          [[ "$RUNNER_TEMP" == /* && "$RUNNER_TEMP" != / && "$(realpath -e -- "$RUNNER_TEMP")" == "$RUNNER_TEMP" && ! -e "$root" && ! -L "$root" ]] || exit 3
+          printf 'DOTNET_INSTALL_DIR=%s\n' "$root" >> "$GITHUB_ENV"
+      - uses: actions/setup-dotnet@v6
+        if: inputs.version == '0.32.4'
+        with:
+          dotnet-version: '10.0.401'
+      - name: Verify selected tag policy interpreter
+        if: inputs.version == '0.32.4'
+        run: python3 scripts/release-toolchain-identity.py --expected-sdk 10.0.401 --receipt artifacts/toolchain/selected-tags.json
       - name: Check tag ordering and refusal controls without effects
         run: timeout --kill-after=10s 60s python3 scripts/test-selected-producer-tags.py
       - name: Validate selected identities and all three remote refs
@@ -130,10 +152,13 @@ jobs:
     timeout-minutes: 36
     permissions:
       contents: write
+      actions: read
     env:
       FSGG_EXPECTED_EXECUTOR_SHA: ${{ inputs.expected-executor-sha }}
       SELECTED_SOURCE_SHA: ${{ inputs.source-sha }}
       SELECTED_VERSION: ${{ inputs.version }}
+      FSGG_SUCCESSOR_UNRESOLVED_SEND: ${{ inputs.successor-unresolved-send }}
+      GH_TOKEN: ${{ github.token }}
     steps:
       - name: Acquire org publication writer lock
         uses: FS-GG/.github/.github/actions/publication-writer-lock@c799a9f9b21d52eb9766cf0950722e3e55145d39 # ADR-0097
@@ -147,6 +172,21 @@ jobs:
           # Default repository GITHUB_TOKEN only. Its tag pushes do not launch the
           # old producer's template-dispatch or release workflows. Never substitute an App/PAT.
           persist-credentials: true
+      - name: Select isolated interpreter for retained successor policy
+        if: inputs.version == '0.32.4'
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="${RUNNER_TEMP:?}/selected-tag-dotnet-10.0.401"
+          [[ "$RUNNER_TEMP" == /* && "$RUNNER_TEMP" != / && "$(realpath -e -- "$RUNNER_TEMP")" == "$RUNNER_TEMP" && ! -e "$root" && ! -L "$root" ]] || exit 3
+          printf 'DOTNET_INSTALL_DIR=%s\n' "$root" >> "$GITHUB_ENV"
+      - uses: actions/setup-dotnet@v6
+        if: inputs.version == '0.32.4'
+        with:
+          dotnet-version: '10.0.401'
+      - name: Verify selected tag policy interpreter
+        if: inputs.version == '0.32.4'
+        run: python3 scripts/release-toolchain-identity.py --expected-sdk 10.0.401 --receipt artifacts/toolchain/selected-tags.json
       - name: Reconcile and cut the immutable producer triple
         run: >-
           timeout --kill-after=10s 270s python3 scripts/selected-producer-tags.py

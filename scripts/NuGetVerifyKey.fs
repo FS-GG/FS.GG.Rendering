@@ -11,7 +11,7 @@ type Observation = { PackageId: string; HttpStatus: int option; Outcome: string 
 type Transport = string -> string -> Observation
 
 let inspect (transport: Transport) (ids: string list) (baseline: string) =
-    if ids.Length <> 19 || (ids |> List.map (fun id -> id.ToLowerInvariant()) |> Set.ofList |> Set.count) <> 19 || (baseline <> "0.31.0" && baseline <> "0.32.0" && baseline <> "0.32.1") then
+    if ids.Length <> 19 || (ids |> List.map (fun id -> id.ToLowerInvariant()) |> Set.ofList |> Set.count) <> 19 || (baseline <> "0.31.0" && baseline <> "0.32.0" && baseline <> "0.32.1" && baseline <> "0.32.3") then
         Error "verify-key-roster-or-baseline-refused"
     else
         let observations = ids |> List.map (fun id ->
@@ -31,6 +31,7 @@ let scopePlanVersion = function
     | "ac433609d14d0a672ad42e5f3578afdd6ecf6ee1144c33d5e6aec951535d84f2" -> Some "0.32.1"
     | "81571fc65ac117e90467428d2e50e103ec875aa33cb83b054d9056bf4129aa1a" -> Some "0.32.2"
     | "89369de0c0944c66a52c6ed914cef78d6bb7670866baedf85cd8a198c5c46239" -> Some "0.32.3"
+    | "4bcbb1c756a799ab634e14d1fc9191ac51a8cd5d3537aec75eeab1c1d545deaa" -> Some "0.32.4"
     | _ -> None
 
 /// This new subject grants scope-only GET observations, never writer eligibility.

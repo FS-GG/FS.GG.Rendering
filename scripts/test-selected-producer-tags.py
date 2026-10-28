@@ -82,9 +82,11 @@ def check_workflow(text):
              'SELECTED_VERSION: ${{ inputs.version }}' in block, f'{job}: missing subject inputs')
         uses = re.findall(r'^\s+(?:- )?uses: (.+)$', block, re.M)
         lock = ['FS-GG/.github/.github/actions/publication-writer-lock@c799a9f9b21d52eb9766cf0950722e3e55145d39 # ADR-0097'] if job == 'selected-tag-cut' else []
-        need(uses == lock + ['actions/checkout@v7', 'actions/upload-artifact@v7'],
+        need(uses == lock + ['actions/checkout@v7', 'actions/setup-dotnet@v6', 'actions/upload-artifact@v7'],
              f'{job}: unexpected action outside checkout and evidence upload')
-        need(not re.search(r'\b(dotnet|gh|curl|git push|secrets\.|id-token|packages:|create-github-app-token)\b', block),
+        need("if: inputs.version == '0.32.4'\n        with:\n          dotnet-version: '10.0.401'" in block, f'{job}: selected interpreter must be exact and conditional')
+        need('FSGG_SUCCESSOR_UNRESOLVED_SEND: ${{ inputs.successor-unresolved-send }}' in block, f'{job}: missing default-held prior-send input')
+        need(not re.search(r'\b(gh|curl|git push|secrets\.|id-token|packages:|create-github-app-token)\b', block),
              f'{job}: unexpected authority/native command')
     need('      contents: read\n' in jobs['selected-tag-plan'], 'tag plan is not read only')
     need('persist-credentials: false' in jobs['selected-tag-plan'], 'tag plan persists credentials')
@@ -455,6 +457,43 @@ class QualifiedFontTagTests(unittest.TestCase):
                 with patch.object(tags,'executor_identity',return_value={}),patch.object(tags.guard,'source_bytes',return_value=(ROOT/tags.guard.FONT_DISPOSAL['planPath']).read_bytes()):
                     with self.assertRaises(tags.Refused):tags.Operation(root,'cut',tags.guard.FONT_DISPOSAL['producerSha'],'0.32.3',ENV,git).run()
                 self.assertEqual([],git.calls);self.assertEqual([],git.pushes)
+
+
+class PaletteSuccessorTagTests(unittest.TestCase):
+    def test_current_executor_never_becomes_retained_tag_target(self):
+        source='4ede04be66cedffc8551cd14045bab714aa358a7'
+        with tempfile.TemporaryDirectory() as folder:
+            git=FakeGit()
+            with patch.object(tags,'executor_identity',return_value={}),patch.object(tags,'selected_binding',return_value={}):
+                op=tags.Operation(Path(folder),'check',source,'0.32.4',ENV,git,binding_check=lambda *_:{})
+                result=op.run()
+            self.assertEqual(['fs-gg-ui/v0.32.4','fs-gg-ui-template/v0.32.4','v0.32.4'],result['tags'])
+            self.assertEqual(source,result['producerSha'])
+            self.assertEqual([],git.pushes)
+
+    def test_selected_cut_preserves_order_and_original_target(self):
+        source='4ede04be66cedffc8551cd14045bab714aa358a7'
+        with tempfile.TemporaryDirectory() as folder:
+            git=FakeGit()
+            with patch.object(tags,'executor_identity',return_value={}):
+                result=tags.Operation(Path(folder),'cut',source,'0.32.4',{**ENV,'FSGG_SUCCESSOR_UNRESOLVED_SEND':'false'},git,binding_check=lambda *_:{}).run()
+            self.assertEqual([source+':refs/tags/'+tag for tag in result['tags']],[call[-1] for call in git.pushes])
+            self.assertEqual(3,len(git.pushes))
+
+    def test_later_selected_tag_attempt_refuses_before_effects(self):
+        with tempfile.TemporaryDirectory() as folder:
+            git=FakeGit()
+            with self.assertRaises(tags.Refused):
+                tags.Operation(Path(folder),'cut','4ede04be66cedffc8551cd14045bab714aa358a7','0.32.4',{**ENV,'FSGG_SUCCESSOR_UNRESOLVED_SEND':'false','GITHUB_RUN_ATTEMPT':'2'},git,binding_check=lambda *_:{}).run()
+            self.assertEqual([],git.calls)
+
+    def test_unreconciled_prior_send_refuses_before_any_remote_effect(self):
+        with tempfile.TemporaryDirectory() as folder:
+            git=FakeGit()
+            with self.assertRaises(tags.Refused):
+                tags.Operation(Path(folder),'cut','4ede04be66cedffc8551cd14045bab714aa358a7','0.32.4',ENV,git,binding_check=lambda *_:{}).run()
+            self.assertEqual([],git.calls)
+            self.assertEqual([],git.pushes)
 
 
 if __name__ == '__main__':

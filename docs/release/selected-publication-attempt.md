@@ -363,20 +363,38 @@ announce “dialog” and “Command palette heading level 2”, with Escape and
 restoration. That receiver consumed private three-package0.32.0 candidate archives;
 it does not qualify future0.32.4 bytes or repair the installed public0.32.3 route.
 
-The maintained typed selected-successor entry admits source qualification only.
-No producer run, artifact, original archive hash, receiver tuple or publication attempt
-is invented. Publication remains refused until actual0.32.4 custody and receiver
-qualification are joined. Existing historical0321–0323 admission and unknown original
+The initial maintained typed selected-successor entry admitted source qualification
+only. It invented no producer run, artifact, original archive hash, receiver tuple or
+publication attempt. Publication remained refused pending actual0.32.4 custody and
+receiver qualification. Existing historical0321–0323 admission and unknown original
 transport outcomes remain separate and unchanged.
 
 The existing source-only release job may prepare all nineteen originals, run seventeen
 ApiCompat comparisons, and exercise all three browser families from the selected
 plan/version without repacking those originals. Existing PR generated-product and API
 mirror checks use the canonical exact-head local feed during the release window;
-public-feed restore evidence remains distinct. The next consumer qualification must
-use the actual retained0.32.4 archives before the existing fenced publisher can be
-admitted. Templates public pins and actual public-route Orca follow after publication.
+public-feed restore evidence remains distinct. Consumer qualification must use the actual retained0.32.4 archives before
+the existing fenced publisher can be admitted. Templates public pins and actual public-route Orca follow after publication.
 
 Pipeline preflight uses static selection/data-flow checks and existing finite refusal
 controls, before costly qualification. No retry, cancellation, lock or publication-loop
 behavior changes; a new state-machine model would duplicate existing controls here.
+
+
+The later original [source qualification40737624380/a1](https://github.com/FS-GG/FS.GG.Rendering/actions/runs/40737624380)
+retained all nineteen0.32.4 archives from producer4ede04be, seventeen ApiCompat
+comparisons against0.32.3, and all three automated browser families. Its aggregate
+browser result remains `incomplete`: assistive technology was unavailable in that
+source run. The separate full [receiver40744519859/a1](https://github.com/FS-GG/FS.GG.Rendering/actions/runs/40744519859)
+joined those same originals, all three consumed package identities before and after
+build, the complete maintained Orca46.1 journey, fresh dialog/heading speech, and
+owned server termination143/reaping. This is accepted unpublished retained-candidate
+qualification, without audible-hardware or installed-public acceptance.
+
+The selected adapter interprets these original inputs in `SelectedSuccessor`; the
+closed plan stays `publicationReady:false`. It reuses the existing tag operation,
+writer lock, complete census, scope GETs, original-byte dual-feed loops and readback.
+A protected exact executor, first attempt, fresh authority/collision observations and
+explicit reconciliation of any prior send remain required. No source change settles
+historical0321–0323 Unknowns. Current-public full-game/provider admission and IME
+qualification remain distinct from this accepted hosted palette slice.

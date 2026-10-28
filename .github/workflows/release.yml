@@ -50,6 +50,14 @@ on:
         description: "Root-accepted settlement JSON coordinates (run, attempt, artifact, artifactSha256, receiptSha256, executorSha); required for held0323 effects."
         type: string
         required: false
+      retained-successor:
+        description: "Select original4ede0.32.4 and its accepted full retained-candidate receiver; never repack."
+        type: boolean
+        default: false
+      successor-unresolved-send:
+        description: "Held by default. Root must explicitly reconcile any prior selected successor send before effects."
+        type: boolean
+        default: true
       font-disposal-attempt:
         description: "Select retained0.32.3 with exact accepted receiver/AT proof; publication still requires explicit authority."
         type: boolean
@@ -91,6 +99,14 @@ on:
         description: "Root-accepted settlement JSON coordinates (run, attempt, artifact, artifactSha256, receiptSha256, executorSha); required for held0323 effects."
         type: string
         required: false
+      retained-successor:
+        description: "Select original4ede0.32.4 and its accepted full retained-candidate receiver; never repack."
+        type: boolean
+        default: false
+      successor-unresolved-send:
+        description: "Held by default. Root must explicitly reconcile any prior selected successor send before effects."
+        type: boolean
+        default: true
       font-disposal-attempt:
         description: "Select retained0.32.3 with exact accepted receiver/AT proof; publication still requires explicit authority."
         type: boolean
@@ -121,12 +137,16 @@ permissions:
 
 env:
   FSGG_EXPECTED_EXECUTOR_SHA: ${{ inputs.expected-executor-sha }}
+  FSGG_SUCCESSOR_UNRESOLVED_SEND: ${{ inputs.successor-unresolved-send }}
   FSGG_ACCEPTED_TAG_SETTLEMENT: ${{ inputs.accepted-tag-settlement }}
   GH_TOKEN: ${{ github.token }}
 
 jobs:
   release-source-guard:
     name: Static release source and plan guard
+    permissions:
+      contents: read
+      actions: read
     runs-on: ubuntu-latest
     if: github.repository == 'FS-GG/FS.GG.Rendering'
     outputs:
@@ -169,22 +189,25 @@ jobs:
           BOUND_ATTEMPT: ${{ inputs.bound-attempt }}
           SUCCESSOR_ATTEMPT: ${{ inputs.successor-attempt }}
           FONT_DISPOSAL_ATTEMPT: ${{ inputs.font-disposal-attempt }}
+          RETAINED_SUCCESSOR: ${{ inputs.retained-successor }}
         shell: bash
         run: |
           set -euo pipefail
           fence=()
+          retained="${RETAINED_SUCCESSOR:-false}"
+          [[ "$retained" != true || ( "$BOUND_ATTEMPT" != true && "$SUCCESSOR_ATTEMPT" != true && "$FONT_DISPOSAL_ATTEMPT" != true && "$SOURCE_ONLY" != true && "$INPUT_VERSION" == 0.32.4 && "$REQUESTED_SOURCE" == 4ede04be66cedffc8551cd14045bab714aa358a7 ) ]] || { echo '::error::mixed retained successor selection'; exit 3; }
           successor="${SUCCESSOR_ATTEMPT:-false}"
           font_disposal="${FONT_DISPOSAL_ATTEMPT:-false}"
           [[ "$font_disposal" != true || ( "$BOUND_ATTEMPT" != true && "$successor" != true && "$SOURCE_ONLY" != true ) ]] || { echo "::error::mixed font-disposal attempt selection"; exit 3; }
           [[ "$BOUND_ATTEMPT" != true || "$successor" != true ]] || { echo "::error::mixed immutable attempt selections"; exit 3; }
-          if [[ "$PREFLIGHT_ONLY" == true || "$BOUND_ATTEMPT" == true || "$successor" == true || "$font_disposal" == true ]]; then
+          if [[ "$retained" == true || "$PREFLIGHT_ONLY" == true || "$BOUND_ATTEMPT" == true || "$successor" == true || "$font_disposal" == true ]]; then
             python3 scripts/release-source-guard.py --executor-only
             fence+=(--executor-fence)
           fi
           source_sha="${REQUESTED_SOURCE:-$GITHUB_SHA}"
           [[ "$source_sha" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::source-sha must be exact lowercase 40-hex"; exit 1; }
           if [[ "$source_sha" != "$GITHUB_SHA" ]]; then
-            [[ "$PREFLIGHT_ONLY" == 'true' || "$BOUND_ATTEMPT" == 'true' || "$successor" == true || "$font_disposal" == true ]] || { echo "::error::native qualification must use the checked-out source or admitted producer binding"; exit 1; }
+            [[ "$retained" == true || "$PREFLIGHT_ONLY" == 'true' || "$BOUND_ATTEMPT" == 'true' || "$successor" == true || "$font_disposal" == true ]] || { echo "::error::native qualification must use the checked-out source or admitted producer binding"; exit 1; }
             git fetch --no-tags origin "$source_sha"
           fi
           if [[ "$BOUND_ATTEMPT" == true ]]; then
@@ -197,7 +220,7 @@ jobs:
             plan=eng/release/font-disposal-0.32.3.json
           fi
           if [[ "$version" == 0.32.4 ]]; then
-            [[ "$SOURCE_ONLY" == true && "$PREFLIGHT_ONLY" != true && "$BOUND_ATTEMPT" != true && "$successor" != true && "$font_disposal" != true ]] || { echo "::error::0.32.4 original custody and receiver are unjoined; source qualification only"; exit 3; }
+            [[ "$retained" == true || ( "$SOURCE_ONLY" == true && "$PREFLIGHT_ONLY" != true && "$BOUND_ATTEMPT" != true && "$successor" != true && "$font_disposal" != true ) ]] || { echo "::error::0.32.4 source qualification only unless the closed retained selection is explicit"; exit 3; }
             plan=eng/release/palette-heading-0.32.4.json
           fi
           authority=()
@@ -219,6 +242,10 @@ jobs:
             authority=(--font-disposal-attempt)
             [[ "$PREFLIGHT_ONLY" != true ]] || authority+=(--attempt-preflight)
           fi
+          if [[ "$retained" == true ]]; then
+            authority=(--retained-successor)
+            [[ "$PREFLIGHT_ONLY" != true ]] || authority+=(--attempt-preflight)
+          fi
           python3 scripts/release-source-guard.py \
             --plan "$plan" \
             --source-sha "$source_sha" --version "$version" "${authority[@]}" "${fence[@]}"
@@ -236,7 +263,7 @@ jobs:
     name: Package consumption (release-only)
     runs-on: ubuntu-latest
     # Restrict to the canonical repo: fork tags/dispatch never run this (no fork secret exposure, FR-013).
-    if: github.repository == 'FS-GG/FS.GG.Rendering' && !inputs.preflight-only
+    if: github.repository == 'FS-GG/FS.GG.Rendering' && !inputs.preflight-only && !inputs.retained-successor
     env:
       # Source qualification isolates the selected SDK from hosted preinstalled feature bands.
       # Empty on ordinary release calls preserves setup-dotnet's existing default install root.
@@ -280,7 +307,7 @@ jobs:
           # guard fails CLOSED ("tags must be visible (fetch-depth: 0)"). Fetch full history + tags.
           fetch-depth: 0
       - name: Require a fresh private SDK root for source qualification
-        if: inputs.source-only || inputs.font-disposal-attempt
+        if: inputs.source-only || inputs.font-disposal-attempt || inputs.retained-successor
         shell: bash
         env:
           DOTNET_INSTALL_DIR: ${{ runner.temp }}/rendering-source-dotnet-10.0.401
@@ -379,14 +406,14 @@ jobs:
       # Source qualification isolates the selected SDK from hosted preinstalled feature bands.
       # Empty on ordinary release calls preserves setup-dotnet's existing default install root.
       DOTNET_INSTALL_DIR: ''
-    if: github.repository == 'FS-GG/FS.GG.Rendering' && !inputs.preflight-only
+    if: github.repository == 'FS-GG/FS.GG.Rendering' && !inputs.preflight-only && !inputs.retained-successor
     steps:
       - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.bound-attempt && '6c9f766fdd91483c2de6f061e75589e94852a265' || github.sha }}
           fetch-depth: 0
       - name: Require a fresh private SDK root for source qualification
-        if: inputs.source-only || inputs.font-disposal-attempt
+        if: inputs.source-only || inputs.font-disposal-attempt || inputs.retained-successor
         shell: bash
         env:
           DOTNET_INSTALL_DIR: ${{ runner.temp }}/rendering-source-dotnet-10.0.401
@@ -603,12 +630,14 @@ jobs:
       !inputs.source-only && (inputs.validate-only || inputs.preflight-only)
     permissions:
       contents: read
+      actions: read
       packages: write
       id-token: write
     env:
+      FSGG_RELEASE_ATTEMPT: ${{ inputs.retained-successor && 'palette' || '' }}
       # Selected successor preflight uses its immutable producer plan and published baseline.
-      RELEASE_PLAN: ${{ inputs.font-disposal-attempt && 'eng/release/font-disposal-0.32.3.json' || inputs.bound-attempt && 'eng/release/svg-export-prefix-0.32.1.json' || 'eng/release/external-authority-recovery-0.32.2.json' }}
-      RELEASE_BASELINE: ${{ inputs.bound-attempt && '0.32.0' || '0.32.1' }}
+      RELEASE_PLAN: ${{ inputs.retained-successor && 'eng/release/palette-heading-0.32.4.json' || inputs.font-disposal-attempt && 'eng/release/font-disposal-0.32.3.json' || inputs.bound-attempt && 'eng/release/svg-export-prefix-0.32.1.json' || 'eng/release/external-authority-recovery-0.32.2.json' }}
+      RELEASE_BASELINE: ${{ inputs.retained-successor && '0.32.3' || inputs.bound-attempt && '0.32.0' || '0.32.1' }}
     steps:
       - name: Acquire org publication writer lock
         uses: FS-GG/.github/.github/actions/publication-writer-lock@c799a9f9b21d52eb9766cf0950722e3e55145d39 # ADR-0097
@@ -622,7 +651,7 @@ jobs:
       - name: Refuse executor movement before tools or credentials
         run: python3 scripts/release-source-guard.py --executor-only
       - name: Require a fresh private SDK root for font-disposal preflight
-        if: inputs.font-disposal-attempt
+        if: inputs.font-disposal-attempt || inputs.retained-successor
         shell: bash
         env:
           DOTNET_INSTALL_DIR: ${{ runner.temp }}/rendering-source-dotnet-10.0.401
@@ -644,6 +673,9 @@ jobs:
           name: rendering-release-toolchain-${{ github.job }}-${{ github.sha }}
           path: artifacts/toolchain/${{ github.job }}.json
           if-no-files-found: error
+      - name: Acquire and interpret the selected retained inputs without writer admission
+        if: inputs.retained-successor
+        run: python3 scripts/release-source-guard.py --retained-successor --attempt-preflight --source-sha 4ede04be66cedffc8551cd14045bab714aa358a7 --plan eng/release/palette-heading-0.32.4.json --version 0.32.4
       - name: Fetch and bind the exact candidate source without executing it
         id: source
         shell: bash
@@ -734,6 +766,7 @@ jobs:
             --receipt artifacts/preflight/release-package-census.json
       - name: Verify all19 existing-ID NuGet scopes without publication
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           NUGET_API_KEY: ${{ steps.nuget-preflight-login.outputs.NUGET_API_KEY }}
           FSGG_NUGET_SCOPE_ONLY: 'true'
           FSGG_NUGET_SCOPE_SOURCE: ${{ steps.source.outputs.sha }}
@@ -771,10 +804,14 @@ jobs:
     # The negative phrasing is load-bearing: see the `validate-only` input's comment. An absent `inputs`
     # context (push/release/dispatch) is falsy, so every escape-hatch trigger still publishes.
     if: >-
+      always() && !cancelled() &&
       github.repository == 'FS-GG/FS.GG.Rendering' &&
+      needs.release-source-guard.result == 'success' &&
+      ((inputs.retained-successor && needs.package-tests.result == 'skipped' && needs.template-product-tests.result == 'skipped') ||
+       (!inputs.retained-successor && needs.package-tests.result == 'success' && needs.template-product-tests.result == 'success')) &&
       !inputs.source-only &&
       !inputs.validate-only &&
-      !inputs.preflight-only && (inputs.bound-attempt || inputs.successor-attempt || inputs.font-disposal-attempt)
+      !inputs.preflight-only && (inputs.bound-attempt || inputs.successor-attempt || inputs.font-disposal-attempt || inputs.retained-successor)
     # Only publish a set that passed the release-only consumption checks above.
     needs: [release-source-guard, package-tests, template-product-tests]
     permissions:
@@ -783,10 +820,10 @@ jobs:
       packages: write
       id-token: write   # ADR-0013: mint the GitHub OIDC token for nuget.org Trusted Publishing
     env:
-      PRODUCER_SHA: ${{ inputs.font-disposal-attempt && '4ec6eafbbbf02264db9b0db4780c590abe0bf9cd' || inputs.successor-attempt && '9b73395658d4683a067d150ca9441b04e802c4af' || '6c9f766fdd91483c2de6f061e75589e94852a265' }}
-      PRODUCER_VERSION: ${{ inputs.font-disposal-attempt && '0.32.3' || inputs.successor-attempt && '0.32.2' || '0.32.1' }}
-      PRODUCER_BASELINE: ${{ inputs.font-disposal-attempt && '0.32.1' || inputs.successor-attempt && '0.32.1' || '0.32.0' }}
-      FSGG_RELEASE_ATTEMPT: ${{ inputs.font-disposal-attempt && '0323' || inputs.successor-attempt && '0322' || '0321' }}
+      PRODUCER_SHA: ${{ inputs.retained-successor && '4ede04be66cedffc8551cd14045bab714aa358a7' || inputs.font-disposal-attempt && '4ec6eafbbbf02264db9b0db4780c590abe0bf9cd' || inputs.successor-attempt && '9b73395658d4683a067d150ca9441b04e802c4af' || '6c9f766fdd91483c2de6f061e75589e94852a265' }}
+      PRODUCER_VERSION: ${{ inputs.retained-successor && '0.32.4' || inputs.font-disposal-attempt && '0.32.3' || inputs.successor-attempt && '0.32.2' || '0.32.1' }}
+      PRODUCER_BASELINE: ${{ inputs.retained-successor && '0.32.3' || inputs.font-disposal-attempt && '0.32.1' || inputs.successor-attempt && '0.32.1' || '0.32.0' }}
+      FSGG_RELEASE_ATTEMPT: ${{ inputs.retained-successor && 'palette' || inputs.font-disposal-attempt && '0323' || inputs.successor-attempt && '0322' || '0321' }}
       PRODUCER_PLAN: artifacts/attempt/producer-plan.json
     steps:
       - name: Acquire org publication writer lock
@@ -812,7 +849,7 @@ jobs:
       - name: Refuse executor movement before tools or credentials
         run: python3 scripts/release-source-guard.py --executor-only
       - name: Require a fresh private SDK root for font-disposal publisher
-        if: inputs.font-disposal-attempt
+        if: inputs.font-disposal-attempt || inputs.retained-successor
         shell: bash
         env:
           DOTNET_INSTALL_DIR: ${{ runner.temp }}/rendering-source-dotnet-10.0.401
@@ -890,6 +927,10 @@ jobs:
           if [[ "$FSGG_RELEASE_ATTEMPT" == 0323 ]]; then
             selected=(--font-disposal-attempt)
             plan=eng/release/font-disposal-0.32.3.json
+          fi
+          if [[ "$FSGG_RELEASE_ATTEMPT" == palette ]]; then
+            selected=(--retained-successor)
+            plan=eng/release/palette-heading-0.32.4.json
           fi
           python3 scripts/release-source-guard.py "${selected[@]}" --acquire-bound-artifacts \
             --source-sha "$PRODUCER_SHA" --plan "$plan" --version "$PRODUCER_VERSION"
@@ -1026,7 +1067,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [[ "$FSGG_RELEASE_ATTEMPT" == 0323 ]]; then
+          if [[ "$FSGG_RELEASE_ATTEMPT" == palette ]]; then
+            echo "Reuse accepted original40737624380/a1:17 comparisons vs0.32.3, all three automated browser families, and separate full Orca40744519859/a1; immutable inputs verified by maintained typed policy."
+          elif [[ "$FSGG_RELEASE_ATTEMPT" == 0323 ]]; then
             echo "Reuse accepted source39509314882/a1:17 comparisons vs0.32.1; original archive custody verified separately."
           elif [[ "$FSGG_RELEASE_ATTEMPT" == 0322 ]]; then
             # Closed original successful source-package-custody run and root-readback

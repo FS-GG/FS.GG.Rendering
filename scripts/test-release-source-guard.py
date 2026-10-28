@@ -131,7 +131,7 @@ class SourceGuardTests(unittest.TestCase):
         tags=(ROOT/'.github/workflows/release-tags.yml').read_text()
         self.assertIn('--source-sha "$GITHUB_SHA" --require-publication-ready',tags)
         self.assertIn('needs: [plan, validate]',tags)
-        self.assertLess(tags.index('--require-publication-ready'),tags.index('actions/setup-dotnet'))
+        self.assertLess(tags.index('--require-publication-ready'),tags.index('actions/setup-dotnet',tags.index('  plan:')))
 
     def test_workflow_gate_edges_and_source_only_effect_boundary(self):
         release = (ROOT/'.github/workflows/release.yml').read_text()
@@ -305,8 +305,8 @@ class SuccessorRouteTests(unittest.TestCase):
         self.assertIn("FSGG_NUGET_SCOPE_ONLY: 'true'", preflight)
         self.assertIn('FSGG_NUGET_SCOPE_SOURCE: ${{ steps.source.outputs.sha }}', preflight)
         publisher = blocks['publish-packages']
-        self.assertIn('!inputs.preflight-only && (inputs.bound-attempt || inputs.successor-attempt || inputs.font-disposal-attempt)', publisher)
-        self.assertIn("PRODUCER_SHA: ${{ inputs.font-disposal-attempt && '4ec6eafbbbf02264db9b0db4780c590abe0bf9cd' || inputs.successor-attempt && '9b73395658d4683a067d150ca9441b04e802c4af' || '6c9f766fdd91483c2de6f061e75589e94852a265' }}", publisher)
+        self.assertIn('!inputs.preflight-only && (inputs.bound-attempt || inputs.successor-attempt || inputs.font-disposal-attempt || inputs.retained-successor)', publisher)
+        self.assertIn("PRODUCER_SHA: ${{ inputs.retained-successor && '4ede04be66cedffc8551cd14045bab714aa358a7' || inputs.font-disposal-attempt && '4ec6eafbbbf02264db9b0db4780c590abe0bf9cd' || inputs.successor-attempt && '9b73395658d4683a067d150ca9441b04e802c4af' || '6c9f766fdd91483c2de6f061e75589e94852a265' }}", publisher)
         self.assertIn('plan=eng/release/svg-export-prefix-0.32.1.json', publisher)
         self.assertIn('selected=(--attempt-binding)', publisher)
         self.assertNotIn('release-pack.sh', publisher)
@@ -369,7 +369,7 @@ class SelectedAttemptTests(unittest.TestCase):
         self.assertNotIn('release-pack.sh',publisher);self.assertNotIn('locked-restore',publisher)
         self.assertNotIn('actions/artifacts?name=',publisher);self.assertNotIn('sort_by(.created_at)',publisher)
         self.assertNotIn('--source-sha "$GITHUB_SHA"',publisher)
-        self.assertIn('!inputs.preflight-only && (inputs.bound-attempt || inputs.successor-attempt || inputs.font-disposal-attempt)',publisher)
+        self.assertIn('!inputs.preflight-only && (inputs.bound-attempt || inputs.successor-attempt || inputs.font-disposal-attempt || inputs.retained-successor)',publisher)
         self.assertLess(text.index('--source-sha "$source_sha" --version "$version"'), text.index('--acquire-bound-artifacts'))
         self.assertLess(publisher.index('--acquire-bound-artifacts'), publisher.index('Verify the version to publish is the version the guard validated'))
         self.assertLess(publisher.index('Verify the version to publish is the version the guard validated'), publisher.index('Verify custody before any release-shaped check'))
@@ -711,7 +711,7 @@ class RecoverySuccessorTests(unittest.TestCase):
         current = (ROOT/'.github/workflows/release.yml').read_text()
         publisher = re.search(r'^  publish-packages:\n(.*?)(?=^  [a-z-]+:|\Z)', current, re.M|re.S).group(1)
         self.assertIn('inputs.bound-attempt', publisher)
-        self.assertIn("PRODUCER_SHA: ${{ inputs.font-disposal-attempt && '4ec6eafbbbf02264db9b0db4780c590abe0bf9cd' || inputs.successor-attempt && '9b73395658d4683a067d150ca9441b04e802c4af' || '6c9f766fdd91483c2de6f061e75589e94852a265' }}", publisher)
+        self.assertIn("PRODUCER_SHA: ${{ inputs.retained-successor && '4ede04be66cedffc8551cd14045bab714aa358a7' || inputs.font-disposal-attempt && '4ec6eafbbbf02264db9b0db4780c590abe0bf9cd' || inputs.successor-attempt && '9b73395658d4683a067d150ca9441b04e802c4af' || '6c9f766fdd91483c2de6f061e75589e94852a265' }}", publisher)
         self.assertIn('plan=eng/release/svg-export-prefix-0.32.1.json', publisher)
         self.assertIn('selected=(--attempt-binding)', publisher)
         self.assertIn('selected=(--successor-attempt)', publisher)
@@ -932,7 +932,7 @@ class SourceSdkInstallationRootTests(unittest.TestCase):
         import textwrap
         block = self.block(name)
         step = re.search(r'^      - name: '+self.STEP+r'\n(.*?)(?=^      - |\Z)', block, re.M|re.S).group(1)
-        self.assertIn('        if: inputs.source-only' + (' || inputs.font-disposal-attempt' if name in ('package-tests','template-product-tests') else '') + '\n', step)
+        self.assertIn('        if: inputs.source-only' + (' || inputs.font-disposal-attempt || inputs.retained-successor' if name in ('package-tests','template-product-tests') else '') + '\n', step)
         self.assertIn('        shell: bash\n', step)
         return textwrap.dedent(step.split('        run: |\n', 1)[1])
 
@@ -1597,6 +1597,85 @@ class PaletteSuccessorTransportTests(unittest.TestCase):
     def test_typed_refusal_or_wrong_scope_never_becomes_source_success(self):
         for result in (subprocess.CompletedProcess([],1,'','successor-selection'),subprocess.CompletedProcess([],0,'{"result":"pass","publicationAdmitted":true}','')):
             with self.subTest(result=result),self.assertRaises(SystemExit):self.subject(result)
+
+
+class RetainedSuccessorTransportTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        spec=importlib.util.spec_from_file_location('retained_guard',ROOT/'scripts/release-source-guard.py')
+        cls.subject=importlib.util.module_from_spec(spec);spec.loader.exec_module(cls.subject)
+
+    def test_actual_retained_workflow_dependency_condition_preserves_legacy_successes(self):
+        workflow=(ROOT/'.github/workflows/release.yml').read_text()
+        blocks=dict(re.findall(r'^  ([a-z-]+):\n(.*?)(?=^  [a-z-]+:|\Z)',workflow,re.M|re.S))
+        for name in ('package-tests','template-product-tests'):
+            self.assertIn("if: github.repository == 'FS-GG/FS.GG.Rendering' && !inputs.preflight-only && !inputs.retained-successor",blocks[name])
+        publisher=blocks['publish-packages']
+        condition=re.search(r'^    if: >-\n(.*?)(?=^    [a-z#])',publisher,re.M|re.S).group(1).strip()
+        self.assertIn("always() && !cancelled()",condition)
+        for retained in (False,True):
+            for source in ('success','failure','skipped'):
+                for package in ('success','failure','skipped'):
+                    for generated in ('success','failure','skipped'):
+                        with self.subTest(retained=retained,source=source,package=package,generated=generated):
+                            values={'always()':'True','cancelled()':'False',"github.repository == 'FS-GG/FS.GG.Rendering'":'True',
+                                "needs.release-source-guard.result == 'success'":str(source=='success'),
+                                "needs.package-tests.result == 'skipped'":str(package=='skipped'),
+                                "needs.template-product-tests.result == 'skipped'":str(generated=='skipped'),
+                                "needs.package-tests.result == 'success'":str(package=='success'),
+                                "needs.template-product-tests.result == 'success'":str(generated=='success'),
+                                'inputs.retained-successor':str(retained),'inputs.source-only':'False','inputs.validate-only':'False','inputs.preflight-only':'False',
+                                'inputs.bound-attempt':'False','inputs.successor-attempt':'False','inputs.font-disposal-attempt':'False'}
+                            if not retained:values['inputs.font-disposal-attempt']='True'
+                            expression=condition
+                            for key in sorted(values,key=len,reverse=True):expression=expression.replace(key,values[key])
+                            expression=expression.replace('&&',' and ').replace('||',' or ').replace('!',' not ')
+                            self.assertIsNone(re.search(r'[^TrueFalsandornot()\s]',expression))
+                            expected=source=='success' and ((retained and package==generated=='skipped') or (not retained and package==generated=='success'))
+                            self.assertEqual(expected,eval('('+expression+')',{'__builtins__':{}},{}))
+        preflight=blocks['publication-preflight']
+        scope=preflight.split('      - name: Verify all19 existing-ID NuGet scopes without publication',1)[1].split('      - name:',1)[0]
+        self.assertIn('GITHUB_TOKEN: ${{ github.token }}',scope)
+
+    def test_publication_tag_probe_requires_complete_original_lightweight_triple(self):
+        source='4ede04be66cedffc8551cd14045bab714aa358a7'
+        refs=['refs/tags/'+tag for tag in ('fs-gg-ui/v0.32.4','fs-gg-ui-template/v0.32.4','v0.32.4')]
+        valid='\n'.join(source+'\t'+ref for ref in refs)
+        with patch.object(self.subject.preflight,'git',return_value=valid):self.subject.retained_producer_tags(ROOT,source)
+        for text in ('',valid.split('\n')[0],valid.replace(source,'a'*40),valid+'\n'+source+'\t'+refs[0]+'^{}'):
+            with self.subTest(refs=text),patch.object(self.subject.preflight,'git',return_value=text):
+                with self.assertRaises(SystemExit):self.subject.retained_producer_tags(ROOT,source)
+
+    def test_retention_allows_identical_bytes_and_refuses_replacement(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path=Path(folder)/'original.zip'
+            self.subject.retain_exact(path,b'original')
+            self.subject.retain_exact(path,b'original')
+            with self.assertRaises(SystemExit):self.subject.retain_exact(path,b'replacement')
+            self.assertEqual(b'original',path.read_bytes())
+
+    def test_retention_refuses_symlink_even_to_identical_bytes(self):
+        with tempfile.TemporaryDirectory() as folder:
+            source=Path(folder)/'source';source.write_bytes(b'original')
+            path=Path(folder)/'original.zip';path.symlink_to(source)
+            with self.assertRaises(SystemExit):self.subject.retain_exact(path,b'original')
+
+    def test_native_packet_refuses_later_attempt_before_archive_read(self):
+        run={'id':1,'run_attempt':2,'head_sha':'a'*40,'conclusion':'success','path':'.github/workflows/release.yml'}
+        meta={'id':2,'expired':False,'workflow_run':{'id':1,'head_sha':'a'*40},'digest':'sha256:'+hashlib.sha256(b'original').hexdigest(),'size_in_bytes':8}
+        with patch.object(self.subject.subprocess,'check_output',side_effect=[json.dumps(run).encode(),json.dumps(meta).encode()]) as fetch:
+            with self.assertRaises(SystemExit):self.subject.native_packet(ROOT,1,1,2,'a'*40,hashlib.sha256(b'original').hexdigest(),8,'.github/workflows/release.yml')
+            self.assertEqual(2,fetch.call_count)
+
+    def test_native_packet_requires_original_bytes_after_metadata_join(self):
+        raw=b'original';sha=hashlib.sha256(raw).hexdigest()
+        run={'id':1,'run_attempt':1,'head_sha':'a'*40,'conclusion':'success','path':'.github/workflows/release.yml'}
+        meta={'id':2,'expired':False,'workflow_run':{'id':1,'head_sha':'a'*40},'digest':'sha256:'+sha,'size_in_bytes':len(raw)}
+        for received,accepted in [(raw,True),(b'changed!',False)]:
+            with self.subTest(accepted=accepted),patch.object(self.subject.subprocess,'check_output',side_effect=[json.dumps(run).encode(),json.dumps(meta).encode(),received]):
+                if accepted:self.assertEqual(raw,self.subject.native_packet(ROOT,1,1,2,'a'*40,sha,len(raw),'.github/workflows/release.yml'))
+                else:
+                    with self.assertRaises(SystemExit):self.subject.native_packet(ROOT,1,1,2,'a'*40,sha,len(raw),'.github/workflows/release.yml')
 
 
 if __name__ == '__main__':

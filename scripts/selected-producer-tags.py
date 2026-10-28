@@ -109,7 +109,9 @@ def executor_identity(git, env: dict) -> dict:
     if git('rev-parse', 'HEAD') != expected:
         raise Refused('checkout HEAD differs from reviewed executor')
     git('diff', '--quiet', 'HEAD', '--', '.github/workflows/release-tags.yml',
-        'scripts/selected-producer-tags.py', 'scripts/release-source-guard.py', guard.ATTEMPT, guard.SUCCESSOR_ATTEMPT, guard.FONT_DISPOSAL_ATTEMPT)
+        'scripts/selected-producer-tags.py', 'scripts/release-source-guard.py',
+        'scripts/release-selected-successor.fsx', 'src/FS.GG.Rendering.ReleasePreflight/Plan.fs',
+        'src/FS.GG.Rendering.ReleasePreflight/SelectedSuccessor.fs', guard.ATTEMPT, guard.SUCCESSOR_ATTEMPT, guard.FONT_DISPOSAL_ATTEMPT)
     for arguments in [('remote', 'get-url', '--all', 'origin'),
                       ('remote', 'get-url', '--push', '--all', 'origin')]:
         if git(*arguments) not in ORIGINS:
@@ -152,6 +154,10 @@ def ordered_prefix(state: dict, refs=REFS) -> None:
 
 
 def selected_binding(root: Path, source: str, version: str) -> dict:
+    if source == '4ede04be66cedffc8551cd14045bab714aa358a7' and version == '0.32.4':
+        # The maintained typed core joins original producer/receiver evidence.
+        # This reader does not spoof release.yml executor identity.
+        return guard.validate_retained_successor(root, source, acquire=not all((root/"artifacts/attempt"/name).is_file() for name in ("original.zip","qualification.zip","browser.zip")))
     if source == guard.FONT_DISPOSAL['producerSha'] and version == guard.FONT_DISPOSAL['version']:
         binding = guard.validate_font_disposal_attempt(root, source, require_ready=True)
         guard.validate(root, source, guard.FONT_DISPOSAL['planPath'], version, require_publication_ready=False)
@@ -172,7 +178,8 @@ def selected_binding(root: Path, source: str, version: str) -> dict:
 class Operation:
     def __init__(self, root: Path, mode: str, source: str, version: str, env: dict,
                  git=None, binding_check=selected_binding):
-        subjects = {(guard.FONT_DISPOSAL['producerSha'], guard.FONT_DISPOSAL['version']): ('fs-gg-ui/v0.32.3', 'fs-gg-ui-template/v0.32.3', 'v0.32.3'),
+        subjects = {('4ede04be66cedffc8551cd14045bab714aa358a7', '0.32.4'): ('fs-gg-ui/v0.32.4', 'fs-gg-ui-template/v0.32.4', 'v0.32.4'),
+                    (guard.FONT_DISPOSAL['producerSha'], guard.FONT_DISPOSAL['version']): ('fs-gg-ui/v0.32.3', 'fs-gg-ui-template/v0.32.3', 'v0.32.3'),
                     (PRODUCER, VERSION): TAGS,
                     (guard.SUCCESSOR['producerSha'], guard.SUCCESSOR['version']): ('fs-gg-ui/v0.32.2', 'fs-gg-ui-template/v0.32.2', 'v0.32.2')}
         if (source, version) not in subjects:
@@ -212,6 +219,8 @@ class Operation:
                 raise Refused('unsupported operation mode')
             if self.mode == 'cut' and self.source == guard.FONT_DISPOSAL['producerSha']:
                 raise Refused('held original0323 requires maintained same-original-intent settlement; ordinary cutter refused')
+            if self.mode == 'cut' and self.version == '0.32.4' and (self.env.get('FSGG_SUCCESSOR_UNRESOLVED_SEND') != 'false' or self.env.get('GITHUB_RUN_ATTEMPT') != '1'):
+                raise Refused('selected successor prior tag-send state must be explicitly reconciled')
             self.admit()
             initial = probe(self.git, self.refs, self.source)
             ordered_prefix(initial, self.refs)
