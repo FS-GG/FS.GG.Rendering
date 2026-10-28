@@ -24,7 +24,7 @@ def children(node):
             yield child
 
 
-def find_objects(root, wanted):
+def find_objects(root, wanted, wanted_role=None):
     pending = [root]
     examined = 0
     target = None
@@ -36,7 +36,7 @@ def find_objects(root, wanted):
         try:
             name = Atspi.Accessible.get_name(node)
             role = Atspi.Accessible.get_role(node)
-            if name == wanted:
+            if name == wanted and (wanted_role is None or Atspi.Accessible.get_role_name(node) == wanted_role):
                 target = node
             elif name == "Search or enter address":
                 sink = node
@@ -52,10 +52,11 @@ def find_objects(root, wanted):
 
 Atspi.init()
 wanted = sys.argv[1]
+wanted_role = sys.argv[2] if len(sys.argv) == 3 else None
 deadline = time.monotonic() + 10
 while time.monotonic() < deadline:
     desktop = Atspi.get_desktop(0)
-    target, sink, frame = find_objects(desktop, wanted)
+    target, sink, frame = find_objects(desktop, wanted, wanted_role)
     if target is not None:
         if frame is not None:
             Atspi.Component.grab_focus(frame)
