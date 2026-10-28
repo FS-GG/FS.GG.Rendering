@@ -12,6 +12,9 @@ open Rendering.NuGetVerifyKey
 open Rendering.AttemptEligibility
 
 let args = fsi.CommandLineArgs |> Array.skip 1
+if args = [|"--check-account"|] then
+    if effectiveAccountAccepted (Environment.GetEnvironmentVariable("FSGG_NUGET_ACCOUNT")) then exit 0
+    else eprintfn "NuGet effective account refused"; exit 3
 let value name =
     let matches = args |> Array.indexed |> Array.filter (fun (_,v) -> v=name)
     if matches.Length<>1 || fst matches.[0]+1>=args.Length then invalidArg "arguments" "verify-key-arguments-refused"

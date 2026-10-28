@@ -212,18 +212,34 @@ type DiagnosticHandler(status: HttpStatusCode, content: unit -> HttpContent, hea
     override _.SendAsync(request, cancellation) = Task.FromResult(handle request cancellation)
 let observeDiagnostic status content =
     httpTransportWithHandler diagnosticFixtureKey (new DiagnosticHandler(status,content,0)) "FS.GG.UI.Scene" "0.32.3"
-let checkRefused body =
+let checkRefused body suffix =
     let row=observeDiagnostic HttpStatusCode.BadRequest (fun () -> new ByteArrayContent(body))
-    assert(row.HttpStatus=Some 400 && row.Outcome="authorization-unproven")
+    assert(row.HttpStatus=Some 400 && row.Outcome="authorization-unproven:m-missing:e-unspecified:"+suffix)
     let sanitized=JsonSerializer.Serialize(row)
     assert(not(sanitized.Contains(diagnosticFixtureKey)) && not(sanitized.Contains(verificationPolicy)))
+    assert(match inspect (fun id _ -> {row with PackageId=id}) ids "0.32.3" with Ok(_,false)->true|_->false)
+    assert(match inspect (fun id _ -> {row with PackageId=id;HttpStatus=Some 200}) ids "0.32.3" with Ok(_,false)->true|_->false)
 let classified=observeDiagnostic HttpStatusCode.BadRequest (fun () -> new StringContent(verificationPolicy))
 assert(classified.HttpStatus=Some 400 && classified.Outcome="security-policy-verification-scope-required")
 assert(match inspect (fun id _ -> {classified with PackageId=id}) ids "0.32.3" with Ok(_,false)->true|_->false)
-for body in ["unknown service refusal"; verificationPolicy+"\n"+diagnosticFixtureKey; "{\"message\":\""+verificationPolicy+"\"}"; verificationPolicy+" extra"] do
-    checkRefused (Encoding.UTF8.GetBytes body)
-checkRefused [|0xffuy|]
-checkRefused (Array.create 4097 65uy)
+for body in ["unknown service refusal"; "{\"message\":\""+verificationPolicy+"\"}"; verificationPolicy+" extra"] do
+    checkRefused (Encoding.UTF8.GetBytes body) "s-bounded:r-unmatched"
+checkRefused (Encoding.UTF8.GetBytes(verificationPolicy+"\n"+diagnosticFixtureKey)) "s-bounded:r-reflection"
+checkRefused [||] "s-bounded:r-empty"
+checkRefused [|0xffuy|] "s-bounded:r-non-utf8"
+checkRefused (Array.create 4097 65uy) "s-declared-oversize:r-not-read"
+for media,charset,encoded,expected in ["text/plain","utf-8",false,"m-text:e-utf8"; "text/html","iso-8859-1",false,"m-html:e-other"; "application/json","",false,"m-json:e-unspecified"; "application/x-secret-header-"+diagnosticFixtureKey,"",true,"m-other:e-encoded"] do
+    let row=observeDiagnostic HttpStatusCode.BadRequest (fun () ->
+        let content=new ByteArrayContent(Encoding.UTF8.GetBytes "unmatched")
+        content.Headers.ContentType <- Headers.MediaTypeHeaderValue(media)
+        if charset<>"" then content.Headers.ContentType.CharSet <- charset
+        if encoded then content.Headers.ContentEncoding.Add("fixture-secret-"+diagnosticFixtureKey)
+        content)
+    assert(row.Outcome="authorization-unproven:"+expected+":s-bounded:r-unmatched")
+    assert(not(JsonSerializer.Serialize(row).Contains(diagnosticFixtureKey)))
+for account in [null; ""; "other-owner"; "paradigma11"; "Paradigma11 "; "Paradigma11\n"] do
+    assert(not(effectiveAccountAccepted account))
+assert(effectiveAccountAccepted "Paradigma11")
 
 type DiagnosticStream(bytes: byte[], throwRead: bool) =
     inherit MemoryStream(bytes)
@@ -242,16 +258,16 @@ type DiagnosticStream(bytes: byte[], throwRead: bool) =
         ValueTask<int>(count)
 let oversized=new DiagnosticStream(Array.create 9000 65uy,false)
 let large=observeDiagnostic HttpStatusCode.BadRequest (fun () -> new StreamContent(oversized))
-assert(large.HttpStatus=Some 400 && large.Outcome="authorization-unproven" && oversized.ReadBytes=4097)
+assert(large.HttpStatus=Some 400 && large.Outcome="authorization-unproven:m-missing:e-unspecified:s-stream-oversize:r-limit-reached" && oversized.ReadBytes=4097)
 let declaredLarge=new DiagnosticStream(Array.create 9000 65uy,true)
 let declared=observeDiagnostic HttpStatusCode.BadRequest (fun () ->
     let content=new StreamContent(declaredLarge)
     content.Headers.ContentLength <- Nullable 9000L
     content)
-assert(declared.HttpStatus=Some 400 && declared.Outcome="authorization-unproven" && declaredLarge.ReadCalls=0)
+assert(declared.HttpStatus=Some 400 && declared.Outcome="authorization-unproven:m-missing:e-unspecified:s-declared-oversize:r-not-read" && declaredLarge.ReadCalls=0)
 let failing=new DiagnosticStream([|1uy|],true)
 let failed=observeDiagnostic HttpStatusCode.BadRequest (fun () -> new StreamContent(failing))
-assert(failed.HttpStatus=Some 400 && failed.Outcome="authorization-unproven")
+assert(failed.HttpStatus=Some 400 && failed.Outcome="authorization-unproven:m-missing:e-unspecified:s-unknown:r-read-failure")
 for status in [HttpStatusCode.OK;HttpStatusCode.Forbidden;HttpStatusCode.Redirect] do
     let unread=new DiagnosticStream([|1uy|],true)
     let row=observeDiagnostic status (fun () -> new StreamContent(unread))
@@ -275,7 +291,7 @@ let delayedHandler=new DiagnosticHandler(HttpStatusCode.BadRequest,(fun () -> ne
 let deadlineClock=System.Diagnostics.Stopwatch.StartNew()
 let cancelled=httpTransportWithHandler diagnosticFixtureKey delayedHandler "FS.GG.UI.Scene" "0.32.3"
 deadlineClock.Stop()
-assert(cancelled.HttpStatus=Some 400 && cancelled.Outcome="authorization-unproven")
+assert(cancelled.HttpStatus=Some 400 && cancelled.Outcome="authorization-unproven:m-missing:e-unspecified:s-unknown:r-timeout")
 assert(deadlineClock.Elapsed < TimeSpan.FromSeconds 15.)
 // HttpClient links its request token internally; token identity is not the deadline contract.
 assert(delayedHandler.RequestToken.CanBeCanceled && cancelledBody.BodyToken.IsCancellationRequested)

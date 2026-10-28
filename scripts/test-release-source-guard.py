@@ -1734,6 +1734,23 @@ class RetainedSuccessorTransportTests(unittest.TestCase):
                     with self.assertRaises(SystemExit):self.subject.native_packet(ROOT,1,1,2,'a'*40,sha,len(raw),'.github/workflows/release.yml')
 
 
+class EffectiveNuGetAccountTests(unittest.TestCase):
+    def test_both_actual_login_consumers_check_same_effective_account_first(self):
+        text=(ROOT/'.github/workflows/release.yml').read_text()
+        self.assertEqual(text.count('uses: NuGet/login@v1'),2)
+        for job, login, condition in [('publication-preflight','NuGet login preflight (OIDC only; existing-ID verification GETs)',None),('publish-packages','NuGet login (OIDC → short-lived nuget.org key)',"steps.ver.outputs.push == 'true'")]:
+            body=re.search(r'^  '+job+r':\n(.*?)(?=^  [a-z-]+:|\Z)',text,re.M|re.S).group(1)
+            guard=body.split('      - name: Verify effective NuGet account before login\n',1)[1].split('      - name:',1)[0]
+            self.assertIn("FSGG_NUGET_ACCOUNT: ${{ secrets.NUGET_USER || 'Paradigma11' }}",guard)
+            self.assertIn('run: dotnet fsi --exec scripts/release-nuget-verify-key.fsx --check-account',guard)
+            self.assertNotIn('echo',guard)
+            self.assertEqual(guard.count('        if: '),int(condition is not None))
+            if condition:self.assertIn('        if: '+condition,guard)
+            self.assertLess(body.index('Verify effective NuGet account before login'),body.index('      - name: '+login))
+            login_body=body.split('      - name: '+login,1)[1].split('      - name:',1)[0]
+            self.assertIn("user: ${{ secrets.NUGET_USER || 'Paradigma11' }}",login_body)
+
+
 if __name__ == '__main__':
     if sys.argv[1:]==['--native-boundary']: native_boundary()
     elif sys.argv[1:]==['--native-scope-boundary']: native_boundary(True)

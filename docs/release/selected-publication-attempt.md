@@ -437,3 +437,34 @@ subject globs or push actions. That can establish ownership of an existing packa
 not the original publish key's per-ID push authorization or new-ID permission. It is
 excluded as a substitute here. Root selects any revised publication contract only
 from actual diagnostic evidence; this source change grants no new effect.
+
+### Effective account and response shape follow-up
+
+The owner-reported [28 October policy readout](https://github.com/FS-GG/.github/blob/cb507b809126a2effe5b80674417cbd1363549a4/docs/coordination/2026-10-28-nuget-trusted-publishing-readout.md)
+covers the nineteen IDs for `Paradigma11`. Both actual login consumers now compare
+that expected account with the effective secret/default expression before login;
+the check emits only a fixed refusal, never the effective value. This verifies the
+requested account, not the identity or scopes embedded in the opaque returned key.
+
+Original preflight40770369107/a1 still failed with nineteen HTTP400 observations;
+its known-policy classifier did not match. Its cause remains unknown. Credential-free
+GETs returning401 do not explain the authenticated400 response. The follow-up keeps
+the three-field observation and receipt schema: unclassified400 outcomes now append
+closed media, encoding, size and read-disposition tags. These distinguish empty,
+oversized, invalid UTF8, timed-out, failed, reflected and unmatched responses without
+retaining arbitrary headers, bodies, body hashes or keys. Declared oversize is
+not read; streamed oversize reports limit-reached after4097 application bytes. The existing exact policy
+outcome is unchanged. The4097-byte application read cap, one shared10s deadline,
+no redirects and no implicit response draining remain; this is not an exact network
+byte bound. Non400 responses still do not have diagnostic bodies read.
+
+Every response other than nineteen HTTP200/authorized observations continues to
+refuse writer admission. Trusted Publishing login alone does not supply equivalent
+per-ID pre-effect scope evidence; no derived verification key substitutes for the
+original key. This source follow-up selects no native attempt or publication effect.
+
+Proportionate pipeline preflight reuses the existing static source controls for
+both real login-step inputs, conditions and ordering, plus actual source-only
+wrapper calls with accepted/refused public account fixtures. No new state model
+is needed for this linear prerequisite; existing publication ordering controls
+remain mandatory. Local parser/deadline controls make no service-authorization claim.
