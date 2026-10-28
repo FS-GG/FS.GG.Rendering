@@ -802,6 +802,8 @@ jobs:
           timeout --kill-after=5s 60s python3 -B scripts/test-release-tag-capability.py
           timeout --kill-after=5s 60s python3 scripts/test-settle-original-tags.py
           python3 scripts/release-toolchain-identity.py --expected-sdk 10.0.401 --receipt artifacts/toolchain/read-selector-controls.json
+          dotnet restore tests/FS.GG.Rendering.ReleasePreflight.Tests/FS.GG.Rendering.ReleasePreflight.Tests.fsproj --locked-mode
+          dotnet run --project tests/FS.GG.Rendering.ReleasePreflight.Tests/FS.GG.Rendering.ReleasePreflight.Tests.fsproj -c Release --no-restore
           dotnet fsi --exec scripts/test-release-package-census.fsx
           dotnet fsi --define:DEBUG --exec scripts/test-release-nuget-verify-key.fsx
           python3 scripts/test-release-source-guard.py --native-font-disposal-boundary

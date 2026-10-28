@@ -52,8 +52,8 @@ const desktopKey = async (key) => {
   execFileSync("xdotool", ["key", "--clearmodifiers", key]);
   await page.waitForTimeout(250);
 };
-const atspiFocus = async (accessibleName) => {
-  execFileSync("python3", [resolve(fixture, "orca-atspi-focus.py"), accessibleName], { stdio: "inherit" });
+const atspiFocus = async (accessibleName, accessibleRole) => {
+  execFileSync("python3", [resolve(fixture, "orca-atspi-focus.py"), accessibleName, ...(accessibleRole ? [accessibleRole] : [])], { stdio: "inherit" });
   await waitForOrca();
 };
 const tabTo = async (selector, accessibleName) => {
@@ -67,12 +67,12 @@ const tabTo = async (selector, accessibleName) => {
   }
   throw new Error(`Could not reach ${selector} through desktop Tab navigation`);
 };
-const enterDocumentForOrca = async (accessibleName) => {
+const enterDocumentForOrca = async (accessibleName, accessibleRole) => {
   const speechLog = process.env.SVG_SCENE_ORCA_SPEECH_LOG;
   if (!speechLog) throw new Error("SVG_SCENE_ORCA_SPEECH_LOG is required");
   // Exercise the real platform accessibility component before the keyboard
   // journey. Orca speech and AT-SPI focusability are recorded independently.
-  await atspiFocus(accessibleName);
+  await atspiFocus(accessibleName, accessibleRole);
 };
 try {
   await page.waitForLoadState("networkidle");
@@ -126,8 +126,11 @@ try {
   for (const [buttonLabel, dialogLabel, key] of [["Open command palette","Command palette","palette"],["Open possible input help","Possible input help","help"],["Rebind selected command","Rebind command","rebind"]]) {
     await tabTo(`button[aria-label='${buttonLabel}']`, buttonLabel);
     await page.keyboard.press("Enter");
-    await enterDocumentForOrca(dialogLabel);
-    overlays[key] = await page.getByRole("dialog", { name: dialogLabel, exact: true }).textContent();
+    const dialog = page.getByRole("dialog", { name: dialogLabel, exact: true });
+    if (key === "palette" && !await dialog.getByRole("heading", { name: dialogLabel, exact: true }).evaluate(node => node === document.activeElement))
+      throw new Error("palette keyboard opening did not focus its heading");
+    await enterDocumentForOrca(dialogLabel, key === "palette" ? "heading" : undefined);
+    overlays[key] = await dialog.textContent();
     await page.keyboard.press("Escape");
     await waitForOrca();
   }

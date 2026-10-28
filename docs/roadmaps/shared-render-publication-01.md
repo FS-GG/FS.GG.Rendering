@@ -216,3 +216,11 @@ After the settlement created the 0.32.3 tags, the read-only `preflight-only` rou
 re-qualify this subject: `release-preflight.py` refuses existing tags and the font
 attempt refuses scope-only verification. Post-settlement eligibility is therefore
 established only inside the publish job, before its first writer.
+
+
+## Palette-heading successor source preparation (0.32.4, 2026-10-28)
+
+The [canonical release preparation](../release/selected-publication-attempt.md#palette-heading-successor-source-preparation-0324-2026-10-28)
+records the source-only successor and its separate public acceptance. Next milestone:
+qualify all nineteen actual0.32.4 archives and the Templates receiver before enabling
+any publication attempt; then adopt the published set through the actual public route.

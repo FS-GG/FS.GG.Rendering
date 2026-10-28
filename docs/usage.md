@@ -34,20 +34,18 @@ Three things are worth internalizing up front:
 ## Getting the packages
 
 <!-- BEGIN GENERATED: fsgg-doc:package-coordinates (scripts/generate-doc-fragments.fsx — do not hand-edit) -->
-Source release coordinates: `FS.GG.UI.*` packages targeting `net10.0` — current framework version `0.32.3`.
+Source release coordinates: `FS.GG.UI.*` packages targeting `net10.0` — current framework version `0.32.4`.
 <!-- END GENERATED: fsgg-doc:package-coordinates -->
 
-The published baseline remains `0.31.0`. The source coordinates above select the pending
-`0.32.0` candidate and do not establish public availability.
+The [accepted public cohort](https://github.com/FS-GG/.github/issues/4709#issuecomment-6352287342)
+is the installation baseline. The source coordinates above describe the pending
+[palette-heading successor](../eng/release/palette-heading-0.32.4.json); they do not establish public availability.
 
-The [0.32.0 successor plan](../eng/release/svg-external-authority-0.32.0.json) prepares all 19
-coherent archives with the external authority SVG host and the published 0.31.0 API baseline.
-It is a source candidate; `publicationReady: false` blocks the tag cutter and effect-bearing
-release calls before credentials or expensive work. Source-only qualification uses `release.yml`
-with `source-only: true` and version `0.32.0`; its existing native consumption checks remain required.
-A readiness change must accompany genuine Rendering identity and publisher-grant evidence for
-all selected package IDs. The flag itself grants no publication authority. Historical 0.31.0
-release plans and retained custody remain unchanged.
+Source-only qualification uses the existing release workflow to retain the complete coherent
+archive set and check compatibility and browser behavior. The actual receiver must then consume
+those same archives. Publication remains disabled until original custody, receiver qualification
+and current authorization are joined; a readiness flag alone grants no authority. Historical
+release plans, original attempts and retained custody remain unchanged.
 
 Release jobs set up SDK `10.0.401`, then verify the loaded SDK and retain host information,
 loaded F# core identity and SDK compiler hashes before restore/build/pack. Actual execution of

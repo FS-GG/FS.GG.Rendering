@@ -2,7 +2,7 @@
 set -euo pipefail
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 original_mode=false
-if [[ -n "${SVG_SCENE_ORIGINAL_CANDIDATE_DIR:-}${SVG_SCENE_ORIGINAL_CUSTODY:-}${SVG_SCENE_ORIGINAL_CUSTODY_SHA256:-}${SVG_SCENE_ORIGINAL_SOURCE_SHA:-}" ]]; then
+if [[ -n "${SVG_SCENE_ORIGINAL_CANDIDATE_DIR:-}${SVG_SCENE_ORIGINAL_CUSTODY:-}${SVG_SCENE_ORIGINAL_CUSTODY_SHA256:-}${SVG_SCENE_ORIGINAL_SOURCE_SHA:-}${SVG_SCENE_ORIGINAL_PLAN:-}" ]]; then
   original_mode=true
 else
   node "$repo/tests/Scene.SvgBrowser.Tests/reconciliation-source-test.mjs"
@@ -141,8 +141,8 @@ echo "svg-browser-matrix: automated=passed browsers=chromium,firefox,webkit assi
 if [[ "$original_mode" == true ]]; then
   # Verify all19 originals again after the actual three-family consumer journey.
   [[ "$(sha256sum "$SVG_SCENE_ORIGINAL_CUSTODY" | cut -d' ' -f1)" == "$SVG_SCENE_ORIGINAL_CUSTODY_SHA256" ]] || exit 1
-  python3 "$repo/scripts/release-custody.py" verify --plan "$repo/eng/release/font-disposal-0.32.3.json" \
+  python3 "$repo/scripts/release-custody.py" verify --plan "$repo/${SVG_SCENE_ORIGINAL_PLAN:-eng/release/font-disposal-0.32.3.json}" \
     --archives "$SVG_SCENE_ORIGINAL_CANDIDATE_DIR" --manifest "$SVG_SCENE_ORIGINAL_CUSTODY" --source-sha "$SVG_SCENE_ORIGINAL_SOURCE_SHA"
   cp "$work/original-candidate.json" "$base.original-candidate.json"
-  echo "svg-browser-original-candidate: version=0.32.3 roster=19 consumers=3 no-repack=passed custody=unchanged"
+  echo "svg-browser-original-candidate: version=$(jq -r .version "$work/original-candidate.json") roster=19 consumers=3 no-repack=passed custody=unchanged"
 fi

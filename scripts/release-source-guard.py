@@ -25,7 +25,8 @@ def validate(root: Path, source_sha: str, plan_path: str, requested_version: str
         preflight.fail('source identity must be an exact lowercase 40-hex SHA')
     preflight.git(root, 'cat-file', '-e', f'{source_sha}^{{commit}}')
     text = lambda path: preflight.source_text(root, source_sha, path)
-    raw = text(plan_path)
+    raw = (source_bytes(root, source_sha, plan_path).decode()
+           if plan_path == 'eng/release/palette-heading-0.32.4.json' else text(plan_path))
     plan = json.loads(raw, object_pairs_hook=preflight.unique_json_object)
     if plan.get('schema') != 'fsgg.rendering.release-plan/v1':
         preflight.fail('unsupported release-plan schema')
@@ -42,7 +43,22 @@ def validate(root: Path, source_sha: str, plan_path: str, requested_version: str
         'eng/release/external-authority-recovery-0.32.2.json': ('0.32.2', '0.32.1'),
         'eng/release/font-disposal-0.32.3.json': ('0.32.3', '0.32.1'),
     }
-    if plan_path not in selections or (version, plan.get('baselineVersion')) != selections[plan_path]:
+    if plan_path == 'eng/release/palette-heading-0.32.4.json':
+        # Exact-source transport only. The maintained typed selector interprets the new
+        # successor and refuses all effects until actual original custody/receiver joins exist.
+        envelope = {'sourceSha': source_sha, 'planPath': plan_path, 'version': requested_version or version,
+                    'intent': 'publication' if require_publication_ready else 'source-qualification',
+                    'rawPlan': raw, 'sourcePackages': [{'id': key, 'kind': value} for key, value
+                        in preflight.source_package_roster(root, source_sha).items()]}
+        command = ['dotnet', 'fsi', '--exec', str(root / 'scripts/release-selected-successor.fsx')]
+        completed = subprocess.run(command, input=json.dumps(envelope), text=True, capture_output=True, timeout=60,
+                                   env={**os.environ, 'DOTNET_NOLOGO': 'true', 'DOTNET_SKIP_FIRST_TIME_EXPERIENCE': '1'})
+        if completed.returncode != 0:
+            preflight.fail('typed successor refused: ' + completed.stderr.strip())
+        verdict = json.loads(completed.stdout, object_pairs_hook=preflight.unique_json_object)
+        if verdict != {'result': 'pass', 'scope': 'source-qualification-only', 'publicationAdmitted': False}:
+            preflight.fail('typed successor verdict unavailable or malformed')
+    elif plan_path not in selections or (version, plan.get('baselineVersion')) != selections[plan_path]:
         preflight.fail('release plan path/version/baseline is not a selected source tuple')
     if version in ('0.32.1', '0.32.2', '0.32.3') and (require_publication_ready or plan['publicationReady'] is not False):
         preflight.fail(f'{version} source preparation only: candidate custody and installed qualification are unbound')
@@ -842,7 +858,136 @@ def successor_main() -> int:
     return 0
 
 
+# One selected-successor adapter. Historical subject/settlement functions remain untouched.
+def successor_typed(root: Path, intent: str, evidence=None) -> dict:
+    payload={'intent':intent}
+    if evidence is not None:payload['evidence']=evidence
+    result=subprocess.run(['dotnet','fsi','--exec',str(root/'scripts/release-selected-successor.fsx')],
+                          input=json.dumps(payload),text=True,capture_output=True,timeout=90,
+                          env={**os.environ,'DOTNET_NOLOGO':'true','DOTNET_SKIP_FIRST_TIME_EXPERIENCE':'1'})
+    if result.returncode:preflight.fail('typed retained successor refused: '+result.stderr.strip())
+    return json.loads(result.stdout,object_pairs_hook=preflight.unique_json_object)
+
+
+def native_packet(root: Path, run_id, attempt, artifact, source, sha, size, workflow) -> bytes:
+    # Shared native read transport. Interpretation/admission stays in SelectedSuccessor.
+    def api(path):return subprocess.check_output(['gh','api','repos/FS-GG/FS.GG.Rendering/'+path],stderr=subprocess.DEVNULL,timeout=60)
+    run=json.loads(api(f'actions/runs/{run_id}'));meta=json.loads(api(f'actions/artifacts/{artifact}'))
+    if (run.get('id')!=run_id or run.get('run_attempt')!=attempt or run.get('head_sha')!=source or run.get('conclusion')!='success' or run.get('path')!=workflow
+        or meta.get('id')!=artifact or meta.get('expired') is not False or meta.get('workflow_run',{}).get('id')!=run_id
+        or meta['workflow_run'].get('head_sha')!=source or meta.get('digest')!='sha256:'+sha or meta.get('size_in_bytes')!=size):preflight.fail('retained native packet identity refused')
+    raw=api(f'actions/artifacts/{artifact}/zip')
+    if len(raw)!=size or hashlib.sha256(raw).hexdigest()!=sha:preflight.fail('retained native packet bytes differ')
+    return raw
+
+
+def successor_zip(raw):
+    import io,stat
+    z=zipfile.ZipFile(io.BytesIO(raw));rows=z.infolist()
+    if len(rows)>4096 or len({i.filename for i in rows})!=len(rows) or sum(i.file_size for i in rows)>134217728:preflight.fail('retained packet bounds/duplicates refused')
+    for i in rows:
+        if Path(i.filename).is_absolute() or '..' in Path(i.filename).parts or stat.S_IFMT(i.external_attr>>16) not in (0,stat.S_IFREG,stat.S_IFDIR):preflight.fail('retained packet path/type refused')
+    return z
+
+
+def retain_exact(path: Path, raw: bytes) -> None:
+    # Acquisition may resume; it may never silently replace retained custody.
+    if path.is_symlink() or (path.exists() and (not path.is_file() or path.read_bytes()!=raw)):
+        preflight.fail('retained operand path already contains different bytes: '+path.name)
+    if not path.exists():
+        with path.open('xb') as stream:stream.write(raw)
+
+
+def retained_evidence(root: Path, binding: dict, acquire=True) -> dict:
+    out=root/'artifacts/attempt';out.mkdir(parents=True,exist_ok=True)
+    if acquire:
+        for filename,item,workflow in [('original.zip',binding,'.github/workflows/release.yml'),('qualification.zip',binding['qualification'],'.github/workflows/templates-external-reference-qualification.yml'),('browser.zip',binding['browser'],'.github/workflows/release.yml')]:
+            producer=filename=='original.zip'
+            raw=native_packet(root,item['producerRun'] if producer else item['run'],item['producerAttempt'] if producer else item['attempt'],item['producerArtifact'] if producer else item['artifact'],item['producerSha'] if producer else item.get('callerSha',item.get('sourceSha')),item['outerSha256'],item['outerSizeBytes'],workflow)
+            retain_exact(out/filename,raw)
+    # Rehash every retained operand on cache reuse; a cached verdict never admits changed bytes.
+    for filename,item in [('original.zip',binding),('qualification.zip',binding['qualification']),('browser.zip',binding['browser'])]:
+        raw=(out/filename).read_bytes()
+        if len(raw)!=item['outerSizeBytes'] or hashlib.sha256(raw).hexdigest()!=item['outerSha256']:preflight.fail('retained cached packet differs')
+    archives=root/'artifacts/packages';archives.mkdir(parents=True,exist_ok=True)
+    with successor_zip((out/'original.zip').read_bytes()) as z:
+        names=z.namelist()
+        if len(names)!=20 or any(Path(n).name!=n for n in names):preflight.fail('retained original19 closure refused')
+        for name in names:retain_exact(archives/name,z.read(name))
+    plan=source_bytes(root,binding['producerSha'],binding['planPath'])
+    if hashlib.sha256(plan).hexdigest()!=binding['planSha256']:preflight.fail('immutable retained plan differs')
+    retain_exact(out/'producer-plan.json',plan)
+    subprocess.run(['python3',str(root/'scripts/release-custody.py'),'verify','--plan',str(out/'producer-plan.json'),'--archives',str(archives),'--manifest',str(archives/'release-custody.json'),'--source-sha',binding['producerSha']],check=True,stdout=subprocess.DEVNULL)
+    def member(z,suffix):
+        names=[n for n in z.namelist() if n==suffix or n.endswith('/'+suffix)]
+        if len(names)!=1:preflight.fail('retained evidence missing/ambiguous: '+suffix)
+        return z.read(names[0])
+    with successor_zip((out/'qualification.zip').read_bytes()) as z, successor_zip((out/'browser.zip').read_bytes()) as browser:
+        q=lambda name:member(z,'palette-candidate/'+name)
+        template_names=[n for n in z.namelist() if n.startswith('palette-template-feed/') and n.endswith('.nupkg')]
+        if len(template_names)!=1:preflight.fail('retained Templates archive missing/ambiguous')
+        evidence={'Qualification':q('qualification.json').decode(),'Observer':q('orca-input.json').decode(),'Before':q('consumer-before.json').decode(),'After':q('consumer-after.json').decode(),
+                  'Assets':q('receiver/SvgFoundation/Studio/obj/project.assets.json').decode(),'Custody':(archives/'release-custody.json').read_text(),
+                  'Preflight':member(z,'external-reference-preflight.json').decode(),'Browser':member(browser,'source-browser-observations.json').decode(),
+                  'BrowserOriginal':member(browser,'source-browser-observations.original-candidate.json').decode(),'ProducerJobs':member(z,'rendering-jobs.json').decode(),
+                  'LockHash':hashlib.sha256(q('receiver/SvgFoundation/Studio/packages.lock.json')).hexdigest(),'TemplateHash':hashlib.sha256(z.read(template_names[0])).hexdigest()}
+    verdict=successor_typed(root,'qualified-publication',evidence)
+    if verdict!={'result':'pass','scope':'qualified-retained-inputs','publicationAdmitted':False}:preflight.fail('typed qualification verdict refused')
+    (out/'successor-evidence.json').write_text(json.dumps(evidence,sort_keys=True)+'\n')
+    return evidence
+
+
+def validate_retained_successor(root: Path, source_sha: str, acquire=True) -> dict:
+    binding=successor_typed(root,'coordinates')
+    if source_sha!=binding['producerSha']:preflight.fail('selected retained source differs')
+    retained_evidence(root,binding,acquire)
+    return binding
+
+
+def retained_producer_tags(root: Path, source: str) -> None:
+    spec=importlib.util.spec_from_file_location('retained_tag_probe',root/'scripts/selected-producer-tags.py')
+    tags=importlib.util.module_from_spec(spec);spec.loader.exec_module(tags)
+    refs=tuple('refs/tags/'+tag for tag in ('fs-gg-ui/v0.32.4','fs-gg-ui-template/v0.32.4','v0.32.4'))
+    try:state=tags.probe(lambda *arguments: preflight.git(root,*arguments),refs,source)
+    except tags.Refused as error:preflight.fail(str(error))
+    if any(state[ref]!=source for ref in refs):preflight.fail('retained publication requires all three original producer lightweight tags')
+
+
+def retained_main() -> int:
+    parser=argparse.ArgumentParser(description='Typed qualified retained successor; no regeneration')
+    parser.add_argument('--retained-successor',action='store_true',required=True)
+    parser.add_argument('--source-sha',default=os.environ.get('PRODUCER_SHA'));parser.add_argument('--plan');parser.add_argument('--version')
+    parser.add_argument('--attempt-preflight',action='store_true');parser.add_argument('--executor-fence',action='store_true')
+    parser.add_argument('--acquire-bound-artifacts',action='store_true');parser.add_argument('--record-event',action='store_true')
+    for field in ('feed','package','stage','result'):parser.add_argument('--event-'+field)
+    args=parser.parse_args();root=Path.cwd();identity=executor_identity(root)
+    if not args.source_sha:preflight.fail('retained successor source is required')
+    if os.environ.get('GITHUB_RUN_ATTEMPT')!='1':preflight.fail('retained successor requires fresh first attempt')
+    if not args.attempt_preflight and os.environ.get('FSGG_SUCCESSOR_UNRESOLVED_SEND')!='false':preflight.fail('retained successor requires an explicit reconciled prior-send state')
+    if not args.attempt_preflight and not args.record_event:
+        retained_producer_tags(root,args.source_sha)
+    if args.record_event:
+        binding=json.loads((root/'artifacts/attempt/input-binding.json').read_text())
+        if any(binding.get(key)!=value for key,value in identity.items()) or binding.get('producerSha')!=args.source_sha:preflight.fail('cached selected attempt context differs')
+        if hashlib.sha256((root/'artifacts/attempt/successor-evidence.json').read_bytes()).hexdigest()!=binding.get('qualifiedEvidenceSha256'):preflight.fail('cached selected evidence changed')
+    else:binding=validate_retained_successor(root,args.source_sha)
+    if (args.plan and args.plan!=binding['planPath']) or (args.version and args.version!=binding['version']):preflight.fail('mixed retained plan/version refused')
+    if args.record_event:
+        ids=[row['id'] for row in json.loads((root/'artifacts/attempt/producer-plan.json').read_text())['packages']]
+        if args.event_feed not in ('github','nuget') or args.event_package not in ids+['all19','unknown'] or args.event_stage not in ('probe','compare','push','readback','interrupted') or args.event_result not in ('requested','acknowledged','matched','failed','absent','refused'):preflight.fail('retained publisher event refused')
+        event={'schema':'fsgg.rendering.publisher-observation/v1',**identity,'producerSha':binding['producerSha'],'planSha256':binding['planSha256'],'custodySha256':binding['custodySha256'],'effectId':binding['effectId'],'utc':datetime.now(timezone.utc).isoformat(),'feed':args.event_feed,'packageId':args.event_package,'stage':args.event_stage,'outcome':args.event_result}
+        with (root/'artifacts/attempt/publisher-events.jsonl').open('a') as f:f.write(json.dumps(event,sort_keys=True)+'\n')
+    else:
+        facts={**identity,'originalCustodyVerified':True,'nativeTemplatesQualified':True,'githubEffectiveWrite':'unknown-before-attempt'}
+        (root/'artifacts/attempt/qualification-facts.json').write_text(json.dumps(facts,sort_keys=True)+'\n')
+        (root/'artifacts/attempt/input-binding.json').write_text(json.dumps({**binding,**identity,'originalPlanSha256':binding['planSha256'],'qualifiedEvidenceSha256':hashlib.sha256((root/'artifacts/attempt/successor-evidence.json').read_bytes()).hexdigest()},sort_keys=True)+'\n')
+        print(json.dumps({'result':'pass','scope':'qualified retained inputs; no write authority',**binding},sort_keys=True))
+    return 0
+
+
 if __name__ == '__main__':
+    if os.environ.get('FSGG_RELEASE_ATTEMPT')=='palette' and '--executor-only' not in sys.argv[1:] and '--retained-successor' not in sys.argv[1:]:sys.argv.append('--retained-successor')
+    if '--retained-successor' in sys.argv[1:]:raise SystemExit(retained_main())
     if os.environ.get('FSGG_RELEASE_ATTEMPT') == '0323' and '--executor-only' not in sys.argv[1:] and '--font-disposal-attempt' not in sys.argv[1:]:
         sys.argv.append('--font-disposal-attempt')
     if os.environ.get('FSGG_RELEASE_ATTEMPT') == '0322' and '--executor-only' not in sys.argv[1:] and '--successor-attempt' not in sys.argv[1:]:

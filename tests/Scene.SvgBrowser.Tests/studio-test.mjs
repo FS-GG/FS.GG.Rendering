@@ -33,7 +33,12 @@ try {
   for(const [buttonName,dialogName,key] of [["Open command palette","Command palette","palette"],["Open possible input help","Possible input help","help"],["Rebind selected command","Rebind command","rebind"]]){
     await page.getByRole("button",{name:buttonName,exact:true}).click();
     const dialog=page.getByRole("dialog",{name:dialogName,exact:true});
-    workspaceUi[key]={visible:await dialog.isVisible(),focused:await dialog.evaluate(node=>node===document.activeElement),text:await dialog.textContent()};
+    const initialFocus=key==="palette" ? dialog.getByRole("heading",{name:dialogName,exact:true}) : dialog;
+    workspaceUi[key]={visible:await dialog.isVisible(),focused:await initialFocus.evaluate(node=>node===document.activeElement),text:await dialog.textContent()};
+    if(key==="palette") {
+      if(await initialFocus.evaluate(node=>node.tagName!=="H2" || node.tabIndex!==-1 || node.parentElement.getAttribute("role")!=="dialog"
+        || node.getAttribute("data-fsgg-focus-target")!=="workspace.command-palette")) throw new Error("palette initial heading/dialog correspondence failed");
+    }
     await page.keyboard.press("Escape");
     workspaceUi[key].restored=await page.getByRole("button",{name:buttonName,exact:true}).evaluate(node=>node===document.activeElement);
   }

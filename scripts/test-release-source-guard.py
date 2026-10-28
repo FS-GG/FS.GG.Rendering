@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline source/plan and workflow admission mutants; launches no .NET or browser."""
+"""Source/plan admission mutants; the selected0324 entry uses an available exact SDK, never a browser."""
 import importlib.util
 import hashlib
 import copy
@@ -85,7 +85,7 @@ class SourceGuardTests(unittest.TestCase):
     def test_actual_workflow_mode_guard_allows_only_nonmutating_modes_without_readiness(self):
         release=(ROOT/'.github/workflows/release.yml').read_text()
         block=re.search(r'^  release-source-guard:\n(.*?)(?=^  [a-z-]+:)',release,re.M|re.S).group(1)
-        script=block.split('        run: |\n',1)[1]
+        script=block.split('        id: source-plan\n',1)[1].split('        run: |\n',1)[1]
         script='\n'.join(line[10:] for line in script.splitlines() if line.strip())
         with tempfile.TemporaryDirectory() as folder:
             temp=Path(folder)
@@ -131,7 +131,7 @@ class SourceGuardTests(unittest.TestCase):
         tags=(ROOT/'.github/workflows/release-tags.yml').read_text()
         self.assertIn('--source-sha "$GITHUB_SHA" --require-publication-ready',tags)
         self.assertIn('needs: [plan, validate]',tags)
-        self.assertLess(tags.index('--require-publication-ready'),tags.index('actions/setup-dotnet'))
+        self.assertLess(tags.index('--require-publication-ready'),tags.index('actions/setup-dotnet',tags.index('  plan:')))
 
     def test_workflow_gate_edges_and_source_only_effect_boundary(self):
         release = (ROOT/'.github/workflows/release.yml').read_text()
@@ -218,11 +218,17 @@ class InertSuccessorTests(unittest.TestCase):
         with self.assertRaises(SystemExit): guard.validate(ROOT, head, PLAN, '0.32.0')
         with self.assertRaises(SystemExit): guard.validate(ROOT, head, self.PLAN, '0.32.1', True)
 
+    def test_actual_historical0323_source_selection_remains_accepted(self):
+        spec=importlib.util.spec_from_file_location('actual_historical_font_guard',ROOT/'scripts/release-source-guard.py')
+        subject=importlib.util.module_from_spec(spec);spec.loader.exec_module(subject)
+        result=subject.validate(ROOT,'4ec6eafbbbf02264db9b0db4780c590abe0bf9cd','eng/release/font-disposal-0.32.3.json','0.32.3')
+        self.assertEqual(('pass','0.32.3','0.32.1'),tuple(result[key] for key in ('result','version','baselineVersion')))
+
     def test_actual_current_workflow_entry_admits_only_source_and_readonly_modes(self):
         head = guard.preflight.git(ROOT, 'rev-parse', 'HEAD')
         release = (ROOT/'.github/workflows/release.yml').read_text()
         block = re.search(r'^  release-source-guard:\n(.*?)(?=^  [a-z-]+:)', release, re.M|re.S).group(1)
-        script = block.split('        run: |\n', 1)[1]
+        script = block.split('        id: source-plan\n', 1)[1].split('        run: |\n', 1)[1]
         script = '\n'.join(line[10:] for line in script.splitlines() if line.strip())
         with tempfile.TemporaryDirectory() as folder:
             marker = Path(folder)/'effect-reached'
@@ -234,22 +240,34 @@ class InertSuccessorTests(unittest.TestCase):
                    'GITHUB_REPOSITORY':'FS-GG/FS.GG.Rendering','GITHUB_RUN_ID':'1','GITHUB_RUN_ATTEMPT':'1'}
             # Execute the actual shell entry and actual guard. Source/preflight may
             # pass this static boundary; publisher/tag calls must stop before it.
-            for source, preflight, version, tag in [('true','false','0.32.3',''),
+            for source, preflight, version, tag in [('true','false','0.32.4',''),
+                    ('false','true','0.32.4',''), ('false','false','0.32.4',''),
+                    ('true','true','0.32.4',''), ('false','false','','v0.32.4'),
+                    ('true','false','0.32.3',''),
                     ('false','true','0.32.3',''), ('false','false','0.32.3',''),
                     ('true','true','0.32.3',''), ('false','false','','v0.32.3'),
                     ('true','false','0.32.2',''),
                     ('false','true','0.32.2',''), ('false','false','0.32.2',''),
                     ('false','false','','v0.32.2'), ('true','false','0.32.0','')]:
                 marker.unlink(missing_ok=True)
+                typed_source = version=='0.32.4' and source=='true' and preflight=='false'
+                if typed_source:
+                    try:
+                        sdk=subprocess.run(['dotnet','--version'],cwd=ROOT,env=env,capture_output=True,text=True,timeout=10)
+                    except FileNotFoundError:
+                        sdk=None
+                    if sdk is None or sdk.returncode!=0 or sdk.stdout.strip()!='10.0.401':
+                        with self.subTest(version=version):self.skipTest('actual0324 typed entry requires the exact installed SDK10.0.401')
+                        continue
                 env.update(SOURCE_ONLY=source, PREFLIGHT_ONLY=preflight, INPUT_VERSION=version, EVENT_TAG=tag)
                 result = subprocess.run(['bash', '-c', script+'\nprintf reached > "$EFFECT_MARKER"'],
-                                        cwd=ROOT, env=env, capture_output=True, text=True, timeout=10)
+                                        cwd=ROOT, env=env, capture_output=True, text=True, timeout=30 if typed_source else 10)
                 with self.subTest(source=source, preflight=preflight, version=version, tag=tag):
-                    allowed = version=='0.32.3' and source=='true' and preflight=='false'
+                    allowed = typed_source
                     self.assertEqual(allowed, result.returncode==0, result.stdout+result.stderr)
                     self.assertEqual(allowed, marker.exists(), result.stdout+result.stderr)
                     if allowed:
-                        self.assertEqual(['plan=eng/release/font-disposal-0.32.3.json','version=0.32.3','baseline=0.32.1'],Path(env['GITHUB_OUTPUT']).read_text().splitlines())
+                        self.assertEqual(['plan=eng/release/palette-heading-0.32.4.json','version=0.32.4','baseline=0.32.3'],Path(env['GITHUB_OUTPUT']).read_text().splitlines())
                     if not allowed: self.assertTrue('release-preflight:' in result.stderr+result.stdout or 'source qualification only' in result.stderr+result.stdout)
             for flag in ('BOUND_ATTEMPT','SUCCESSOR_ATTEMPT'):
                 marker.unlink(missing_ok=True)
@@ -287,8 +305,8 @@ class SuccessorRouteTests(unittest.TestCase):
         self.assertIn("FSGG_NUGET_SCOPE_ONLY: 'true'", preflight)
         self.assertIn('FSGG_NUGET_SCOPE_SOURCE: ${{ steps.source.outputs.sha }}', preflight)
         publisher = blocks['publish-packages']
-        self.assertIn('!inputs.preflight-only && (inputs.bound-attempt || inputs.successor-attempt || inputs.font-disposal-attempt)', publisher)
-        self.assertIn("PRODUCER_SHA: ${{ inputs.font-disposal-attempt && '4ec6eafbbbf02264db9b0db4780c590abe0bf9cd' || inputs.successor-attempt && '9b73395658d4683a067d150ca9441b04e802c4af' || '6c9f766fdd91483c2de6f061e75589e94852a265' }}", publisher)
+        self.assertIn('!inputs.preflight-only && (inputs.bound-attempt || inputs.successor-attempt || inputs.font-disposal-attempt || inputs.retained-successor)', publisher)
+        self.assertIn("PRODUCER_SHA: ${{ inputs.retained-successor && '4ede04be66cedffc8551cd14045bab714aa358a7' || inputs.font-disposal-attempt && '4ec6eafbbbf02264db9b0db4780c590abe0bf9cd' || inputs.successor-attempt && '9b73395658d4683a067d150ca9441b04e802c4af' || '6c9f766fdd91483c2de6f061e75589e94852a265' }}", publisher)
         self.assertIn('plan=eng/release/svg-export-prefix-0.32.1.json', publisher)
         self.assertIn('selected=(--attempt-binding)', publisher)
         self.assertNotIn('release-pack.sh', publisher)
@@ -351,7 +369,7 @@ class SelectedAttemptTests(unittest.TestCase):
         self.assertNotIn('release-pack.sh',publisher);self.assertNotIn('locked-restore',publisher)
         self.assertNotIn('actions/artifacts?name=',publisher);self.assertNotIn('sort_by(.created_at)',publisher)
         self.assertNotIn('--source-sha "$GITHUB_SHA"',publisher)
-        self.assertIn('!inputs.preflight-only && (inputs.bound-attempt || inputs.successor-attempt || inputs.font-disposal-attempt)',publisher)
+        self.assertIn('!inputs.preflight-only && (inputs.bound-attempt || inputs.successor-attempt || inputs.font-disposal-attempt || inputs.retained-successor)',publisher)
         self.assertLess(text.index('--source-sha "$source_sha" --version "$version"'), text.index('--acquire-bound-artifacts'))
         self.assertLess(publisher.index('--acquire-bound-artifacts'), publisher.index('Verify the version to publish is the version the guard validated'))
         self.assertLess(publisher.index('Verify the version to publish is the version the guard validated'), publisher.index('Verify custody before any release-shaped check'))
@@ -693,7 +711,7 @@ class RecoverySuccessorTests(unittest.TestCase):
         current = (ROOT/'.github/workflows/release.yml').read_text()
         publisher = re.search(r'^  publish-packages:\n(.*?)(?=^  [a-z-]+:|\Z)', current, re.M|re.S).group(1)
         self.assertIn('inputs.bound-attempt', publisher)
-        self.assertIn("PRODUCER_SHA: ${{ inputs.font-disposal-attempt && '4ec6eafbbbf02264db9b0db4780c590abe0bf9cd' || inputs.successor-attempt && '9b73395658d4683a067d150ca9441b04e802c4af' || '6c9f766fdd91483c2de6f061e75589e94852a265' }}", publisher)
+        self.assertIn("PRODUCER_SHA: ${{ inputs.retained-successor && '4ede04be66cedffc8551cd14045bab714aa358a7' || inputs.font-disposal-attempt && '4ec6eafbbbf02264db9b0db4780c590abe0bf9cd' || inputs.successor-attempt && '9b73395658d4683a067d150ca9441b04e802c4af' || '6c9f766fdd91483c2de6f061e75589e94852a265' }}", publisher)
         self.assertIn('plan=eng/release/svg-export-prefix-0.32.1.json', publisher)
         self.assertIn('selected=(--attempt-binding)', publisher)
         self.assertIn('selected=(--successor-attempt)', publisher)
@@ -777,6 +795,8 @@ class FontDisposalSourceTests(unittest.TestCase):
         subject = importlib.util.module_from_spec(spec); spec.loader.exec_module(subject)
         def source(_root, _sha, path):
             raw = (ROOT/path).read_text()
+            if path in ('template/base/Directory.Packages.props', '.template.package/FS.GG.UI.Template.fsproj', 'template/product-skills/fs-gg-symbology/reference.fsx'):
+                raw = subject.source_bytes(ROOT, '4ec6eafbbbf02264db9b0db4780c590abe0bf9cd', path).decode()
             return mutation(path, raw) if mutation else raw
         def git(_root, *args):
             if args[0] == 'ls-tree':
@@ -912,7 +932,7 @@ class SourceSdkInstallationRootTests(unittest.TestCase):
         import textwrap
         block = self.block(name)
         step = re.search(r'^      - name: '+self.STEP+r'\n(.*?)(?=^      - |\Z)', block, re.M|re.S).group(1)
-        self.assertIn('        if: inputs.source-only' + (' || inputs.font-disposal-attempt' if name in ('package-tests','template-product-tests') else '') + '\n', step)
+        self.assertIn('        if: inputs.source-only' + (' || inputs.font-disposal-attempt || inputs.retained-successor' if name in ('package-tests','template-product-tests') else '') + '\n', step)
         self.assertIn('        shell: bash\n', step)
         return textwrap.dedent(step.split('        run: |\n', 1)[1])
 
@@ -991,18 +1011,18 @@ class SourceSdkInstallationRootTests(unittest.TestCase):
 
 
 class OriginalArtifactFixtureTests(unittest.TestCase):
-    def fixture(self, root):
+    def fixture(self, root, plan=None):
         import argparse, contextlib, io
         spec=importlib.util.spec_from_file_location('original_test_custody',ROOT/'scripts/release-custody.py')
         custody=importlib.util.module_from_spec(spec);spec.loader.exec_module(custody)
-        archives=root/'archives';archives.mkdir();plan=ROOT/'eng/release/font-disposal-0.32.3.json'
-        doc=json.loads(plan.read_text());source=subprocess.check_output(['git','-C',str(ROOT),'rev-parse','HEAD'],text=True).strip()
+        archives=root/'archives';archives.mkdir();plan=plan or ROOT/'eng/release/font-disposal-0.32.3.json'
+        doc=json.loads(plan.read_text());version=doc['version'];source=subprocess.check_output(['git','-C',str(ROOT),'rev-parse','HEAD'],text=True).strip()
         libraries=[r['id'] for r in doc['packages'] if r['kind']=='library']
         for row in doc['packages']:
             name=row['id'];deps=''
-            if row['kind']=='bom':deps=''.join(f'<dependency id="{n}" version="[0.32.3]" />' for n in libraries)
-            xml=f'<package><metadata><id>{name}</id><version>0.32.3</version><license type="expression">MIT</license><repository url="https://github.com/FS-GG/FS.GG.Rendering.git" commit="{source}" /><dependencies>{deps}</dependencies></metadata></package>'
-            with zipfile.ZipFile(archives/(name+'.0.32.3.nupkg'),'w') as z:
+            if row['kind']=='bom':deps=''.join(f'<dependency id="{n}" version="[{version}]" />' for n in libraries)
+            xml=f'<package><metadata><id>{name}</id><version>{version}</version><license type="expression">MIT</license><repository url="https://github.com/FS-GG/FS.GG.Rendering.git" commit="{source}" /><dependencies>{deps}</dependencies></metadata></package>'
+            with zipfile.ZipFile(archives/(name+'.'+version+'.nupkg'),'w') as z:
                 z.writestr(name+'.nuspec',xml)
                 if name=='FS.GG.UI.Scene.SvgBrowser':
                     for entry in doc['releaseChecks']['fableEntries']:z.writestr(entry,'inert fixture bytes')
@@ -1053,6 +1073,38 @@ class OriginalArtifactFixtureTests(unittest.TestCase):
                         with next(archives.glob('*.nupkg')).open('ab') as stream:stream.write(b'changed')
                     if fault=='missing-archive':next(archives.glob('*.nupkg')).unlink()
                     result=self.invoke(root,env,runner);self.assertNotEqual(0,result.returncode);self.assertFalse(marker.exists(),result.stdout+result.stderr)
+
+    def verify_selected_data(self, root, plan_path, version, tamper=False):
+        # Execute the maintained Python body, substituting only Git/source-policy transport.
+        # Real archive parsing,19-roster custody, hashes and source identities remain active.
+        import contextlib,io,shutil
+        repo=root/'repo';(repo/'eng/release').mkdir(parents=True);(repo/'scripts').mkdir()
+        original=json.loads((ROOT/'eng/release/palette-heading-0.32.4.json').read_text())
+        original['version']=version;original['baselineVersion']='0.32.3' if version=='0.32.4' else '0.32.1'
+        original['tags']=[f'fs-gg-ui/v{version}',f'fs-gg-ui-template/v{version}',f'v{version}']
+        plan=repo/plan_path;plan.write_text(json.dumps(original))
+        shutil.copyfile(ROOT/'scripts/release-custody.py',repo/'scripts/release-custody.py')
+        (repo/'scripts/release-source-guard.py').write_text('def validate(*args): return None\n')
+        archives,manifest,marker,env=self.fixture(root,plan)
+        if tamper:
+            with (archives/f'FS.GG.UI.Themes.AntDesign.{version}.nupkg').open('ab') as stream:stream.write(b'changed-unconsumed-original')
+        script=(ROOT/'tests/Scene.SvgBrowser.Tests/build-fixture.sh').read_text().split("<<'PYORIGINAL'\n",1)[1].split('\nPYORIGINAL',1)[0]
+        args=['original',str(repo),str(archives),str(manifest),env['SVG_SCENE_ORIGINAL_CUSTODY_SHA256'],env['SVG_SCENE_ORIGINAL_SOURCE_SHA'],plan_path]
+        with patch.object(sys,'argv',args),patch.object(subprocess,'check_output',return_value=env['SVG_SCENE_ORIGINAL_SOURCE_SHA']+'\n'),contextlib.redirect_stdout(io.StringIO()) as output:
+            exec(compile(script,'actual-build-fixture-PYORIGINAL','exec'),{})
+        return json.loads(output.getvalue())
+
+    def test_legacy_wrong_version_and_unselected_plan_refuse(self):
+        for plan,version in [('eng/release/font-disposal-0.32.3.json','0.32.2'),('eng/release/unselected.json','0.32.4')]:
+            with self.subTest(plan=plan),tempfile.TemporaryDirectory() as value,self.assertRaises(SystemExit):
+                self.verify_selected_data(Path(value),plan,version)
+
+    def test_selected0324_keeps_full19_custody_including_unconsumed_archive(self):
+        with tempfile.TemporaryDirectory() as value:
+            result=self.verify_selected_data(Path(value),'eng/release/palette-heading-0.32.4.json','0.32.4')
+            self.assertEqual(('0.32.4',19,3),(result['version'],result['originalRosterCount'],len(result['archives'])))
+        with tempfile.TemporaryDirectory() as value,self.assertRaisesRegex(RuntimeError,'retained archives differ'):
+            self.verify_selected_data(Path(value),'eng/release/palette-heading-0.32.4.json','0.32.4',True)
 
     def test_actual_full_custody_function_detects_original_change_after_first_read(self):
         with tempfile.TemporaryDirectory() as value:
@@ -1518,6 +1570,112 @@ class FontWriterBoundaryFixtureTests(unittest.TestCase):
         self.assertIn('python3 scripts/test-release-source-guard.py --native-font-disposal-boundary',step)
         self.assertNotIn('secrets.',step)
         self.assertNotIn('env:',step)
+
+
+class PaletteSuccessorTransportTests(unittest.TestCase):
+    def subject(self, result):
+        spec=importlib.util.spec_from_file_location('palette_guard',ROOT/'scripts/release-source-guard.py')
+        subject=importlib.util.module_from_spec(spec);spec.loader.exec_module(subject)
+        def git(_root,*args):
+            if args[0]=='ls-tree':return '\n'.join(str(f.relative_to(ROOT)) for f in (ROOT/'src').rglob('*.fsproj'))+'\n.template.package/FS.GG.UI.Template.fsproj'
+            return 'b'*40 if args[0]=='rev-parse' else ''
+        def invoke(command,**kwargs):
+            self.assertEqual(['dotnet','fsi','--exec'],command[:3])
+            envelope=json.loads(kwargs['input'])
+            self.assertEqual(('a'*40,'0.32.4','source-qualification'),tuple(envelope[k] for k in ('sourceSha','version','intent')))
+            self.assertEqual(19,len(envelope['sourcePackages']))
+            self.assertEqual((ROOT/'eng/release/palette-heading-0.32.4.json').read_bytes(),envelope['rawPlan'].encode())
+            self.assertNotIn('producerRun',envelope)
+            return result
+        with patch.object(subject.preflight,'source_text',side_effect=lambda r,sha,path:(ROOT/path).read_text()),patch.object(subject,'source_bytes',side_effect=lambda r,sha,path:(ROOT/path).read_bytes()),patch.object(subject.preflight,'git',side_effect=git),patch.object(subject.subprocess,'run',side_effect=invoke):
+            return subject.validate(ROOT,'a'*40,'eng/release/palette-heading-0.32.4.json','0.32.4')
+
+    def test_exact_source_envelope_and_typed_source_verdict(self):
+        result=subprocess.CompletedProcess([],0,'{"result":"pass","scope":"source-qualification-only","publicationAdmitted":false}','')
+        self.assertEqual('pass',self.subject(result)['result'])
+
+    def test_typed_refusal_or_wrong_scope_never_becomes_source_success(self):
+        for result in (subprocess.CompletedProcess([],1,'','successor-selection'),subprocess.CompletedProcess([],0,'{"result":"pass","publicationAdmitted":true}','')):
+            with self.subTest(result=result),self.assertRaises(SystemExit):self.subject(result)
+
+
+class RetainedSuccessorTransportTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        spec=importlib.util.spec_from_file_location('retained_guard',ROOT/'scripts/release-source-guard.py')
+        cls.subject=importlib.util.module_from_spec(spec);spec.loader.exec_module(cls.subject)
+
+    def test_actual_retained_workflow_dependency_condition_preserves_legacy_successes(self):
+        workflow=(ROOT/'.github/workflows/release.yml').read_text()
+        blocks=dict(re.findall(r'^  ([a-z-]+):\n(.*?)(?=^  [a-z-]+:|\Z)',workflow,re.M|re.S))
+        for name in ('package-tests','template-product-tests'):
+            self.assertIn("if: github.repository == 'FS-GG/FS.GG.Rendering' && !inputs.preflight-only && !inputs.retained-successor",blocks[name])
+        publisher=blocks['publish-packages']
+        condition=re.search(r'^    if: >-\n(.*?)(?=^    [a-z#])',publisher,re.M|re.S).group(1).strip()
+        self.assertIn("always() && !cancelled()",condition)
+        for retained in (False,True):
+            for source in ('success','failure','skipped'):
+                for package in ('success','failure','skipped'):
+                    for generated in ('success','failure','skipped'):
+                        with self.subTest(retained=retained,source=source,package=package,generated=generated):
+                            values={'always()':'True','cancelled()':'False',"github.repository == 'FS-GG/FS.GG.Rendering'":'True',
+                                "needs.release-source-guard.result == 'success'":str(source=='success'),
+                                "needs.package-tests.result == 'skipped'":str(package=='skipped'),
+                                "needs.template-product-tests.result == 'skipped'":str(generated=='skipped'),
+                                "needs.package-tests.result == 'success'":str(package=='success'),
+                                "needs.template-product-tests.result == 'success'":str(generated=='success'),
+                                'inputs.retained-successor':str(retained),'inputs.source-only':'False','inputs.validate-only':'False','inputs.preflight-only':'False',
+                                'inputs.bound-attempt':'False','inputs.successor-attempt':'False','inputs.font-disposal-attempt':'False'}
+                            if not retained:values['inputs.font-disposal-attempt']='True'
+                            expression=condition
+                            for key in sorted(values,key=len,reverse=True):expression=expression.replace(key,values[key])
+                            expression=expression.replace('&&',' and ').replace('||',' or ').replace('!',' not ')
+                            self.assertIsNone(re.search(r'[^TrueFalsandornot()\s]',expression))
+                            expected=source=='success' and ((retained and package==generated=='skipped') or (not retained and package==generated=='success'))
+                            self.assertEqual(expected,eval('('+expression+')',{'__builtins__':{}},{}))
+        preflight=blocks['publication-preflight']
+        scope=preflight.split('      - name: Verify all19 existing-ID NuGet scopes without publication',1)[1].split('      - name:',1)[0]
+        self.assertIn('GITHUB_TOKEN: ${{ github.token }}',scope)
+
+    def test_publication_tag_probe_requires_complete_original_lightweight_triple(self):
+        source='4ede04be66cedffc8551cd14045bab714aa358a7'
+        refs=['refs/tags/'+tag for tag in ('fs-gg-ui/v0.32.4','fs-gg-ui-template/v0.32.4','v0.32.4')]
+        valid='\n'.join(source+'\t'+ref for ref in refs)
+        with patch.object(self.subject.preflight,'git',return_value=valid):self.subject.retained_producer_tags(ROOT,source)
+        for text in ('',valid.split('\n')[0],valid.replace(source,'a'*40),valid+'\n'+source+'\t'+refs[0]+'^{}'):
+            with self.subTest(refs=text),patch.object(self.subject.preflight,'git',return_value=text):
+                with self.assertRaises(SystemExit):self.subject.retained_producer_tags(ROOT,source)
+
+    def test_retention_allows_identical_bytes_and_refuses_replacement(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path=Path(folder)/'original.zip'
+            self.subject.retain_exact(path,b'original')
+            self.subject.retain_exact(path,b'original')
+            with self.assertRaises(SystemExit):self.subject.retain_exact(path,b'replacement')
+            self.assertEqual(b'original',path.read_bytes())
+
+    def test_retention_refuses_symlink_even_to_identical_bytes(self):
+        with tempfile.TemporaryDirectory() as folder:
+            source=Path(folder)/'source';source.write_bytes(b'original')
+            path=Path(folder)/'original.zip';path.symlink_to(source)
+            with self.assertRaises(SystemExit):self.subject.retain_exact(path,b'original')
+
+    def test_native_packet_refuses_later_attempt_before_archive_read(self):
+        run={'id':1,'run_attempt':2,'head_sha':'a'*40,'conclusion':'success','path':'.github/workflows/release.yml'}
+        meta={'id':2,'expired':False,'workflow_run':{'id':1,'head_sha':'a'*40},'digest':'sha256:'+hashlib.sha256(b'original').hexdigest(),'size_in_bytes':8}
+        with patch.object(self.subject.subprocess,'check_output',side_effect=[json.dumps(run).encode(),json.dumps(meta).encode()]) as fetch:
+            with self.assertRaises(SystemExit):self.subject.native_packet(ROOT,1,1,2,'a'*40,hashlib.sha256(b'original').hexdigest(),8,'.github/workflows/release.yml')
+            self.assertEqual(2,fetch.call_count)
+
+    def test_native_packet_requires_original_bytes_after_metadata_join(self):
+        raw=b'original';sha=hashlib.sha256(raw).hexdigest()
+        run={'id':1,'run_attempt':1,'head_sha':'a'*40,'conclusion':'success','path':'.github/workflows/release.yml'}
+        meta={'id':2,'expired':False,'workflow_run':{'id':1,'head_sha':'a'*40},'digest':'sha256:'+sha,'size_in_bytes':len(raw)}
+        for received,accepted in [(raw,True),(b'changed!',False)]:
+            with self.subTest(accepted=accepted),patch.object(self.subject.subprocess,'check_output',side_effect=[json.dumps(run).encode(),json.dumps(meta).encode(),received]):
+                if accepted:self.assertEqual(raw,self.subject.native_packet(ROOT,1,1,2,'a'*40,sha,len(raw),'.github/workflows/release.yml'))
+                else:
+                    with self.assertRaises(SystemExit):self.subject.native_packet(ROOT,1,1,2,'a'*40,sha,len(raw),'.github/workflows/release.yml')
 
 
 if __name__ == '__main__':

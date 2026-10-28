@@ -1,3 +1,5 @@
+#load "../src/FS.GG.Rendering.ReleasePreflight/Plan.fs"
+#load "../src/FS.GG.Rendering.ReleasePreflight/SelectedSuccessor.fs"
 #load "NuGetVerifyKey.fs"
 #load "AttemptEligibility.fs"
 #load "ReleasePackageCensus.fs"
@@ -14,6 +16,40 @@ let value name =
     let matches = args |> Array.indexed |> Array.filter (fun (_,v) -> v=name)
     if matches.Length<>1 || fst matches.[0]+1>=args.Length then invalidArg "arguments" "verify-key-arguments-refused"
     args.[fst matches.[0]+1]
+// The selected palette path reuses the same transports/census and maintained typed policy.
+// Historical predicates and original Unknown settlements below remain separate.
+if Environment.GetEnvironmentVariable("FSGG_RELEASE_ATTEMPT")="palette" then
+    try
+        let env (name: string)=Environment.GetEnvironmentVariable(name)
+        let expected=env "FSGG_EXPECTED_EXECUTOR_SHA"
+        if String.IsNullOrEmpty expected || not(Regex.IsMatch(expected,"^[0-9a-f]{40}$")) || expected<>env "GITHUB_SHA" || expected<>env "GITHUB_WORKFLOW_SHA" || env "GITHUB_REPOSITORY"<>"FS-GG/FS.GG.Rendering" || env "GITHUB_WORKFLOW_REF"<>"FS-GG/FS.GG.Rendering/.github/workflows/release.yml@refs/heads/main" || env "GITHUB_RUN_ATTEMPT"<>"1" then invalidArg "executor" "retained-context"
+        use binding=JsonDocument.Parse(File.ReadAllBytes("artifacts/attempt/input-binding.json"))
+        for name,value in ["expectedExecutorSha",expected;"executorSha",expected;"workflowContextSha",expected;"workflowSha",expected;"workflowRef",env "GITHUB_WORKFLOW_REF";"run",env "GITHUB_RUN_ID";"attempt",env "GITHUB_RUN_ATTEMPT"] do
+            if binding.RootElement.GetProperty(name).GetString()<>value then invalidArg "input" "retained-executor-binding"
+        let evidenceBytes=File.ReadAllBytes("artifacts/attempt/successor-evidence.json")
+        if Convert.ToHexString(SHA256.HashData evidenceBytes).ToLowerInvariant()<>binding.RootElement.GetProperty("qualifiedEvidenceSha256").GetString() then invalidArg "input" "retained-evidence-bytes"
+        use doc=JsonDocument.Parse(evidenceBytes)
+        let field name=doc.RootElement.GetProperty(name: string).GetString()
+        let evidence : FS.GG.Rendering.ReleasePreflight.SelectedSuccessor.Evidence = {
+            Qualification=field "Qualification";Observer=field "Observer";Before=field "Before";After=field "After";Assets=field "Assets";Custody=field "Custody";Preflight=field "Preflight";Browser=field "Browser";BrowserOriginal=field "BrowserOriginal";ProducerJobs=field "ProducerJobs";LockHash=field "LockHash";TemplateHash=field "TemplateHash" }
+        let qualified=FS.GG.Rendering.ReleasePreflight.SelectedSuccessor.qualify evidence |> Result.defaultWith(fun _ -> invalidArg "input" "retained-qualification")
+        let planBytes=File.ReadAllBytes(value "--plan")
+        if Convert.ToHexString(SHA256.HashData planBytes).ToLowerInvariant()<>FS.GG.Rendering.ReleasePreflight.SelectedSuccessor.PlanHash then invalidArg "input" "retained-plan"
+        use plan=JsonDocument.Parse(planBytes)
+        let ids=plan.RootElement.GetProperty("packages").EnumerateArray() |> Seq.map(fun row -> row.GetProperty("id").GetString()) |> Seq.toList
+        let key=env "NUGET_API_KEY"
+        if String.IsNullOrWhiteSpace key then invalidArg "credential" "retained-key-missing"
+        let observations,scope=Rendering.NuGetVerifyKey.inspect (Rendering.NuGetVerifyKey.httpTransport key) ids "0.32.3" |> Result.defaultWith(fun _ -> invalidArg "input" "retained-scope")
+        let census=Rendering.ReleasePackageCensus.inspectWith Rendering.ReleasePackageCensus.DefaultLimits (Rendering.ReleasePackageCensus.httpTransport (env "GITHUB_TOKEN")) ids "0.32.4" |> Result.defaultWith(fun _ -> invalidArg "input" "retained-census")
+        File.WriteAllText(value "--census",Rendering.ReleasePackageCensus.receiptJson FS.GG.Rendering.ReleasePreflight.SelectedSuccessor.Producer expected (env "GITHUB_RUN_ID") "0.32.4" FS.GG.Rendering.ReleasePreflight.SelectedSuccessor.PlanHash census)
+        File.WriteAllText(value "--receipt",JsonSerializer.Serialize({|schema="fsgg.rendering.nuget-verify-key/v1";passed=scope;observations=observations;noPackageVersionMutation=true|}))
+        let complete=census.Organization.Complete && census.Packages.Length=19 && (census.Packages |> List.forall(fun (_,row) -> row.Complete))
+        if not scope || not complete then invalidArg "input" "retained-read-scope-incomplete"
+        if env "FSGG_NUGET_SCOPE_ONLY"<>"true" && not(FS.GG.Rendering.ReleasePreflight.SelectedSuccessor.admitWriter qualified complete (observations |> List.map _.HttpStatus) "unknown-before-attempt" (env "FSGG_SUCCESSOR_UNRESOLVED_SEND"<>"false")) then invalidArg "input" "retained-writer-ineligible"
+        printfn "Qualified retained inputs and fresh read observations joined; effective write remains UNKNOWN until acknowledgement/readback"
+        exit 0
+    with _ -> eprintfn "retained verify-key: refused or unavailable; no write eligibility";exit 3
+
 try
     if args.Length<>8 || Set.ofList [args.[0];args.[2];args.[4];args.[6]]<>set ["--plan";"--receipt";"--qualification";"--census"] then invalidArg "arguments" "verify-key-arguments-refused"
     if Environment.GetEnvironmentVariable("GITHUB_REPOSITORY")<>"FS-GG/FS.GG.Rendering" || Environment.GetEnvironmentVariable("GITHUB_WORKFLOW_REF")<>"FS-GG/FS.GG.Rendering/.github/workflows/release.yml@refs/heads/main" then invalidArg "context" "verify-key-context-refused"

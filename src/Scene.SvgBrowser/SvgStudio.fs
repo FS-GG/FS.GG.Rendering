@@ -570,10 +570,24 @@ module SvgStudio =
                 panel.setAttribute ("aria-modal", "true")
                 panel.setAttribute ("aria-label", label)
                 panel.setAttribute ("data-fsgg-workspace-overlay", key)
-                panel.setAttribute ("data-fsgg-focus-target", target)
                 panel.setAttribute ("tabindex", "-1")
                 panel.setAttribute ("hidden", "")
-                panel.textContent <- content
+                if key = "palette" then
+                    // Focus meaningful content inside the modal, so the screen reader
+                    // presents its dialog ancestor rather than expanding the whole panel.
+                    let title: HTMLElement = document.createElement "h2"
+                    title.setAttribute ("role", "heading")
+                    title.setAttribute ("aria-label", label)
+                    title.setAttribute ("data-fsgg-focus-target", target)
+                    title.setAttribute ("tabindex", "-1")
+                    title.textContent <- label
+                    panel.appendChild title |> ignore
+                    let description: HTMLElement = document.createElement "p"
+                    description.textContent <- "Available workspace commands."
+                    panel.appendChild description |> ignore
+                else
+                    panel.setAttribute ("data-fsgg-focus-target", target)
+                    panel.textContent <- content
                 root.appendChild panel |> ignore
                 panel
 
