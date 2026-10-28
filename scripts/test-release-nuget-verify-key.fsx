@@ -43,7 +43,7 @@ let wrongIdentity _ _ = {PackageId="other";HttpStatus=Some 200;Outcome="authoriz
 assert(match inspect wrongIdentity ids "0.31.0" with Ok(_,false)->true|_->false)
 let unavailable _ _ = failwith "must-not-be-logged"
 assert(match inspect unavailable ids "0.31.0" with Ok(_,false)->true|_->false)
-printfn "PASS exact19 header-only GET transport fixture; redirects/identity/unavailability refuse"
+printfn "PASS exact19 GET transport fixture; redirects/identity/unavailability refuse"
 
 let successorRequestsBefore = requests.Count
 let successorFixture = httpTransportWithHandler "public-test-fixture-key" (new RecordingHandler(HttpStatusCode.OK, "0.32.0"))
@@ -191,3 +191,92 @@ assert(not(admitFontDisposal fontWriter true (List.replicate 18 (Some 200)) "unk
 assert(not(admitFontDisposal fontWriter true (List.replicate 19 (Some 403)) "unknown-before-attempt"))
 assert(not(admitFontDisposal fontWriter true (List.replicate 19 (Some 200)) "proven"))
 printfn "PASS separate font-disposal186/45/15/4/27 writer eligibility; historical contracts unchanged"
+
+
+// Same-response diagnostic controls. Public fixture values are never credentials.
+open System.IO
+open System.Text
+let verificationPolicy = "A package verification key is required to push symbols. Please contact support@nuget.org to get more details."
+let diagnosticFixtureKey = "public-diagnostic-fixture-key"
+type DiagnosticHandler(status: HttpStatusCode, content: unit -> HttpContent, headerDelay: int) =
+    inherit HttpMessageHandler()
+    let mutable requestToken = CancellationToken.None
+    let handle (request: HttpRequestMessage) cancellation =
+        assert(request.Method=HttpMethod.Get && request.RequestUri.Host="www.nuget.org")
+        assert(request.RequestUri.Query="" && request.Content=null)
+        requestToken <- cancellation
+        if headerDelay>0 then Thread.Sleep headerDelay
+        new HttpResponseMessage(status, Content=content())
+    member _.RequestToken = requestToken
+    override _.Send(request, cancellation) = handle request cancellation
+    override _.SendAsync(request, cancellation) = Task.FromResult(handle request cancellation)
+let observeDiagnostic status content =
+    httpTransportWithHandler diagnosticFixtureKey (new DiagnosticHandler(status,content,0)) "FS.GG.UI.Scene" "0.32.3"
+let checkRefused body =
+    let row=observeDiagnostic HttpStatusCode.BadRequest (fun () -> new ByteArrayContent(body))
+    assert(row.HttpStatus=Some 400 && row.Outcome="authorization-unproven")
+    let sanitized=JsonSerializer.Serialize(row)
+    assert(not(sanitized.Contains(diagnosticFixtureKey)) && not(sanitized.Contains(verificationPolicy)))
+let classified=observeDiagnostic HttpStatusCode.BadRequest (fun () -> new StringContent(verificationPolicy))
+assert(classified.HttpStatus=Some 400 && classified.Outcome="security-policy-verification-scope-required")
+assert(match inspect (fun id _ -> {classified with PackageId=id}) ids "0.32.3" with Ok(_,false)->true|_->false)
+for body in ["unknown service refusal"; verificationPolicy+"\n"+diagnosticFixtureKey; "{\"message\":\""+verificationPolicy+"\"}"; verificationPolicy+" extra"] do
+    checkRefused (Encoding.UTF8.GetBytes body)
+checkRefused [|0xffuy|]
+checkRefused (Array.create 4097 65uy)
+
+type DiagnosticStream(bytes: byte[], throwRead: bool) =
+    inherit MemoryStream(bytes)
+    let mutable readBytes=0
+    let mutable readCalls=0
+    member _.ReadBytes=readBytes
+    member _.ReadCalls=readCalls
+    override _.CanSeek=false
+    override this.ReadAsync(buffer: Memory<byte>, cancellation) =
+        readCalls <- readCalls+1
+        if throwRead then raise (IOException("must-not-escape-"+diagnosticFixtureKey))
+        let count=min buffer.Length (bytes.Length-int this.Position)
+        bytes.AsMemory(int this.Position,count).CopyTo(buffer)
+        this.Position <- this.Position+int64 count
+        readBytes <- readBytes+count
+        ValueTask<int>(count)
+let oversized=new DiagnosticStream(Array.create 9000 65uy,false)
+let large=observeDiagnostic HttpStatusCode.BadRequest (fun () -> new StreamContent(oversized))
+assert(large.HttpStatus=Some 400 && large.Outcome="authorization-unproven" && oversized.ReadBytes=4097)
+let declaredLarge=new DiagnosticStream(Array.create 9000 65uy,true)
+let declared=observeDiagnostic HttpStatusCode.BadRequest (fun () ->
+    let content=new StreamContent(declaredLarge)
+    content.Headers.ContentLength <- Nullable 9000L
+    content)
+assert(declared.HttpStatus=Some 400 && declared.Outcome="authorization-unproven" && declaredLarge.ReadCalls=0)
+let failing=new DiagnosticStream([|1uy|],true)
+let failed=observeDiagnostic HttpStatusCode.BadRequest (fun () -> new StreamContent(failing))
+assert(failed.HttpStatus=Some 400 && failed.Outcome="authorization-unproven")
+for status in [HttpStatusCode.OK;HttpStatusCode.Forbidden;HttpStatusCode.Redirect] do
+    let unread=new DiagnosticStream([|1uy|],true)
+    let row=observeDiagnostic status (fun () -> new StreamContent(unread))
+    assert(unread.ReadCalls=0 && row.HttpStatus=Some(int status))
+    assert(row.Outcome=(if status=HttpStatusCode.OK then "authorized" else "authorization-unproven"))
+
+type CancelledDiagnosticStream() =
+    inherit MemoryStream()
+    let mutable bodyToken=CancellationToken.None
+    member _.BodyToken=bodyToken
+    override _.CanSeek=false
+    override _.ReadAsync(_: Memory<byte>, cancellation) =
+        bodyToken <- cancellation
+        let pending=TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously)
+        cancellation.Register(fun () -> pending.TrySetCanceled(cancellation) |> ignore) |> ignore
+        ValueTask<int>(pending.Task)
+let cancelledBody=new CancelledDiagnosticStream()
+let delayedHandler=new DiagnosticHandler(HttpStatusCode.BadRequest,(fun () -> new StreamContent(cancelledBody)),8000)
+// Shared10s should finish near10s; a reset after the8s header phase takes18s.
+// Allow5s CI scheduling grace while still refusing the reset-timer mutant.
+let deadlineClock=System.Diagnostics.Stopwatch.StartNew()
+let cancelled=httpTransportWithHandler diagnosticFixtureKey delayedHandler "FS.GG.UI.Scene" "0.32.3"
+deadlineClock.Stop()
+assert(cancelled.HttpStatus=Some 400 && cancelled.Outcome="authorization-unproven")
+assert(deadlineClock.Elapsed < TimeSpan.FromSeconds 15.)
+// HttpClient links its request token internally; token identity is not the deadline contract.
+assert(delayedHandler.RequestToken.CanBeCanceled && cancelledBody.BodyToken.IsCancellationRequested)
+printfn "PASS bounded400 diagnostic: exact policy only, no reflected body/secret,4097-byte cap, same deadline and received status retained; no network requests"
