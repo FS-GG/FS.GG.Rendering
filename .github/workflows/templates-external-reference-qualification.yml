@@ -8,19 +8,24 @@ on:
   workflow_dispatch:
     inputs:
       rendering-input-source:
-        description: Historical candidate, retained font-disposal, or held current-public composition
+        description: Historical candidate, retained font-disposal, held current-public, or unpublished palette composition
         type: choice
         options:
           - candidate
           - font-disposal
           - current-public-composition
+          - palette-heading
         default: candidate
+      rendering-successor-input:
+        description: Actual acquired first-attempt palette 0.32.4 producer coordinates; empty supplies no candidate
+        type: string
+        default: ''
       native-input-facility:
         description: Exact reviewed Noble native-input facility JSON; empty supplies no pins or admission
         type: string
         default: ''
       preflight-only:
-        description: Verify original archive transport only; false runs full three-family qualification
+        description: Verify original archive transport only; false runs the selected complete receiver qualification
         type: boolean
         default: true
 
@@ -44,8 +49,9 @@ jobs:
           QUALIFICATION_INPUT_SOURCE: ${{ inputs.rendering-input-source }}
           QUALIFICATION_PREFLIGHT_JSON: ${{ toJSON(inputs.preflight-only) }}
           QUALIFICATION_NATIVE_INPUT_FACILITY: ${{ inputs.native-input-facility }}
+          QUALIFICATION_SUCCESSOR_INPUT: ${{ inputs.rendering-successor-input }}
   qualify:
-    if: ${{ github.event_name != 'workflow_dispatch' || (inputs.rendering-input-source != 'font-disposal' && inputs.rendering-input-source != 'current-public-composition') }}
+    if: ${{ github.event_name != 'workflow_dispatch' || (inputs.rendering-input-source != 'font-disposal' && inputs.rendering-input-source != 'current-public-composition' && inputs.rendering-input-source != 'palette-heading') }}
     needs: static
     name: Original producer archive preflight or explicit full reference gate
     uses: FS-GG/FS.GG.Templates/.github/workflows/fable-external-reference-source.yml@6a5dd5305ac6fe26f9f9726c72b1a7e553b0021b
@@ -77,4 +83,16 @@ jobs:
       rendering-input-source: current-public-composition
       current-public-at-admission: ''
       native-input-facility: ${{ inputs.native-input-facility }}
+      preflight-only: ${{ inputs.preflight-only }}
+  # Original producer remains the separately qualified4ede source; caller/executor may advance.
+  # Runtime coordinates are supplied only after authenticated original archive acquisition.
+  qualify-palette-heading:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.rendering-input-source == 'palette-heading' }}
+    needs: static
+    name: Retained 0.32.4 originals and complete unpublished palette journey
+    uses: FS-GG/FS.GG.Templates/.github/workflows/fable-external-reference-source.yml@71e1692a27878947a99e21f354e6dcc47329b44d
+    with:
+      templates-source: 71e1692a27878947a99e21f354e6dcc47329b44d
+      rendering-input-source: palette-heading
+      rendering-successor-input: ${{ inputs.rendering-successor-input }}
       preflight-only: ${{ inputs.preflight-only }}
