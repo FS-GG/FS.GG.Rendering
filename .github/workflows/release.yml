@@ -138,6 +138,26 @@ jobs:
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
+      # Only the new successor uses the maintained typed selector at this boundary.
+      # Legacy selections retain their existing no-CLR static guard behavior.
+      - name: Require a fresh private SDK root for selected-successor interpretation
+        if: inputs.version == '0.32.4'
+        shell: bash
+        env:
+          DOTNET_INSTALL_DIR: ${{ runner.temp }}/rendering-selected-source-dotnet-10.0.401
+        run: |
+          set -euo pipefail
+          expected="${RUNNER_TEMP:?}/rendering-selected-source-dotnet-10.0.401"
+          [[ "$RUNNER_TEMP" == /* && "$RUNNER_TEMP" != / && "$RUNNER_TEMP" != */ && "$(realpath -e -- "$RUNNER_TEMP")" == "$RUNNER_TEMP" ]] || { echo '::error::selected source SDK parent must be canonical runner temp'; exit 1; }
+          [[ "${DOTNET_INSTALL_DIR:-}" == "$expected" && ! -e "$expected" && ! -L "$expected" ]] || { echo '::error::selected source SDK root must be selected and absent'; exit 1; }
+          printf 'DOTNET_INSTALL_DIR=%s\n' "$expected" >> "$GITHUB_ENV"
+      - uses: actions/setup-dotnet@v6
+        if: inputs.version == '0.32.4'
+        with:
+          dotnet-version: '10.0.401'
+      - name: Verify selected-successor interpreter SDK
+        if: inputs.version == '0.32.4'
+        run: python3 scripts/release-toolchain-identity.py --expected-sdk 10.0.401 --receipt artifacts/toolchain/selected-source.json
       - name: Refuse wrong source, axes, roster, delivered surface, or SDK before costly jobs
         id: source-plan
         env:
@@ -175,6 +195,10 @@ jobs:
           if [[ "$version" == 0.32.3 ]]; then
             [[ ( "$SOURCE_ONLY" == true && "$PREFLIGHT_ONLY" != true && "$BOUND_ATTEMPT" != true && "$successor" != true && "$font_disposal" != true ) || ( "$font_disposal" == true && "$SOURCE_ONLY" != true && "$BOUND_ATTEMPT" != true && "$successor" != true ) ]] || { echo "::error::0.32.3 is source qualification only unless its disabled immutable attempt is selected"; exit 3; }
             plan=eng/release/font-disposal-0.32.3.json
+          fi
+          if [[ "$version" == 0.32.4 ]]; then
+            [[ "$SOURCE_ONLY" == true && "$PREFLIGHT_ONLY" != true && "$BOUND_ATTEMPT" != true && "$successor" != true && "$font_disposal" != true ]] || { echo "::error::0.32.4 original custody and receiver are unjoined; source qualification only"; exit 3; }
+            plan=eng/release/palette-heading-0.32.4.json
           fi
           authority=()
           # Read-only preflight gathers evidence needed for readiness; all effectful calls still require it.
@@ -532,19 +556,20 @@ jobs:
       - name: ApiCompat against the selected published baseline
         run: bash scripts/apicompat-check.sh --baseline "$SOURCE_BASELINE" --release-plan "$SOURCE_PLAN"
       - name: Set up Node for original candidate browser consumers
-        if: env.SOURCE_VERSION == '0.32.3'
+        if: env.SOURCE_VERSION == '0.32.3' || env.SOURCE_VERSION == '0.32.4'
         uses: actions/setup-node@v7
         with:
           node-version: '24'
       - name: Restore the maintained browser harness and all three browser families
-        if: env.SOURCE_VERSION == '0.32.3'
+        if: env.SOURCE_VERSION == '0.32.3' || env.SOURCE_VERSION == '0.32.4'
         working-directory: tests/Scene.SvgBrowser.Tests
         run: |
           npm ci
           npx playwright-core install --with-deps chromium firefox webkit
       - name: Qualify all three browser families against original candidate archives without repacking
-        if: env.SOURCE_VERSION == '0.32.3'
+        if: env.SOURCE_VERSION == '0.32.3' || env.SOURCE_VERSION == '0.32.4'
         env:
+          SVG_SCENE_ORIGINAL_PLAN: ${{ env.SOURCE_PLAN }}
           SVG_SCENE_ORIGINAL_CANDIDATE_DIR: ${{ github.workspace }}/artifacts/packages
           SVG_SCENE_ORIGINAL_CUSTODY: ${{ github.workspace }}/artifacts/packages/release-custody.json
           SVG_SCENE_ORIGINAL_SOURCE_SHA: ${{ github.sha }}
@@ -553,14 +578,14 @@ jobs:
           export SVG_SCENE_ORIGINAL_CUSTODY_SHA256="$(sha256sum "$SVG_SCENE_ORIGINAL_CUSTODY" | cut -d' ' -f1)"
           bash tests/Scene.SvgBrowser.Tests/run.sh "$RUNNER_TEMP/source-browser-observations.json"
       - name: Retain original candidate browser qualification evidence
-        if: always() && env.SOURCE_VERSION == '0.32.3'
+        if: always() && (env.SOURCE_VERSION == '0.32.3' || env.SOURCE_VERSION == '0.32.4')
         uses: actions/upload-artifact@v7
         with:
           name: rendering-source-browser-${{ github.sha }}-${{ env.SOURCE_VERSION }}
           path: ${{ runner.temp }}/source-browser-observations*.json
           if-no-files-found: warn
       - name: Retain candidate bytes for isolated consumer composition
-        if: success() || (always() && env.SOURCE_VERSION == '0.32.3' && hashFiles('artifacts/packages/release-custody.json') != '')
+        if: success() || (always() && (env.SOURCE_VERSION == '0.32.3' || env.SOURCE_VERSION == '0.32.4') && hashFiles('artifacts/packages/release-custody.json') != '')
         uses: actions/upload-artifact@v7
         with:
           name: rendering-source-candidate-${{ github.sha }}-${{ env.SOURCE_VERSION }}

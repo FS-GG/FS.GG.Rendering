@@ -25,7 +25,8 @@ def validate(root: Path, source_sha: str, plan_path: str, requested_version: str
         preflight.fail('source identity must be an exact lowercase 40-hex SHA')
     preflight.git(root, 'cat-file', '-e', f'{source_sha}^{{commit}}')
     text = lambda path: preflight.source_text(root, source_sha, path)
-    raw = text(plan_path)
+    raw = (source_bytes(root, source_sha, plan_path).decode()
+           if plan_path == 'eng/release/palette-heading-0.32.4.json' else text(plan_path))
     plan = json.loads(raw, object_pairs_hook=preflight.unique_json_object)
     if plan.get('schema') != 'fsgg.rendering.release-plan/v1':
         preflight.fail('unsupported release-plan schema')
@@ -42,7 +43,22 @@ def validate(root: Path, source_sha: str, plan_path: str, requested_version: str
         'eng/release/external-authority-recovery-0.32.2.json': ('0.32.2', '0.32.1'),
         'eng/release/font-disposal-0.32.3.json': ('0.32.3', '0.32.1'),
     }
-    if plan_path not in selections or (version, plan.get('baselineVersion')) != selections[plan_path]:
+    if plan_path == 'eng/release/palette-heading-0.32.4.json':
+        # Exact-source transport only. The maintained typed selector interprets the new
+        # successor and refuses all effects until actual original custody/receiver joins exist.
+        envelope = {'sourceSha': source_sha, 'planPath': plan_path, 'version': requested_version or version,
+                    'intent': 'publication' if require_publication_ready else 'source-qualification',
+                    'rawPlan': raw, 'sourcePackages': [{'id': key, 'kind': value} for key, value
+                        in preflight.source_package_roster(root, source_sha).items()]}
+        command = ['dotnet', 'fsi', '--exec', str(root / 'scripts/release-selected-successor.fsx')]
+        completed = subprocess.run(command, input=json.dumps(envelope), text=True, capture_output=True, timeout=60,
+                                   env={**os.environ, 'DOTNET_NOLOGO': 'true', 'DOTNET_SKIP_FIRST_TIME_EXPERIENCE': '1'})
+        if completed.returncode != 0:
+            preflight.fail('typed successor refused: ' + completed.stderr.strip())
+        verdict = json.loads(completed.stdout, object_pairs_hook=preflight.unique_json_object)
+        if verdict != {'result': 'pass', 'scope': 'source-qualification-only', 'publicationAdmitted': False}:
+            preflight.fail('typed successor verdict unavailable or malformed')
+    elif plan_path not in selections or (version, plan.get('baselineVersion')) != selections[plan_path]:
         preflight.fail('release plan path/version/baseline is not a selected source tuple')
     if version in ('0.32.1', '0.32.2', '0.32.3') and (require_publication_ready or plan['publicationReady'] is not False):
         preflight.fail(f'{version} source preparation only: candidate custody and installed qualification are unbound')

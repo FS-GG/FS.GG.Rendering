@@ -53,5 +53,21 @@ let main _ =
     refused "case colliding source facts" "source-duplicate" ({ source.Head with Id = "fs.gg.ui.canvas" } :: source) "0.31.0" raw
     refused "malformed JSON" "json-invalid" source "0.31.0" "{"
 
+    let successorPath = "eng/release/palette-heading-0.32.4.json"
+    let successor = File.ReadAllText(Path.Combine(root, successorPath))
+    let inspect path version intent json = SelectedSuccessor.inspect source (String.replicate 40 "a") path version intent json
+    match inspect successorPath "0.32.4" SelectedSuccessor.SourceQualification successor with
+    | Ok _ -> passed <- passed + 1
+    | Error findings -> failwithf "successor source qualification: %A" findings
+    let reject label expected path version intent json =
+        match inspect path version intent json with
+        | Error findings when List.contains expected findings -> passed <- passed + 1; printfn "PASS %s" label
+        | result -> failwithf "%s: missing %s in %A" label expected result
+    reject "unacquired successor cannot publish" "successor-original-custody-and-receiver-unjoined" successorPath "0.32.4" SelectedSuccessor.Publication successor
+    reject "candidate0032 is not release0324" "successor-selection" successorPath "0.32.0" SelectedSuccessor.SourceQualification successor
+    reject "historical plan cannot substitute" "successor-selection" "eng/release/font-disposal-0.32.3.json" "0.32.4" SelectedSuccessor.SourceQualification successor
+    reject "wrong baseline" "successor-baseline" successorPath "0.32.4" SelectedSuccessor.SourceQualification (successor.Replace("\"baselineVersion\": \"0.32.3\"", "\"baselineVersion\": \"0.32.1\""))
+    reject "readiness flag cannot fabricate admission" "successor-must-remain-unqualified" successorPath "0.32.4" SelectedSuccessor.SourceQualification (successor.Replace("\"publicationReady\": false", "\"publicationReady\": true"))
+
     printfn "release preflight reducer: %d controls passed" passed
     0

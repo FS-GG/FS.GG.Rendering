@@ -348,3 +348,35 @@ The distinct [immutable attempt](../../eng/release/font-disposal-0.32.3-attempt.
 The `font-disposal-attempt` selector is mutually exclusive with historical bound/successor and source-only modes. Only executor-fenced nonmutating preflight can inspect the disabled binding; preflight reuses the supported guarded private SDK root and unchanged exact401 identity check. Source qualification is not receiver/assistive-technology/root acceptance: `attemptReady` remains false and all three qualification joins remain explicitly unknown. Tag checking/cutting and publisher acquisition/events refuse before remote probes, acquisition or effects. Enabling this subject requires a later reviewed source change with genuine missing evidence; changing a readiness bit alone refuses the immutable binding hash. Historical0321/0322 attempts and source bytes are preserved.
 
 No new pack, source qualification, credential probe, tag, publication, consumer pin or installed adoption is selected by this source delivery. Organization403/grants, complete public coherent-set publication, AT and genuine downstream/installed acceptance remain open under full4709/4644. The previous SDK402 run and the single HTTP422/no-run request remain original failures, not replayable work. Normal PR checks did not parse the deferred release-dispatch context: future expression changes must use GitHub's documented context boundary and meaningful actual shell/environment handoff controls, rather than inferring dispatch eligibility from green unrelated jobs.
+
+
+## Palette-heading successor source preparation (0.32.4, 2026-10-28)
+
+The closed [0.32.4 plan](../../eng/release/palette-heading-0.32.4.json) retains the
+nineteen-archive coherent set and compares all seventeen libraries against published
+0.32.3. The template release axis, shipped framework pin and symbology recipe move
+together. Local developer pack versioning remains separate.
+
+The command palette keeps its real named dialog and initially focuses its visible
+static heading. Actual [Templates candidate run40723978446](https://github.com/FS-GG/FS.GG.Templates/actions/runs/40723978446) observed Orca46.1 freshly
+announce “dialog” and “Command palette heading level 2”, with Escape and scene-focus
+restoration. That receiver consumed private three-package0.32.0 candidate archives;
+it does not qualify future0.32.4 bytes or repair the installed public0.32.3 route.
+
+The maintained typed selected-successor entry admits source qualification only.
+No producer run, artifact, original archive hash, receiver tuple or publication attempt
+is invented. Publication remains refused until actual0.32.4 custody and receiver
+qualification are joined. Existing historical0321–0323 admission and unknown original
+transport outcomes remain separate and unchanged.
+
+The existing source-only release job may prepare all nineteen originals, run seventeen
+ApiCompat comparisons, and exercise all three browser families from the selected
+plan/version without repacking those originals. Existing PR generated-product and API
+mirror checks use the canonical exact-head local feed during the release window;
+public-feed restore evidence remains distinct. The next consumer qualification must
+use the actual retained0.32.4 archives before the existing fenced publisher can be
+admitted. Templates public pins and actual public-route Orca follow after publication.
+
+Pipeline preflight uses static selection/data-flow checks and existing finite refusal
+controls, before costly qualification. No retry, cancellation, lock or publication-loop
+behavior changes; a new state-machine model would duplicate existing controls here.

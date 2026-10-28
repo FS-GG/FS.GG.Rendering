@@ -3,9 +3,9 @@ set -euo pipefail
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 work="${1:?Usage: build-fixture.sh ABSOLUTE_EMPTY_OUTPUT_DIRECTORY}"
 [[ "$work" = /* && ! -e "$work" ]] || { echo "Output must be an absolute, absent directory" >&2; exit 1; }
-# Original-candidate mode is closed and read-only: all four inputs or none.
+# Original-candidate mode is read-only: four custody inputs; optional selected plan defaults to historical0323.
 original_mode=false
-if [[ -n "${SVG_SCENE_ORIGINAL_CANDIDATE_DIR:-}${SVG_SCENE_ORIGINAL_CUSTODY:-}${SVG_SCENE_ORIGINAL_CUSTODY_SHA256:-}${SVG_SCENE_ORIGINAL_SOURCE_SHA:-}" ]]; then
+if [[ -n "${SVG_SCENE_ORIGINAL_CANDIDATE_DIR:-}${SVG_SCENE_ORIGINAL_CUSTODY:-}${SVG_SCENE_ORIGINAL_CUSTODY_SHA256:-}${SVG_SCENE_ORIGINAL_SOURCE_SHA:-}${SVG_SCENE_ORIGINAL_PLAN:-}" ]]; then
   original_mode=true
   : "${SVG_SCENE_ORIGINAL_CANDIDATE_DIR:?complete original candidate inputs required}"
   : "${SVG_SCENE_ORIGINAL_CUSTODY:?complete original candidate inputs required}"
@@ -13,7 +13,7 @@ if [[ -n "${SVG_SCENE_ORIGINAL_CANDIDATE_DIR:-}${SVG_SCENE_ORIGINAL_CUSTODY:-}${
   : "${SVG_SCENE_ORIGINAL_SOURCE_SHA:?complete original candidate inputs required}"
 fi
 verify_original() {
-  python3 - "$repo" "$SVG_SCENE_ORIGINAL_CANDIDATE_DIR" "$SVG_SCENE_ORIGINAL_CUSTODY" "$SVG_SCENE_ORIGINAL_CUSTODY_SHA256" "$SVG_SCENE_ORIGINAL_SOURCE_SHA" <<'PYORIGINAL'
+  python3 - "$repo" "$SVG_SCENE_ORIGINAL_CANDIDATE_DIR" "$SVG_SCENE_ORIGINAL_CUSTODY" "$SVG_SCENE_ORIGINAL_CUSTODY_SHA256" "$SVG_SCENE_ORIGINAL_SOURCE_SHA" "${SVG_SCENE_ORIGINAL_PLAN:-eng/release/font-disposal-0.32.3.json}" <<'PYORIGINAL'
 import argparse, hashlib, importlib.util, json, pathlib, re, subprocess, sys
 repo, archives, manifest = map(pathlib.Path, sys.argv[1:4])
 expected, source = sys.argv[4:6]
@@ -32,22 +32,31 @@ if subprocess.check_output(['git','-C',str(repo),'rev-parse','HEAD'],text=True).
 script=repo/'scripts/release-custody.py'
 spec=importlib.util.spec_from_file_location('original_candidate_custody',script)
 custody=importlib.util.module_from_spec(spec);spec.loader.exec_module(custody)
-plan=repo/'eng/release/font-disposal-0.32.3.json'
+plan_path=sys.argv[6]
+plan=repo/plan_path
+spec=importlib.util.spec_from_file_location('selected_source_guard',repo/'scripts/release-source-guard.py')
+guard=importlib.util.module_from_spec(spec);spec.loader.exec_module(guard)
+if plan_path=='eng/release/palette-heading-0.32.4.json':
+    guard.validate(repo,source,plan_path)
+elif plan_path!='eng/release/font-disposal-0.32.3.json':
+    raise SystemExit('original consumer plan is not an explicit selected transport')
 payload, record=custody.verified_manifest(argparse.Namespace(plan=plan,archives=archives,manifest=manifest,source_sha=source))
-if payload['version']!='0.32.3' or record['version']!='0.32.3':
-    raise SystemExit('only original0.32.3 candidate is selected')
+version=payload['version']
+if plan_path=='eng/release/font-disposal-0.32.3.json' and (version!='0.32.3' or record['version']!='0.32.3'):
+    raise SystemExit('only original0.32.3 candidate is selected by the legacy transport')
+if record['version']!=version:raise SystemExit('original candidate version differs from selected plan')
 selected=[]
 for name in ('FS.GG.UI.Scene','FS.GG.UI.KeyboardInput','FS.GG.UI.Scene.SvgBrowser'):
     row=next(r for r in record['archives'] if r['id']==name)
-    if row['file']!=name+'.0.32.3.nupkg':raise SystemExit('noncanonical original package filename')
+    if row['file']!=name+'.'+version+'.nupkg':raise SystemExit('noncanonical original package filename')
     selected.append({key:row[key] for key in ('id','file','size','sha256')})
-print(json.dumps({'version':'0.32.3','sourceSha':source,'custodySha256':expected,
+print(json.dumps({'version':version,'planPath':plan_path,'sourceSha':source,'custodySha256':expected,
                   'planSha256':record['releasePlanSha256'],'originalRosterCount':len(record['archives']),
                   'archives':selected,'mode':'verified-original-artifacts-no-repack'},sort_keys=True))
 PYORIGINAL
 }
 if [[ "$original_mode" == true ]]; then
-  # No CLR/npm/tool can start until full19 custody and current source are joined.
+  # No packing/npm workload can start until typed selection, full19 custody and current source are joined.
   original_receipt="$(verify_original)"
 fi
 mkdir -p "$work"
@@ -98,16 +107,17 @@ cp -R "$repo/tests/Scene.SvgBrowser.Tests" "$work/Browser"
 cp "$repo/tests/Scene.PortableConsumers/DocumentRoundTrip.fs" "$work/Browser/DocumentRoundTrip.fs"
 rm -rf "$work/Browser/node_modules" "$work/Browser/dist" "$work/Browser/generated"
 if [[ "$original_mode" == true ]]; then
-  python3 - "$work/Browser/BrowserFixture.fsproj" <<'PYREFERENCES'
-import pathlib,sys,xml.etree.ElementTree as ET
+  python3 - "$work/Browser/BrowserFixture.fsproj" "$work/original-candidate.json" <<'PYREFERENCES'
+import json,pathlib,sys,xml.etree.ElementTree as ET
+version=json.loads(pathlib.Path(sys.argv[2]).read_text())['version']
 path=pathlib.Path(sys.argv[1]);tree=ET.parse(path);root=tree.getroot()
 if root.findall('.//ProjectReference') or root.findall('.//Link'):raise SystemExit('fixture sibling source edge refused')
 expected={'FS.GG.UI.Scene','FS.GG.UI.KeyboardInput','FS.GG.UI.Scene.SvgBrowser'}
 refs=[r for r in root.findall('.//PackageReference') if r.get('Include','').startswith('FS.GG.UI.')]
 if len(refs)!=2 or {r.get('Include') for r in refs}!=expected-{'FS.GG.UI.KeyboardInput'} or any(r.get('Version')!='0.32.0' for r in refs):
     raise SystemExit('fixture must declare exactly the canonical ordinary consumer references')
-for row in refs:row.set('Version','[0.32.3]')
-ET.SubElement(root.find('ItemGroup'),'PackageReference',Include='FS.GG.UI.KeyboardInput',Version='[0.32.3]')
+for row in refs:row.set('Version','['+version+']')
+ET.SubElement(root.find('ItemGroup'),'PackageReference',Include='FS.GG.UI.KeyboardInput',Version='['+version+']')
 tree.write(path,encoding='unicode')
 PYREFERENCES
 fi
@@ -136,8 +146,8 @@ if {str(pathlib.Path(p).resolve()) for p in assets['packageFolders']}!={str((roo
 libraries={key.lower() for key in assets['libraries']}
 for row in record['archives']:
     name=row['id'].lower()
-    if name+'/0.32.3' not in libraries:raise SystemExit('original consumer resolved wrong package version')
-    archive=root/'packages'/name/'0.32.3'/(name+'.0.32.3.nupkg')
+    if name+'/'+record['version'] not in libraries:raise SystemExit('original consumer resolved wrong package version')
+    archive=root/'packages'/name/record['version']/(name+'.'+record['version']+'.nupkg')
     if hashlib.sha256(archive.read_bytes()).hexdigest()!=row['sha256']:
         raise SystemExit('resolved private cache differs from original archive')
 PYCACHE

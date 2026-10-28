@@ -85,7 +85,7 @@ class SourceGuardTests(unittest.TestCase):
     def test_actual_workflow_mode_guard_allows_only_nonmutating_modes_without_readiness(self):
         release=(ROOT/'.github/workflows/release.yml').read_text()
         block=re.search(r'^  release-source-guard:\n(.*?)(?=^  [a-z-]+:)',release,re.M|re.S).group(1)
-        script=block.split('        run: |\n',1)[1]
+        script=block.split('        id: source-plan\n',1)[1].split('        run: |\n',1)[1]
         script='\n'.join(line[10:] for line in script.splitlines() if line.strip())
         with tempfile.TemporaryDirectory() as folder:
             temp=Path(folder)
@@ -222,7 +222,7 @@ class InertSuccessorTests(unittest.TestCase):
         head = guard.preflight.git(ROOT, 'rev-parse', 'HEAD')
         release = (ROOT/'.github/workflows/release.yml').read_text()
         block = re.search(r'^  release-source-guard:\n(.*?)(?=^  [a-z-]+:)', release, re.M|re.S).group(1)
-        script = block.split('        run: |\n', 1)[1]
+        script = block.split('        id: source-plan\n', 1)[1].split('        run: |\n', 1)[1]
         script = '\n'.join(line[10:] for line in script.splitlines() if line.strip())
         with tempfile.TemporaryDirectory() as folder:
             marker = Path(folder)/'effect-reached'
@@ -777,6 +777,8 @@ class FontDisposalSourceTests(unittest.TestCase):
         subject = importlib.util.module_from_spec(spec); spec.loader.exec_module(subject)
         def source(_root, _sha, path):
             raw = (ROOT/path).read_text()
+            if path in ('template/base/Directory.Packages.props', '.template.package/FS.GG.UI.Template.fsproj', 'template/product-skills/fs-gg-symbology/reference.fsx'):
+                raw = subject.source_bytes(ROOT, '4ec6eafbbbf02264db9b0db4780c590abe0bf9cd', path).decode()
             return mutation(path, raw) if mutation else raw
         def git(_root, *args):
             if args[0] == 'ls-tree':
@@ -991,18 +993,18 @@ class SourceSdkInstallationRootTests(unittest.TestCase):
 
 
 class OriginalArtifactFixtureTests(unittest.TestCase):
-    def fixture(self, root):
+    def fixture(self, root, plan=None):
         import argparse, contextlib, io
         spec=importlib.util.spec_from_file_location('original_test_custody',ROOT/'scripts/release-custody.py')
         custody=importlib.util.module_from_spec(spec);spec.loader.exec_module(custody)
-        archives=root/'archives';archives.mkdir();plan=ROOT/'eng/release/font-disposal-0.32.3.json'
-        doc=json.loads(plan.read_text());source=subprocess.check_output(['git','-C',str(ROOT),'rev-parse','HEAD'],text=True).strip()
+        archives=root/'archives';archives.mkdir();plan=plan or ROOT/'eng/release/font-disposal-0.32.3.json'
+        doc=json.loads(plan.read_text());version=doc['version'];source=subprocess.check_output(['git','-C',str(ROOT),'rev-parse','HEAD'],text=True).strip()
         libraries=[r['id'] for r in doc['packages'] if r['kind']=='library']
         for row in doc['packages']:
             name=row['id'];deps=''
-            if row['kind']=='bom':deps=''.join(f'<dependency id="{n}" version="[0.32.3]" />' for n in libraries)
-            xml=f'<package><metadata><id>{name}</id><version>0.32.3</version><license type="expression">MIT</license><repository url="https://github.com/FS-GG/FS.GG.Rendering.git" commit="{source}" /><dependencies>{deps}</dependencies></metadata></package>'
-            with zipfile.ZipFile(archives/(name+'.0.32.3.nupkg'),'w') as z:
+            if row['kind']=='bom':deps=''.join(f'<dependency id="{n}" version="[{version}]" />' for n in libraries)
+            xml=f'<package><metadata><id>{name}</id><version>{version}</version><license type="expression">MIT</license><repository url="https://github.com/FS-GG/FS.GG.Rendering.git" commit="{source}" /><dependencies>{deps}</dependencies></metadata></package>'
+            with zipfile.ZipFile(archives/(name+'.'+version+'.nupkg'),'w') as z:
                 z.writestr(name+'.nuspec',xml)
                 if name=='FS.GG.UI.Scene.SvgBrowser':
                     for entry in doc['releaseChecks']['fableEntries']:z.writestr(entry,'inert fixture bytes')
@@ -1053,6 +1055,38 @@ class OriginalArtifactFixtureTests(unittest.TestCase):
                         with next(archives.glob('*.nupkg')).open('ab') as stream:stream.write(b'changed')
                     if fault=='missing-archive':next(archives.glob('*.nupkg')).unlink()
                     result=self.invoke(root,env,runner);self.assertNotEqual(0,result.returncode);self.assertFalse(marker.exists(),result.stdout+result.stderr)
+
+    def verify_selected_data(self, root, plan_path, version, tamper=False):
+        # Execute the maintained Python body, substituting only Git/source-policy transport.
+        # Real archive parsing,19-roster custody, hashes and source identities remain active.
+        import contextlib,io,shutil
+        repo=root/'repo';(repo/'eng/release').mkdir(parents=True);(repo/'scripts').mkdir()
+        original=json.loads((ROOT/'eng/release/palette-heading-0.32.4.json').read_text())
+        original['version']=version;original['baselineVersion']='0.32.3' if version=='0.32.4' else '0.32.1'
+        original['tags']=[f'fs-gg-ui/v{version}',f'fs-gg-ui-template/v{version}',f'v{version}']
+        plan=repo/plan_path;plan.write_text(json.dumps(original))
+        shutil.copyfile(ROOT/'scripts/release-custody.py',repo/'scripts/release-custody.py')
+        (repo/'scripts/release-source-guard.py').write_text('def validate(*args): return None\n')
+        archives,manifest,marker,env=self.fixture(root,plan)
+        if tamper:
+            with (archives/f'FS.GG.UI.Themes.AntDesign.{version}.nupkg').open('ab') as stream:stream.write(b'changed-unconsumed-original')
+        script=(ROOT/'tests/Scene.SvgBrowser.Tests/build-fixture.sh').read_text().split("<<'PYORIGINAL'\n",1)[1].split('\nPYORIGINAL',1)[0]
+        args=['original',str(repo),str(archives),str(manifest),env['SVG_SCENE_ORIGINAL_CUSTODY_SHA256'],env['SVG_SCENE_ORIGINAL_SOURCE_SHA'],plan_path]
+        with patch.object(sys,'argv',args),patch.object(subprocess,'check_output',return_value=env['SVG_SCENE_ORIGINAL_SOURCE_SHA']+'\n'),contextlib.redirect_stdout(io.StringIO()) as output:
+            exec(compile(script,'actual-build-fixture-PYORIGINAL','exec'),{})
+        return json.loads(output.getvalue())
+
+    def test_legacy_wrong_version_and_unselected_plan_refuse(self):
+        for plan,version in [('eng/release/font-disposal-0.32.3.json','0.32.2'),('eng/release/unselected.json','0.32.4')]:
+            with self.subTest(plan=plan),tempfile.TemporaryDirectory() as value,self.assertRaises(SystemExit):
+                self.verify_selected_data(Path(value),plan,version)
+
+    def test_selected0324_keeps_full19_custody_including_unconsumed_archive(self):
+        with tempfile.TemporaryDirectory() as value:
+            result=self.verify_selected_data(Path(value),'eng/release/palette-heading-0.32.4.json','0.32.4')
+            self.assertEqual(('0.32.4',19,3),(result['version'],result['originalRosterCount'],len(result['archives'])))
+        with tempfile.TemporaryDirectory() as value,self.assertRaisesRegex(RuntimeError,'retained archives differ'):
+            self.verify_selected_data(Path(value),'eng/release/palette-heading-0.32.4.json','0.32.4',True)
 
     def test_actual_full_custody_function_detects_original_change_after_first_read(self):
         with tempfile.TemporaryDirectory() as value:
@@ -1518,6 +1552,33 @@ class FontWriterBoundaryFixtureTests(unittest.TestCase):
         self.assertIn('python3 scripts/test-release-source-guard.py --native-font-disposal-boundary',step)
         self.assertNotIn('secrets.',step)
         self.assertNotIn('env:',step)
+
+
+class PaletteSuccessorTransportTests(unittest.TestCase):
+    def subject(self, result):
+        spec=importlib.util.spec_from_file_location('palette_guard',ROOT/'scripts/release-source-guard.py')
+        subject=importlib.util.module_from_spec(spec);spec.loader.exec_module(subject)
+        def git(_root,*args):
+            if args[0]=='ls-tree':return '\n'.join(str(f.relative_to(ROOT)) for f in (ROOT/'src').rglob('*.fsproj'))+'\n.template.package/FS.GG.UI.Template.fsproj'
+            return 'b'*40 if args[0]=='rev-parse' else ''
+        def invoke(command,**kwargs):
+            self.assertEqual(['dotnet','fsi','--exec'],command[:3])
+            envelope=json.loads(kwargs['input'])
+            self.assertEqual(('a'*40,'0.32.4','source-qualification'),tuple(envelope[k] for k in ('sourceSha','version','intent')))
+            self.assertEqual(19,len(envelope['sourcePackages']))
+            self.assertEqual((ROOT/'eng/release/palette-heading-0.32.4.json').read_bytes(),envelope['rawPlan'].encode())
+            self.assertNotIn('producerRun',envelope)
+            return result
+        with patch.object(subject.preflight,'source_text',side_effect=lambda r,sha,path:(ROOT/path).read_text()),patch.object(subject,'source_bytes',side_effect=lambda r,sha,path:(ROOT/path).read_bytes()),patch.object(subject.preflight,'git',side_effect=git),patch.object(subject.subprocess,'run',side_effect=invoke):
+            return subject.validate(ROOT,'a'*40,'eng/release/palette-heading-0.32.4.json','0.32.4')
+
+    def test_exact_source_envelope_and_typed_source_verdict(self):
+        result=subprocess.CompletedProcess([],0,'{"result":"pass","scope":"source-qualification-only","publicationAdmitted":false}','')
+        self.assertEqual('pass',self.subject(result)['result'])
+
+    def test_typed_refusal_or_wrong_scope_never_becomes_source_success(self):
+        for result in (subprocess.CompletedProcess([],1,'','successor-selection'),subprocess.CompletedProcess([],0,'{"result":"pass","publicationAdmitted":true}','')):
+            with self.subTest(result=result),self.assertRaises(SystemExit):self.subject(result)
 
 
 if __name__ == '__main__':
