@@ -398,3 +398,42 @@ A protected exact executor, first attempt, fresh authority/collision observation
 explicit reconciliation of any prior send remain required. No source change settles
 historical0321–0323 Unknowns. Current-public full-game/provider admission and IME
 qualification remain distinct from this accepted hosted palette slice.
+
+
+### Direct scope response diagnostics (2026-10-28)
+
+The original [0.32.3 publication39817794639/a1](https://github.com/FS-GG/FS.GG.Rendering/actions/runs/39817794639)
+retained a scope receipt with all nineteen existing-ID responses HTTP200/authorized
+against baseline0.32.1. The later [0.32.4 preflight40763506453/a1](https://github.com/FS-GG/FS.GG.Rendering/actions/runs/40763506453)
+used the same direct GET construction with the minted publish key and baseline0.32.3;
+all nineteen responses were HTTP400. Its source/custody validation and complete
+collision census passed, but scope remained unproven. The original failure remains
+failed; neither an old200 nor a new400 establishes current publication authority.
+
+The [Gallery controller](https://github.com/NuGet/NuGetGallery/blob/c25bab040e19d24593fc0c298a0cedb51bf57dcb/src/NuGetGallery/Controllers/ApiController.cs)
+accepts verification or push scopes for compatibility, then evaluates account policy.
+The [verification-scope policy](https://github.com/NuGet/NuGetGallery/blob/c25bab040e19d24593fc0c298a0cedb51bf57dcb/src/NuGetGallery.Services/Security/RequirePackageVerifyScopePolicy.cs)
+can reject a publish-only key with400. This is a possible cause, not the observed
+cause until the actual response is classified. A missing push-protocol header is not
+evidenced by that verification-policy path.
+
+The maintained direct route caps its application body read at4097 bytes only on400,
+within the same ten-second header/body cancellation budget. HTTP headers and transport
+buffering can read ahead; this is not an exact network-byte bound. Automatic draining
+of unread content is disabled, preserving the cap after response disposal. Strict UTF8 matching of the fixed primary
+policy text yields only `security-policy-verification-scope-required`; unknown,
+oversized, malformed, reflected-key or cancelled content remains
+`authorization-unproven`, retaining the received HTTP status. Bodies, body digests,
+secret headers and keys are never persisted. The receipt schema and strict requirement
+for nineteen HTTP200/authorized observations remain unchanged. No additional request,
+credential creation, retry or publication effect is introduced.
+
+The direct GET is not a claim of zero service-side effects: the controller audits
+verification and consumes verification credentials after first use. No package version
+is changed. The documented derived verification-key alternative creates a credential;
+[its builder](https://github.com/NuGet/NuGetGallery/blob/c25bab040e19d24593fc0c298a0cedb51bf57dcb/src/NuGetGallery.Services/Authentication/CredentialBuilder.cs)
+copies parent owners into requested-ID verification scopes without preserving parent
+subject globs or push actions. That can establish ownership of an existing package,
+not the original publish key's per-ID push authorization or new-ID permission. It is
+excluded as a substitute here. Root selects any revised publication contract only
+from actual diagnostic evidence; this source change grants no new effect.

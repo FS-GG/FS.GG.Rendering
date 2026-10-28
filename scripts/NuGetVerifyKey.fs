@@ -3,6 +3,7 @@ module Rendering.NuGetVerifyKey
 open System
 open System.Net.Http
 open System.Threading
+open System.Text
 open System.Text.Json
 open System.Text.RegularExpressions
 
@@ -40,16 +41,16 @@ let fontDisposalScopePlan scopeOnly planHash =
 
 let scopeSourceFromReceipt (context: ScopeContext) (receipt: JsonElement) =
     try
-        let text (element: JsonElement) (name: string) = element.GetProperty(name).GetString()
-        let selectedVersion = scopePlanVersion context.PlanHash |> Option.defaultValue null
+        let asText (element: JsonElement) = element.GetString() |> Option.ofObj |> Option.defaultWith (fun () -> invalidArg "receipt" "null scope text")
+        let text (element: JsonElement) (name: string) = asText (element.GetProperty(name))
+        let selectedVersion = scopePlanVersion context.PlanHash |> Option.defaultWith (fun () -> invalidArg "plan" "unknown scope plan")
         let workflow = receipt.GetProperty("workflow")
-        let roster = receipt.GetProperty("roster").EnumerateArray() |> Seq.map(fun p -> p.GetString()) |> Seq.toList
-        if isNull context.SourceSha || not(Regex.IsMatch(context.SourceSha, "^[0-9a-f]{40}$")) ||
-           isNull context.WorkflowSha || not(Regex.IsMatch(context.WorkflowSha, "^[0-9a-f]{40}$")) ||
+        let roster = receipt.GetProperty("roster").EnumerateArray() |> Seq.map asText |> Seq.toList
+        if String.IsNullOrEmpty(context.SourceSha) || not(Regex.IsMatch(context.SourceSha, "^[0-9a-f]{40}$")) ||
+           String.IsNullOrEmpty(context.WorkflowSha) || not(Regex.IsMatch(context.WorkflowSha, "^[0-9a-f]{40}$")) ||
            context.Repository<>"FS-GG/FS.GG.Rendering" ||
            context.WorkflowRef<>"FS-GG/FS.GG.Rendering/.github/workflows/release.yml@refs/heads/main" ||
            String.IsNullOrWhiteSpace(context.RunId) ||
-           isNull selectedVersion ||
            text receipt "schema"<>"fsgg.rendering.release-preflight/v1" ||
            text receipt "result"<>"pass" || text receipt "mutation"<>"none" ||
            text receipt "sourceSha"<>context.SourceSha || text receipt "workflowSha"<>context.WorkflowSha ||
@@ -62,6 +63,32 @@ let scopeSourceFromReceipt (context: ScopeContext) (receipt: JsonElement) =
         else Ok context.SourceSha
     with _ -> Error "verify-key-scope-source-refused"
 
+// Exact English primary-source text at NuGetGalleryc25bab0, ServicesStrings.resx.
+// This diagnostic never turns a rejected response into scope or writer eligibility.
+type private RefusalDiagnostic = VerificationScopePolicy | Unclassified
+
+let private refusalDiagnostic (key: string) (response: HttpResponseMessage) (cancellation: CancellationToken) =
+    try
+        let limit = 4096
+        let length = response.Content.Headers.ContentLength
+        if length.HasValue && (length.Value < 0L || length.Value > int64 limit) then Unclassified
+        else
+            use stream = response.Content.ReadAsStreamAsync(cancellation).WaitAsync(cancellation).GetAwaiter().GetResult()
+            let bytes = Array.zeroCreate<byte> (limit + 1)
+            let mutable count = 0
+            let mutable ended = false
+            while not ended && count < bytes.Length do
+                let received = stream.ReadAsync(bytes.AsMemory(count, bytes.Length - count), cancellation).AsTask().WaitAsync(cancellation).GetAwaiter().GetResult()
+                if received = 0 then ended <- true else count <- count + received
+            if not ended || count > limit then Unclassified
+            else
+                let body = UTF8Encoding(false, true).GetString(bytes, 0, count)
+                let policy = "A package verification key is required to push symbols. Please contact support@nuget.org to get more details."
+                if body.Contains(key, StringComparison.Ordinal) then Unclassified
+                elif body.Trim([| ' '; '\t'; '\r'; '\n' |]) = policy then VerificationScopePolicy
+                else Unclassified
+    with _ -> Unclassified
+
 let httpTransportWithHandler (key: string) (handler: HttpMessageHandler) : Transport =
     let client = new HttpClient(handler, true)
     client.Timeout <- TimeSpan.FromSeconds 10.
@@ -71,11 +98,20 @@ let httpTransportWithHandler (key: string) (handler: HttpMessageHandler) : Trans
             if String.IsNullOrWhiteSpace key || not (request.Headers.TryAddWithoutValidation("X-NuGet-ApiKey", key)) then
                 { PackageId=id; HttpStatus=None; Outcome="credential-unavailable" }
             else
-                use response = client.Send(request, HttpCompletionOption.ResponseHeadersRead, CancellationToken.None)
+                use deadline = new CancellationTokenSource(TimeSpan.FromSeconds 10.)
+                use response = client.Send(request, HttpCompletionOption.ResponseHeadersRead, deadline.Token)
                 let status = int response.StatusCode
-                { PackageId=id; HttpStatus=Some status; Outcome=if status=200 then "authorized" else "authorization-unproven" }
+                let outcome =
+                    if status = 200 then "authorized"
+                    elif status = 400 then
+                        match refusalDiagnostic key response deadline.Token with
+                        | VerificationScopePolicy -> "security-policy-verification-scope-required"
+                        | Unclassified -> "authorization-unproven"
+                    else "authorization-unproven"
+                { PackageId=id; HttpStatus=Some status; Outcome=outcome }
         with _ -> { PackageId=id; HttpStatus=None; Outcome="transport-unavailable" }
 
 let httpTransport (key: string) : Transport =
-    // Header remains within original host; no redirects or response bodies are consumed.
-    httpTransportWithHandler key (new HttpClientHandler(AllowAutoRedirect = false))
+    // Header remains within the original host; redirects are refused. Only400 gets a bounded diagnostic body read; no body is persisted.
+    // Do not silently drain an oversized/unread response after the diagnostic cap.
+    httpTransportWithHandler key (new SocketsHttpHandler(AllowAutoRedirect = false, MaxResponseDrainSize = 0))
