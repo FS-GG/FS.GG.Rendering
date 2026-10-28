@@ -115,6 +115,13 @@ jobs:
           ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
+      - name: Fetch exact selected producer source without executing it
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$SELECTED_SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo '::error::selected source must be exact lowercase40hex'; exit 3; }
+          git fetch --no-tags origin "$SELECTED_SOURCE_SHA"
+          git cat-file -e "$SELECTED_SOURCE_SHA^{commit}"
       - name: Select isolated interpreter for retained successor policy
         if: inputs.version == '0.32.4'
         shell: bash
@@ -172,6 +179,13 @@ jobs:
           # Default repository GITHUB_TOKEN only. Its tag pushes do not launch the
           # old producer's template-dispatch or release workflows. Never substitute an App/PAT.
           persist-credentials: true
+      - name: Fetch exact selected producer source without executing it
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$SELECTED_SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo '::error::selected source must be exact lowercase40hex'; exit 3; }
+          git fetch --no-tags origin "$SELECTED_SOURCE_SHA"
+          git cat-file -e "$SELECTED_SOURCE_SHA^{commit}"
       - name: Select isolated interpreter for retained successor policy
         if: inputs.version == '0.32.4'
         shell: bash
