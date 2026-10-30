@@ -45,9 +45,10 @@ if Environment.GetEnvironmentVariable("FSGG_RELEASE_ATTEMPT")="palette" then
         let observations,scope=Rendering.NuGetVerifyKey.inspect (Rendering.NuGetVerifyKey.httpTransport key) ids "0.32.3" |> Result.defaultWith(fun _ -> invalidArg "input" "retained-scope")
         let census=Rendering.ReleasePackageCensus.inspectWith Rendering.ReleasePackageCensus.DefaultLimits (Rendering.ReleasePackageCensus.httpTransport (env "GITHUB_TOKEN")) ids "0.32.4" |> Result.defaultWith(fun _ -> invalidArg "input" "retained-census")
         File.WriteAllText(value "--census",Rendering.ReleasePackageCensus.receiptJson FS.GG.Rendering.ReleasePreflight.SelectedSuccessor.Producer expected (env "GITHUB_RUN_ID") "0.32.4" FS.GG.Rendering.ReleasePreflight.SelectedSuccessor.PlanHash census)
-        File.WriteAllText(value "--receipt",JsonSerializer.Serialize({|schema="fsgg.rendering.nuget-verify-key/v1";passed=scope;observations=observations;noPackageVersionMutation=true|}))
+        File.WriteAllText(value "--receipt",JsonSerializer.Serialize({|schema="fsgg.rendering.nuget-verify-key/v1";passed=scope;scopeGate="advisory";observations=observations;noPackageVersionMutation=true|}))
         let complete=census.Organization.Complete && census.Packages.Length=19 && (census.Packages |> List.forall(fun (_,row) -> row.Complete))
-        if not scope || not complete then invalidArg "input" "retained-read-scope-incomplete"
+        // verifykey is advisory (FS-GG/.github#4817): only the complete read census stays hard here.
+        if not complete then invalidArg "input" "retained-read-scope-incomplete"
         if env "FSGG_NUGET_SCOPE_ONLY"<>"true" && not(FS.GG.Rendering.ReleasePreflight.SelectedSuccessor.admitWriter qualified complete (observations |> List.map _.HttpStatus) "unknown-before-attempt" (env "FSGG_SUCCESSOR_UNRESOLVED_SEND"<>"false")) then invalidArg "input" "retained-writer-ineligible"
         printfn "Qualified retained inputs and fresh read observations joined; effective write remains UNKNOWN until acknowledgement/readback"
         exit 0
@@ -198,12 +199,14 @@ try
     match inspect (httpTransport key) ids baseline with
     | Error _ -> invalidArg "roster" "verify-key-roster-refused"
     | Ok(observations,passed) ->
-        let receipt = {| schema="fsgg.rendering.nuget-verify-key/v1"; producerSha=(if scopeOnly then null else producer); sourceSha=scopeSource; expectedExecutorSha=expected; workflowSha=current "GITHUB_WORKFLOW_SHA"; executorSha=Environment.GetEnvironmentVariable("GITHUB_SHA"); executorRef=Environment.GetEnvironmentVariable("GITHUB_WORKFLOW_REF"); runId=Environment.GetEnvironmentVariable("GITHUB_RUN_ID"); attempt=Environment.GetEnvironmentVariable("GITHUB_RUN_ATTEMPT"); planSha256=planHash; rosterSha256=Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(String.Join("\n",ids)))).ToLowerInvariant(); baseline=baseline; startedUtc=started; endedUtc=DateTimeOffset.UtcNow.ToString("O"); observations=(observations |> List.map(fun row -> {|packageId=row.PackageId; httpStatus=(match row.HttpStatus with Some n -> Nullable n | None -> Nullable()); outcome=row.Outcome|})); passed=passed; noPackageVersionMutation=true |}
+        let receipt = {| schema="fsgg.rendering.nuget-verify-key/v1"; producerSha=(if scopeOnly then null else producer); sourceSha=scopeSource; expectedExecutorSha=expected; workflowSha=current "GITHUB_WORKFLOW_SHA"; executorSha=Environment.GetEnvironmentVariable("GITHUB_SHA"); executorRef=Environment.GetEnvironmentVariable("GITHUB_WORKFLOW_REF"); runId=Environment.GetEnvironmentVariable("GITHUB_RUN_ID"); attempt=Environment.GetEnvironmentVariable("GITHUB_RUN_ATTEMPT"); planSha256=planHash; rosterSha256=Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(String.Join("\n",ids)))).ToLowerInvariant(); baseline=baseline; startedUtc=started; endedUtc=DateTimeOffset.UtcNow.ToString("O"); observations=(observations |> List.map(fun row -> {|packageId=row.PackageId; httpStatus=(match row.HttpStatus with Some n -> Nullable n | None -> Nullable()); outcome=row.Outcome|})); passed=passed; scopeGate="advisory"; noPackageVersionMutation=true |}
         let output = value "--receipt"
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath output)) |> ignore
         File.WriteAllText(output,JsonSerializer.Serialize(receipt,JsonSerializerOptions(WriteIndented=true))+"\n")
         printfn "NuGet existing-ID verify-key: %d/19 HTTP200; no package mutation" (observations |> List.filter(fun row -> row.HttpStatus=Some 200) |> List.length)
-        if not passed then exit 3
+        // Advisory since FS-GG/.github#4817: a non-200 is retained in the receipt but does not block.
+        // Authorization is decided by the canary-first push; every other gate below stays hard.
+        if not passed then printfn "NuGet verify-key: ADVISORY only; non-200 observations do not block publication"
         if scopeOnly then exit 0
         let token = Environment.GetEnvironmentVariable("GITHUB_TOKEN")
         if String.IsNullOrWhiteSpace token then invalidArg "credential" "census-credential-unavailable"

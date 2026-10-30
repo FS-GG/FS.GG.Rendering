@@ -293,6 +293,11 @@ def download(url: str, destination: Path, token: str) -> int:
         raise CustodyError(f"readback unavailable from {url}: {exc}") from exc
 
 
+# probe exit codes: 0 present and payload-identical, 4 absent, 5 present but payload differs,
+# 6 destination unreadable (network/HTTP other than 404). Custody refusal stays 1 via main().
+PROBE_MATCHED, PROBE_ABSENT, PROBE_MISMATCH, PROBE_UNREADABLE = 0, 4, 5, 6
+
+
 def command_probe(args: argparse.Namespace) -> None:
     _, manifest = verified_manifest(args)
     candidates = [r for r in manifest["archives"] if r["id"] == args.package_id]
@@ -301,12 +306,20 @@ def command_probe(args: argparse.Namespace) -> None:
     record = candidates[0]
     temp = args.archives / f".{record['file']}.readback"
     token = os.environ.get(args.token_env, "") if args.token_env else ""
-    status = download(render_url(args.url_template, record), temp, token)
+    try:
+        status = download(render_url(args.url_template, record), temp, token)
+    except CustodyError as exc:
+        temp.unlink(missing_ok=True)
+        print(f"release custody probe unreadable: {exc}", file=sys.stderr)
+        raise SystemExit(PROBE_UNREADABLE) from exc
     if status == 404:
         print(f"readback missing: {record['id']} {record['version']}")
-        raise SystemExit(4)
+        raise SystemExit(PROBE_ABSENT)
     try:
         compare_archive(args.archives / record["file"], temp)
+    except CustodyError as exc:
+        print(f"release custody probe mismatch: {exc}", file=sys.stderr)
+        raise SystemExit(PROBE_MISMATCH) from exc
     finally:
         temp.unlink(missing_ok=True)
 

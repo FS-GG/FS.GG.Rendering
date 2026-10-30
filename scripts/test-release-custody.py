@@ -167,7 +167,10 @@ class ReleaseCustodyTests(unittest.TestCase):
         self.assertIn('<add key="nuget.org" value="https://api.nuget.org/v3/index.json" />', packed_template)
         self.assertIn('--configfile "$user_config"', packed_template)
         nuget_replay = release[release.index("Replay the same original custody bytes to nuget.org and read them back"):]
-        self.assertIn("--skip-duplicate", nuget_replay)
+        # Canary-first publisher (FS-GG/.github#4817): 409 is verified against the destination payload,
+        # never silently skipped.
+        self.assertIn("scripts/release-nuget-canary-push.py", nuget_replay)
+        self.assertNotIn("--skip-duplicate", nuget_replay)
         self.assertIn("for attempt in {1..180}", nuget_replay)
         self.assertIn("Waiting for nuget.org propagation", nuget_replay)
         self.assertIn("release-custody.py probe", nuget_replay)
@@ -182,42 +185,85 @@ class ReleaseCustodyTests(unittest.TestCase):
             self.archive(path, "FS.GG.UI.A", "0.29.0", {"lib/a.dll": b"two"})
             self.assertNotEqual(before, custody.archive_record(path))
 
+    def release_fixture(self, root: Path):
+        archives = root / "archives"
+        archives.mkdir(exist_ok=True)
+        libraries = [f"FS.GG.UI.Library{i:02d}" for i in range(17)]
+        packages = ([{"id": item, "kind": "library", "apiBaseline": "required"} for item in libraries]
+                    + [{"id": "FS.GG.UI", "kind": "bom", "apiBaseline": "not-applicable"},
+                       {"id": "FS.GG.UI.Template", "kind": "template", "apiBaseline": "not-applicable"}])
+        packages[0]["apiBaseline"] = "first-publication"
+        plan = {
+            "schema": "fsgg.rendering.release-plan/v1", "version": "0.29.0", "baselineVersion": "0.28.0",
+            "tags": ["fs-gg-ui/v0.29.0", "fs-gg-ui-template/v0.29.0", "v0.29.0"], "packages": packages,
+            "releaseChecks": {"svgPackage": libraries[0],
+                "fableEntries": ["fable/FS.GG.UI.Scene.SvgBrowser.fsproj", "fable/SvgBrowser.fs", "fable/SvgBrowser.fsi", "fable-compatibility/compatibility-profile.v1.json"],
+                "svgSurfaceMarkers": ["SvgDocumentBrowserHost", "RetainedScene", "mountDocument"],
+                "generatedTemplateEntries": ["content/.template.config/template.json", "content/template/base/Directory.Packages.props"]}}
+        plan_path = root / "plan.json"; plan_path.write_text(json.dumps(plan))
+        for package in packages:
+            item = package["id"]
+            entries = {"lib/net10.0/value.dll": item.encode()}
+            dependencies = []
+            if item == libraries[0]:
+                entries.update({name: b"SvgDocumentBrowserHost RetainedScene mountDocument" for name in plan["releaseChecks"]["fableEntries"]})
+                entries["api-surface/SvgBrowser.fsi"] = b"SvgDocumentBrowserHost RetainedScene mountDocument"
+            elif item == "FS.GG.UI":
+                dependencies = [(library, "[0.29.0]") for library in libraries]
+            elif item == "FS.GG.UI.Template":
+                entries.update({name: b"generated" for name in plan["releaseChecks"]["generatedTemplateEntries"]})
+            self.archive(archives / f"{item}.0.29.0.nupkg", item, "0.29.0", entries, dependencies=dependencies)
+
+        manifest_path = archives / "release-custody.json"
+        common = argparse.Namespace(plan=plan_path, archives=archives, manifest=manifest_path,
+                                    source_sha="a" * 40)
+        custody.command_prepare(common)
+        return plan_path, archives, manifest_path, common
+
+    def test_probe_exit_codes_distinguish_absent_match_mismatch_and_unreadable(self):
+        with tempfile.TemporaryDirectory() as value:
+            root = Path(value)
+            plan_path, archives, manifest_path, common = self.release_fixture(root)
+            record = custody.load_json(manifest_path)["archives"][3]
+            args = argparse.Namespace(**vars(common), package_id=record["id"],
+                                      url_template="https://feed/{id_lower}/{version}/{filename}", token_env="")
+            local = archives / record["file"]
+            meta, entries = custody.nuspec(local)
+            payload = {k: v for k, v in entries.items() if not k.endswith(".nuspec")}
+
+            def serve(writer):
+                def download(url, destination, token):
+                    return writer(destination)
+                return patch.object(custody, "download", side_effect=download)
+
+            def code(writer):
+                with serve(writer):
+                    try:
+                        custody.command_probe(args)
+                        return 0
+                    except SystemExit as exc:
+                        return exc.code
+
+            self.assertEqual(4, code(lambda d: 404))
+            self.assertEqual(0, code(lambda d: (self.archive(d, meta["id"], meta["version"], payload, b"feed-signature"), 200)[1]))
+            self.assertEqual(5, code(lambda d: (self.archive(d, meta["id"], meta["version"], {"lib/net10.0/value.dll": b"mutant"}), 200)[1]))
+            self.assertEqual(5, code(lambda d: (d.write_bytes(b"not a zip"), 200)[1]))
+            def unreadable(_):
+                raise custody.CustodyError("readback HTTP 503 from https://feed/x")
+            self.assertEqual(6, code(unreadable))
+            self.assertEqual((0, 4, 5, 6), (custody.PROBE_MATCHED, custody.PROBE_ABSENT, custody.PROBE_MISMATCH, custody.PROBE_UNREADABLE))
+            self.assertFalse(list(archives.glob(".*.readback")))
+            # Custody refusal is not a destination state: main() maps it to 1.
+            with self.assertRaises(custody.CustodyError):
+                custody.command_probe(argparse.Namespace(**{**vars(args), "source_sha": "b" * 40}))
+
     def test_interrupted_dual_feed_resumes_only_original_retained_bytes(self):
         """Seven packages on feed A models interruption; replay completes A, then B, without repack."""
         with tempfile.TemporaryDirectory() as value:
             root = Path(value)
             archives, feed_a, feed_b = root / "archives", root / "a", root / "b"
             archives.mkdir(); feed_a.mkdir(); feed_b.mkdir()
-            libraries = [f"FS.GG.UI.Library{i:02d}" for i in range(17)]
-            packages = ([{"id": item, "kind": "library", "apiBaseline": "required"} for item in libraries]
-                        + [{"id": "FS.GG.UI", "kind": "bom", "apiBaseline": "not-applicable"},
-                           {"id": "FS.GG.UI.Template", "kind": "template", "apiBaseline": "not-applicable"}])
-            packages[0]["apiBaseline"] = "first-publication"
-            plan = {
-                "schema": "fsgg.rendering.release-plan/v1", "version": "0.29.0", "baselineVersion": "0.28.0",
-                "tags": ["fs-gg-ui/v0.29.0", "fs-gg-ui-template/v0.29.0", "v0.29.0"], "packages": packages,
-                "releaseChecks": {"svgPackage": libraries[0],
-                    "fableEntries": ["fable/FS.GG.UI.Scene.SvgBrowser.fsproj", "fable/SvgBrowser.fs", "fable/SvgBrowser.fsi", "fable-compatibility/compatibility-profile.v1.json"],
-                    "svgSurfaceMarkers": ["SvgDocumentBrowserHost", "RetainedScene", "mountDocument"],
-                    "generatedTemplateEntries": ["content/.template.config/template.json", "content/template/base/Directory.Packages.props"]}}
-            plan_path = root / "plan.json"; plan_path.write_text(json.dumps(plan))
-            for package in packages:
-                item = package["id"]
-                entries = {"lib/net10.0/value.dll": item.encode()}
-                dependencies = []
-                if item == libraries[0]:
-                    entries.update({name: b"SvgDocumentBrowserHost RetainedScene mountDocument" for name in plan["releaseChecks"]["fableEntries"]})
-                    entries["api-surface/SvgBrowser.fsi"] = b"SvgDocumentBrowserHost RetainedScene mountDocument"
-                elif item == "FS.GG.UI":
-                    dependencies = [(library, "[0.29.0]") for library in libraries]
-                elif item == "FS.GG.UI.Template":
-                    entries.update({name: b"generated" for name in plan["releaseChecks"]["generatedTemplateEntries"]})
-                self.archive(archives / f"{item}.0.29.0.nupkg", item, "0.29.0", entries, dependencies=dependencies)
-
-            manifest_path = archives / "release-custody.json"
-            common = argparse.Namespace(plan=plan_path, archives=archives, manifest=manifest_path,
-                                        source_sha="a" * 40)
-            custody.command_prepare(common)
+            plan_path, archives, manifest_path, common = self.release_fixture(root)
             original_hashes = {p.name: custody.sha256_file(p) for p in archives.glob("*.nupkg")}
 
             # First attempt stopped after seven uploads to feed A. A signature is added by the feed.

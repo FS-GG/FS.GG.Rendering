@@ -14,7 +14,10 @@ for refused in ["0.30.0"; "0.32.2"; "0.32.x"; ""] do
     assert(inspect (response(Some 200)) ids refused |> Result.isError)
 let facts : Facts = {OriginalCustodyVerified=true;NativeTemplatesQualified=true;ProviderPassed=180;BrowserPassed=[4;4;4];BrowserUnexpected=0;BrowserSkipped=0;BrowserFlaky=0;CompleteReadCensus=true;NuGetScopeStatuses=List.replicate 19 (Some 200);GitHubEffectiveWrite="unknown-before-attempt"}
 assert(admit facts)
-for bad in [{facts with OriginalCustodyVerified=false};{facts with NativeTemplatesQualified=false};{facts with ProviderPassed=179};{facts with BrowserPassed=[4;4]};{facts with BrowserSkipped=1};{facts with BrowserFlaky=1};{facts with CompleteReadCensus=false};{facts with NuGetScopeStatuses=List.replicate 19 (Some 403)};{facts with GitHubEffectiveWrite="proven"}] do assert(not(admit bad))
+for bad in [{facts with OriginalCustodyVerified=false};{facts with NativeTemplatesQualified=false};{facts with ProviderPassed=179};{facts with BrowserPassed=[4;4]};{facts with BrowserSkipped=1};{facts with BrowserFlaky=1};{facts with CompleteReadCensus=false};{facts with NuGetScopeStatuses=List.replicate 18 (Some 200)};{facts with GitHubEffectiveWrite="proven"}] do assert(not(admit bad))
+// verifykey is advisory (FS-GG/.github#4817): any fully observed nineteen statuses admit; length stays hard.
+for statuses in [List.replicate 19 (Some 400); List.replicate 19 (Some 403); List.replicate 19 None; Some 200 :: List.replicate 18 (Some 400)] do
+    assert(admit {facts with NuGetScopeStatuses=statuses})
 printfn "PASS bounded19 existing-ID scope and truthful attempt eligibility refusals"
 
 open System
@@ -120,7 +123,10 @@ for bad in [{current with OriginalCustodyVerified=false};{current with NativeTem
     assert(not(admitCurrent bad true (List.replicate 19 (Some 200)) "unknown-before-attempt"))
 assert(not(admitCurrent current false (List.replicate 19 (Some 200)) "unknown-before-attempt"))
 assert(not(admitCurrent current true (List.replicate 18 (Some 200)) "unknown-before-attempt"))
-assert(not(admitCurrent current true (List.replicate 19 (Some 403)) "unknown-before-attempt"))
+assert(admitCurrent current true (List.replicate 19 (Some 403)) "unknown-before-attempt")
+assert(admitCurrent current true (List.replicate 19 (Some 400)) "unknown-before-attempt")
+assert(not(admitCurrent current true (List.replicate 20 (Some 400)) "unknown-before-attempt"))
+assert(not(admitCurrent current false (List.replicate 19 (Some 400)) "unknown-before-attempt"))
 assert(not(admitCurrent current true (List.replicate 19 (Some 200)) "proven"))
 printfn "PASS separate current186/8/15 eligibility and historical180/4 contract"
 
@@ -188,7 +194,10 @@ for bad in [{fontWriter with OriginalCustodyVerified=false}; {fontWriter with Na
     assert(not(admitFontDisposal bad true (List.replicate 19 (Some 200)) "unknown-before-attempt"))
 assert(not(admitFontDisposal fontWriter false (List.replicate 19 (Some 200)) "unknown-before-attempt"))
 assert(not(admitFontDisposal fontWriter true (List.replicate 18 (Some 200)) "unknown-before-attempt"))
-assert(not(admitFontDisposal fontWriter true (List.replicate 19 (Some 403)) "unknown-before-attempt"))
+assert(admitFontDisposal fontWriter true (List.replicate 19 (Some 403)) "unknown-before-attempt")
+assert(admitFontDisposal fontWriter true (List.replicate 19 (Some 400)) "unknown-before-attempt")
+assert(not(admitFontDisposal fontWriter true (List.replicate 18 (Some 400)) "unknown-before-attempt"))
+assert(not(admitFontDisposal fontWriter true (List.replicate 19 (Some 400)) "proven"))
 assert(not(admitFontDisposal fontWriter true (List.replicate 19 (Some 200)) "proven"))
 printfn "PASS separate font-disposal186/45/15/4/27 writer eligibility; historical contracts unchanged"
 
@@ -293,6 +302,33 @@ let reflectedBody=observeReason mystery (mystery+diagnosticFixtureKey)
 assert(reflectedBody.Outcome="authorization-unproven:m-text:e-utf8:s-bounded:r-reflection")
 let knownReason=observeReason "ignored for exact known bodies" "Version is required"
 assert(knownReason.Outcome="authorization-unproven:m-text:e-utf8:s-bounded:r-known:ApiController.VersionRequired")
+// Observed nuget.org shape (run40987145442): IIS body "Bad Request", Gallery policy text as reason phrase.
+let policyReason=observeReason verificationPolicy "Bad Request"
+assert(policyReason.HttpStatus=Some 400 && policyReason.Outcome="security-policy-verification-scope-required")
+assert(match inspect (fun id _ -> {policyReason with PackageId=id}) ids "0.32.3" with Ok(_,false)->true|_->false)
+assert((observeReason verificationPolicy "").Outcome="security-policy-verification-scope-required")
+// Exactly as nuget.org labels it: text/html, no charset, IIS "Bad Request" body, policy reason phrase.
+type HtmlReasonHandler(reason: string, body: byte[]) =
+    inherit HttpMessageHandler()
+    let handle () =
+        let content=new ByteArrayContent(body)
+        content.Headers.ContentType <- Headers.MediaTypeHeaderValue("text/html")
+        new HttpResponseMessage(HttpStatusCode.BadRequest, ReasonPhrase=reason, Content=content)
+    override _.Send(_, _) = handle ()
+    override _.SendAsync(_, _) = Task.FromResult(handle ())
+let observeHtml reason (body: string) = httpTransportWithHandler diagnosticFixtureKey (new HtmlReasonHandler(reason,Encoding.UTF8.GetBytes body)) "FS.GG.UI.Scene" "0.32.3"
+let htmlPolicy=observeHtml verificationPolicy "Bad Request"
+assert(htmlPolicy.HttpStatus=Some 400 && htmlPolicy.Outcome="security-policy-verification-scope-required")
+assert(not(JsonSerializer.Serialize(htmlPolicy).Contains(verificationPolicy)))
+assert((observeHtml "Bad Request" "Bad Request").Outcome="authorization-unproven:m-html:e-unspecified:s-bounded:r-unmatched"+fp (Encoding.UTF8.GetBytes "Bad Request")+defaultReason)
+assert((observeHtml verificationPolicy ("Bad Request"+diagnosticFixtureKey)).Outcome="authorization-unproven:m-html:e-unspecified:s-bounded:r-reflection")
+// Body reflection is still checked first; a reflecting reason phrase never classifies.
+assert((observeReason verificationPolicy ("Bad Request "+diagnosticFixtureKey)).Outcome="authorization-unproven:m-text:e-utf8:s-bounded:r-reflection")
+let reflectedPolicyReason=observeReason (verificationPolicy+" "+diagnosticFixtureKey) "Bad Request"
+assert(reflectedPolicyReason.Outcome="authorization-unproven:m-text:e-utf8:s-bounded:r-unmatched"+fp (Encoding.UTF8.GetBytes "Bad Request")+":reason-reflection")
+// Near-miss reason phrases stay fingerprinted only.
+for near in [verificationPolicy+" extra"; verificationPolicy.TrimEnd('.'); verificationPolicy.ToUpperInvariant()] do
+    assert((observeReason near "Bad Request").Outcome="authorization-unproven:m-text:e-utf8:s-bounded:r-unmatched"+fp (Encoding.UTF8.GetBytes "Bad Request")+reasonFp near)
 for media,charset,encoded,expected in ["text/plain","utf-8",false,"m-text:e-utf8"; "text/html","iso-8859-1",false,"m-html:e-other"; "application/json","",false,"m-json:e-unspecified"; "application/x-secret-header-"+diagnosticFixtureKey,"",true,"m-other:e-encoded"] do
     let row=observeDiagnostic HttpStatusCode.BadRequest (fun () ->
         let content=new ByteArrayContent(Encoding.UTF8.GetBytes "unmatched")
@@ -361,3 +397,12 @@ assert(deadlineClock.Elapsed < TimeSpan.FromSeconds 15.)
 // HttpClient links its request token internally; token identity is not the deadline contract.
 assert(delayedHandler.RequestToken.CanBeCanceled && cancelledBody.BodyToken.IsCancellationRequested)
 printfn "PASS bounded400 diagnostic: exact policy, closed Gallery allowlist tags, unknown-body/reason length+SHA-256 only, no reflected body/secret digest,4097-byte cap, same deadline and received status retained; no network requests"
+
+// verifykey is advisory (FS-GG/.github#4817); the canary-first nuget.org publisher replaces it as the
+// authorization proof. Run its offline controls wherever this gate runs (gate.yml stays digest-pinned).
+let canaryRun =
+    System.Diagnostics.Process.Start(
+        System.Diagnostics.ProcessStartInfo("python3", [| "-B"; Path.Combine(__SOURCE_DIRECTORY__, "test-release-nuget-canary-push.py") |]))
+canaryRun.WaitForExit()
+if canaryRun.ExitCode<>0 then failwith "canary publisher offline controls failed"
+printfn "PASS canary-first nuget.org publisher offline controls"
