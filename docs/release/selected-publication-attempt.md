@@ -17,8 +17,9 @@ A selected native attempt independently authenticates the bound Templates qualif
 its literal caller/checkout join, actual180 Provider assertions and4 successful cases per Chromium,
 Firefox and WebKit with zero unexpected/skipped/flaky results. It validates original19 custody,
 retains original bytes, runs the existing release validators, mints the normal OIDC NuGet credential
-and performs19 verification GETs against existing0.31 package IDs. Only HTTP200 for all19 permits
-eligibility. Headers remain on the original NuGet host; redirects, response-body logging, keys in
+and performs19 verification GETs against existing0.31 package IDs. Those observations are
+advisory since FS-GG/.github#4817: all nineteen must be observed, but HTTP200 is no longer
+required for eligibility (see "Advisory verifykey and canary-first nuget.org push"). Headers remain on the original NuGet host; redirects, response-body logging, keys in
 helper arguments/URLs/receipts and verification-key creation are prohibited. Read preflight can
 collect these scope observations without admitting a publisher.
 
@@ -480,25 +481,85 @@ login, the complete read census, tag absence, the 19-package plan and roster (ex
 observations are still required), and prior-send joins.
 
 Authorization is proven by the push itself. `scripts/release-nuget-canary-push.py` pushes the
-retained original archives to nuget.org one at a time in roster order. The first package that
-needs a push is the canary. The run stops at the first refusal. Before each push it probes
-the flat container and rechecks the executor. A push is never retried blindly:
+retained original archives to nuget.org one at a time:
+
+- **Order.** The script builds a topological order over the FS.GG.UI.* `<dependencies>` read from
+  the actual custody archives' nuspecs, so each dependency is pushed before its dependent. Ties
+  are broken by ordinal id. FS.GG.UI.Template and then the BOM (FS.GG.UI, with exact
+  `[$version$]` pins) are pushed last. The run refuses before any push if the graph has a cycle,
+  a self-dependency or an unknown FS.GG.UI.* dependency, or if any other package depends on the
+  template or the BOM.
+- **Canary.** The first package in that order is the lowest-id leaf (no FS.GG.UI.* dependency).
+  It is recorded as `canaryPackageId`.
+- **Each push.** Before each push the script probes the flat container and rechecks the executor.
+  It then checkpoints the row as `push-requested` (in flight) and only then pushes.
+- **Stopping.** The run stops at the first refusal or unresolved outcome. A push is never retried.
+
+`release-custody.py probe` reports distinct destination states. Exit 0 means present with an
+identical payload, 4 absent, 5 present with a different (or unreadable-archive) payload, and 6
+unreadable (network or HTTP other than 404). Exit 1 still means the local custody was refused.
 
 | Push result | Action | Outcome tag |
 |---|---|---|
 | success | continue | `pushed` |
-| present before push with an identical payload | skip the push | `already-present-verified` |
-| HTTP 409 | observe the flat container; an identical payload continues | `already-present-verified` or `conflict-unverified` (stop) |
+| present before push, identical payload | skip the push | `already-present-verified` |
+| present before push, different payload / unreadable / custody refused | stop, no push | `present-mismatch` / `destination-unreadable` / `probe-refused` |
+| executor recheck refused | stop, no push | `executor-refused` |
+| HTTP 409 | observe; an identical payload continues | `already-present-verified`, or `conflict-observed:absent\|mismatch\|unreadable\|refused` (stop) |
 | other 4xx | stop | `refused` |
-| timeout, transport error, 408/429/5xx | observe the flat container, bounded polling, no re-push | `uncertain-observed:matched` (continue), `:absent` or `:refused` (stop) |
+| timeout, transport error, 408/429/5xx, unparseable | observe, never re-push | `uncertain-observed:matched` (continue), or `:absent\|mismatch\|unreadable\|refused` (stop) |
+
+Observation polls only while the destination is absent or unreadable. It uses the same bounded
+window as the post-push readback (180 × 10 s) and never pushes.
 
 "Identical payload" means that every archive entry except nuget.org's repository signature
-(`.signature.p7s`) is byte-identical, compared by `release-custody.py probe`. The raw .nupkg hash
-cannot match, because nuget.org re-signs the archive. The per-package receipt
-`artifacts/attempt/nuget-publish-outcomes.json` (`fsgg.rendering.nuget-publish-outcomes/v1`) holds only
-closed tags, HTTP status codes, `canaryPackageId` and `stoppedAt`. It never holds the key, push
-output or response text. The existing 180×10 s flat-container readback of all nineteen packages
+(`.signature.p7s`) is byte-identical, and the id and version match. The raw .nupkg hash cannot
+match, because nuget.org re-signs the archive.
+
+The receipt `artifacts/attempt/nuget-publish-outcomes.json` (`fsgg.rendering.nuget-publish-outcomes/v1`)
+holds only:
+- closed tags and HTTP status codes
+- `order`, `canaryPackageId`, `firstPushPackageId` and `stoppedAt`
+- `interruption`: `null`, `event-record-failed` or `exception`
+- `completed`
+- `feedSplit`: `none` or `org-feed-ahead`
+
+It never holds the key, push output or response text. The receipt is written atomically before
+every package, before every push, and in a `finally` block at the end. A failure to record a
+publisher event stops the run with `interruption: event-record-failed`, but never erases a push
+that already completed. The existing 180 × 10 s flat-container readback of all nineteen packages
 still follows.
+
+### Split feed state and nuget.org reconciliation
+
+ADR-0012 §4 org-feed-first ordering is kept. GitHub Packages receives and reads back all
+nineteen archives before the nuget.org step runs. If the nuget.org canary, or any later nuget.org
+push, is refused or left unresolved, the org feed is ahead of nuget.org. The receipt states this
+explicitly as `feedSplit: org-feed-ahead`, with `stoppedAt` and per-package tags. This is not a
+rollback condition, and GitHub Packages is not changed.
+
+To reconcile nuget.org later:
+
+1. Download the retained `rendering-publication-attempt-*` artifact. It holds the original custody
+   archives and `nuget-publish-outcomes.json`. Read `stoppedAt`, the refusing tag and `httpStatus`.
+2. Resolve the cause outside this source. A `refused` tag means account or key authorization; a
+   `*-mismatch` tag means a foreign or different payload, which is a hard stop that needs a
+   separately owned disposition.
+3. Rerun the same selected attempt from the same custody, once its hard gates admit it. In
+   particular, the prior-send/unresolved-send joins still require any recorded earlier send to be
+   settled by its separately owned disposition first; this procedure does not bypass them. The
+   GitHub Packages step probes, finds
+   every archive present and identical, and skips them. The nuget.org step re-derives the same
+   dependency order from the same archives. It probes each package first: already-accepted
+   packages become `already-present-verified`, and only absent ones are pushed. An earlier
+   `push-requested` or `uncertain-observed:absent` package that was in fact accepted is safe to
+   push again: the result is 409, which is verified against the destination payload, never skipped
+   blindly.
+4. Accept convergence only from a `completed: true`, `feedSplit: none` receipt followed by the
+   180 × 10 s readback of all nineteen packages.
+
+Never repack, rebuild or substitute archives. The custody manifest check refuses any byte
+change before publication starts.
 
 The direct GET is not a claim of zero service-side effects: the controller audits
 verification and consumes verification credentials after first use. No package version
@@ -524,15 +585,17 @@ GETs returning401 do not explain the authenticated400 response. The follow-up ke
 the three-field observation and receipt schema: unclassified400 outcomes now append
 closed media, encoding, size and read-disposition tags. These distinguish empty,
 oversized, invalid UTF8, timed-out, failed, reflected and unmatched responses without
-retaining arbitrary headers, bodies, body hashes or keys. Declared oversize is
+retaining arbitrary headers, bodies or keys (unknown bounded bodies keep only a length and
+SHA-256 since #4817). Declared oversize is
 not read; streamed oversize reports limit-reached after4097 application bytes. The existing exact policy
 outcome is unchanged. The4097-byte application read cap, one shared10s deadline,
 no redirects and no implicit response draining remain; this is not an exact network
 byte bound. Non400 responses still do not have diagnostic bodies read.
 
-Every response other than nineteen HTTP200/authorized observations continues to
-refuse writer admission. Trusted Publishing login alone does not supply equivalent
-per-ID pre-effect scope evidence; no derived verification key substitutes for the
+Before FS-GG/.github#4817, every response other than nineteen HTTP200/authorized
+observations refused writer admission. That requirement is now advisory, because Trusted
+Publishing keys can never pass verifykey (see "Root cause"). Per-ID authorization is proven by
+the canary-first, dependency-ordered push. No derived verification key substitutes for the
 original key. This source follow-up selects no native attempt or publication effect.
 
 Proportionate pipeline preflight reuses the existing static source controls for

@@ -307,6 +307,21 @@ let policyReason=observeReason verificationPolicy "Bad Request"
 assert(policyReason.HttpStatus=Some 400 && policyReason.Outcome="security-policy-verification-scope-required")
 assert(match inspect (fun id _ -> {policyReason with PackageId=id}) ids "0.32.3" with Ok(_,false)->true|_->false)
 assert((observeReason verificationPolicy "").Outcome="security-policy-verification-scope-required")
+// Exactly as nuget.org labels it: text/html, no charset, IIS "Bad Request" body, policy reason phrase.
+type HtmlReasonHandler(reason: string, body: byte[]) =
+    inherit HttpMessageHandler()
+    let handle () =
+        let content=new ByteArrayContent(body)
+        content.Headers.ContentType <- Headers.MediaTypeHeaderValue("text/html")
+        new HttpResponseMessage(HttpStatusCode.BadRequest, ReasonPhrase=reason, Content=content)
+    override _.Send(_, _) = handle ()
+    override _.SendAsync(_, _) = Task.FromResult(handle ())
+let observeHtml reason (body: string) = httpTransportWithHandler diagnosticFixtureKey (new HtmlReasonHandler(reason,Encoding.UTF8.GetBytes body)) "FS.GG.UI.Scene" "0.32.3"
+let htmlPolicy=observeHtml verificationPolicy "Bad Request"
+assert(htmlPolicy.HttpStatus=Some 400 && htmlPolicy.Outcome="security-policy-verification-scope-required")
+assert(not(JsonSerializer.Serialize(htmlPolicy).Contains(verificationPolicy)))
+assert((observeHtml "Bad Request" "Bad Request").Outcome="authorization-unproven:m-html:e-unspecified:s-bounded:r-unmatched"+fp (Encoding.UTF8.GetBytes "Bad Request")+defaultReason)
+assert((observeHtml verificationPolicy ("Bad Request"+diagnosticFixtureKey)).Outcome="authorization-unproven:m-html:e-unspecified:s-bounded:r-reflection")
 // Body reflection is still checked first; a reflecting reason phrase never classifies.
 assert((observeReason verificationPolicy ("Bad Request "+diagnosticFixtureKey)).Outcome="authorization-unproven:m-text:e-utf8:s-bounded:r-reflection")
 let reflectedPolicyReason=observeReason (verificationPolicy+" "+diagnosticFixtureKey) "Bad Request"

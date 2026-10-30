@@ -1183,11 +1183,14 @@ jobs:
       # ADR-0012 §4): if that step fails the job stops before this one. NuGet/login mints a single-use
       # key from the org's Trusted Publishing policy (fs-gg-rendering-release); until the policy exists
       # it 401s and fails the release loud. Same artifacts/packages/*.nupkg — no re-pack (§3).
-      # Canary-first push (FS-GG/.github#4817): verifykey is advisory, so authorization is proven by
-      # the first actual push. Packages go one at a time in roster order and the run stops at the first
-      # refusal. A 409, or an uncertain transport/timeout/5xx outcome, is never retried blindly: the
-      # helper reads the flat container and accepts only an exact payload match against the original
-      # archive. Per-package closed-tag outcomes go to artifacts/attempt/nuget-publish-outcomes.json.
+      # Canary-first push (FS-GG/.github#4817): verifykey is advisory (Trusted Publishing keys never
+      # carry package:verify), so authorization is proven by the first actual push. Packages go one at
+      # a time in FS.GG.UI.* dependency order from the custody nuspecs (lowest-id leaf = canary;
+      # Template, then BOM, last) and the run stops at the first refusal. A 409, or an uncertain
+      # transport/timeout/408/429/5xx outcome, is never retried: the helper observes the flat container
+      # (180 x 10 s) and accepts only an exact payload match. GitHub Packages stays first (ADR-0012 §4);
+      # an incomplete run records feedSplit=org-feed-ahead in artifacts/attempt/nuget-publish-outcomes.json
+      # and nuget.org is reconciled later from the same custody bytes, never a repack.
       - name: Replay the same original custody bytes to nuget.org and read them back
         if: steps.ver.outputs.push == 'true'
         shell: bash
