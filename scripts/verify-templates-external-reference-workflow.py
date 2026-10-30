@@ -9,7 +9,9 @@ import re
 
 HISTORICAL = '6a5dd5305ac6fe26f9f9726c72b1a7e553b0021b'
 FONT_DISPOSAL = '2f8d400a6a670568044d607a1ac0eb2c7c655a29'
-CURRENT_PUBLIC = '789658f6ba487d839567df6ee556c7a21ede2bd8'
+CURRENT_PUBLIC = 'fe24d30872c84d4c1c92afd7a05c5cf22d00bb10'
+# Retained 0.32.3 current-public callee (Templates 789658f6, #804): its producer tuple is stale.
+STALE_CURRENT_PUBLIC_0323 = '789658f6ba487d839567df6ee556c7a21ede2bd8'
 PALETTE = '72a54c27f49eff90f1c86bc68e7a8ed8bfd9a431'
 PALETTE_PRODUCER = '4ede04be66cedffc8551cd14045bab714aa358a7'
 PATH = Path(__file__).resolve().parents[1]/'.github/workflows/templates-external-reference-qualification.yml'
@@ -148,7 +150,7 @@ def controls(text):
         bad.append(text.replace(HISTORICAL,rejected))
     # Original40172407851 failed eager GHA resolution of this API-readable intermediate pin.
     bad.append(text.replace(FONT_DISPOSAL, '752a2ac1fa996c3235ac0330ffbcefb6b8301cb4'))
-    bad.extend([text.replace(CURRENT_PUBLIC, '0'*40), text.replace('@'+CURRENT_PUBLIC, '@main'), text.replace("current-public-at-admission: ''", "current-public-at-admission: selected"), text.replace(" && inputs.rendering-input-source != 'current-public-composition'", ''), text.replace("inputs.rendering-input-source == 'current-public-composition'", "inputs.rendering-input-source != 'current-public-composition'")])
+    bad.extend([text.replace(CURRENT_PUBLIC, STALE_CURRENT_PUBLIC_0323), text.replace('@'+CURRENT_PUBLIC, '@'+STALE_CURRENT_PUBLIC_0323), text.replace('templates-source: '+CURRENT_PUBLIC, 'templates-source: '+STALE_CURRENT_PUBLIC_0323), text.replace(CURRENT_PUBLIC, '0'*40), text.replace('@'+CURRENT_PUBLIC, '@main'), text.replace("current-public-at-admission: ''", "current-public-at-admission: selected"), text.replace(" && inputs.rendering-input-source != 'current-public-composition'", ''), text.replace("inputs.rendering-input-source == 'current-public-composition'", "inputs.rendering-input-source != 'current-public-composition'")])
     bad.extend([text.replace(CURRENT_PUBLIC,'59ce6af8b63a816d931e3a2e3f5c1ba890e9427d'),
         text.replace(CURRENT_PUBLIC,'3ececb44da3f8498ac9a295f67a7dffd10964a36'),
         text.replace('native-input-facility: ${{ inputs.native-input-facility }}','native-input-facility: fixed'),
