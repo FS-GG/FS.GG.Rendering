@@ -212,6 +212,11 @@ type DiagnosticHandler(status: HttpStatusCode, content: unit -> HttpContent, hea
     override _.SendAsync(request, cancellation) = Task.FromResult(handle request cancellation)
 let observeDiagnostic status content =
     httpTransportWithHandler diagnosticFixtureKey (new DiagnosticHandler(status,content,0)) "FS.GG.UI.Scene" "0.32.3"
+// Independent fixture digests: exact received bytes, and the default HTTP/1.1 reason phrase.
+let sha (bytes: byte[]) = Convert.ToHexString(Security.Cryptography.SHA256.HashData bytes).ToLowerInvariant()
+let fp (bytes: byte[]) = ":bodyBytes="+string bytes.Length+":bodySha256="+sha bytes
+let reasonFp (text: string) = let bytes=Encoding.UTF8.GetBytes text in ":reasonBytes="+string bytes.Length+":reasonSha256="+sha bytes
+let defaultReason = reasonFp "Bad Request"
 let checkRefused body suffix =
     let row=observeDiagnostic HttpStatusCode.BadRequest (fun () -> new ByteArrayContent(body))
     assert(row.HttpStatus=Some 400 && row.Outcome="authorization-unproven:m-missing:e-unspecified:"+suffix)
@@ -222,12 +227,72 @@ let checkRefused body suffix =
 let classified=observeDiagnostic HttpStatusCode.BadRequest (fun () -> new StringContent(verificationPolicy))
 assert(classified.HttpStatus=Some 400 && classified.Outcome="security-policy-verification-scope-required")
 assert(match inspect (fun id _ -> {classified with PackageId=id}) ids "0.32.3" with Ok(_,false)->true|_->false)
-for body in ["unknown service refusal"; "{\"message\":\""+verificationPolicy+"\"}"; verificationPolicy+" extra"] do
-    checkRefused (Encoding.UTF8.GetBytes body) "s-bounded:r-unmatched"
-checkRefused (Encoding.UTF8.GetBytes(verificationPolicy+"\n"+diagnosticFixtureKey)) "s-bounded:r-reflection"
-checkRefused [||] "s-bounded:r-empty"
-checkRefused [|0xffuy|] "s-bounded:r-non-utf8"
-checkRefused (Array.create 4097 65uy) "s-declared-oversize:r-not-read"
+for body in ["unknown service refusal"; "{\"message\":\""+verificationPolicy+"\"}"; verificationPolicy+" extra"; " unknown with padding \r\n"] do
+    let bytes=Encoding.UTF8.GetBytes body
+    checkRefused bytes ("s-bounded:r-unmatched"+fp bytes+defaultReason)
+// Key reflection, empty, malformed and oversize bodies carry no digest of any kind.
+for body, suffix in [Encoding.UTF8.GetBytes(verificationPolicy+"\n"+diagnosticFixtureKey), "s-bounded:r-reflection"
+                     Encoding.UTF8.GetBytes("ApiKeyNotAuthorized "+diagnosticFixtureKey), "s-bounded:r-reflection"
+                     [||], "s-bounded:r-empty"
+                     [|0xffuy|], "s-bounded:r-non-utf8"
+                     Array.create 4097 65uy, "s-declared-oversize:r-not-read"] do
+    checkRefused body suffix
+    assert(not(suffix.Contains "Sha256") && not(suffix.Contains "Bytes="))
+
+// Closed NuGetGallery allowlist: exact text yields only its resource name, never text or digest.
+assert(knownGalleryMessages.Length=20)
+assert((knownGalleryMessages |> List.map fst |> Set.ofList).Count=20)
+for name in ["SecurityPolicy_RequireApiKeyWithPackageVerifyScope"; "SecurityPolicy_RequireMinProtocolVersionForPush"
+             "SecurityPolicy_RequireMicrosoftPackageMetadataComplianceForPush"; "SecurityPolicy_RequirePackagePrefixReserved"
+             "SecurityPolicy_CopyrightNotCompliant"; "SecurityPolicy_RequiredAuthorMissing"; "SecurityPolicy_RequiredLicenseUrlMissing"
+             "SecurityPolicy_RequiredProjectUrlMissing"; "SecurityPolicy_PackageAuthorNotAllowed"; "SecurityPolicy_PackageAuthorDuplicatesNotAllowed"
+             "ApiKeyNotAuthorized"; "ApiKeyOwnerUnconfirmed"; "ApiKeyOwnerLocked"; "ApiController.PackageIdFormatInvalid"
+             "ApiController.VersionRequired"; "ApiController.VersionNotSemantic"] do
+    assert(knownGalleryMessages |> List.exists(fun (known,_) -> known=name))
+assert(File.ReadAllText(Path.Combine(__SOURCE_DIRECTORY__,"NuGetVerifyKey.fs")).Contains("NuGet/NuGetGallery@c25bab040e19d24593fc0c298a0cedb51bf57dcb"))
+let observeText (text: string) =
+    observeDiagnostic HttpStatusCode.BadRequest (fun () ->
+        let content=new ByteArrayContent(Encoding.UTF8.GetBytes text)
+        content.Headers.ContentType <- Headers.MediaTypeHeaderValue("text/html")
+        content)
+for name, text in knownGalleryMessages |> List.filter(fun (_,text) -> not(text.Contains "{")) do
+    let row=observeText ("\r\n"+text+" \n")
+    let expected=if text=verificationPolicy then "security-policy-verification-scope-required" else "authorization-unproven:m-html:e-unspecified:s-bounded:r-known:"+name
+    assert(row.HttpStatus=Some 400 && row.Outcome=expected)
+    assert(not(row.Outcome.Contains "Sha256") && not(JsonSerializer.Serialize(row).Contains(text)))
+    assert(match inspect (fun id _ -> {row with PackageId=id}) ids "0.32.3" with Ok(_,false)->true|_->false)
+// Templates: placeholder values are never emitted; the exact bytes are fingerprinted for offline comparison.
+for name, text in ["SecurityPolicy_RequireMinProtocolVersionForPush", "A client version '4.1.0' or higher is required to be able to push packages. Please contact support@nuget.org to get more details."
+                   "PackageWithIdAndVersionNotFound", "A package with ID 'FS.GG.UI.Scene' and version '0.32.3' does not exist."
+                   "SecurityPolicy_RequiredAuthorMissing", "The package metadata is missing required author 'Microsoft'."] do
+    let row=observeText text
+    assert(row.Outcome="authorization-unproven:m-html:e-unspecified:s-bounded:r-known:"+name+fp (Encoding.UTF8.GetBytes text)+defaultReason)
+    assert(not(row.Outcome.Contains "4.1.0") && not(row.Outcome.Contains "Microsoft'"))
+for text in ["A client version '' or higher is required to be able to push packages. Please contact support@nuget.org to get more details."
+             "A client version '4.1\n0' or higher is required to be able to push packages. Please contact support@nuget.org to get more details."
+             "A client version '"+String.replicate 257 "9"+"' or higher is required to be able to push packages. Please contact support@nuget.org to get more details."
+             "The specified API key is invalid, has expired, or does not have permission to access the specified package"] do
+    let row=observeText text
+    assert(row.Outcome="authorization-unproven:m-html:e-unspecified:s-bounded:r-unmatched"+fp (Encoding.UTF8.GetBytes text)+defaultReason)
+
+// The reason phrase is key-checked before its own length and digest; its text never leaves.
+type ReasonHandler(reason: string, body: string) =
+    inherit HttpMessageHandler()
+    let handle () = new HttpResponseMessage(HttpStatusCode.BadRequest, ReasonPhrase=reason, Content=new StringContent(body))
+    override _.Send(_, _) = handle ()
+    override _.SendAsync(_, _) = Task.FromResult(handle ())
+let observeReason reason body = httpTransportWithHandler diagnosticFixtureKey (new ReasonHandler(reason,body)) "FS.GG.UI.Scene" "0.32.3"
+let mystery="service refusal not in the allowlist"
+let reasonRow=observeReason mystery mystery
+assert(reasonRow.Outcome="authorization-unproven:m-text:e-utf8:s-bounded:r-unmatched"+fp (Encoding.UTF8.GetBytes mystery)+reasonFp mystery)
+assert(not(JsonSerializer.Serialize(reasonRow).Contains mystery))
+let reflectedReason=observeReason ("Bad Request "+diagnosticFixtureKey) mystery
+assert(reflectedReason.Outcome="authorization-unproven:m-text:e-utf8:s-bounded:r-unmatched"+fp (Encoding.UTF8.GetBytes mystery)+":reason-reflection")
+assert(not(reflectedReason.Outcome.Contains "reasonSha256"))
+let reflectedBody=observeReason mystery (mystery+diagnosticFixtureKey)
+assert(reflectedBody.Outcome="authorization-unproven:m-text:e-utf8:s-bounded:r-reflection")
+let knownReason=observeReason "ignored for exact known bodies" "Version is required"
+assert(knownReason.Outcome="authorization-unproven:m-text:e-utf8:s-bounded:r-known:ApiController.VersionRequired")
 for media,charset,encoded,expected in ["text/plain","utf-8",false,"m-text:e-utf8"; "text/html","iso-8859-1",false,"m-html:e-other"; "application/json","",false,"m-json:e-unspecified"; "application/x-secret-header-"+diagnosticFixtureKey,"",true,"m-other:e-encoded"] do
     let row=observeDiagnostic HttpStatusCode.BadRequest (fun () ->
         let content=new ByteArrayContent(Encoding.UTF8.GetBytes "unmatched")
@@ -235,7 +300,7 @@ for media,charset,encoded,expected in ["text/plain","utf-8",false,"m-text:e-utf8
         if charset<>"" then content.Headers.ContentType.CharSet <- charset
         if encoded then content.Headers.ContentEncoding.Add("fixture-secret-"+diagnosticFixtureKey)
         content)
-    assert(row.Outcome="authorization-unproven:"+expected+":s-bounded:r-unmatched")
+    assert(row.Outcome="authorization-unproven:"+expected+":s-bounded:r-unmatched"+fp (Encoding.UTF8.GetBytes "unmatched")+defaultReason)
     assert(not(JsonSerializer.Serialize(row).Contains(diagnosticFixtureKey)))
 for account in [null; ""; "other-owner"; "paradigma11"; "Paradigma11 "; "Paradigma11\n"] do
     assert(not(effectiveAccountAccepted account))
@@ -295,4 +360,4 @@ assert(cancelled.HttpStatus=Some 400 && cancelled.Outcome="authorization-unprove
 assert(deadlineClock.Elapsed < TimeSpan.FromSeconds 15.)
 // HttpClient links its request token internally; token identity is not the deadline contract.
 assert(delayedHandler.RequestToken.CanBeCanceled && cancelledBody.BodyToken.IsCancellationRequested)
-printfn "PASS bounded400 diagnostic: exact policy only, no reflected body/secret,4097-byte cap, same deadline and received status retained; no network requests"
+printfn "PASS bounded400 diagnostic: exact policy, closed Gallery allowlist tags, unknown-body/reason length+SHA-256 only, no reflected body/secret digest,4097-byte cap, same deadline and received status retained; no network requests"

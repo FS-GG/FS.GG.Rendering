@@ -65,11 +65,71 @@ let scopeSourceFromReceipt (context: ScopeContext) (receipt: JsonElement) =
 
 // Exact English primary-source text at NuGetGalleryc25bab0, ServicesStrings.resx.
 // This diagnostic never turns a rejected response into scope or writer eligibility.
-// Only closed tags can leave the parser; arbitrary header/body text never does.
+// Only closed tags, lengths and SHA-256 digests can leave the parser; arbitrary header/body text never does.
 type private Media = Missing | Text | Html | Json | Other
 type private EncodingKind = Unspecified | Utf8 | OtherEncoding | Encoded
 type private Size = Unknown | Bounded | DeclaredOversize | StreamOversize
-type private ReadDisposition = Empty | Unmatched | Reflection | NonUtf8 | Timeout | ReadFailure | NotRead | LimitReached
+/// Length and SHA-256 of exact bytes; never the bytes or text themselves.
+type private Fingerprint = { Length: int; Sha256: string }
+type private ReasonDisposition = ReasonAbsent | ReasonReflection | ReasonUnencodable | ReasonFingerprint of Fingerprint
+type private ReadDisposition =
+    | Empty | Reflection | NonUtf8 | Timeout | ReadFailure | NotRead | LimitReached
+    | Known of string
+    | KnownTemplate of string * Fingerprint * ReasonDisposition
+    | Unmatched of Fingerprint * ReasonDisposition
+
+/// Closed allowlist of exact English NuGetGallery message texts that can plausibly be a400 body
+/// on GET api/v2/verifykey. Source: NuGet/NuGetGallery@c25bab040e19d24593fc0c298a0cedb51bf57dcb
+/// (src/NuGetGallery.Services/ServicesStrings.resx, src/NuGetGallery/Strings.resx,
+/// src/NuGetGallery/Controllers/ApiController.cs literals, named ApiController.<label>). `{n}` marks a
+/// String.Format placeholder: it matches1-256 non-newline characters and its value is never emitted.
+/// Only the resource name leaves the parser, as the closed tag `known:<name>`.
+let knownGalleryMessages : (string * string) list = [
+    "SecurityPolicy_RequireApiKeyWithPackageVerifyScope", "A package verification key is required to push symbols. Please contact support@nuget.org to get more details."
+    "SecurityPolicy_RequireMinProtocolVersionForPush", "A client version '{0}' or higher is required to be able to push packages. Please contact support@nuget.org to get more details."
+    "SecurityPolicy_RequireMicrosoftPackageMetadataComplianceForPush", "The package is not compliant with metadata requirements for Microsoft packages on NuGet.org. Go to https://aka.ms/Microsoft-NuGet-Compliance for more information.\nPolicy violations: {0}"
+    "SecurityPolicy_RequirePackagePrefixReserved", "You have not published a package with this prefix in the past. This means other users may be able to push packages starting with the same prefix. Contact account@nuget.org to reserve the prefix. Go to https://docs.microsoft.com/nuget/reference/id-prefix-reservation to learn more about Package ID prefix reservation."
+    "SecurityPolicy_CopyrightNotCompliant", "The package metadata contains a non-compliant copyright element."
+    "SecurityPolicy_RequiredAuthorMissing", "The package metadata is missing required author '{0}'."
+    "SecurityPolicy_RequiredLicenseUrlMissing", "The package metadata is missing required LicenseUrl."
+    "SecurityPolicy_RequiredProjectUrlMissing", "The package metadata is missing required ProjectUrl."
+    "SecurityPolicy_PackageAuthorNotAllowed", "The package metadata defines '{0}' as one of the authors which is not allowed by policy."
+    "SecurityPolicy_PackageAuthorDuplicatesNotAllowed", "The package metadata defines '{0}' as author more than once, which is not allowed by policy."
+    "ApiKeyNotAuthorized", "The specified API key is invalid, has expired, or does not have permission to access the specified package."
+    "ApiKeyOwnerUnconfirmed", "The specified API key is scoped to an owner that is unconfirmed. You must confirm the owner that this API key is scoped to before you can use it."
+    "ApiKeyOwnerLocked", "The specified API key is scoped to an owner that is locked. Please contact support@nuget.org."
+    "ApiKeyUserAccountIsUnconfirmed", "You must confirm the email address for the account in order to use the API key."
+    "ApiKeyRequired", "An API key must be provided in the 'X-NuGet-ApiKey' header to use this service"
+    "ApiKeyExpiredUnderReductionPolicy", "The specified API key has expired. Please create a new API key at https://www.nuget.org/account/apikeys."
+    "PackageWithIdAndVersionNotFound", "A package with ID '{0}' and version '{1}' does not exist."
+    "ApiController.PackageIdFormatInvalid", "The format of the package id is invalid"
+    "ApiController.VersionRequired", "Version is required"
+    "ApiController.VersionNotSemantic", "The package version is not a valid semantic version"
+]
+
+let private placeholder = Regex(@"\{[0-9]\}", RegexOptions.CultureInvariant)
+let private galleryMatchers =
+    knownGalleryMessages |> List.map (fun (name, text) ->
+        if placeholder.IsMatch text then
+            let literals = placeholder.Split text |> Array.map Regex.Escape
+            let pattern = @"\A" + String.Join(@"[^\r\n]{1,256}", literals) + @"\z"
+            let regex = Regex(pattern, RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds 250.)
+            name, true, (fun (body: string) -> regex.IsMatch body)
+        else name, false, (fun (body: string) -> String.Equals(body, text, StringComparison.Ordinal)))
+
+let private fingerprint (bytes: byte[]) (count: int) =
+    { Length = count
+      Sha256 = Convert.ToHexString(Security.Cryptography.SHA256.HashData(ReadOnlySpan<byte>(bytes, 0, count))).ToLowerInvariant() }
+
+/// The reason phrase is key-checked first and then fingerprinted as strict UTF-8; null is omitted.
+let private reasonDisposition (key: string) (reason: string) =
+    if isNull reason then ReasonAbsent
+    elif reason.Contains(key, StringComparison.Ordinal) then ReasonReflection
+    else
+        try
+            let bytes = UTF8Encoding(false, true).GetBytes reason
+            ReasonFingerprint(fingerprint bytes bytes.Length)
+        with _ -> ReasonUnencodable
 
 type private RefusalDiagnostic = VerificationScopePolicy | Unclassified of Media * EncodingKind * Size * ReadDisposition
 
@@ -81,7 +141,17 @@ let private diagnosticOutcome = function
         let m = match media with Missing->"missing" | Text->"text" | Html->"html" | Json->"json" | Other->"other"
         let e = match encoding with Unspecified->"unspecified" | Utf8->"utf8" | OtherEncoding->"other" | Encoded->"encoded"
         let s = match size with Unknown->"unknown" | Bounded->"bounded" | DeclaredOversize->"declared-oversize" | StreamOversize->"stream-oversize"
-        let r = match disposition with Empty->"empty" | Unmatched->"unmatched" | Reflection->"reflection" | NonUtf8->"non-utf8" | Timeout->"timeout" | ReadFailure->"read-failure" | NotRead->"not-read" | LimitReached->"limit-reached"
+        let body (f: Fingerprint) = ":bodyBytes=" + string f.Length + ":bodySha256=" + f.Sha256
+        let reason = function
+            | ReasonAbsent -> ""
+            | ReasonReflection -> ":reason-reflection"
+            | ReasonUnencodable -> ":reason-unencodable"
+            | ReasonFingerprint f -> ":reasonBytes=" + string f.Length + ":reasonSha256=" + f.Sha256
+        let r = match disposition with
+                | Empty->"empty" | Reflection->"reflection" | NonUtf8->"non-utf8" | Timeout->"timeout" | ReadFailure->"read-failure" | NotRead->"not-read" | LimitReached->"limit-reached"
+                | Known name -> "known:" + name
+                | KnownTemplate(name, f, why) -> "known:" + name + body f + reason why
+                | Unmatched(f, why) -> "unmatched" + body f + reason why
         "authorization-unproven:m-"+m+":e-"+e+":s-"+s+":r-"+r
 
 let private refusalDiagnostic (key: string) (response: HttpResponseMessage) (cancellation: CancellationToken) =
@@ -120,9 +190,15 @@ let private refusalDiagnostic (key: string) (response: HttpResponseMessage) (can
                 else
                     let body = UTF8Encoding(false, true).GetString(bytes, 0, count)
                     let policy = "A package verification key is required to push symbols. Please contact support@nuget.org to get more details."
+                    let trimmed = body.Trim([| ' '; '\t'; '\r'; '\n' |])
                     if body.Contains(key, StringComparison.Ordinal) then unclassified Reflection
-                    elif body.Trim([| ' '; '\t'; '\r'; '\n' |]) = policy then VerificationScopePolicy
-                    else unclassified Unmatched
+                    elif trimmed = policy then VerificationScopePolicy
+                    else
+                        let received = fingerprint bytes count
+                        match galleryMatchers |> List.tryFind (fun (_, _, matches) -> matches trimmed) with
+                        | Some(name, false, _) -> unclassified (Known name)
+                        | Some(name, true, _) -> unclassified (KnownTemplate(name, received, reasonDisposition key response.ReasonPhrase))
+                        | None -> unclassified (Unmatched(received, reasonDisposition key response.ReasonPhrase))
     with
     | :? DecoderFallbackException -> unclassified NonUtf8
     | :? OperationCanceledException -> unclassified Timeout
