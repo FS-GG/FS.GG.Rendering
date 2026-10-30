@@ -4,12 +4,12 @@
 
 ## Question and short answer
 
-Does the existing page suite pass under a Chromium that really uses the fdev GPU, and is SVG rasterization hardware accelerated there?
+Does the existing page suite pass under a Chromium that really uses the fdev GPU, and is page rasterization hardware accelerated there?
 
 - All nine suite runs (three profiles × three interleaved trials) completed the maintained 17-case controls suite: 153 of 153 cases passed. All six suite mutants were killed on both GPU profiles.
-- **Yes, observed:** with explicit ANGLE flags, Chromium 151 rasterizes the page on the GPU. `chrome://gpu` reports *Rasterization: Hardware accelerated on all pages* and *Compositing: Hardware accelerated*; a separate trace window shows GPU-process raster decoder work (481 `RasterDecoderImpl::DoRasterCHROMIUM` events for one 120-tick record) and zero such events in the software control. This establishes the GPU raster path for the page's SVG content. It does not establish presentation to a display, per-frame GPU time, or any budget.
+- **Yes, observed:** with explicit ANGLE flags, Chromium 151 rasterizes the page on the GPU. `chrome://gpu` reports *Rasterization: Hardware accelerated on all pages* and *Compositing: Hardware accelerated*; a separate trace window shows GPU-process raster decoder work (481 `RasterDecoderImpl::DoRasterCHROMIUM` events for one 120-tick record) and zero such events in the software control. This is page rasterization observed on the GPU path; SVG painting by the GPU is inferred, not separately observed. It does not establish presentation to a display, per-frame GPU time, or any budget.
 - **Without those flags, headless Chromium here is software only** (SwiftShader). Merely omitting `--disable-gpu` is not a GPU run.
-- JavaScript update CPU (the timed span) is indistinguishable across the three profiles within the noise of a shared, loaded VM. That is expected, because the timed span is compiled F# plus DOM mutation on the main thread; GPU work sits in raster and composite, which the timed span does not include.
+- JavaScript update CPU (the timed span) is not distinguished across the three profiles at this sample size (three trials on a shared, loaded VM). One possible explanation, an inference not tested here, is that the timed span is compiled F# plus DOM mutation on the main thread, while GPU work sits in raster and composite, which the timed span does not include.
 
 ## Environment
 
@@ -51,9 +51,9 @@ Does the existing page suite pass under a Chromium that really uses the fdev GPU
 
 Chromium also reports `In-process GPU: false` in every profile and `Sandboxed: false` for the GPU process in every profile, including software. The cause of the latter was not investigated. The GPU device Chromium lists is the virtio PCI id (`0x1af4:0x1050`) with the ANGLE renderer string of the AMD driver behind it; the physical AMD device id is visible only through Vulkan.
 
-## Is SVG rasterization hardware accelerated?
+## Is page rasterization hardware accelerated?
 
-**Yes in the two GPU profiles, with two independent observations; no in the software control and in default flags.**
+**Page rasterization is observed on the GPU path in the two GPU profiles, with two observations; it is software in the control and in default flags.** Whether the SVG elements are painted by the GPU is inferred (below).
 
 1. *Observed, browser's own status:* `Rasterization: Hardware accelerated on all pages` (CDP feature `rasterization: enabled_force`), Skia on the GPU backend.
 2. *Observed, trace:* a separate 120-tick `shared-symbol/250/sparse-10` record was traced with categories `cc,gpu,viz,disabled-by-default-cc.debug` after the timed records. Counts per profile in each of three trials:
@@ -61,8 +61,8 @@ Chromium also reports `In-process GPU: false` in every profile and `Sandboxed: f
 | Profile | `GpuRasterBuffer::Playback` | GPU-process `RasterDecoderImpl::DoRasterCHROMIUM` | `ZeroCopyRasterBuffer::Playback` |
 | --- | ---: | ---: | ---: |
 | `gpu-angle-vulkan` | 481, 481, 481 | 481, 481, 481 | 0 |
-| `gpu-angle-gl-egl` | 481, 482, 481 | 481, 482, 481 | 0 |
-| `software` | 0 | 0 | 1,057 (trial 1) |
+| `gpu-angle-gl-egl` | 481, 481, 481 | 481, 482, 481 | 0 |
+| `software` | 0, 0, 0 | 0, 0, 0 | 1,057, 1,057, 1,057 |
 
    The software control rasterizes in the renderer's tile workers through the CPU raster buffer; the GPU profiles issue the same tiles to the GPU process.
 
@@ -73,7 +73,7 @@ Chromium also reports `In-process GPU: false` in every profile and `Sandboxed: f
 | Control | Result |
 | --- | --- |
 | Maintained controls suite (`drive-suite.mjs --profile controls`), 17 cases, three trials in three interleaved orders for each of the three profiles | 9 of 9 runs `container-controls-completed`, integrity `verified-before-and-after`; 153 of 153 cases passed |
-| Suite mutants `unnecessary-rebuild`, `listener-leak`, `excessive-document-acceptance` on each of `gpu-angle-vulkan` and `gpu-angle-gl-egl` | 6 of 6 killed by their named gates (`unnecessary-rebuild gate`, `listener/resource-leak gate`, `excessive-document gate`) |
+| Suite mutants `unnecessary-rebuild`, `listener-leak`, `excessive-document-acceptance` on each of `gpu-angle-vulkan` and `gpu-angle-gl-egl` | 6 of 6 killed by their named gates (`unnecessary-rebuild gate`, `listener/resource-leak gate`, `excessive-document gate`) in the main session (status recorded by hand, see Reproduction) and again 6 of 6 in a re-run with the head runner |
 | Public-circle records (20 per run: shared symbol 100/250/500 and expanded geometry 100, each static / camera-only / sparse-10 / sparse-50 / churn-10; 20 warm-up and 100 measured ticks), 9 runs | 180 of 180 records completed with their oracles; no oracle failure |
 | Profile status gate | `software` and `default-flags` report software raster; both GPU profiles report hardware raster in every trial |
 
@@ -94,7 +94,7 @@ These are raw descriptive observations on a loaded virtual machine. They are not
 | shared 500 sparse-10 (saturation) | 83.00 / 96.90 | 73.00 / 89.60 | 83.20 / 106.30 |
 | expanded 100 sparse-10 | 13.55 / 19.00 | 12.00 / 15.50 | 12.30 / 17.20 |
 
-Per-trial ranges are within a few milliseconds of these medians for the 100- and 250-unit records and are retained in the private raw results; the 500-unit saturation record's trial p50 values span 71.9–91.0 across all profiles and trials. The timed span ("harness F# document construction plus synchronous compiled Replace") excludes raster and composite, so its near equality across profiles is the expected result and says nothing about GPU benefit.
+Per-trial ranges are within a few milliseconds of these medians for the 100- and 250-unit records and are retained in the private raw results; the 500-unit saturation record's trial p50 values span 71.9–91.0 across all profiles and trials. The timed span ("harness F# document construction plus synchronous compiled Replace") excludes raster and composite, so its near equality across profiles is consistent with that (an inference, not tested) and says nothing about GPU benefit.
 
 The `requestAnimationFrame` intervals sit on 16.7 ms multiples in every profile (p50 16.7 ms at 100 units; 33.4 ms at 250; 83 ms at 500), consistent with a 60 Hz virtual vsync in headless mode and with frame production being gated by the update cost. The frame cadence observation does not demonstrate display presentation.
 
@@ -114,9 +114,16 @@ systemd-run --user --scope -p CPUQuota=200% -p MemoryMax=4G \
   bash tests/Scene.SvgBrowser.Tests/run-fdev-gpu-profile.sh <private>/session <private>/fixture/Browser/dist <chromium-executable> 47820
 ```
 
-Source changes: `drive-suite.mjs` gains an explicit `--browser-args-json` plus mandatory `--profile-label` (the default remains `--disable-gpu` and the historical profile name); `fdev-gpu-profile.mjs` and `run-fdev-gpu-profile.sh` are new. The session runner's first mutant check inverted its own pass/fail test (the driver exits 0 when a mutant is killed); that is repaired in the committed runner, and the six kills were read from the driver's own `"result":"killed"` output, which is retained in the private logs.
+Source changes: `drive-suite.mjs` gains an explicit `--browser-args-json` plus mandatory `--profile-label` (the default remains `--disable-gpu` and the historical profile name); `fdev-gpu-profile.mjs` and `run-fdev-gpu-profile.sh` are new.
 
-Private evidence (not committed): 64 files, index `SHA256SUMS` sha256 `e59f52b61e9de5c4511def20fdb3deaa465f058ee622f02f88b4c1ca856efabd`, under the operator's private fdev directory. An earlier identical session was lost when fdev restarted at about 22:00 and was repeated; only the repeat is reported.
+**The committed runner is not the runner that produced the main session.** Exactly how they differ:
+
+- The main session (nine suite runs, nine profile runs) was produced by the runner as first committed in `bb332b3b` (file sha256 `fcc2991d30ec46d5cc8d9a22593aca557df550fa482f8bf6d29dac572b94738c`). Its mutant check inverted its own pass/fail test (the driver exits 0 when a mutant is killed), so it printed "mutant survived" for all six mutants.
+- I then edited the runner while that session was still running. Bash reads a script incrementally, so the running process hit a syntax error ("unexpected EOF", line 46) after the mutant loop. The runner therefore **did not itself run** the `default-flags` profile, write `session-end.txt`, or write the `SHA256SUMS` index. I ran those three steps by hand with the same commands, and I wrote the original session's `mutants/KILLED` file by hand from the driver's own `"result":"killed"` lines in the retained logs.
+- The head runner (sha256 `5204645511ae7ebe4b9bc3e579c1c062774e9d185d2850ea724e44e7adcc77f0`) differs from `bb332b3b` in two ways: the corrected mutant check, and an opt-in `FDEV_GPU_STAGES` selector (default: all stages, same behavior as before) so the mutant check can run alone.
+- **Re-run of the mutant check with the head runner** (`FDEV_GPU_STAGES=mutants`, same Chromium, same fixture artifact, same two GPU profiles): 6 of 6 mutants killed by their named gates (two each of `unnecessary-rebuild gate`, `listener/resource-leak gate`, `excessive-document gate`), no `SURVIVED` file, runner exit 0, nothing run by hand. Its private index has 16 files, `SHA256SUMS` sha256 `484ae96ba6d1e5c467fce0969de1599782f408e03b03d3e74a7209b7a81dba2e`.
+
+Private evidence (not committed): main session 64 files, index `SHA256SUMS` sha256 `e59f52b61e9de5c4511def20fdb3deaa465f058ee622f02f88b4c1ca856efabd`; mutant re-run index as above. Both are under the operator's private fdev directory. An earlier identical session was lost when fdev restarted at about 22:00 and was repeated; only the repeat is reported.
 
 ## Unknowns
 
