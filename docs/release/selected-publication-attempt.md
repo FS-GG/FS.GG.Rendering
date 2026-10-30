@@ -413,9 +413,8 @@ failed; neither an old200 nor a new400 establishes current publication authority
 The [Gallery controller](https://github.com/NuGet/NuGetGallery/blob/c25bab040e19d24593fc0c298a0cedb51bf57dcb/src/NuGetGallery/Controllers/ApiController.cs)
 accepts verification or push scopes for compatibility, then evaluates account policy.
 The [verification-scope policy](https://github.com/NuGet/NuGetGallery/blob/c25bab040e19d24593fc0c298a0cedb51bf57dcb/src/NuGetGallery.Services/Security/RequirePackageVerifyScopePolicy.cs)
-can reject a publish-only key with400. This is a possible cause, not the observed
-cause until the actual response is classified. A missing push-protocol header is not
-evidenced by that verification-policy path.
+rejects a publish-only key with400. This is the observed cause (see "Root cause" below).
+A missing push-protocol header is not evidenced by that verification-policy path.
 
 The maintained direct route caps its application body read at4097 bytes only on400,
 within the same ten-second header/body cancellation budget. HTTP headers and transport
@@ -423,8 +422,10 @@ buffering can read ahead; this is not an exact network-byte bound. Automatic dra
 of unread content is disabled, preserving the cap after response disposal. Strict UTF8 matching of the fixed primary
 policy text yields only `security-policy-verification-scope-required`; unknown,
 oversized, malformed, reflected-key or cancelled content remains
-`authorization-unproven`, retaining the received HTTP status. Bodies, body text,
-secret headers and keys are never persisted.
+`authorization-unproven`, retaining the received HTTP status. The same tag is emitted
+when the body is bounded, strict UTF-8 and non-reflecting (or empty) and the HTTP reason phrase,
+which must not contain the key, exactly equals the policy text. nuget.org replaces the body but
+keeps the reason phrase. Bodies, body text, secret headers and keys are never persisted.
 
 Since the 2026-10-28 HTTP400 refusals ([.github#4817](https://github.com/FS-GG/.github/issues/4817)),
 a bounded, strict-UTF8 body that does not contain the key is further classified
@@ -444,6 +445,29 @@ unread or cancelled bodies carry no digest. Digests let maintainers compare cand
 texts offline; they are not authorization. The verifykey `passed` field still requires
 nineteen HTTP200/authorized observations, but it is advisory (see below). No additional
 request, credential creation, retry or publication effect is introduced by the diagnostic.
+
+### Root cause of the 2026-10-28 HTTP400 refusals
+
+Non-publishing preflight [run40987145442](https://github.com/FS-GG/FS.GG.Rendering/actions/runs/40987145442),
+using the #1487 fingerprints, returned HTTP400 for all nineteen calls:
+
+- The body was `bodyBytes=11`, `bodySha256=7c41b898c5da0cfa4aa049b65ef50248bce9a72d24bef4c723786431921b75aa`.
+  These are the UTF-8 bytes of `Bad Request`, which IIS substitutes for the application body.
+- The reason phrase was `reasonBytes=109`, `reasonSha256=89512b21e84e24453eeece2d621e909c238ed9b15f077044a07d5804beaf869c`.
+  This is the exact text of `SecurityPolicy_RequireApiKeyWithPackageVerifyScope`: "A package
+  verification key is required to push symbols. Please contact support@nuget.org to get more details."
+
+nuget.org enforces the default `RequirePackageVerifyScopePolicy` on `GET api/v2/verifykey`.
+That policy accepts only keys with an explicit `package:verify` scope. Trusted Publishing keys
+minted by `NuGet/login` carry push scopes only, so verifykey can never return200 for them. This is
+documented Gallery behavior, not a NuGet defect. The earlier200 observations (run39817794639)
+predate enforcement for this account or key type, and cannot be reproduced.
+
+The verifykey observation therefore stays **advisory permanently** for Trusted Publishing keys.
+A derived verification key (a `package:verify` key minted from the publish key) is still
+rejected as a substitute. It would satisfy the policy, but it proves only package ownership, not
+the original publish key's per-ID push scope (see `CredentialBuilder` above). It also creates a
+credential.
 
 ### Advisory verifykey and canary-first nuget.org push
 

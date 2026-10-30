@@ -186,13 +186,20 @@ let private refusalDiagnostic (key: string) (response: HttpResponseMessage) (can
                 unclassified LimitReached
             else
                 size <- Bounded
-                if count=0 then unclassified Empty
+                let policy = "A package verification key is required to push symbols. Please contact support@nuget.org to get more details."
+                // nuget.org (IIS) replaces the400 body with "Bad Request" but keeps Gallery's message as the
+                // reason phrase (run40987145442). A non-reflecting reason phrase that exactly equals the policy
+                // text classifies too; the body reflection check still runs first.
+                let reason = response.ReasonPhrase
+                let reasonIsPolicy =
+                    not(isNull reason) && not(reason.Contains(key, StringComparison.Ordinal))
+                    && reason.Trim([| ' '; '\t' |]) = policy
+                if count=0 then (if reasonIsPolicy then VerificationScopePolicy else unclassified Empty)
                 else
                     let body = UTF8Encoding(false, true).GetString(bytes, 0, count)
-                    let policy = "A package verification key is required to push symbols. Please contact support@nuget.org to get more details."
                     let trimmed = body.Trim([| ' '; '\t'; '\r'; '\n' |])
                     if body.Contains(key, StringComparison.Ordinal) then unclassified Reflection
-                    elif trimmed = policy then VerificationScopePolicy
+                    elif trimmed = policy || reasonIsPolicy then VerificationScopePolicy
                     else
                         let received = fingerprint bytes count
                         match galleryMatchers |> List.tryFind (fun (_, _, matches) -> matches trimmed) with

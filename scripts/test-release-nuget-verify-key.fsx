@@ -302,6 +302,18 @@ let reflectedBody=observeReason mystery (mystery+diagnosticFixtureKey)
 assert(reflectedBody.Outcome="authorization-unproven:m-text:e-utf8:s-bounded:r-reflection")
 let knownReason=observeReason "ignored for exact known bodies" "Version is required"
 assert(knownReason.Outcome="authorization-unproven:m-text:e-utf8:s-bounded:r-known:ApiController.VersionRequired")
+// Observed nuget.org shape (run40987145442): IIS body "Bad Request", Gallery policy text as reason phrase.
+let policyReason=observeReason verificationPolicy "Bad Request"
+assert(policyReason.HttpStatus=Some 400 && policyReason.Outcome="security-policy-verification-scope-required")
+assert(match inspect (fun id _ -> {policyReason with PackageId=id}) ids "0.32.3" with Ok(_,false)->true|_->false)
+assert((observeReason verificationPolicy "").Outcome="security-policy-verification-scope-required")
+// Body reflection is still checked first; a reflecting reason phrase never classifies.
+assert((observeReason verificationPolicy ("Bad Request "+diagnosticFixtureKey)).Outcome="authorization-unproven:m-text:e-utf8:s-bounded:r-reflection")
+let reflectedPolicyReason=observeReason (verificationPolicy+" "+diagnosticFixtureKey) "Bad Request"
+assert(reflectedPolicyReason.Outcome="authorization-unproven:m-text:e-utf8:s-bounded:r-unmatched"+fp (Encoding.UTF8.GetBytes "Bad Request")+":reason-reflection")
+// Near-miss reason phrases stay fingerprinted only.
+for near in [verificationPolicy+" extra"; verificationPolicy.TrimEnd('.'); verificationPolicy.ToUpperInvariant()] do
+    assert((observeReason near "Bad Request").Outcome="authorization-unproven:m-text:e-utf8:s-bounded:r-unmatched"+fp (Encoding.UTF8.GetBytes "Bad Request")+reasonFp near)
 for media,charset,encoded,expected in ["text/plain","utf-8",false,"m-text:e-utf8"; "text/html","iso-8859-1",false,"m-html:e-other"; "application/json","",false,"m-json:e-unspecified"; "application/x-secret-header-"+diagnosticFixtureKey,"",true,"m-other:e-encoded"] do
     let row=observeDiagnostic HttpStatusCode.BadRequest (fun () ->
         let content=new ByteArrayContent(Encoding.UTF8.GetBytes "unmatched")
