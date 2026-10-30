@@ -9,7 +9,7 @@ import re
 
 HISTORICAL = '6a5dd5305ac6fe26f9f9726c72b1a7e553b0021b'
 FONT_DISPOSAL = '2f8d400a6a670568044d607a1ac0eb2c7c655a29'
-CURRENT_PUBLIC = 'df896c4bd587b5ef8dd990bc39c0dcb661bf2193'
+CURRENT_PUBLIC = 'd867ea9216118dc649ce52be6c9bcecdfb46e4e3'
 # Retained 0.32.3 current-public callee (Templates 789658f6, #804): its producer tuple is stale.
 STALE_CURRENT_PUBLIC_0323 = '789658f6ba487d839567df6ee556c7a21ede2bd8'
 PALETTE = 'fe24d30872c84d4c1c92afd7a05c5cf22d00bb10'
