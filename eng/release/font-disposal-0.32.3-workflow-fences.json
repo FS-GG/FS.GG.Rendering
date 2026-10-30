@@ -37,7 +37,7 @@
     ".github/workflows/release-tag-capability.yml": "a00a2fe22f5142832330cc0567ab426028e5da8f838fa57a6adbc081d3b43099",
     ".github/workflows/release-tag-settlement.yml": "e2fa3e91c948b8aba78485d174b5cf60c1efd7655e35468ec70931a6cd877928",
     ".github/workflows/release-tags.yml": "52ebed0f8f2559cb9f4e31d575cbc79adf4307bd9f1554f16e5e01e78fcab717",
-    ".github/workflows/release.yml": "4bedfe9b144008d2db2c3ba5197aa24e2a24d7a36f8223ff2d86b9c8b8d3341f",
+    ".github/workflows/release.yml": "c1723fe0bdb0e5ea8086907ff7d49412cc1687284dfc49c8ccc6b82255b6f7c2",
     ".github/workflows/routine-eligibility.yml": "c5ce8b1b019a4a6dd0a48332664b60cdccee59725b12284bd3dfac3295c7b72d",
     ".github/workflows/skill-refs-sweep.yml": "9ae0fbcc9a707f7c031aa92088210519918a4c58db784a9e34b7ef80e0484f48",
     ".github/workflows/skill-view-check.yml": "dea53e33bfd056facb8007b073390894e0a61b037378bed292246e88d847962f",

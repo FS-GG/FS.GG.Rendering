@@ -370,3 +370,12 @@ assert(deadlineClock.Elapsed < TimeSpan.FromSeconds 15.)
 // HttpClient links its request token internally; token identity is not the deadline contract.
 assert(delayedHandler.RequestToken.CanBeCanceled && cancelledBody.BodyToken.IsCancellationRequested)
 printfn "PASS bounded400 diagnostic: exact policy, closed Gallery allowlist tags, unknown-body/reason length+SHA-256 only, no reflected body/secret digest,4097-byte cap, same deadline and received status retained; no network requests"
+
+// verifykey is advisory (FS-GG/.github#4817); the canary-first nuget.org publisher replaces it as the
+// authorization proof. Run its offline controls wherever this gate runs (gate.yml stays digest-pinned).
+let canaryRun =
+    System.Diagnostics.Process.Start(
+        System.Diagnostics.ProcessStartInfo("python3", [| "-B"; Path.Combine(__SOURCE_DIRECTORY__, "test-release-nuget-canary-push.py") |]))
+canaryRun.WaitForExit()
+if canaryRun.ExitCode<>0 then failwith "canary publisher offline controls failed"
+printfn "PASS canary-first nuget.org publisher offline controls"
