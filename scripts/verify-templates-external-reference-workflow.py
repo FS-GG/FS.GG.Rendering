@@ -110,6 +110,7 @@ def validate(text):
     assert re.findall(r'^      - run: (.+)$',jobs(text)['static'],re.M)==['python3 scripts/verify-templates-external-reference-workflow.py'], 'production static entrypoint must validate actual context'
     for handoff in ['QUALIFICATION_EVENT: ${{ github.event_name }}','QUALIFICATION_INPUT_SOURCE: ${{ inputs.rendering-input-source }}','QUALIFICATION_PREFLIGHT_JSON: ${{ toJSON(inputs.preflight-only) }}','QUALIFICATION_NATIVE_INPUT_FACILITY: ${{ inputs.native-input-facility }}','QUALIFICATION_SUCCESSOR_INPUT: ${{ inputs.rendering-successor-input }}']:
         assert handoff in jobs(text)['static'], 'actual dispatch context handoff required'
+    assert re.findall(r'^      - name: Every pinned Templates commit is reachable from Templates main\n        run: (.+)\n        env:\n          GH_TOKEN: \$\{\{ github\.token \}\}\n',jobs(text)['static'],re.M)==['python3 scripts/check-templates-pin-reachability.py'], 'Templates pin reachability step required'
     schema(text)
     for name,pin,mode in [('qualify',HISTORICAL,'candidate'),('qualify-font-disposal',FONT_DISPOSAL,'font-disposal'),('qualify-current-public-composition',CURRENT_PUBLIC,'current-public-composition'),('qualify-palette-heading',PALETTE,'palette-heading')]:
         body=jobs(text)[name]
@@ -136,6 +137,9 @@ def validate(text):
 def controls(text):
     validate(text)
     bad=[text.replace('contents: read','contents: write'),text+'\nsecrets: inherit\n',text.replace('default: true','default: false'),text.replace('default: candidate','default: font-disposal'),text.replace('      templates-source: '+FONT_DISPOSAL,'      templates-source: '+HISTORICAL),text.replace('@'+FONT_DISPOSAL,'@main'),text.replace('rendering-input-source: font-disposal','rendering-input-source: candidate'),text.replace("inputs.rendering-input-source != 'font-disposal'","inputs.rendering-input-source == 'font-disposal'"),text.replace("inputs.rendering-input-source == 'font-disposal'","inputs.rendering-input-source != 'font-disposal'"),text.replace("github.event_name == 'pull_request' || inputs.preflight-only",'inputs.preflight-only'),text.replace('    needs: static\n',''),text.replace(FONT_DISPOSAL,'0'*40),text.replace('        type: boolean','        type: string'),text.replace('        default: true','        default: true\n        required: true'),text+'\n  extra_job:\n    runs-on: ubuntu-latest\n    steps: []\n']
+    bad.extend([text.replace('        run: python3 scripts/check-templates-pin-reachability.py\n','        run: true\n'),
+                text.replace('      - name: Every pinned Templates commit is reachable from Templates main\n        run: python3 scripts/check-templates-pin-reachability.py\n        env:\n          GH_TOKEN: ${{ github.token }}\n',''),
+                text.replace('scripts/check-templates-pin-reachability.py','scripts/other.py')])
     bad.append(text.replace('      - run: python3 scripts/verify-templates-external-reference-workflow.py\n','      - run: python3 scripts/verify-templates-external-reference-workflow.py --self-test\n'))
     # Preserve the original historical-wrapper mutants as well as new subject routing.
     bad.extend([
