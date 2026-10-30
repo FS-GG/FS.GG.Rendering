@@ -9,10 +9,13 @@ import re
 
 HISTORICAL = '6a5dd5305ac6fe26f9f9726c72b1a7e553b0021b'
 FONT_DISPOSAL = '2f8d400a6a670568044d607a1ac0eb2c7c655a29'
-CURRENT_PUBLIC = 'fe24d30872c84d4c1c92afd7a05c5cf22d00bb10'
+CURRENT_PUBLIC = 'df896c4bd587b5ef8dd990bc39c0dcb661bf2193'
 # Retained 0.32.3 current-public callee (Templates 789658f6, #804): its producer tuple is stale.
 STALE_CURRENT_PUBLIC_0323 = '789658f6ba487d839567df6ee556c7a21ede2bd8'
-PALETTE = '72a54c27f49eff90f1c86bc68e7a8ed8bfd9a431'
+PALETTE = 'fe24d30872c84d4c1c92afd7a05c5cf22d00bb10'
+# Accepted retained-original evidence (run 40744519859) ran this PR-head Templates commit; it is unreachable from
+# any Templates branch since the #806 squash merge, so GitHub reports "workflow was not found" for it.
+ORPHANED_PALETTE = '72a54c27f49eff90f1c86bc68e7a8ed8bfd9a431'
 PALETTE_PRODUCER = '4ede04be66cedffc8551cd14045bab714aa358a7'
 PATH = Path(__file__).resolve().parents[1]/'.github/workflows/templates-external-reference-qualification.yml'
 
@@ -174,7 +177,7 @@ def controls(text):
         try:dispatch(text,{'ref':'main','inputs':{'rendering-input-source':mode,'rendering-successor-input':palette_fixture()}})
         except AssertionError:palette_refusals+=1
         else:raise AssertionError('palette coordinates leaked into another subject')
-    bad.extend([text.replace('@'+PALETTE,'@main'),text.replace('templates-source: '+PALETTE,'templates-source: '+CURRENT_PUBLIC),
+    bad.extend([text.replace(PALETTE,ORPHANED_PALETTE), text.replace('@'+PALETTE,'@'+ORPHANED_PALETTE), text.replace('templates-source: '+PALETTE,'templates-source: '+ORPHANED_PALETTE), text.replace('@'+PALETTE,'@main'),text.replace('templates-source: '+PALETTE,'templates-source: '+CURRENT_PUBLIC),
         text.replace('rendering-successor-input: ${{ inputs.rendering-successor-input }}','rendering-successor-input: fixed'),
         text.replace(" && inputs.rendering-input-source != 'palette-heading'",''),
         text.replace("inputs.rendering-input-source == 'palette-heading'","inputs.rendering-input-source != 'palette-heading'"),
