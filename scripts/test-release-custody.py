@@ -167,7 +167,10 @@ class ReleaseCustodyTests(unittest.TestCase):
         self.assertIn('<add key="nuget.org" value="https://api.nuget.org/v3/index.json" />', packed_template)
         self.assertIn('--configfile "$user_config"', packed_template)
         nuget_replay = release[release.index("Replay the same original custody bytes to nuget.org and read them back"):]
-        self.assertIn("--skip-duplicate", nuget_replay)
+        # Canary-first publisher (FS-GG/.github#4817): 409 is verified against the destination payload,
+        # never silently skipped.
+        self.assertIn("scripts/release-nuget-canary-push.py", nuget_replay)
+        self.assertNotIn("--skip-duplicate", nuget_replay)
         self.assertIn("for attempt in {1..180}", nuget_replay)
         self.assertIn("Waiting for nuget.org propagation", nuget_replay)
         self.assertIn("release-custody.py probe", nuget_replay)
