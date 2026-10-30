@@ -382,9 +382,19 @@ class SelectedAttemptTests(unittest.TestCase):
         self.assertIn('Always retain original bytes',publisher)
         self.assertIn("if: always()",publisher)
         self.assertNotIn('< <(python3 scripts/release-custody.py list',publisher)
-        for body in [publisher.split('Replay original custody bytes to GitHub',1)[1],publisher.split('Replay the same original custody bytes',1)[1]]:
-            self.assertLess(body.index('probe'),body.index('dotnet nuget push'))
-            self.assertIn('[[ "$rc" == 4 ]]',body)
+        github=publisher.split('Replay original custody bytes to GitHub',1)[1]
+        self.assertLess(github.index('probe'),github.index('dotnet nuget push'))
+        self.assertIn('[[ "$rc" == 4 ]]',github)
+        # nuget.org: canary-first helper probes, rechecks the executor, then pushes; no blind duplicate skip.
+        nuget=publisher.split('Replay the same original custody bytes',1)[1]
+        self.assertLess(nuget.index('scripts/test-release-nuget-canary-push.py'),nuget.index('scripts/release-nuget-canary-push.py'))
+        self.assertNotIn('--skip-duplicate',publisher)
+        helper=(ROOT/'scripts/release-nuget-canary-push.py').read_text()
+        body=helper.split('def publish(',1)[1].split('\ndef ',1)[0]
+        self.assertLess(body.index('effects.probe(package)'),body.index('effects.executor()'))
+        self.assertLess(body.index('effects.executor()'),body.index('effects.push(file)'))
+        self.assertIn('"--executor-only"',helper);self.assertIn('"dotnet", "nuget", "push"',helper)
+        self.assertNotIn('--skip-duplicate',helper)
 
     def test_fresh_fsi_probe_config_keeps_public_dependencies_and_original_staging(self):
         import xml.etree.ElementTree as ET
@@ -656,7 +666,9 @@ class ExecutorFenceTests(unittest.TestCase):
                     self.assertEqual(ok,result.returncode==0,result.stderr)
                     self.assertEqual(ok,marker.exists())
             if job=='publish-packages':
-                self.assertEqual(2,block.count('              python3 scripts/release-source-guard.py --executor-only\n              dotnet nuget push'))
+                # GitHub Packages push inline; nuget.org push through the canary helper's per-package executor recheck.
+                self.assertEqual(1,block.count('              python3 scripts/release-source-guard.py --executor-only\n              dotnet nuget push'))
+                self.assertEqual(1,block.count('python3 scripts/release-nuget-canary-push.py'))
         boundary=(ROOT/'scripts/release-nuget-verify-key.fsx').read_text()
         self.assertLess(boundary.index('joinExecutor executorFacts.RootElement'),boundary.index('GetEnvironmentVariable("NUGET_API_KEY")'))
         self.assertLess(boundary.index('joinExecutor inputs.RootElement'),boundary.index('inspect (httpTransport key)'))

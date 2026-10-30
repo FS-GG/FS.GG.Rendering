@@ -806,6 +806,7 @@ jobs:
           dotnet run --project tests/FS.GG.Rendering.ReleasePreflight.Tests/FS.GG.Rendering.ReleasePreflight.Tests.fsproj -c Release --no-restore
           dotnet fsi --exec scripts/test-release-package-census.fsx
           dotnet fsi --define:DEBUG --exec scripts/test-release-nuget-verify-key.fsx
+          python3 -B scripts/test-release-nuget-canary-push.py
           python3 scripts/test-release-source-guard.py --native-font-disposal-boundary
 
       - name: ApiCompat vs feed baseline

@@ -1183,35 +1183,25 @@ jobs:
       # ADR-0012 §4): if that step fails the job stops before this one. NuGet/login mints a single-use
       # key from the org's Trusted Publishing policy (fs-gg-rendering-release); until the policy exists
       # it 401s and fails the release loud. Same artifacts/packages/*.nupkg — no re-pack (§3).
+      # Canary-first push (FS-GG/.github#4817): verifykey is advisory, so authorization is proven by
+      # the first actual push. Packages go one at a time in roster order and the run stops at the first
+      # refusal. A 409, or an uncertain transport/timeout/5xx outcome, is never retried blindly: the
+      # helper reads the flat container and accepts only an exact payload match against the original
+      # archive. Per-package closed-tag outcomes go to artifacts/attempt/nuget-publish-outcomes.json.
       - name: Replay the same original custody bytes to nuget.org and read them back
         if: steps.ver.outputs.push == 'true'
         shell: bash
+        env:
+          NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
         run: |
           set -euo pipefail
           record() { python3 scripts/release-source-guard.py --record-event --event-feed nuget --event-package "${id:-unknown}" --event-stage "$1" --event-result "$2"; }
           trap 'record interrupted failed' ERR
-          while IFS=$'\t' read -r id file; do
-            record probe requested
-            if python3 scripts/release-custody.py probe \
-              --plan "$PRODUCER_PLAN" --archives artifacts/packages \
-              --manifest artifacts/packages/release-custody.json --source-sha "$PRODUCER_SHA" \
-              --package-id "$id" \
-              --url-template 'https://api.nuget.org/v3-flatcontainer/{id_lower}/{version}/{filename}'; then
-              record compare matched
-              echo "$id already exists with the retained payload; replay not needed."
-            else
-              rc=$?
-              [[ "$rc" == 4 ]] || { record probe refused; exit "$rc"; }
-              record probe absent
-              record push requested
-              python3 scripts/release-source-guard.py --executor-only
-              dotnet nuget push "artifacts/packages/$file" \
-                --source https://api.nuget.org/v3/index.json \
-                --api-key "${{ steps.nuget-login.outputs.NUGET_API_KEY }}" \
-                --skip-duplicate
-              record push acknowledged
-            fi
-          done < artifacts/attempt/roster.tsv
+          python3 -B scripts/test-release-nuget-canary-push.py
+          python3 scripts/release-nuget-canary-push.py \
+            --plan "$PRODUCER_PLAN" --archives artifacts/packages \
+            --manifest artifacts/packages/release-custody.json --source-sha "$PRODUCER_SHA" \
+            --roster artifacts/attempt/roster.tsv --receipt artifacts/attempt/nuget-publish-outcomes.json
 
           while IFS=$'\t' read -r id _; do
             visible=false

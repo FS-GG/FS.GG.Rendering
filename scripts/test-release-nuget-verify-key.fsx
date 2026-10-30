@@ -14,7 +14,10 @@ for refused in ["0.30.0"; "0.32.2"; "0.32.x"; ""] do
     assert(inspect (response(Some 200)) ids refused |> Result.isError)
 let facts : Facts = {OriginalCustodyVerified=true;NativeTemplatesQualified=true;ProviderPassed=180;BrowserPassed=[4;4;4];BrowserUnexpected=0;BrowserSkipped=0;BrowserFlaky=0;CompleteReadCensus=true;NuGetScopeStatuses=List.replicate 19 (Some 200);GitHubEffectiveWrite="unknown-before-attempt"}
 assert(admit facts)
-for bad in [{facts with OriginalCustodyVerified=false};{facts with NativeTemplatesQualified=false};{facts with ProviderPassed=179};{facts with BrowserPassed=[4;4]};{facts with BrowserSkipped=1};{facts with BrowserFlaky=1};{facts with CompleteReadCensus=false};{facts with NuGetScopeStatuses=List.replicate 19 (Some 403)};{facts with GitHubEffectiveWrite="proven"}] do assert(not(admit bad))
+for bad in [{facts with OriginalCustodyVerified=false};{facts with NativeTemplatesQualified=false};{facts with ProviderPassed=179};{facts with BrowserPassed=[4;4]};{facts with BrowserSkipped=1};{facts with BrowserFlaky=1};{facts with CompleteReadCensus=false};{facts with NuGetScopeStatuses=List.replicate 18 (Some 200)};{facts with GitHubEffectiveWrite="proven"}] do assert(not(admit bad))
+// verifykey is advisory (FS-GG/.github#4817): any fully observed nineteen statuses admit; length stays hard.
+for statuses in [List.replicate 19 (Some 400); List.replicate 19 (Some 403); List.replicate 19 None; Some 200 :: List.replicate 18 (Some 400)] do
+    assert(admit {facts with NuGetScopeStatuses=statuses})
 printfn "PASS bounded19 existing-ID scope and truthful attempt eligibility refusals"
 
 open System
@@ -120,7 +123,10 @@ for bad in [{current with OriginalCustodyVerified=false};{current with NativeTem
     assert(not(admitCurrent bad true (List.replicate 19 (Some 200)) "unknown-before-attempt"))
 assert(not(admitCurrent current false (List.replicate 19 (Some 200)) "unknown-before-attempt"))
 assert(not(admitCurrent current true (List.replicate 18 (Some 200)) "unknown-before-attempt"))
-assert(not(admitCurrent current true (List.replicate 19 (Some 403)) "unknown-before-attempt"))
+assert(admitCurrent current true (List.replicate 19 (Some 403)) "unknown-before-attempt")
+assert(admitCurrent current true (List.replicate 19 (Some 400)) "unknown-before-attempt")
+assert(not(admitCurrent current true (List.replicate 20 (Some 400)) "unknown-before-attempt"))
+assert(not(admitCurrent current false (List.replicate 19 (Some 400)) "unknown-before-attempt"))
 assert(not(admitCurrent current true (List.replicate 19 (Some 200)) "proven"))
 printfn "PASS separate current186/8/15 eligibility and historical180/4 contract"
 
@@ -188,7 +194,10 @@ for bad in [{fontWriter with OriginalCustodyVerified=false}; {fontWriter with Na
     assert(not(admitFontDisposal bad true (List.replicate 19 (Some 200)) "unknown-before-attempt"))
 assert(not(admitFontDisposal fontWriter false (List.replicate 19 (Some 200)) "unknown-before-attempt"))
 assert(not(admitFontDisposal fontWriter true (List.replicate 18 (Some 200)) "unknown-before-attempt"))
-assert(not(admitFontDisposal fontWriter true (List.replicate 19 (Some 403)) "unknown-before-attempt"))
+assert(admitFontDisposal fontWriter true (List.replicate 19 (Some 403)) "unknown-before-attempt")
+assert(admitFontDisposal fontWriter true (List.replicate 19 (Some 400)) "unknown-before-attempt")
+assert(not(admitFontDisposal fontWriter true (List.replicate 18 (Some 400)) "unknown-before-attempt"))
+assert(not(admitFontDisposal fontWriter true (List.replicate 19 (Some 400)) "proven"))
 assert(not(admitFontDisposal fontWriter true (List.replicate 19 (Some 200)) "proven"))
 printfn "PASS separate font-disposal186/45/15/4/27 writer eligibility; historical contracts unchanged"
 

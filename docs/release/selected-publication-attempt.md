@@ -441,9 +441,40 @@ The latter two also append `:reasonBytes=<n>:reasonSha256=<hex>` for the UTF-8 b
 HTTP reason phrase, `:reason-reflection` when it contains the key (no digest), or
 `:reason-unencodable`; an absent phrase is omitted. Reflected, empty, malformed, oversized,
 unread or cancelled bodies carry no digest. Digests let maintainers compare candidate
-texts offline; they are not authorization. The strict requirement for nineteen
-HTTP200/authorized observations remains unchanged. No additional request, credential
-creation, retry or publication effect is introduced.
+texts offline; they are not authorization. The verifykey `passed` field still requires
+nineteen HTTP200/authorized observations, but it is advisory (see below). No additional
+request, credential creation, retry or publication effect is introduced by the diagnostic.
+
+### Advisory verifykey and canary-first nuget.org push
+
+Since FS-GG/.github#4817, the verifykey observation is **advisory**. It still runs on all
+nineteen packages and writes the same receipt (now with `scopeGate: "advisory"`), but a non-200
+no longer fails the preflight, the writer eligibility predicates (`admit`, `admitCurrent`,
+`admitFontDisposal`, `SelectedSuccessor.admitWriter`) or the retained-successor join. These
+gates are unchanged and stay hard: exact source/executor, effective account `Paradigma11`, OIDC
+login, the complete read census, tag absence, the 19-package plan and roster (exactly nineteen
+observations are still required), and prior-send joins.
+
+Authorization is proven by the push itself. `scripts/release-nuget-canary-push.py` pushes the
+retained original archives to nuget.org one at a time in roster order. The first package that
+needs a push is the canary. The run stops at the first refusal. Before each push it probes
+the flat container and rechecks the executor. A push is never retried blindly:
+
+| Push result | Action | Outcome tag |
+|---|---|---|
+| success | continue | `pushed` |
+| present before push with an identical payload | skip the push | `already-present-verified` |
+| HTTP 409 | observe the flat container; an identical payload continues | `already-present-verified` or `conflict-unverified` (stop) |
+| other 4xx | stop | `refused` |
+| timeout, transport error, 408/429/5xx | observe the flat container, bounded polling, no re-push | `uncertain-observed:matched` (continue), `:absent` or `:refused` (stop) |
+
+"Identical payload" means that every archive entry except nuget.org's repository signature
+(`.signature.p7s`) is byte-identical, compared by `release-custody.py probe`. The raw .nupkg hash
+cannot match, because nuget.org re-signs the archive. The per-package receipt
+`artifacts/attempt/nuget-publish-outcomes.json` (`fsgg.rendering.nuget-publish-outcomes/v1`) holds only
+closed tags, HTTP status codes, `canaryPackageId` and `stoppedAt`. It never holds the key, push
+output or response text. The existing 180×10 s flat-container readback of all nineteen packages
+still follows.
 
 The direct GET is not a claim of zero service-side effects: the controller audits
 verification and consumes verification credentials after first use. No package version

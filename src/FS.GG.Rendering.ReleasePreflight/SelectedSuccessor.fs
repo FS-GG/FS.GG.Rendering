@@ -144,5 +144,6 @@ module SelectedSuccessor =
 
     /// Fresh observations authorize one selected attempt, never resolve a lost send or old Unknown.
     let admitWriter (QualifiedSelection _) completeCensus statuses effectiveWrite unresolvedSend =
-        completeCensus && List.length statuses=19 && List.forall ((=) (Some 200)) statuses
+        // verifykey statuses are advisory (FS-GG/.github#4817); the canary-first push decides.
+        completeCensus && List.length statuses=19
         && effectiveWrite="unknown-before-attempt" && not unresolvedSend

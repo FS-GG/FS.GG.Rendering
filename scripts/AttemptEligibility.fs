@@ -1,6 +1,8 @@
 module Rendering.AttemptEligibility
 
 /// Eligibility permits one bounded attempt; it does not assert coherent publication or writer ACL proof.
+/// NuGet verifykey statuses are ADVISORY (FS-GG/.github#4817): all nineteen must be observed, but a
+/// non-200 no longer blocks; the canary-first push (release-nuget-canary-push.py) decides authorization.
 type Facts = {
     OriginalCustodyVerified: bool
     NativeTemplatesQualified: bool
@@ -18,7 +20,6 @@ let admit facts =
     facts.OriginalCustodyVerified && facts.NativeTemplatesQualified && facts.ProviderPassed=180
     && facts.BrowserPassed=[4;4;4] && facts.BrowserUnexpected=0 && facts.BrowserSkipped=0 && facts.BrowserFlaky=0
     && facts.CompleteReadCensus && facts.NuGetScopeStatuses.Length=19
-    && List.forall ((=) (Some 200)) facts.NuGetScopeStatuses
     && facts.GitHubEffectiveWrite="unknown-before-attempt"
 
 /// The current journey is a separate selected contract; historical admit stays 180/4.
@@ -41,7 +42,7 @@ let currentJourneyQualified facts =
 
 let admitCurrent journey completeReadCensus scopeStatuses effectiveWrite =
     currentJourneyQualified journey && completeReadCensus && List.length scopeStatuses=19
-    && List.forall ((=) (Some 200)) scopeStatuses && effectiveWrite="unknown-before-attempt"
+    && effectiveWrite="unknown-before-attempt"
 
 /// Separate accepted font-disposal receiver contract; historical predicates remain unchanged.
 type FontDisposalJourney = {
@@ -65,4 +66,4 @@ let fontDisposalJourneyQualified (facts: FontDisposalJourney) =
 
 let admitFontDisposal journey completeReadCensus scopeStatuses effectiveWrite =
     fontDisposalJourneyQualified journey && completeReadCensus && List.length scopeStatuses=19
-    && List.forall ((=) (Some 200)) scopeStatuses && effectiveWrite="unknown-before-attempt"
+    && effectiveWrite="unknown-before-attempt"
