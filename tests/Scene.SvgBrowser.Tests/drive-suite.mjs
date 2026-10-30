@@ -29,7 +29,13 @@ const executablePath = process.argv.includes("--executable") ? argument("--execu
 const sha256 = (value) => `sha256:${createHash("sha256").update(value).digest("hex")}`;
 const driverSha256 = sha256(readFileSync(fileURLToPath(import.meta.url)));
 const executableSha256 = executablePath ? sha256(readFileSync(executablePath)) : null;
-const browserPromise = chromium.launch({ headless: true, args: ["--disable-gpu"], executablePath, timeout: Math.min(30000, deadlineMilliseconds) });
+// Default stays the retained software profile. An explicit --browser-args-json plus --profile-label selects a
+// separately named diagnostic profile (for example the fdev virtio-gpu functional profile); it is never B1-B8 evidence.
+const browserArgs = process.argv.includes("--browser-args-json") ? JSON.parse(argument("--browser-args-json")) : ["--disable-gpu"];
+if (!Array.isArray(browserArgs) || !browserArgs.every((value) => typeof value === "string")) throw new Error("--browser-args-json must be a JSON array of strings");
+const profileLabel = process.argv.includes("--profile-label") ? argument("--profile-label") : null;
+if (profileLabel === null && process.argv.includes("--browser-args-json")) throw new Error("Custom browser arguments require --profile-label");
+const browserPromise = chromium.launch({ headless: true, args: browserArgs, executablePath, timeout: Math.min(30000, deadlineMilliseconds) });
 let shutdownPromise;
 const closeBrowser = () => shutdownPromise ??= browserPromise.then((browser) => browser.close(), () => {});
 const cleanupReserveMilliseconds = Math.min(10000, Math.floor(deadlineMilliseconds / 10));
@@ -134,7 +140,7 @@ try {
   const result = JSON.parse(readFileSync(argument("--out"), "utf8"));
   resumeObserved = resumeObserved && typeof result.resumedAtUtc === "string";
   const worldExportEvidence = await Promise.all(worldExports);
-  result.driver = { fullWorldExports: worldExportEvidence, profile: executablePath ? "container-software-diagnostic-explicit-browser" : "container-software-historical", historicalBaselineEquivalence: false, browser: browser.version(), executablePath: executablePath ?? "Playwright default", executableSha256, driverSha256, args: ["--disable-gpu"], baseUrl: url.href, resumeObserved, downloadObserved: true };
+  result.driver = { fullWorldExports: worldExportEvidence, profile: profileLabel ?? (executablePath ? "container-software-diagnostic-explicit-browser" : "container-software-historical"), historicalBaselineEquivalence: false, browser: browser.version(), executablePath: executablePath ?? "Playwright default", executableSha256, driverSha256, args: browserArgs, baseUrl: url.href, resumeObserved, downloadObserved: true };
   writeFileSync(argument("--out"), `${JSON.stringify(result, null, 2)}\n`);
   if (profile === "soldier-functional") {
     if (mutant === "missing-case") { result.cases.pop(); result.outcome = "failed"; result.error = "downloaded case removed by explicit negative control"; }
