@@ -1,9 +1,21 @@
 name: release-tag-settlement
+# The run name carries the closed subject: settlement's per-subject census classifies every prior run by it.
+run-name: release-tag-settlement ${{ inputs.subject }}
 # This separate administrative entry must remain enabled while release-tags,
 # release and template-dispatch are fenced. No publication or dispatch follows.
+# It is the route for a selected producer triple that release-tags.yml selected-tag-cut cannot
+# create: that job's GITHUB_TOKEN can never hold `workflows`, so its push refuses (FS-GG/.github#4817).
 on:
   workflow_dispatch:
     inputs:
+      subject:
+        # Closed choice over scripts/settle-original-tags.py SUBJECTS. A settled subject (0.32.3, run
+        # 39774890888) is not offered and the script refuses it before any read, mint or effect.
+        description: Closed original tag subject (one original failed selected-tag cut).
+        required: true
+        type: choice
+        options:
+          - palette-heading-0.32.4
       expected-executor-sha:
         description: Exact independently reviewed protected executor SHA.
         required: true
@@ -24,6 +36,7 @@ permissions:
   actions: read
 jobs:
   settle:
+    name: Settle original producer tags [org-publication-writer]
     if: >-
       github.repository == 'FS-GG/FS.GG.Rendering' && github.event_name == 'workflow_dispatch' &&
       github.ref == 'refs/heads/main' && github.run_attempt == 1 && github.sha == inputs.expected-executor-sha
@@ -33,20 +46,55 @@ jobs:
     permissions:
       actions: write
       contents: read
-    timeout-minutes: 7
+    # ADR-0097: a 15 minute working budget (interpreter, retained qualification, 270 s settlement)
+    # plus exactly the declared 30 minute writer-lock wait.
+    timeout-minutes: 45
     env:
       FSGG_EXPECTED_EXECUTOR_SHA: ${{ inputs.expected-executor-sha }}
+      FSGG_SETTLEMENT_SUBJECT: ${{ inputs.subject }}
     steps:
+      - name: Acquire org publication writer lock
+        uses: FS-GG/.github/.github/actions/publication-writer-lock@c799a9f9b21d52eb9766cf0950722e3e55145d39 # ADR-0097
+        with:
+          max-wait-minutes: 30
+        timeout-minutes: 32
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
+      - name: Resolve the closed subject before credentials
+        id: subject
+        run: timeout --kill-after=5s 30s python3 scripts/settle-original-tags.py --subject "$FSGG_SETTLEMENT_SUBJECT" --describe >> "$GITHUB_OUTPUT"
+      - name: Fetch exact selected producer source without executing it
+        env:
+          PRODUCER_SHA: ${{ steps.subject.outputs.producer-sha }}
+        run: |
+          set -euo pipefail
+          [[ "$PRODUCER_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo '::error::selected producer must be exact lowercase40hex'; exit 3; }
+          git fetch --no-tags origin "$PRODUCER_SHA"
+          git cat-file -e "$PRODUCER_SHA^{commit}"
+      - name: Select isolated interpreter for retained successor policy
+        if: steps.subject.outputs.typed-qualification == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="${RUNNER_TEMP:?}/settlement-dotnet-10.0.401"
+          [[ "$RUNNER_TEMP" == /* && "$RUNNER_TEMP" != / && "$(realpath -e -- "$RUNNER_TEMP")" == "$RUNNER_TEMP" && ! -e "$root" && ! -L "$root" ]] || exit 3
+          printf 'DOTNET_INSTALL_DIR=%s\n' "$root" >> "$GITHUB_ENV"
+      - uses: actions/setup-dotnet@v6
+        if: steps.subject.outputs.typed-qualification == 'true'
+        with:
+          dotnet-version: '10.0.401'
+      - name: Verify selected qualification interpreter
+        if: steps.subject.outputs.typed-qualification == 'true'
+        run: python3 scripts/release-toolchain-identity.py --expected-sdk 10.0.401 --receipt artifacts/tag-settlement/toolchain.json
       - name: Check maintained settlement controls before credentials
         run: timeout --kill-after=5s 60s python3 scripts/test-settle-original-tags.py
       - name: Retain exact root admission and original authenticated artifacts
         env:
           ADMISSION_JSON: ${{ inputs.admission-json }}
+          ORIGINAL_ARTIFACTS: ${{ steps.subject.outputs.original-artifacts }}
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
@@ -58,8 +106,18 @@ jobs:
           if len(raw) > 16384: raise SystemExit('admission exceeds bound')
           Path('artifacts/tag-settlement/admission.json').write_bytes(raw)
           PY
-          gh api repos/FS-GG/FS.GG.Rendering/actions/artifacts/12319803009/zip > artifacts/tag-settlement/original/12319803009.zip
-          gh api repos/FS-GG/FS.GG.Rendering/actions/artifacts/12318993690/zip > artifacts/tag-settlement/original/12318993690.zip
+          read -r -a ids <<< "$ORIGINAL_ARTIFACTS"
+          [[ ${#ids[@]} -eq 2 ]] || { echo '::error::closed subject must name exactly the plan and cut artifacts'; exit 3; }
+          for id in "${ids[@]}"; do
+            [[ "$id" =~ ^[1-9][0-9]{0,19}$ ]] || { echo '::error::original artifact id malformed'; exit 3; }
+            gh api "repos/FS-GG/FS.GG.Rendering/actions/artifacts/$id/zip" > "artifacts/tag-settlement/original/$id.zip"
+          done
+      - name: Acquire and join the retained qualification before credentials
+        if: steps.subject.outputs.typed-qualification == 'true'
+        env:
+          # Read-only artifact acquisition for the maintained selected-tag qualification join.
+          GH_TOKEN: ${{ github.token }}
+        run: timeout --kill-after=10s 240s python3 scripts/settle-original-tags.py --subject "$FSGG_SETTLEMENT_SUBJECT" --prepare-qualification
       - name: Fence, drain, converge original intent, retire writer and restore
         env:
           ADMISSION_SHA256: ${{ inputs.admission-sha256 }}
@@ -74,6 +132,7 @@ jobs:
           FSGG_DISPATCH_APP_PRIVATE_KEY: ${{ secrets.FSGG_DISPATCH_APP_PRIVATE_KEY }}
         run: >-
           timeout --signal=TERM --kill-after=10s 270s python3 scripts/settle-original-tags.py
+          --subject "$FSGG_SETTLEMENT_SUBJECT"
           --admission artifacts/tag-settlement/admission.json
           --admission-sha256 "$ADMISSION_SHA256"
           --original-directory artifacts/tag-settlement/original
@@ -81,6 +140,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: original0323-tag-settlement-${{ github.run_id }}-${{ github.run_attempt }}
+          name: original-tag-settlement-${{ inputs.subject }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/tag-settlement
           if-no-files-found: error

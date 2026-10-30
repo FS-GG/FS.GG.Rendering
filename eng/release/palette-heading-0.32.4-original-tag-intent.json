@@ -1,0 +1,66 @@
+{
+  "schema": "fsgg.rendering.original-tag-intent/v1",
+  "effectId": "rendering-0324-original40737624380-a1",
+  "run": 40993299693,
+  "attempt": 1,
+  "job": 123860696926,
+  "executorSha": "3f426ad75cc5be84fcac545d4f4cf61f3ce16e66",
+  "producerSha": "4ede04be66cedffc8551cd14045bab714aa358a7",
+  "originalTransportOutcome": "Unknown",
+  "firstRef": "refs/tags/fs-gg-ui/v0.32.4",
+  "requestedUtc": "2026-10-30T02:44:44.701262+00:00",
+  "unknownUtc": "2026-10-30T02:44:45.836921+00:00",
+  "artifacts": [
+    {
+      "id": 12950172134,
+      "name": "selected-producer-tags-plan-40993299693-1",
+      "sha256": "f8433b8a320125e170fbb8a773783e68f10e8217e7937c095cd83b14d2f9644e",
+      "size": 1145,
+      "member": "check.json",
+      "memberSha256": "7175782ddbcee097903325a3982656540aa60b38afc241f9e3b87bf4a652e9ff",
+      "memberSize": 2561
+    },
+    {
+      "id": 12950051972,
+      "name": "selected-producer-tags-cut-40993299693-1",
+      "sha256": "66ab6cab4faff02e0dd7339d661c14e1eceec0583de4d458591ab6e4937718e8",
+      "size": 1438,
+      "member": "cut.json",
+      "memberSha256": "223f8348064d4ac0d51c61400d9fc2f253732e003aad92ce22e1fa7e0170a673",
+      "memberSize": 3956
+    }
+  ],
+  "actorId": 1645484,
+  "qualificationBinding": {
+    "baselineVersion": "0.32.3",
+    "browser": {
+      "artifact": 12839410997,
+      "attempt": 1,
+      "outerSha256": "a69dcb62518e955717526d79754c40e2e469f72f098c46f7d83b44de0d52ef2a",
+      "outerSizeBytes": 73036,
+      "run": 40737624380,
+      "sourceSha": "4ede04be66cedffc8551cd14045bab714aa358a7"
+    },
+    "custodySha256": "89ea6424cae4d06969f0a60394679e9892bd2b873fb46ebd281aa10616809720",
+    "effectId": "rendering-0324-original40737624380-a1",
+    "outerSha256": "baaa17b807bd52c9297dafbfd9161ec84fec4842317bb1f5df4e3d40d837c8bf",
+    "outerSizeBytes": 15375023,
+    "planPath": "eng/release/palette-heading-0.32.4.json",
+    "planSha256": "4bcbb1c756a799ab634e14d1fc9191ac51a8cd5d3537aec75eeab1c1d545deaa",
+    "producerArtifact": 12838338215,
+    "producerAttempt": 1,
+    "producerRun": 40737624380,
+    "producerSha": "4ede04be66cedffc8551cd14045bab714aa358a7",
+    "qualification": {
+      "artifact": 12841756761,
+      "attempt": 1,
+      "callerSha": "e9a1c49afaacee106999c007dedf2679dddf54d4",
+      "outerSha256": "638c4ef806b0c7393094c62ee2c301fd08e448e49776af4e61d3080dcc8a8d8a",
+      "outerSizeBytes": 16655428,
+      "run": 40744519859,
+      "templatesSha": "72a54c27f49eff90f1c86bc68e7a8ed8bfd9a431"
+    },
+    "schema": "fsgg.rendering.publication-attempt/v1",
+    "version": "0.32.4"
+  }
+}
