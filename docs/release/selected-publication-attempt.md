@@ -423,10 +423,27 @@ buffering can read ahead; this is not an exact network-byte bound. Automatic dra
 of unread content is disabled, preserving the cap after response disposal. Strict UTF8 matching of the fixed primary
 policy text yields only `security-policy-verification-scope-required`; unknown,
 oversized, malformed, reflected-key or cancelled content remains
-`authorization-unproven`, retaining the received HTTP status. Bodies, body digests,
-secret headers and keys are never persisted. The receipt schema and strict requirement
-for nineteen HTTP200/authorized observations remain unchanged. No additional request,
-credential creation, retry or publication effect is introduced.
+`authorization-unproven`, retaining the received HTTP status. Bodies, body text,
+secret headers and keys are never persisted.
+
+Since the 2026-10-28 HTTP400 refusals ([.github#4817](https://github.com/FS-GG/.github/issues/4817)),
+a bounded, strict-UTF8 body that does not contain the key is further classified
+(additive to the `fsgg.rendering.nuget-verify-key/v1` `outcome` string; schema id unchanged):
+
+- `r-known:<name>`: the trimmed body exactly equals one of twenty closed NuGetGallery
+  message texts (`knownGalleryMessages`, pinned to NuGetGallery `c25bab040e19d24593fc0c298a0cedb51bf57dcb`).
+  Only the resource name is emitted. The verification-scope policy keeps its existing tag.
+- `r-known:<name>:bodyBytes=<n>:bodySha256=<hex>`: the body matches a templated message;
+  the placeholder value is never emitted, only the exact received bytes' length and SHA-256.
+- `r-unmatched:bodyBytes=<n>:bodySha256=<hex>`: any other body; length and SHA-256 only.
+
+The latter two also append `:reasonBytes=<n>:reasonSha256=<hex>` for the UTF-8 bytes of the
+HTTP reason phrase, `:reason-reflection` when it contains the key (no digest), or
+`:reason-unencodable`; an absent phrase is omitted. Reflected, empty, malformed, oversized,
+unread or cancelled bodies carry no digest. Digests let maintainers compare candidate
+texts offline; they are not authorization. The strict requirement for nineteen
+HTTP200/authorized observations remains unchanged. No additional request, credential
+creation, retry or publication effect is introduced.
 
 The direct GET is not a claim of zero service-side effects: the controller audits
 verification and consumes verification credentials after first use. No package version
