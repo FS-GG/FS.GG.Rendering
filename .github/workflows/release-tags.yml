@@ -201,6 +201,12 @@ jobs:
       - name: Verify selected tag policy interpreter
         if: inputs.version == '0.32.4'
         run: python3 scripts/release-toolchain-identity.py --expected-sdk 10.0.401 --receipt artifacts/toolchain/selected-tags.json
+      # A refusal whose diagnostic names `workflow-permission-message` is final for this route:
+      # GITHUB_TOKEN can never hold `workflows` (0.32.3 run 39541842303 and 0.32.4 run 40993299693
+      # both record that category; 0.32.2 run 38240917195 predates it). Do not retry or widen this
+      # job. Settle that original intent through the separate fenced App-token route,
+      # .github/workflows/release-tag-settlement.yml with scripts/settle-original-tags.py, for its
+      # closed subject (docs/release/selected-publication-attempt.md, "Original tag settlement").
       - name: Reconcile and cut the immutable producer triple
         run: >-
           timeout --kill-after=10s 270s python3 scripts/selected-producer-tags.py

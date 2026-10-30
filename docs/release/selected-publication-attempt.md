@@ -603,3 +603,67 @@ both real login-step inputs, conditions and ordering, plus actual source-only
 wrapper calls with accepted/refused public account fixtures. No new state model
 is needed for this linear prerequisite; existing publication ordering controls
 remain mandatory. Local parser/deadline controls make no service-authorization claim.
+
+
+## Original tag settlement (0.32.4)
+
+The selected-tag cut cannot create the0.32.4 producer triple. Its job pushes with the
+repository `GITHUB_TOKEN`, which can never hold the `workflows` permission. Cut
+[run40993299693/a1](https://github.com/FS-GG/FS.GG.Rendering/actions/runs/40993299693)
+(job123860696926, executor3f426ad7) requested `refs/tags/fs-gg-ui/v0.32.4` once.
+Its receipt records `workflow-permission-message` and a null readback, and nothing was
+created. The0.32.3 cut run39541842303 failed in the same way. Its triple was later
+created only by settlement run39774890888. Do not retry the cutter or widen its token.
+
+The fenced App-token settlement route now selects one closed subject from
+`SUBJECTS` in [`settle-original-tags.py`](../../scripts/settle-original-tags.py):
+
+| Subject | Producer | Original cut | Refs | State |
+|---|---|---|---|---|
+| `font-disposal-0.32.3` | `4ec6eafb` | 39541842303, artifacts 12319803009/12318993690 | `*/v0.32.3` | Settled by run39774890888; never runnable |
+| `palette-heading-0.32.4` | `4ede04be` | 40993299693, artifacts 12950172134/12950051972 | `*/v0.32.4` | Runnable once |
+
+Each subject binds its own original intent
+([0.32.4](../../eng/release/palette-heading-0.32.4-original-tag-intent.json)) and
+workflow byte census ([0.32.4](../../eng/release/palette-heading-0.32.4-workflow-fences.json)).
+The0.32.4 intent also pins the qualification binding that the original cut recorded.
+Before any credential, settlement joins that binding to the maintained selected-tag
+qualification. This retained-successor join acquires and rehashes the original, qualification
+and browser packets and runs the typed SDK10.0.401 verdict. It is the same
+`selected_binding` that the cutter uses.
+
+The census is per subject. A prior settlement run for another subject does not
+refuse, but it must be terminal. A prior run for the selected subject refuses,
+whatever its outcome: there is no replay or blind continuation. A run is classified by its
+`release-tag-settlement <subject>` run name. Run39774890888 predates that name and is
+classified as0.32.3 by a closed table. Any unclassified run refuses. The fenced IDs
+310031035, 295951545 and 303545957 must still carry the paths and names `release-tags`,
+`release` and `template-dispatch`. Prior states are restored on every exit path, as
+before.
+
+The producer census at4ede04be shows that only `release.yml` (`v*`) and
+`template-dispatch.yml` (`fs-gg-ui-template/v*`) can start on a pushed tag of
+this triple. `release-skills.yml` (`skills/v*`) cannot match it.
+
+The settlement job takes the org publication writer lock (ADR-0097) as its first step.
+Its job bound is45 minutes: a15-minute working budget plus the declared30-minute wait.
+The job carries the `[org-publication-writer]` marker. It still mints the same two
+exact-grant installation tokens, creates only absent lightweight refs at the original
+producer, and retires both tokens before restoring workflow state.
+
+Dispatch prerequisites, all outside this source change:
+
+- `release-tag-settlement.yml` must be listed under `FS-GG/FS.GG.Rendering` in
+  `FS-GG/.github` `registry/publication-writers.json`. The lock scans registered
+  workflows only, so an unregistered settlement job never sees its own ticket and refuses
+  after its wait.
+- The exact-ref proof accepts only exact includes. Ruleset `release-tags-are-immutable`
+  must list the three0.32.4 refs, as it lists the0.32.3 refs. A `~ALL`
+  include alone does not satisfy the proof.
+- Root's admission names `effectId` `rendering-0324-original40737624380-a1`, the three
+  0.32.4 refs, `originalActorId` 1645484, capability evidence, and the policy and workflow-inventory
+  digests. The policy digest is read after the ruleset change.
+
+A settlement receipt establishes only same-intent tag convergence. Publication remains the
+selected retained-successor attempt's separate effect, which requires all three lightweight
+tags at4ede04be.

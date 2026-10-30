@@ -120,7 +120,8 @@ an already-admitted App request may arrive late and create an event. Exact match
 readback under immutable policy makes later duplicate creates harmless. Failed
 retirement keeps event fences closed; failed restoration
 is a separate owned cleanup gap, never a passed settlement. An earlier subordinate
-settlement run refuses this initial closed entry. A later continuation needs separately
+settlement run for the same subject refuses this initial closed entry (per-subject census since
+FS-GG/.github#4817; 0.32.3 is settled and never runnable). A later continuation needs separately
 reviewed source consuming every original and subordinate result; reruns and fresh
 logical effect identities are not recovery mechanisms.
 

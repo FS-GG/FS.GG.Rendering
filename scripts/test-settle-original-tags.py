@@ -17,6 +17,10 @@ import urllib.error
 SPEC = importlib.util.spec_from_file_location('settle', Path(__file__).with_name('settle-original-tags.py'))
 s = importlib.util.module_from_spec(SPEC); SPEC.loader.exec_module(s)
 ROOT = Path(__file__).resolve().parent.parent
+# The mechanism controls exercise the one runnable subject; the settled 0.32.3 subject has its own controls.
+RUNNABLE = 'palette-heading-0.32.4'
+SETTLED = 'font-disposal-0.32.3'
+s.select(RUNNABLE)
 PINS = json.loads((ROOT / s.BINDING).read_text())
 POLICY = [{'id': 1, 'target': 'tag', 'enforcement': 'active', 'bypass_actors': [],
            'conditions': {'ref_name': {'include': list(s.REFS), 'exclude': []}},
@@ -174,7 +178,7 @@ class SettlementTests(unittest.TestCase):
         self.api.refs = {s.REFS[0]:s.SOURCE}; count=0
         def disappear(method,path,body):
             nonlocal count
-            if method == 'GET' and path.endswith('git/ref/tags/fs-gg-ui/v0.32.3'):
+            if method == 'GET' and path.endswith('git/ref/tags/fs-gg-ui/v0.32.4'):
                 count += 1
                 if count == 2:self.api.refs.clear()
         self.api.hook=disappear
@@ -229,7 +233,7 @@ class AdmissionAndAdapterTests(unittest.TestCase):
         env={'FSGG_EXPECTED_EXECUTOR_SHA':'a'*40,'GITHUB_SHA':'a'*40,'GITHUB_WORKFLOW_SHA':'a'*40,
              'GITHUB_WORKFLOW_REF':s.WORKFLOW,'GITHUB_REF':'refs/heads/main','GITHUB_EVENT_NAME':'workflow_dispatch',
              'GITHUB_REPOSITORY':s.REPO,'GITHUB_RUN_ATTEMPT':'1','GITHUB_RUN_ID':'123'}
-        for mutant in (None,'main','actor','old-active','old-attempt','old-job','checkout','binding','context'):
+        for mutant in (None,'main','actor','old-active','old-attempt','old-job','checkout','binding','context','changed-qualification'):
             with self.subTest(mutant=mutant),tempfile.TemporaryDirectory() as d:
                 api=FakeAPI();actions,reader,writer=views(api);op=s.Settlement(Path(d),dict(env),copy.deepcopy(ADMITTED),PINS,actions,reader,writer)
                 def get_main(path):
@@ -245,7 +249,10 @@ class AdmissionAndAdapterTests(unittest.TestCase):
                 def git(*args):return ('b'*40 if mutant=='checkout' else 'a'*40) if args[0]=='rev-parse' else ''
                 def binding(*args):
                     if mutant=='binding':raise SystemExit('changed original qualification')
-                    return {}
+                    self.assertEqual((Path(d),s.SOURCE,s.VERSION),args)
+                    return copy.deepcopy(PINS['qualificationBinding'])
+                if mutant=='changed-qualification':
+                    def binding(*args):return {**PINS['qualificationBinding'],'outerSha256':'0'*64}
                 with patch.object(s.tags,'Git',return_value=git),patch.object(s.tags,'selected_binding',side_effect=binding):
                     if mutant:
                         with self.assertRaises((s.Refused,SystemExit)):op.identity()
@@ -263,7 +270,7 @@ class AdmissionAndAdapterTests(unittest.TestCase):
 
     def test_actual_adapter_rejects_patch_delete_update_and_arbitrary_create_before_transport(self):
         api=s.API('private-test-credential','writer',lambda *a,**k:None,10**20)
-        for method,path,body in [('PATCH',s.PREFIX+'git/refs/tags/v0.32.3',{}),('DELETE',s.PREFIX+'git/refs/tags/v0.32.3',None),('POST',s.PREFIX+'git/refs',{'ref':s.REFS[0],'sha':'b'*40}),('PUT',s.PREFIX+'actions/runs/123/cancel',None)]:
+        for method,path,body in [('PATCH',s.PREFIX+'git/refs/tags/v0.32.4',{}),('DELETE',s.PREFIX+'git/refs/tags/v0.32.4',None),('POST',s.PREFIX+'git/refs',{'ref':s.REFS[0],'sha':'b'*40}),('PUT',s.PREFIX+'actions/runs/123/cancel',None)]:
             with patch.object(api.opener,'open',side_effect=AssertionError('must not transport')),self.assertRaises(s.Refused):api.call(method,path,body)
 
     def test_actual_adapter_retains_raw_response_and_request_id_once_without_auth(self):
@@ -285,7 +292,7 @@ class AdmissionAndAdapterTests(unittest.TestCase):
         api=s.API('credential-private','reader',lambda *a,**k:None,10**20)
         api.deadline=0
         with patch.object(api.opener,'open',side_effect=AssertionError('deadline forbids transport')),self.assertRaises(s.Refused):
-            api.call('GET',s.PREFIX+'git/ref/tags/v0.32.3')
+            api.call('GET',s.PREFIX+'git/ref/tags/v0.32.4')
 
     def test_real_adapter_cleanup_reserve_cannot_extend_create_authority(self):
         api=s.API('private-fixture','writer',lambda *a,**k:None,0)
@@ -312,13 +319,17 @@ class AdmissionAndAdapterTests(unittest.TestCase):
         triggers=text.split('\non:\n')[1].split('\nconcurrency:')[0]
         self.assertIn('  workflow_dispatch:',triggers)
         for forbidden in ('  push:', '  release:', '  workflow_call:'):self.assertNotIn(forbidden,triggers)
-        for required in ('group: release-tags','cancel-in-progress: false','timeout-minutes: 7','persist-credentials: false','if: always()','--original-directory','--admission-sha256'):
+        for required in ('group: release-tags','cancel-in-progress: false','timeout-minutes: 45','persist-credentials: false','if: always()','--original-directory','--admission-sha256'):
             self.assertIn(required,text)
         for forbidden in ('packages: write','id-token: write','secrets: inherit','git push','workflow_dispatches','repository_dispatch'):
             self.assertNotIn(forbidden,text)
 
 
 class PublisherSettlementTests(unittest.TestCase):
+    """The settled 0.32.3 subject's publisher join (unchanged history)."""
+    def setUp(self):
+        s.select(SETTLED); self.addCleanup(s.select, RUNNABLE)
+
     def test_real_publisher_acquisition_binds_native_artifact_claims_and_live_refs(self):
         import zipfile
         guard=s.tags.guard
@@ -370,16 +381,26 @@ class PublisherSettlementTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             root=Path(d);path=root/s.BINDING;path.parent.mkdir(parents=True);path.write_bytes((ROOT/s.BINDING).read_bytes())
             admission_path=root/'admission.json';raw=json.dumps(ADMITTED).encode();admission_path.write_bytes(raw)
-            argv=['settle','--admission',str(admission_path),'--admission-sha256',s.digest(raw),'--original-directory',str(root)]
+            argv=['settle','--subject',RUNNABLE,'--admission',str(admission_path),'--admission-sha256',s.digest(raw),'--original-directory',str(root)]
             with patch.object(s.sys,'argv',argv),patch.dict(s.os.environ,{'FSGG_EXPECTED_EXECUTOR_SHA':'a'*40}),patch.object(s.Path,'cwd',return_value=root),patch.object(s,'API',side_effect=AssertionError('credentials must not be constructed')):
                 self.assertEqual(1,s.main())
 
     def test_reviewed_source_census_has_no_unfenced_selected_tag_trigger(self):
         # Closed source equality detects new/changed triggers before any workflow-state effect.
-        pins=json.loads((ROOT/'eng/release/font-disposal-0.32.3-workflow-fences.json').read_text())
-        self.assertEqual(sorted(pins['executor']),sorted(str(p.relative_to(ROOT)) for p in (ROOT/'.github/workflows').glob('*.yml')))
-        for path,sha in pins['executor'].items():self.assertEqual(sha,s.digest((ROOT/path).read_bytes()),path)
-        for path,sha in pins['producer'].items():self.assertEqual(sha,s.digest(s.tags.guard.source_bytes(ROOT,s.SOURCE,path)),path)
+        for name,row in s.SUBJECTS.items():
+            with self.subTest(subject=name):
+                pins=json.loads((ROOT/row['fences']).read_text())
+                self.assertEqual(sorted(pins['executor']),sorted(str(p.relative_to(ROOT)) for p in (ROOT/'.github/workflows').glob('*.yml')))
+                for path,sha in pins['executor'].items():self.assertEqual(sha,s.digest((ROOT/path).read_bytes()),path)
+                for path,sha in pins['producer'].items():self.assertEqual(sha,s.digest(s.tags.guard.source_bytes(ROOT,row['source'],path)),path)
+                self.assertEqual(sorted(s.FENCES),sorted(pins['disabledWorkflowIds']))
+                # Only the fenced workflows can start on a pushed tag of the producer triple.
+                for path in pins['producer']:
+                    text=s.tags.guard.source_bytes(ROOT,row['source'],path).decode()
+                    on=text.split('\non:\n',1)[1].split('\n\n',1)[0] if '\non:\n' in text else ''
+                    if re.search(r'(?m)^  push:\n(?!    branches:)',on) or re.search(r'(?m)^    tags:',on):
+                        self.assertIn(path.rsplit('/',1)[1],set(s.FENCES.values())|{'release-skills.yml'},path)
+                        if path.endswith('release-skills.yml'):self.assertIn('tags: ["skills/v*"]',on)
 
 
 # ---- derived credentials: exact grants, role separation, masking and revocation -------------------------------
@@ -617,7 +638,7 @@ class RealAdapterDerivationTests(unittest.TestCase):
     def run_settlement(self, grants=None, only_derive=False):
         self.temp = tempfile.TemporaryDirectory(); self.addCleanup(self.temp.cleanup)
         self.requests = []; self.roles = {TOKENS['actions']: 'actions', JWT: 'app', TOKENS['reader']: 'reader', TOKENS['writer']: 'writer'}
-        pins = json.loads((ROOT / 'eng/release/font-disposal-0.32.3-workflow-fences.json').read_text())
+        pins = json.loads((ROOT / s.FENCE_PINS).read_text())
         ids = dict(s.FENCES); pairs = []; free = iter(range(1000, 2000))
         for path in sorted(pins['executor']):
             name = path.rsplit('/', 1)[1]
@@ -649,8 +670,10 @@ class RealAdapterDerivationTests(unittest.TestCase):
                 ref = 'refs/' + short.removeprefix('git/ref/')
                 return Response(200, {'ref': ref, 'object': {'type': 'commit', 'sha': s.SOURCE}}) if ref in self.refs else Response(404, {'message': 'Not Found'})
             if method == 'POST': self.refs[body['ref']] = body['sha']; return Response(201, {'ref': body['ref']})
-            if short == 'actions/workflows?per_page=100': return Response(200, {'total_count': len(pairs), 'workflows': [{'id': i, 'path': p} for i, p in pairs]})
-            if short == f'actions/workflows/{settlement_id}/runs?per_page=100': return Response(200, {'total_count': 1, 'workflow_runs': [{'id': 123}]})
+            if short == 'actions/workflows?per_page=100': return Response(200, {'total_count': len(pairs), 'workflows': [{'id': i, 'path': p, 'name': s.FENCE_NAMES.get(i, p)} for i, p in pairs]})
+            if short == f'actions/workflows/{settlement_id}/runs?per_page=100':
+                return Response(200, {'total_count': 2, 'workflow_runs': [{'id': 123, 'status': 'in_progress', 'display_title': s.run_title(RUNNABLE)},
+                    {'id': 39774890888, 'status': 'completed', 'display_title': 'release-tag-settlement'}]})
             if short.startswith('actions/runs/'): return Response(200, {'status': 'completed', 'run_attempt': 1, 'head_sha': PINS['executorSha'], 'actor': {'id': PINS['actorId']}, 'event': 'workflow_dispatch', 'path': '.github/workflows/release-tags.yml'})
             if short.startswith('actions/jobs/'): return Response(200, {'run_id': PINS['run'], 'status': 'completed'})
             if method == 'PUT':
@@ -704,7 +727,7 @@ class RouteIsolationTests(unittest.TestCase):
 
     def test_job_token_cannot_reach_rulesets_refs_tags_mint_or_retirement(self):
         for method, path, body in [('GET', s.PREFIX + 'rulesets?includes_parents=true&per_page=100', None), ('GET', s.PREFIX + 'rulesets/1', None),
-                ('GET', s.PREFIX + 'git/ref/heads/main', None), ('GET', s.PREFIX + 'git/ref/tags/v0.32.3', None),
+                ('GET', s.PREFIX + 'git/ref/heads/main', None), ('GET', s.PREFIX + 'git/ref/tags/v0.32.4', None),
                 ('POST', s.PREFIX + 'git/refs', {'ref': s.REFS[0], 'sha': s.SOURCE}), ('DELETE', '/installation/token', None),
                 ('POST', '/app/installations/1/access_tokens', s.MINTS['writer']), ('GET', s.INSTALLATION_PATH, None),
                 ('PUT', s.PREFIX + 'actions/workflows/1/disable', None), ('PUT', s.PREFIX + 'actions/runs/1/cancel', None),
@@ -715,22 +738,22 @@ class RouteIsolationTests(unittest.TestCase):
 
     def test_reader_token_cannot_write_toggle_read_actions_or_mint(self):
         for method, path, body in [('POST', s.PREFIX + 'git/refs', {'ref': s.REFS[0], 'sha': s.SOURCE}), ('PUT', s.PREFIX + f'actions/workflows/{next(iter(s.FENCES))}/disable', None),
-                ('DELETE', s.PREFIX + 'git/refs/tags/v0.32.3', None), ('PATCH', s.PREFIX + 'rulesets/1', {}), ('PUT', s.PREFIX + 'rulesets/1', {}),
+                ('DELETE', s.PREFIX + 'git/refs/tags/v0.32.4', None), ('PATCH', s.PREFIX + 'rulesets/1', {}), ('PUT', s.PREFIX + 'rulesets/1', {}),
                 ('GET', s.PREFIX + 'actions/workflows?per_page=100', None), ('GET', s.PREFIX + 'contents/README.md', None),
                 ('POST', '/app/installations/1/access_tokens', s.MINTS['reader']), ('GET', s.INSTALLATION_PATH, None)]:
             with self.subTest(method=method, path=path): self.refused('reader', method, path, body)
         for method, path in [('GET', s.PREFIX + 'rulesets?includes_parents=true&per_page=100'), ('GET', s.PREFIX + 'rulesets/25621755'),
-                ('GET', s.PREFIX + 'git/ref/tags/fs-gg-ui/v0.32.3'), ('GET', s.PREFIX + 'git/ref/heads/main'), ('DELETE', '/installation/token')]:
+                ('GET', s.PREFIX + 'git/ref/tags/fs-gg-ui/v0.32.4'), ('GET', s.PREFIX + 'git/ref/heads/main'), ('DELETE', '/installation/token')]:
             self.assertTrue(s.route_allowed('reader', method, path, None), path)
 
     def test_write_capable_reader_adapter_still_refuses_every_non_get_method_and_non_ruleset_ref_route(self):
         # The reader's token carries administration:write only so GitHub discloses bypass_actors. The adapter,
         # not the token, is the capability boundary: refusal happens before transport for every other request.
         self.assertEqual('write', s.READER_PERMISSIONS['administration'])
-        rulesets, ref = s.PREFIX + 'rulesets/25621755', s.PREFIX + 'git/ref/tags/v0.32.3'
+        rulesets, ref = s.PREFIX + 'rulesets/25621755', s.PREFIX + 'git/ref/tags/v0.32.4'
         mutating = [(m, p, b) for m in ('POST', 'PUT', 'PATCH', 'DELETE') for p in (
                 s.PREFIX + 'rulesets?includes_parents=true&per_page=100', rulesets, s.PREFIX + 'rulesets', ref, s.PREFIX + 'git/refs',
-                s.PREFIX + 'git/refs/tags/v0.32.3', s.PREFIX + 'branches/main/protection', s.PREFIX + 'hooks', s.PREFIX + 'keys',
+                s.PREFIX + 'git/refs/tags/v0.32.4', s.PREFIX + 'branches/main/protection', s.PREFIX + 'hooks', s.PREFIX + 'keys',
                 s.PREFIX + 'collaborators/x', s.PREFIX + 'actions/secrets/X', s.PREFIX + 'actions/workflows/1/disable', s.PREFIX + 'actions/permissions')
                 for b in (None, {}, {'bypass_actors': []})]
         mutating += [('PUT', '/repos/FS-GG/FS.GG.Rendering', {'archived': True}), ('DELETE', '/repos/FS-GG/FS.GG.Rendering', None),
@@ -742,7 +765,7 @@ class RouteIsolationTests(unittest.TestCase):
         for method, path in [('GET', s.PREFIX + 'branches/main/protection'), ('GET', s.PREFIX + 'rulesets'), ('GET', s.PREFIX + 'rulesets/1/history'),
                 ('GET', s.PREFIX + 'rulesets/x'), ('GET', s.PREFIX + 'hooks'), ('GET', s.PREFIX + 'keys'), ('GET', s.PREFIX + 'collaborators'),
                 ('GET', s.PREFIX + 'actions/secrets'), ('GET', s.PREFIX + 'actions/permissions'), ('GET', s.PREFIX + 'contents/README.md'),
-                ('GET', s.PREFIX + 'git/refs/tags/v0.32.3'), ('GET', s.PREFIX + 'git/ref/pull/1'), ('GET', s.PREFIX + 'git/trees/main'),
+                ('GET', s.PREFIX + 'git/refs/tags/v0.32.4'), ('GET', s.PREFIX + 'git/ref/pull/1'), ('GET', s.PREFIX + 'git/trees/main'),
                 ('GET', '/repos/FS-GG/FS.GG.Rendering'), ('GET', '/repos/FS-GG/Other/rulesets/1'), ('GET', '/orgs/FS-GG/rulesets'),
                 ('GET', '/orgs/FS-GG/actions/secrets'), ('GET', '/app'), ('GET', s.INSTALLATION_PATH), ('GET', '/installation/repositories'),
                 ('GET', s.PREFIX + 'rulesets?includes_parents=false&per_page=100'), ('GET', s.PREFIX + 'rulesets?includes_parents=true&per_page=100&page=2')]:
@@ -761,7 +784,7 @@ class RouteIsolationTests(unittest.TestCase):
     def test_writer_is_create_only_for_the_three_admitted_refs(self):
         for method, path, body in [('GET', s.PREFIX + 'git/ref/heads/main', None), ('GET', s.PREFIX + 'rulesets/1', None),
                 ('POST', s.PREFIX + 'git/refs', {'ref': 'refs/heads/main', 'sha': s.SOURCE}), ('POST', s.PREFIX + 'git/refs', {'ref': s.REFS[0], 'sha': 'b' * 40}),
-                ('PATCH', s.PREFIX + 'git/refs/tags/v0.32.3', {'sha': s.SOURCE}), ('DELETE', s.PREFIX + 'git/refs/tags/v0.32.3', None),
+                ('PATCH', s.PREFIX + 'git/refs/tags/v0.32.4', {'sha': s.SOURCE}), ('DELETE', s.PREFIX + 'git/refs/tags/v0.32.4', None),
                 ('PUT', s.PREFIX + 'actions/workflows/1/enable', None), ('POST', '/app/installations/1/access_tokens', s.MINTS['writer'])]:
             with self.subTest(method=method, path=path): self.refused('writer', method, path, body)
         for ref in s.REFS: self.assertTrue(s.route_allowed('writer', 'POST', s.PREFIX + 'git/refs', {'ref': ref, 'sha': s.SOURCE}))
@@ -832,7 +855,7 @@ class RouteIsolationTests(unittest.TestCase):
                        'FSGG_EXPECTED_EXECUTOR_SHA': 'a' * 40}
         with tempfile.TemporaryDirectory() as d:
             raw = json.dumps(ADMITTED).encode(); (Path(d) / 'admission.json').write_bytes(raw)
-            argv = ['settle', '--admission', str(Path(d) / 'admission.json'), '--admission-sha256', s.digest(raw), '--original-directory', d]
+            argv = ['settle', '--subject', RUNNABLE, '--admission', str(Path(d) / 'admission.json'), '--admission-sha256', s.digest(raw), '--original-directory', d]
             with patch.object(s.sys, 'argv', argv), patch.dict(s.os.environ, environment), patch.object(s.Path, 'cwd', return_value=Path(d)), \
                  patch.object(s, 'original', return_value={}), patch.object(s, 'Settlement', Spy):
                 self.assertEqual(0, s.main())
@@ -861,5 +884,224 @@ class RouteIsolationTests(unittest.TestCase):
                        'github.run_attempt == 1', 'github.sha == inputs.expected-executor-sha'):
             self.assertIn(needle, condition)
 
+
+
+class SubjectTableTests(unittest.TestCase):
+    """Closed subject table: the settled 0.32.3 row is unchanged and 0.32.4 is the only runnable one."""
+    def tearDown(self):
+        s.select(RUNNABLE)
+
+    def test_settled_0323_subject_is_kept_exactly_and_is_never_runnable(self):
+        self.assertEqual({'version': '0.32.3', 'source': '4ec6eafbbbf02264db9b0db4780c590abe0bf9cd', 'effect': 'rendering-0323-original39509314882-a1',
+            'binding': 'eng/release/font-disposal-0.32.3-original-tag-intent.json',
+            'bindingSha256': 'a2443e3ca805a1b726eb0a47fcbf499dbaace56243deb50b00ea23c86503f5a6',
+            'fences': 'eng/release/font-disposal-0.32.3-workflow-fences.json',
+            'qualification': 'font-disposal-attempt', 'settledRun': 39774890888}, s.SUBJECTS[SETTLED])
+        self.assertEqual({39774890888: SETTLED}, s.HISTORICAL_SETTLEMENT_RUNS)
+        s.select(SETTLED)
+        self.assertEqual(('refs/tags/fs-gg-ui/v0.32.3', 'refs/tags/fs-gg-ui-template/v0.32.3', 'refs/tags/v0.32.3'), s.REFS)
+        self.assertEqual(s.tags.guard.FONT_DISPOSAL['producerSha'], s.SOURCE)
+        self.assertEqual(s.SUBJECTS[SETTLED]['bindingSha256'], s.digest((ROOT / s.BINDING).read_bytes()))
+        with self.assertRaisesRegex(s.Refused, 'already settled'): s.runnable()
+        with self.assertRaisesRegex(s.Refused, 'already settled'): s.describe(ROOT, SETTLED)
+
+    def test_0324_subject_binds_original_cut_refs_and_lightweight_creates_only(self):
+        s.select(RUNNABLE)
+        self.assertEqual({'palette-heading-0.32.4'}, {n for n, r in s.SUBJECTS.items() if r['settledRun'] is None})
+        self.assertEqual(('refs/tags/fs-gg-ui/v0.32.4', 'refs/tags/fs-gg-ui-template/v0.32.4', 'refs/tags/v0.32.4'), s.REFS)
+        self.assertEqual('4ede04be66cedffc8551cd14045bab714aa358a7', s.SOURCE)
+        self.assertEqual('0.32.4', s.VERSION)
+        intent = s.intent(ROOT)
+        self.assertEqual((40993299693, 1, 123860696926, '3f426ad75cc5be84fcac545d4f4cf61f3ce16e66', 1645484),
+                         (intent['run'], intent['attempt'], intent['job'], intent['executorSha'], intent['actorId']))
+        self.assertEqual([(12950172134, 'check.json'), (12950051972, 'cut.json')], [(a['id'], a['member']) for a in intent['artifacts']])
+        self.assertEqual({'producer-sha': s.SOURCE, 'version': '0.32.4', 'original-artifacts': '12950172134 12950051972', 'typed-qualification': 'true'},
+                         s.describe(ROOT, RUNNABLE))
+        binding = s.qualification_binding(ROOT, intent)
+        self.assertEqual((s.SOURCE, '0.32.4', s.EFFECT, 'eng/release/palette-heading-0.32.4.json'),
+                         (binding['producerSha'], binding['version'], binding['effectId'], binding['planPath']))
+        for ref in s.REFS:
+            self.assertTrue(s.route_allowed('writer', 'POST', s.PREFIX + 'git/refs', {'ref': ref, 'sha': s.SOURCE}))
+        for method, path, body in [('POST', s.PREFIX + 'git/refs', {'ref': 'refs/tags/v0.32.3', 'sha': s.SOURCE}),
+                                   ('POST', s.PREFIX + 'git/refs', {'ref': s.REFS[0], 'sha': '4ec6eafbbbf02264db9b0db4780c590abe0bf9cd'}),
+                                   ('POST', s.PREFIX + 'git/tags', {'tag': 'v0.32.4', 'object': s.SOURCE, 'type': 'commit'})]:
+            self.assertFalse(s.route_allowed('writer', method, path, body), (path, body))
+
+    def test_intent_and_qualification_mutants_refuse(self):
+        s.select(RUNNABLE)
+        with self.assertRaisesRegex(s.Refused, 'unknown or unlisted'): s.select('font-disposal-0.32.3 ')
+        intent = s.intent(ROOT)
+        for mutate in (lambda b: b['qualificationBinding'].update(producerSha='0' * 40), lambda b: b['qualificationBinding'].update(version='0.32.3'),
+                       lambda b: b['qualificationBinding'].update(effectId='other'), lambda b: b.pop('qualificationBinding')):
+            doc = copy.deepcopy(intent); mutate(doc)
+            with self.assertRaises(s.Refused): s.qualification_binding(ROOT, doc)
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / s.BINDING; path.parent.mkdir(parents=True); path.write_bytes((ROOT / s.BINDING).read_bytes().replace(b'40993299693', b'40993299694', 1))
+            with self.assertRaisesRegex(s.Refused, 'closed original'): s.intent(Path(d))
+
+
+class NonReplayTests(unittest.TestCase):
+    """0.32.3 settled through run 39774890888; it never runs again through any entry."""
+    def tearDown(self):
+        s.select(RUNNABLE)
+
+    def test_settled_subject_refuses_before_any_read_mint_or_effect(self):
+        s.select(SETTLED)
+        api = FakeAPI(); deriver = Deriver(api); signed = []
+        def signer(*args): signed.append(args); return JWT
+        with tempfile.TemporaryDirectory() as d:
+            op = s.Settlement(Path(d), {'GITHUB_RUN_ID': '123', 'GITHUB_TOKEN': TOKENS['actions']}, copy.deepcopy(ADMITTED),
+                json.loads((ROOT / s.BINDING).read_text()), View(api, 'actions', TOKENS['actions']), identity=lambda: None,
+                app=('4242', 'PRIVATE KEY fixture'), api_factory=deriver.factory, signer=signer, mask=deriver.mask)
+            op.inventory = lambda: None
+            with self.assertRaises(s.Refused): op.run()
+        self.assertEqual(([], [], [], []), (api.calls, signed, deriver.mints, deriver.masked))
+        self.assertEqual('font-disposal-0.32.3', op.receipt['subject'])
+        self.assertEqual('refused-or-unknown', op.receipt['result'])
+
+    def test_settled_subject_admission_and_main_refuse_without_credentials(self):
+        s.select(SETTLED)
+        doc = {**copy.deepcopy(ADMITTED), 'effectId': s.EFFECT, 'allowedRefs': list(s.REFS)}; raw = json.dumps(doc).encode()
+        with self.assertRaisesRegex(s.Refused, 'already settled'): s.admission(raw, s.digest(raw), {'FSGG_EXPECTED_EXECUTOR_SHA': 'a' * 40})
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / 'a.json').write_bytes(raw)
+            for extra in ([], ['--describe'], ['--prepare-qualification']):
+                argv = ['settle', '--subject', SETTLED, *(extra or ['--admission', str(Path(d) / 'a.json'), '--admission-sha256', s.digest(raw), '--original-directory', d])]
+                with self.subTest(extra=extra), patch.object(s.sys, 'argv', argv), patch.object(s.Path, 'cwd', return_value=Path(d)), \
+                     patch.object(s, 'Settlement', side_effect=AssertionError('no settlement')), patch.object(s, 'original', side_effect=AssertionError('no original read')), \
+                     patch.object(s.tags, 'selected_binding', side_effect=AssertionError('no qualification')):
+                    self.assertEqual(1, s.main())
+        with patch.object(s.sys, 'argv', ['settle', '--subject', 'font-disposal-0.32.5']), self.assertRaises(SystemExit): s.main()
+
+    def test_census_refuses_the_settled_subject_even_past_the_runnable_guard(self):
+        s.select(SETTLED)
+        op = s.Settlement(Path('.'), {'GITHUB_RUN_ID': '7'}, {}, {}, *views(FakeAPI()), identity=lambda: None)
+        runs = {'total_count': 2, 'workflow_runs': [{'id': 7, 'status': 'in_progress', 'display_title': s.run_title(SETTLED)},
+                                                    {'id': 39774890888, 'status': 'completed', 'display_title': 'release-tag-settlement'}]}
+        with self.assertRaisesRegex(s.Refused, 'this subject'): op.settlement_census(runs)
+
+
+class PerSubjectCensusTests(unittest.TestCase):
+    def setUp(self):
+        s.select(RUNNABLE)
+        self.op = s.Settlement(Path('.'), {'GITHUB_RUN_ID': '7'}, {}, PINS, *views(FakeAPI()), identity=lambda: None)
+
+    def census(self, *others, current=None):
+        runs = [current or {'id': 7, 'status': 'in_progress', 'display_title': s.run_title(RUNNABLE)}, *others]
+        return self.op.settlement_census({'total_count': len(runs), 'workflow_runs': runs})
+
+    def test_prior_runs_for_a_different_subject_do_not_refuse(self):
+        self.census()
+        self.census({'id': 39774890888, 'status': 'completed', 'conclusion': 'success', 'display_title': 'release-tag-settlement'})
+        self.census({'id': 8, 'status': 'completed', 'conclusion': 'failure', 'display_title': s.run_title(SETTLED)})
+
+    def test_prior_run_for_the_same_subject_refuses_whatever_its_outcome(self):
+        for conclusion in ('success', 'failure', 'cancelled'):
+            with self.subTest(conclusion=conclusion), self.assertRaisesRegex(s.Refused, 'this subject'):
+                self.census({'id': 8, 'status': 'completed', 'conclusion': conclusion, 'display_title': s.run_title(RUNNABLE)})
+
+    def test_unclassified_nonterminal_mislabelled_or_incomplete_census_refuses(self):
+        for others, current, reason in [
+                ([{'id': 8, 'status': 'completed', 'display_title': 'release-tag-settlement'}], None, 'unclassified'),
+                ([{'id': 8, 'status': 'completed', 'display_title': 'release-tag-settlement palette-heading-0.32.5'}], None, 'unclassified'),
+                ([{'id': 8, 'status': 'queued', 'display_title': s.run_title(SETTLED)}], None, 'not terminal'),
+                ([], {'id': 7, 'status': 'in_progress', 'display_title': s.run_title(SETTLED)}, 'not bound'),
+                ([], {'id': 9, 'status': 'in_progress', 'display_title': s.run_title(RUNNABLE)}, 'not bound')]:
+            with self.subTest(reason=reason), self.assertRaisesRegex(s.Refused, reason):
+                self.census(*others, current=current)
+        with self.assertRaisesRegex(s.Refused, 'incomplete'):
+            self.op.settlement_census({'total_count': 2, 'workflow_runs': [{'id': 7, 'display_title': s.run_title(RUNNABLE)}]})
+
+
+class FenceIdentityAndRestoreTests(unittest.TestCase):
+    def setUp(self):
+        s.select(RUNNABLE)
+
+    def inventory_with(self, mutate):
+        pins = json.loads((ROOT / s.FENCE_PINS).read_text()); free = iter(range(1000, 2000)); rows = []
+        for path in sorted(pins['executor']):
+            i = next((i for i, n in s.FENCES.items() if n == path.rsplit('/', 1)[1]), None) or next(free)
+            rows.append({'id': i, 'path': path, 'name': s.FENCE_NAMES.get(i, path)})
+        mutate(rows)
+        pairs = sorted((w['id'], w['path']) for w in rows)
+        settlement_id = next(w['id'] for w in rows if w['path'] == s.SETTLEMENT_PATH)
+        actions = View(FakeAPI(), 'actions')
+        def get(path):
+            if path == 'actions/workflows?per_page=100': return {'total_count': len(rows), 'workflows': rows}
+            if path == f'actions/workflows/{settlement_id}/runs?per_page=100':
+                return {'total_count': 1, 'workflow_runs': [{'id': 7, 'status': 'in_progress', 'display_title': s.run_title(RUNNABLE)}]}
+            raise AssertionError(path)
+        actions.get = get
+        op = s.Settlement(ROOT, {'GITHUB_RUN_ID': '7'}, {'workflowInventorySha256': s.digest(json.dumps(pairs, separators=(',', ':')).encode())}, PINS,
+                          actions, View(FakeAPI(), 'reader'), View(FakeAPI(), 'writer'), identity=lambda: None)
+        op.inventory()
+
+    def test_fenced_ids_must_still_name_the_fenced_workflows(self):
+        self.inventory_with(lambda rows: None)
+        def rename(rows): next(w for w in rows if w['id'] == 295951545).update(name='release (renamed)')
+        def swap(rows):
+            a = next(w for w in rows if w['id'] == 295951545); b = next(w for w in rows if w['id'] == 303545957)
+            a['id'], b['id'] = b['id'], a['id']
+        for mutate in (rename, swap):
+            with self.subTest(mutate=mutate.__name__), self.assertRaisesRegex(s.Refused, 'missing or renamed'):
+                self.inventory_with(mutate)
+
+    def test_failure_after_fencing_restores_every_prior_state_and_writes_nothing(self):
+        api = FakeAPI(); api.states[303545957] = 'disabled_manually'
+        with tempfile.TemporaryDirectory() as d:
+            op = s.Settlement(Path(d), {'GITHUB_RUN_ID': '123'}, copy.deepcopy(ADMITTED), PINS, *views(api), identity=lambda: None)
+            op.inventory = lambda: None
+            def fence(): raise s.Refused('policy changed after disable')
+            op.fence = fence
+            with self.assertRaises(s.Refused): op.run()
+        self.assertEqual({310031035: 'active', 295951545: 'active', 303545957: 'disabled_manually'}, api.states)
+        self.assertEqual(2, len([c for c in api.calls if c[0] == 'PUT' and c[1].endswith('/disable')]))
+        self.assertEqual(2, len([c for c in api.calls if c[0] == 'PUT' and c[1].endswith('/enable')]))
+        self.assertEqual([], [c for c in api.calls if c[0] == 'POST'])
+        self.assertEqual(('restored', 'Unknown', 'refused-or-unknown'), (op.receipt['cleanup'], op.receipt['sameIntentConvergence'], op.receipt['result']))
+        self.assertTrue(any(e['stage'] == 'first-failure' for e in op.receipt['events']))
+
+
+class WorkflowSubjectAndLockTests(unittest.TestCase):
+    def setUp(self):
+        self.text = (ROOT / s.SETTLEMENT_PATH).read_text()
+        self.code = '\n'.join(l for l in self.text.splitlines() if not l.lstrip().startswith('#'))
+        self.steps = re.split(r'(?m)^      - ', self.code.split('\njobs:\n')[1])[1:]
+
+    def test_subject_is_a_closed_choice_of_exactly_the_runnable_subjects(self):
+        block = self.code.split('      subject:\n')[1].split('      expected-executor-sha:')[0]
+        self.assertIn('type: choice', block)
+        self.assertEqual(sorted(n for n, r in s.SUBJECTS.items() if r['settledRun'] is None), re.findall(r'(?m)^          - (\S+)$', block))
+        self.assertIn('run-name: release-tag-settlement ${{ inputs.subject }}', self.code)
+        self.assertEqual(s.run_title('x'), 'release-tag-settlement x')
+        for step in self.steps:
+            if 'scripts/settle-original-tags.py' in step: self.assertIn('--subject "$FSGG_SETTLEMENT_SUBJECT"', step)
+        self.assertIn('FSGG_SETTLEMENT_SUBJECT: ${{ inputs.subject }}', self.code)
+
+    def test_original_artifacts_come_from_the_subject_not_hard_coded_ids(self):
+        for row in s.SUBJECTS.values():
+            for artifact in json.loads((ROOT / row['binding']).read_text())['artifacts']:
+                self.assertNotIn(str(artifact['id']), self.code)
+        self.assertIn('ORIGINAL_ARTIFACTS: ${{ steps.subject.outputs.original-artifacts }}', self.code)
+        self.assertIn('PRODUCER_SHA: ${{ steps.subject.outputs.producer-sha }}', self.code)
+
+    def test_publication_writer_lock_is_the_first_step_of_the_marked_job(self):
+        first = self.steps[0]
+        self.assertTrue(first.startswith('name: Acquire org publication writer lock\n'))
+        self.assertIn('uses: FS-GG/.github/.github/actions/publication-writer-lock@c799a9f9b21d52eb9766cf0950722e3e55145d39 # ADR-0097', first)
+        self.assertIn('max-wait-minutes: 30', first)
+        self.assertIn('    name: Settle original producer tags [org-publication-writer]\n', self.code)
+        self.assertIn('    timeout-minutes: 45\n', self.code)  # 15 minute working budget + the declared 30 minute wait
+        uses = re.findall(r'(?m)^\s+(?:- )?uses: (.+)$', self.code)
+        self.assertEqual(['FS-GG/.github/.github/actions/publication-writer-lock@c799a9f9b21d52eb9766cf0950722e3e55145d39 # ADR-0097',
+                          'actions/checkout@v7', 'actions/setup-dotnet@v6', 'actions/upload-artifact@v7'], uses)
+
+    def test_preparation_steps_precede_credentials_and_hold_no_secret(self):
+        names = [step.split('\n', 1)[0] for step in self.steps]
+        holder = next(i for i, step in enumerate(self.steps) if 'secrets.' in step)
+        for needle in ('--describe', '--prepare-qualification', 'test-settle-original-tags.py', 'git fetch --no-tags origin "$PRODUCER_SHA"'):
+            index = next(i for i, step in enumerate(self.steps) if needle in step)
+            self.assertLess(index, holder, needle); self.assertNotIn('secrets.', self.steps[index])
+        self.assertEqual(len(names), len(set(names)))
 
 if __name__=='__main__':unittest.main()

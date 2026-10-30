@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Closed 0323 settlement: original Unknown plus immutable current convergence.
+"""Closed original-tag settlement: original Unknown plus immutable current convergence.
+
+One closed subject is selected per run from SUBJECTS (`--subject`). Each subject binds exactly one
+original failed selected-tag cut (run, job, plan/cut artifacts), its producer, its ordered tag triple
+and its reviewed workflow byte census. A subject with an accepted settlement run is never runnable again.
 
 The admission digest selects root's separately reviewed capability evidence. It is
 not a credential or a permission inference. No retries, feed writes, ref
@@ -43,11 +47,53 @@ Refused = tags.Refused
 REPO = 'FS-GG/FS.GG.Rendering'
 PREFIX = '/repos/' + REPO + '/'
 WORKFLOW = REPO + '/.github/workflows/release-tag-settlement.yml@refs/heads/main'
-BINDING = 'eng/release/font-disposal-0.32.3-original-tag-intent.json'
-SOURCE = tags.guard.FONT_DISPOSAL['producerSha']
-EFFECT = tags.guard.FONT_DISPOSAL['effectId']
-REFS = tuple('refs/tags/' + s for s in ('fs-gg-ui/v0.32.3', 'fs-gg-ui-template/v0.32.3', 'v0.32.3'))
+SETTLEMENT_PATH = '.github/workflows/release-tag-settlement.yml'
+# Closed subject table. Adding a subject is a reviewed source change with its own original intent and
+# workflow census; nothing here is derived from dispatch input beyond the closed subject name.
+SUBJECTS = {
+    # Settled by run 39774890888 (sameIntentConvergence Verified, cleanup restored). Kept byte-for-byte
+    # as the publisher join and history consume it; `settledRun` makes it non-runnable (no replay).
+    'font-disposal-0.32.3': {
+        'version': '0.32.3', 'source': tags.guard.FONT_DISPOSAL['producerSha'], 'effect': tags.guard.FONT_DISPOSAL['effectId'],
+        'binding': 'eng/release/font-disposal-0.32.3-original-tag-intent.json',
+        'bindingSha256': 'a2443e3ca805a1b726eb0a47fcbf499dbaace56243deb50b00ea23c86503f5a6',
+        'fences': 'eng/release/font-disposal-0.32.3-workflow-fences.json',
+        'qualification': 'font-disposal-attempt', 'settledRun': 39774890888},
+    # Original failed cut run 40993299693/a1 job 123860696926 (GITHUB_TOKEN refused: no `workflows`).
+    'palette-heading-0.32.4': {
+        'version': '0.32.4', 'source': '4ede04be66cedffc8551cd14045bab714aa358a7', 'effect': 'rendering-0324-original40737624380-a1',
+        'binding': 'eng/release/palette-heading-0.32.4-original-tag-intent.json',
+        'bindingSha256': 'b2e83bf8111ee7f741abf3f248524ce78bc6870fa977dc0bf1fa9474121ac401',
+        'fences': 'eng/release/palette-heading-0.32.4-workflow-fences.json',
+        'qualification': 'retained-successor', 'settledRun': None},
+}
+# Settlement runs that predate the subject run-name. Every other prior run is classified by its exact
+# `release-tag-settlement <subject>` display title; an unclassified prior run refuses.
+HISTORICAL_SETTLEMENT_RUNS = {39774890888: 'font-disposal-0.32.3'}
 FENCES = {310031035: 'release-tags.yml', 295951545: 'release.yml', 303545957: 'template-dispatch.yml'}
+# Fenced IDs must still name these workflows (by path and by name) at run time.
+FENCE_NAMES = {310031035: 'release-tags', 295951545: 'release', 303545957: 'template-dispatch'}
+SUBJECT = BINDING = SOURCE = EFFECT = VERSION = FENCE_PINS = None
+REFS = ()
+
+
+def select(name):
+    """Bind the process to one closed subject before any adapter, guard or credential exists."""
+    global SUBJECT, BINDING, SOURCE, EFFECT, VERSION, FENCE_PINS, REFS
+    need(name in SUBJECTS, 'unknown or unlisted settlement subject')
+    row = SUBJECTS[name]
+    SUBJECT, BINDING, SOURCE, EFFECT, VERSION, FENCE_PINS = name, row['binding'], row['source'], row['effect'], row['version'], row['fences']
+    REFS = tuple('refs/tags/' + s for s in ('fs-gg-ui/v' + VERSION, 'fs-gg-ui-template/v' + VERSION, 'v' + VERSION))
+    return row
+
+
+def runnable():
+    """The selected subject may still run only while it has no accepted settlement."""
+    need(SUBJECT in SUBJECTS and SUBJECTS[SUBJECT]['settledRun'] is None, 'subject already settled; no replay or continuation')
+
+
+def run_title(name):
+    return 'release-tag-settlement ' + name
 MAX_BODY = 131072
 # Transport budget is 240 s inside a 270 s command timeout: only token retirement may use the reserve.
 CLEANUP_RESERVE = 22
@@ -83,6 +129,11 @@ def digest(raw):
 def need(condition, message):
     if not condition:
         raise Refused(message)
+
+
+# Import default: the settled historical subject, so the capability observer's shared policy judgment
+# keeps its reviewed refs. It is never runnable; main() always selects the dispatched subject explicitly.
+select('font-disposal-0.32.3')
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -158,11 +209,27 @@ class API:
         return value
 
 
-def original(root, directory):
+def intent(root):
     raw_binding = (root / BINDING).read_bytes()
-    need(digest(raw_binding) == 'a2443e3ca805a1b726eb0a47fcbf499dbaace56243deb50b00ea23c86503f5a6', 'closed original intent bytes differ')
+    need(digest(raw_binding) == SUBJECTS[SUBJECT]['bindingSha256'], 'closed original intent bytes differ')
     binding = json.loads(raw_binding)
-    need(binding['effectId'] == EFFECT and binding['producerSha'] == SOURCE and binding['originalTransportOutcome'] == 'Unknown', 'original binding differs')
+    need(binding['effectId'] == EFFECT and binding['producerSha'] == SOURCE and binding['originalTransportOutcome'] == 'Unknown'
+         and binding['firstRef'] == REFS[0] and binding['attempt'] == 1, 'original binding differs')
+    return binding
+
+
+def qualification_binding(root, binding):
+    """The original cut's recorded qualification binding for this subject (never re-derived here)."""
+    if SUBJECTS[SUBJECT]['qualification'] == 'font-disposal-attempt':
+        return json.loads((root / tags.guard.FONT_DISPOSAL_ATTEMPT).read_bytes())
+    need(SUBJECTS[SUBJECT]['qualification'] == 'retained-successor' and isinstance(binding.get('qualificationBinding'), dict)
+         and binding['qualificationBinding'].get('producerSha') == SOURCE and binding['qualificationBinding'].get('version') == VERSION
+         and binding['qualificationBinding'].get('effectId') == EFFECT, 'original qualification binding differs')
+    return binding['qualificationBinding']
+
+
+def original(root, directory):
+    binding = intent(root)
     docs = {}
     for pin in binding['artifacts']:
         raw = (directory / (str(pin['id']) + '.zip')).read_bytes()
@@ -176,12 +243,29 @@ def original(root, directory):
     need(cut['run'] == str(binding['run']) and cut['attempt'] == '1' and cut['executorSha'] == binding['executorSha'] and cut['producerSha'] == SOURCE and cut['result'] == 'refused-or-unknown', 'original receipt identity differs')
     requests = [x for x in cut['events'] if x['stage'] == 'push-requested']
     need(requests == [{'utc': binding['requestedUtc'], 'stage': 'push-requested', 'ref': REFS[0], 'target': SOURCE}], 'original single create-only intent differs')
-    need(cut['binding'] == json.loads((root / tags.guard.FONT_DISPOSAL_ATTEMPT).read_bytes()), 'original qualification roots replaced')
+    need(cut['binding'] == qualification_binding(root, binding), 'original qualification roots replaced')
     return binding
+
+
+def describe(root, name):
+    """Pre-credential subject facts for the workflow: producer to fetch and original artifact ids."""
+    select(name); runnable()
+    binding = intent(root)
+    return {'producer-sha': SOURCE, 'version': VERSION, 'original-artifacts': ' '.join(str(a['id']) for a in binding['artifacts']),
+            'typed-qualification': 'true' if SUBJECTS[SUBJECT]['qualification'] == 'retained-successor' else 'false'}
+
+
+def selected_qualification(root, binding):
+    """Join the maintained selected-tag qualification for this subject to the original cut's binding."""
+    value = tags.selected_binding(root, SOURCE, VERSION)
+    if SUBJECTS[SUBJECT]['qualification'] == 'retained-successor':
+        need(value == qualification_binding(root, binding), 'selected qualification differs from the original cut binding')
+    return value
 
 
 def admission(raw, expected, env):
     need(re.fullmatch('[0-9a-f]{64}', expected or '') is not None and digest(raw) == expected, 'admission bytes differ')
+    runnable()
     value = json.loads(raw)
     need(value['schema'] == 'fsgg.rendering.tag-settlement-admission/v1' and value['effectId'] == EFFECT and value['executorSha'] == env['FSGG_EXPECTED_EXECUTOR_SHA'], 'admission subject differs')
     need(value['originalTransportOutcome'] == 'Unknown' and value['allowedRefs'] == list(REFS), 'original uncertainty or intent replaced')
@@ -280,7 +364,7 @@ class Settlement:
                  app=None, api_factory=None, signer=None, mask=None, started=None):
         self.root, self.env, self.admitted = root, env, admitted
         self.path = root / 'artifacts/tag-settlement/settlement.json'
-        self.receipt = {'schema': 'fsgg.rendering.tag-settlement/v1', 'effectId': EFFECT,
+        self.receipt = {'schema': 'fsgg.rendering.tag-settlement/v1', 'subject': SUBJECT, 'version': VERSION, 'effectId': EFFECT,
             'producerSha': SOURCE, 'originalTransportOutcome': 'Unknown', 'sameIntentConvergence': 'Unknown',
             'original': original_binding, 'admission': admitted, 'events': [], 'cleanup': 'pending',
             'publication': 'not-performed', 'notification': 'not-performed'}
@@ -349,8 +433,9 @@ class Settlement:
         need(re.fullmatch('[0-9a-f]{40}', expected) is not None and env.get('GITHUB_SHA') == expected and env.get('GITHUB_WORKFLOW_SHA') == expected and env.get('GITHUB_WORKFLOW_REF') == WORKFLOW and env.get('GITHUB_REF') == 'refs/heads/main' and env.get('GITHUB_EVENT_NAME') == 'workflow_dispatch' and env.get('GITHUB_REPOSITORY') == REPO and env.get('GITHUB_RUN_ATTEMPT') == '1', 'settlement executor context refused')
         git = tags.Git(self.root)
         need(git('rev-parse', 'HEAD') == expected, 'checkout differs')
-        git('diff', '--quiet', 'HEAD', '--', 'scripts/settle-original-tags.py', 'scripts/selected-producer-tags.py', 'scripts/release-source-guard.py', 'scripts/release-tag-capability.py', BINDING, 'eng/release/font-disposal-0.32.3-workflow-fences.json', '.github/workflows/release-tag-settlement.yml')
-        tags.selected_binding(self.root, SOURCE, '0.32.3')
+        git('diff', '--quiet', 'HEAD', '--', 'scripts/settle-original-tags.py', 'scripts/selected-producer-tags.py', 'scripts/release-source-guard.py', 'scripts/release-tag-capability.py',
+            'scripts/release-selected-successor.fsx', 'src/FS.GG.Rendering.ReleasePreflight/SelectedSuccessor.fs', 'scripts/release-custody.py', BINDING, FENCE_PINS, SETTLEMENT_PATH)
+        selected_qualification(self.root, self.receipt['original'])
 
     def identity(self):
         self.local_identity()
@@ -368,14 +453,16 @@ class Settlement:
         need(workflows['total_count'] == len(workflows['workflows']) < 100, 'workflow inventory incomplete')
         pairs = sorted((w['id'], w['path']) for w in workflows['workflows'])
         need(digest(json.dumps(pairs, separators=(',', ':')).encode()) == self.admitted['workflowInventorySha256'], 'workflow inventory changed')
-        selected = [w for w in workflows['workflows'] if w['path'] == '.github/workflows/release-tag-settlement.yml']
+        selected = [w for w in workflows['workflows'] if w['path'] == SETTLEMENT_PATH]
         need(len(selected) == 1, 'settlement workflow unavailable')
         runs = self.actions.get('actions/workflows/' + str(selected[0]['id']) + '/runs?per_page=100')
-        need(runs['total_count'] == len(runs['workflow_runs']) == 1 and str(runs['workflow_runs'][0]['id']) == self.env['GITHUB_RUN_ID'], 'prior subordinate settlement exists; no blind continuation')
+        self.settlement_census(runs)
+        names = {w['id']: (w['path'], w.get('name')) for w in workflows['workflows']}
         for i, name in FENCES.items():
-            need((i, '.github/workflows/' + name) in pairs, 'required event workflow missing')
+            need(names.get(i) == ('.github/workflows/' + name, FENCE_NAMES[i]), 'required event workflow missing or renamed')
         # Every producer and executor workflow byte is pinned by the reviewed source census.
-        pins = json.loads((self.root / 'eng/release/font-disposal-0.32.3-workflow-fences.json').read_bytes())
+        pins = json.loads((self.root / FENCE_PINS).read_bytes())
+        need(sorted(pins.get('disabledWorkflowIds', [])) == sorted(FENCES), 'reviewed fence identities differ')
         git = tags.Git(self.root)
         for revision, expected in ((SOURCE, pins['producer']), ('HEAD', pins['executor'])):
             paths = git('ls-tree', '-r', '--name-only', revision, '.github/workflows').splitlines()
@@ -383,6 +470,20 @@ class Settlement:
             for path in paths:
                 raw = tags.guard.source_bytes(self.root, revision, path)
                 need(digest(raw) == expected[path], 'workflow trigger source bytes differ')
+
+    def settlement_census(self, runs):
+        """Per-subject census of every settlement run: no replay of this subject, no blind continuation."""
+        need(runs['total_count'] == len(runs['workflow_runs']) < 100, 'settlement run census incomplete')
+        current = [r for r in runs['workflow_runs'] if str(r.get('id')) == self.env['GITHUB_RUN_ID']]
+        need(len(current) == 1 and current[0].get('display_title') == run_title(SUBJECT), 'current settlement run is not bound to the selected subject')
+        titles = {run_title(name): name for name in SUBJECTS}
+        for run in runs['workflow_runs']:
+            if run is current[0]:
+                continue
+            subject = HISTORICAL_SETTLEMENT_RUNS.get(run.get('id')) or titles.get(run.get('display_title'))
+            need(subject is not None, 'unclassified prior settlement run; no blind continuation')
+            need(subject != SUBJECT, 'prior settlement run for this subject exists; no replay or blind continuation')
+            need(run.get('status') == 'completed', 'another subject settlement is not terminal')
 
     def drained(self):
         for i in FENCES:
@@ -414,6 +515,7 @@ class Settlement:
         first_error = None
         try:
             self.record('started')
+            runnable()
             # Local executor guards finish before the App key is read; reads then mints precede any effect.
             self.local_check()
             self.provision()
@@ -513,9 +615,13 @@ class Settlement:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--admission', type=Path, required=True)
-    parser.add_argument('--admission-sha256', required=True)
-    parser.add_argument('--original-directory', type=Path, required=True)
+    parser.add_argument('--subject', required=True, choices=sorted(SUBJECTS))
+    # Credential-free preparation modes; neither reads the App secrets nor performs an effect.
+    parser.add_argument('--describe', action='store_true', help='print closed subject facts as KEY=VALUE lines and stop')
+    parser.add_argument('--prepare-qualification', action='store_true', help='acquire and join the selected qualification and stop')
+    parser.add_argument('--admission', type=Path)
+    parser.add_argument('--admission-sha256')
+    parser.add_argument('--original-directory', type=Path)
     args = parser.parse_args()
     root = Path.cwd(); started = time.monotonic()
     # The App secrets and job token leave the process environment (and every child) at once.
@@ -523,6 +629,16 @@ def main():
     job_token = os.environ.pop('GITHUB_TOKEN', '')
     env = dict(os.environ)
     try:
+        select(args.subject); runnable()
+        if args.describe or args.prepare_qualification:
+            need(args.describe != args.prepare_qualification and args.admission is None and args.admission_sha256 is None
+                 and args.original_directory is None and not any(app) and not job_token, 'preparation mode takes no admission or credential')
+            if args.describe:
+                print('\n'.join(f'{k}={v}' for k, v in describe(root, args.subject).items()))
+            else:
+                selected_qualification(root, intent(root))
+            return 0
+        need(args.admission is not None and args.admission_sha256 is not None and args.original_directory is not None, 'settlement requires admission and original artifacts')
         admitted = admission(args.admission.read_bytes(), args.admission_sha256, env)
         binding = original(root, args.original_directory)
         def terminate(signum, frame):
