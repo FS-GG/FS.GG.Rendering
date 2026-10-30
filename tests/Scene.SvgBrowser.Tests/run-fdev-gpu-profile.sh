@@ -32,9 +32,11 @@ for order in "${orders[@]}"; do
 done
 for profile in gpu-angle-vulkan gpu-angle-gl-egl; do
   for mutant in unnecessary-rebuild listener-leak excessive-document-acceptance; do
+    # The driver exits 0 and prints "result":"killed" only when the mutant's named gate fired; a surviving mutant throws.
     if timeout 240 node "$here/drive-suite.mjs" --base-url "$url" --profile controls --deadline-ms 200000 --executable "$exe" --mutant "$mutant" \
-      --browser-args-json "$(args "$profile")" --profile-label "fdev-virtio-gpu-$profile-not-b1-b8" --out "$out/mutants/$profile-$mutant.json" > "$out/logs/mutant-$profile-$mutant.log" 2>&1; then
-      echo "mutant survived: $profile $mutant" | tee -a "$out/mutants/SURVIVED"; else echo "killed $profile $mutant" >> "$out/mutants/KILLED"; fi
+      --browser-args-json "$(args "$profile")" --profile-label "fdev-virtio-gpu-$profile-not-b1-b8" --out "$out/mutants/$profile-$mutant.json" > "$out/logs/mutant-$profile-$mutant.log" 2>&1 \
+      && grep -q '"result":"killed"' "$out/logs/mutant-$profile-$mutant.log"; then echo "killed $profile $mutant" >> "$out/mutants/KILLED"
+    else echo "mutant survived: $profile $mutant" | tee -a "$out/mutants/SURVIVED"; fi
   done
 done
 timeout 120 node "$here/fdev-gpu-profile.mjs" --profile default-flags --executable "$exe" --base-url "$url" --out "$out/profile/default-flags.json" > "$out/logs/profile-default-flags.log" 2>&1 || true
