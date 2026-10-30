@@ -29,7 +29,7 @@ def schema(text):
     pairs=re.findall(r'^      ([A-Za-z_][A-Za-z0-9_-]*):\n(.*?)(?=^      [A-Za-z_][A-Za-z0-9_-]*:|\Z)',block,re.M|re.S)
     assert len(pairs)==len(dict(pairs)), 'duplicate dispatch input'
     rows=dict(pairs)
-    assert set(rows)=={'rendering-input-source','preflight-only','native-input-facility','rendering-successor-input'}, 'closed dispatch keys required'
+    assert set(rows)=={'rendering-input-source','preflight-only','native-input-facility','current-public-at-admission','rendering-successor-input'}, 'closed dispatch keys required'
     result={}
     for key,row in rows.items():
         types=re.findall(r'^        type: (\w+)$',row,re.M);defaults=re.findall(r'^        default: (.+)$',row,re.M)
@@ -37,7 +37,7 @@ def schema(text):
         required=re.findall(r'^        required: (.+)$',row,re.M);assert not required or required==['false']
         options=re.findall(r'^          - (.+)$',row,re.M)
         result[key]=(types[0],defaults[0],options)
-    assert result=={'rendering-input-source':('choice','candidate',['candidate','font-disposal','current-public-composition','palette-heading']),'preflight-only':('boolean','true',[]),'native-input-facility':('string',"''",[]),'rendering-successor-input':('string',"''",[])}, 'safe dispatch defaults/types/options required'
+    assert result=={'rendering-input-source':('choice','candidate',['candidate','font-disposal','current-public-composition','palette-heading']),'preflight-only':('boolean','true',[]),'native-input-facility':('string',"''",[]),'current-public-at-admission':('string',"''",[]),'rendering-successor-input':('string',"''",[])}, 'safe dispatch defaults/types/options required'
     return result
 
 def palette_coordinates(raw):
@@ -75,6 +75,7 @@ def dispatch(text,request,event='workflow_dispatch'):
                 (len(value.encode('utf-8')) <= 65536 if kind=='string' else value in options)), 'dispatch type/choice/bound refused'
         values[key]=value
     assert not values['native-input-facility'] or values['rendering-input-source']=='current-public-composition', 'facility input belongs only to current-public mode'
+    assert not values['current-public-at-admission'] or (values['rendering-input-source']=='current-public-composition' and len(values['current-public-at-admission'].encode('utf-8'))<=256), 'admission belongs only to current-public mode and is bounded'
     if values['rendering-input-source']=='palette-heading':palette_coordinates(values['rendering-successor-input'])
     else:assert not values['rendering-successor-input'], 'successor coordinates belong only to palette mode'
     selected=[]
@@ -100,6 +101,7 @@ def validate_context(text, environment):
     inputs={'rendering-input-source':environment.get('QUALIFICATION_INPUT_SOURCE'),
             'preflight-only':json.loads(environment.get('QUALIFICATION_PREFLIGHT_JSON','null')),
             'native-input-facility':environment.get('QUALIFICATION_NATIVE_INPUT_FACILITY'),
+            'current-public-at-admission':environment.get('QUALIFICATION_CURRENT_PUBLIC_AT_ADMISSION',''),
             'rendering-successor-input':environment.get('QUALIFICATION_SUCCESSOR_INPUT','')}
     return dispatch(text,{'ref':'main','inputs':inputs},event)
 
@@ -108,7 +110,7 @@ def validate(text):
     assert not re.search(r'(contents|actions|packages|id-token): write|secrets:|secrets\.|environment:|continue-on-error|concurrency:',text)
     assert set(jobs(text))=={'static','qualify','qualify-font-disposal','qualify-current-public-composition','qualify-palette-heading'}
     assert re.findall(r'^      - run: (.+)$',jobs(text)['static'],re.M)==['python3 scripts/verify-templates-external-reference-workflow.py'], 'production static entrypoint must validate actual context'
-    for handoff in ['QUALIFICATION_EVENT: ${{ github.event_name }}','QUALIFICATION_INPUT_SOURCE: ${{ inputs.rendering-input-source }}','QUALIFICATION_PREFLIGHT_JSON: ${{ toJSON(inputs.preflight-only) }}','QUALIFICATION_NATIVE_INPUT_FACILITY: ${{ inputs.native-input-facility }}','QUALIFICATION_SUCCESSOR_INPUT: ${{ inputs.rendering-successor-input }}']:
+    for handoff in ['QUALIFICATION_EVENT: ${{ github.event_name }}','QUALIFICATION_INPUT_SOURCE: ${{ inputs.rendering-input-source }}','QUALIFICATION_PREFLIGHT_JSON: ${{ toJSON(inputs.preflight-only) }}','QUALIFICATION_NATIVE_INPUT_FACILITY: ${{ inputs.native-input-facility }}','QUALIFICATION_CURRENT_PUBLIC_AT_ADMISSION: ${{ inputs.current-public-at-admission }}','QUALIFICATION_SUCCESSOR_INPUT: ${{ inputs.rendering-successor-input }}']:
         assert handoff in jobs(text)['static'], 'actual dispatch context handoff required'
     assert re.findall(r'^      - name: Every pinned Templates commit is reachable from Templates main\n        run: (.+)\n        env:\n          GH_TOKEN: \$\{\{ github\.token \}\}\n',jobs(text)['static'],re.M)==['python3 scripts/check-templates-pin-reachability.py'], 'Templates pin reachability step required'
     schema(text)
@@ -119,7 +121,7 @@ def validate(text):
         assert re.findall(r'^      rendering-input-source: (.+)$',body,re.M)==[mode], 'closed receiver subject differs'
         assert '    needs: static\n' in body
         if mode == 'current-public-composition':
-            assert re.findall(r'^      current-public-at-admission: (.+)$', body, re.M) == ["''"], 'current native admission must remain empty'
+            assert re.findall(r'^      current-public-at-admission: (.+)$', body, re.M) == ['${{ inputs.current-public-at-admission }}'], 'exact opaque admission handoff required'
             assert re.findall(r'^      native-input-facility: (.+)$',body,re.M)==['${{ inputs.native-input-facility }}'], 'exact opaque facility handoff required'
         else:
             assert 'native-input-facility:' not in body, 'historical callee cannot receive new facility input'
@@ -157,11 +159,13 @@ def controls(text):
         bad.append(text.replace(HISTORICAL,rejected))
     # Original40172407851 failed eager GHA resolution of this API-readable intermediate pin.
     bad.append(text.replace(FONT_DISPOSAL, '752a2ac1fa996c3235ac0330ffbcefb6b8301cb4'))
-    bad.extend([text.replace(CURRENT_PUBLIC, STALE_CURRENT_PUBLIC_0323), text.replace('@'+CURRENT_PUBLIC, '@'+STALE_CURRENT_PUBLIC_0323), text.replace('templates-source: '+CURRENT_PUBLIC, 'templates-source: '+STALE_CURRENT_PUBLIC_0323), text.replace(CURRENT_PUBLIC, '0'*40), text.replace('@'+CURRENT_PUBLIC, '@main'), text.replace("current-public-at-admission: ''", "current-public-at-admission: selected"), text.replace(" && inputs.rendering-input-source != 'current-public-composition'", ''), text.replace("inputs.rendering-input-source == 'current-public-composition'", "inputs.rendering-input-source != 'current-public-composition'")])
+    bad.extend([text.replace(CURRENT_PUBLIC, STALE_CURRENT_PUBLIC_0323), text.replace('@'+CURRENT_PUBLIC, '@'+STALE_CURRENT_PUBLIC_0323), text.replace('templates-source: '+CURRENT_PUBLIC, 'templates-source: '+STALE_CURRENT_PUBLIC_0323), text.replace(CURRENT_PUBLIC, '0'*40), text.replace('@'+CURRENT_PUBLIC, '@main'), text.replace("current-public-at-admission: ${{ inputs.current-public-at-admission }}", "current-public-at-admission: fixed"), text.replace(" && inputs.rendering-input-source != 'current-public-composition'", ''), text.replace("inputs.rendering-input-source == 'current-public-composition'", "inputs.rendering-input-source != 'current-public-composition'")])
     bad.extend([text.replace(CURRENT_PUBLIC,'59ce6af8b63a816d931e3a2e3f5c1ba890e9427d'),
         text.replace(CURRENT_PUBLIC,'3ececb44da3f8498ac9a295f67a7dffd10964a36'),
         text.replace('native-input-facility: ${{ inputs.native-input-facility }}','native-input-facility: fixed'),
         text.replace("        default: ''","        default: supplied"),
+        text.replace('exact reviewed Noble native-input facility JSON','x').replace('empty keeps it held\n        type: string\n        default: \'\'','empty keeps it held\n        type: string\n        default: supplied'),
+        text.replace('      current-public-at-admission:\n        description: Dispatch-bound','      admission-extra:\n        description: Dispatch-bound'),
         text.replace('          QUALIFICATION_NATIVE_INPUT_FACILITY: ${{ inputs.native-input-facility }}\n','')])
     # Both phases select one immutable receiver; malformed/later-attempt tuples stop in static.
     palette_refusals=0
@@ -192,6 +196,16 @@ def controls(text):
             assert dispatch(text,request)==('qualify-current-public-composition',not phase)
             assert validate_context(text,{'QUALIFICATION_EVENT':'workflow_dispatch','QUALIFICATION_INPUT_SOURCE':'current-public-composition',
                 'QUALIFICATION_PREFLIGHT_JSON':json.dumps(phase),'QUALIFICATION_NATIVE_INPUT_FACILITY':payload})==('qualify-current-public-composition',not phase)
+    admission='fsgg.at-admission/1;notAfter=2026-11-02T12:00:00Z;sha256='+'a'*64
+    admission_cases=0
+    for phase in [False,True]:
+        assert dispatch(text,{'ref':'main','inputs':{'rendering-input-source':'current-public-composition','preflight-only':phase,'current-public-at-admission':admission}})==('qualify-current-public-composition',not phase)
+        assert validate_context(text,{'QUALIFICATION_EVENT':'workflow_dispatch','QUALIFICATION_INPUT_SOURCE':'current-public-composition','QUALIFICATION_PREFLIGHT_JSON':json.dumps(phase),'QUALIFICATION_NATIVE_INPUT_FACILITY':'','QUALIFICATION_CURRENT_PUBLIC_AT_ADMISSION':admission})==('qualify-current-public-composition',not phase)
+        admission_cases+=2
+    for mode,payload in [('candidate',admission),('font-disposal',admission),('palette-heading',admission),('current-public-composition','x'*257),('current-public-composition','é'*129),('current-public-composition',True),('current-public-composition',None)]:
+        try:dispatch(text,{'ref':'main','inputs':{'rendering-input-source':mode,'current-public-at-admission':payload,**({'rendering-successor-input':palette_fixture()} if mode=='palette-heading' else {})}})
+        except AssertionError:admission_cases+=1
+        else:raise AssertionError('invalid admission boundary accepted')
     native_refusals=0
     for mode,payload in [('candidate','{}'),('font-disposal','{}'),('current-public-composition',True),
                          ('current-public-composition',{}),('current-public-composition',None),
@@ -224,12 +238,12 @@ def controls(text):
     try:validate_context(text,{'QUALIFICATION_EVENT':'workflow_dispatch','QUALIFICATION_INPUT_SOURCE':'current-public-composition','QUALIFICATION_PREFLIGHT_JSON':'true'})
     except AssertionError:pass
     else:raise AssertionError('missing actual facility context became default')
-    for key in ['QUALIFICATION_EVENT','QUALIFICATION_INPUT_SOURCE','QUALIFICATION_PREFLIGHT_JSON','QUALIFICATION_NATIVE_INPUT_FACILITY','QUALIFICATION_SUCCESSOR_INPUT']:
+    for key in ['QUALIFICATION_EVENT','QUALIFICATION_INPUT_SOURCE','QUALIFICATION_PREFLIGHT_JSON','QUALIFICATION_NATIVE_INPUT_FACILITY','QUALIFICATION_CURRENT_PUBLIC_AT_ADMISSION','QUALIFICATION_SUCCESSOR_INPUT']:
         mutation=re.sub(r'^          '+key+r':.*\n','',text,flags=re.M)
         try:validate(mutation)
         except AssertionError:pass
         else:raise AssertionError('missing context handoff accepted')
-    print(f'PASS actual dispatch schema/defaults, eight finite subject/phase branches, PR refusal, {len(bad)+9} caller/request refusals and 12 actual-context/handoff refusals; {native_refusals} facility type/UTF8/scope refusals; {palette_refusals} malformed/attempt/scope palette refusals')
+    print(f'PASS actual dispatch schema/defaults, eight finite subject/phase branches, PR refusal, {len(bad)+9} caller/request refusals and 12 actual-context/handoff refusals; {native_refusals} facility type/UTF8/scope refusals; {palette_refusals} malformed/attempt/scope palette refusals; {admission_cases} admission scope/bound/handoff controls')
 
 if __name__=='__main__':
     assert sys.argv[1:] in [[],['--self-test']], 'unknown verifier option'
