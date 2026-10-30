@@ -25,6 +25,10 @@ on:
         description: Exact reviewed Noble native-input facility JSON; empty supplies no pins or admission
         type: string
         default: ''
+      current-public-at-admission:
+        description: Dispatch-bound admission string for the full current-public AT run (issued by current-reference-at-admission.py); empty keeps it held
+        type: string
+        default: ''
       preflight-only:
         description: Verify original archive transport only; false runs the selected complete receiver qualification
         type: boolean
@@ -50,6 +54,7 @@ jobs:
           QUALIFICATION_INPUT_SOURCE: ${{ inputs.rendering-input-source }}
           QUALIFICATION_PREFLIGHT_JSON: ${{ toJSON(inputs.preflight-only) }}
           QUALIFICATION_NATIVE_INPUT_FACILITY: ${{ inputs.native-input-facility }}
+          QUALIFICATION_CURRENT_PUBLIC_AT_ADMISSION: ${{ inputs.current-public-at-admission }}
           QUALIFICATION_SUCCESSOR_INPUT: ${{ inputs.rendering-successor-input }}
       - name: Every pinned Templates commit is reachable from Templates main
         run: python3 scripts/check-templates-pin-reachability.py
@@ -86,7 +91,7 @@ jobs:
     with:
       templates-source: d867ea9216118dc649ce52be6c9bcecdfb46e4e3
       rendering-input-source: current-public-composition
-      current-public-at-admission: ''
+      current-public-at-admission: ${{ inputs.current-public-at-admission }}
       native-input-facility: ${{ inputs.native-input-facility }}
       preflight-only: ${{ inputs.preflight-only }}
   # Original producer remains the separately qualified4ede source; caller/executor may advance.
