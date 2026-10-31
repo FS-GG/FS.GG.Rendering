@@ -64,6 +64,22 @@ type SvgBrowserObservation =
         ScheduledFrameCount: int
     }
 
+/// The scene-derived half of retained interaction synchronization, computed in one pass per synchronization.
+module internal InteractionSync =
+    type Projection =
+        {
+            /// Selectable objects of every layer by identity; the first selectable object wins an identity.
+            Selectable: System.Collections.Generic.Dictionary<string, SemanticSceneObject>
+            /// Selectable objects of visible layers, in layer then object order: the HTML control order.
+            Controls: SemanticSceneObject list
+            /// The accessible label of the selected selectable object, or "No object selected".
+            SelectedLabel: string
+            /// Scene objects examined to build this projection (an operation count, not a time).
+            ObjectsVisited: int
+        }
+
+    val project: state: RetainedInteractionState -> Projection
+
 /// A mounted retained SVG root. All state changes pass through the portable reducer.
 [<Sealed>]
 type SvgBrowserHost =

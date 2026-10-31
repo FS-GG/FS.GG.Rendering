@@ -9,6 +9,7 @@
     <Compile Include="ExternalSessionPolicyTests.fs" />
     <Compile Include="ExternalSessionModelCorrespondenceTests.fs" />
     <Compile Include="PolicyTests.fs" />
+    <Compile Include="InteractionSyncTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>

@@ -72,7 +72,10 @@ module private Dom =
     // Reconcile by stable exported IDs/node paths. Attribute/text changes update in place;
     // Aligned key/tag sequences synchronize without moving children or searching sibling arrays.
     // Structural changes retain keyed matching/order; only incompatible nodes are cloned.
-    [<Emit("(function sync(a,b){const key=n=>n.getAttribute?.('data-fsgg-element-id')||n.getAttribute?.('data-fsgg-node')||n.id||null;for(const n of Array.from(a.getAttributeNames()))if(!b.hasAttribute(n))a.removeAttribute(n);for(const n of Array.from(b.getAttributeNames()))if(a.getAttribute(n)!==b.getAttribute(n))a.setAttribute(n,b.getAttribute(n));const ac=Array.from(a.children),bc=Array.from(b.children),used=new Set();if(bc.length===0){if(ac.length!==0||a.textContent!==b.textContent)a.textContent=b.textContent;return a;}if(ac.length===bc.length&&ac.every((x,i)=>key(x)===key(bc[i])&&x.tagName===bc[i].tagName)){for(let i=0;i<bc.length;i++)sync(ac[i],bc[i]);return a;}for(let i=0;i<bc.length;i++){const c=bc[i],k=key(c);let m=k?ac.find(x=>!used.has(x)&&key(x)===k&&x.tagName===c.tagName):ac.find((x,j)=>!used.has(x)&&!key(x)&&x.tagName===c.tagName&&j===i);if(m){used.add(m);sync(m,c);a.appendChild(m);}else a.appendChild(c.cloneNode(true));}for(const x of ac)if(!used.has(x)&&x.parentNode===a)x.remove();return a;})($0,$1)")>]
+    // Each existing child's key is computed once and indexed by key then tag, so matching a
+    // candidate child is a map lookup that takes the first unused existing child, as the earlier
+    // linear search did (Rendering#1497).
+    [<Emit("(function sync(a,b){const key=n=>n.getAttribute?.('data-fsgg-element-id')||n.getAttribute?.('data-fsgg-node')||n.id||null;for(const n of Array.from(a.getAttributeNames()))if(!b.hasAttribute(n))a.removeAttribute(n);for(const n of Array.from(b.getAttributeNames()))if(a.getAttribute(n)!==b.getAttribute(n))a.setAttribute(n,b.getAttribute(n));const ac=Array.from(a.children),bc=Array.from(b.children),used=new Set();if(bc.length===0){if(ac.length!==0||a.textContent!==b.textContent)a.textContent=b.textContent;return a;}const ak=ac.map(key),bk=bc.map(key);if(ac.length===bc.length&&ac.every((x,i)=>ak[i]===bk[i]&&x.tagName===bc[i].tagName)){for(let i=0;i<bc.length;i++)sync(ac[i],bc[i]);return a;}const byKey=new Map();ac.forEach((x,j)=>{const k=ak[j];if(!k)return;let tags=byKey.get(k);if(!tags){tags=new Map();byKey.set(k,tags);}let q=tags.get(x.tagName);if(!q){q={items:[],next:0};tags.set(x.tagName,q);}q.items.push(x);});for(let i=0;i<bc.length;i++){const c=bc[i],k=bk[i];let m;if(k){const q=byKey.get(k)?.get(c.tagName);m=q&&q.next<q.items.length?q.items[q.next++]:undefined;}else m=!ak[i]&&ac[i]&&ac[i].tagName===c.tagName&&!used.has(ac[i])?ac[i]:undefined;if(m){used.add(m);sync(m,c);a.appendChild(m);}else a.appendChild(c.cloneNode(true));}for(const x of ac)if(!used.has(x)&&x.parentNode===a)x.remove();return a;})($0,$1)")>]
     let reconcileSvg (_existing: Element) (_candidate: Element) : Element = jsNative
 
     [<Emit("(function(family,source){const url=new URL(source,document.baseURI).href;const entries=performance.getEntriesByName(url);const loaded=entries.some(e=>(e.responseStatus===200)||(e.transferSize>0)||(e.decodedBodySize>0));return loaded&&document.fonts.check('16px '+JSON.stringify(family));})($0,$1)")>]
@@ -458,6 +461,50 @@ type SvgDocumentBrowserHost
                 DocumentRegistry.activeNamespaces.Remove mountNamespace |> ignore
                 disposed <- true
 
+/// The scene-derived half of retained interaction synchronization. It is computed in one pass over the
+/// scene per synchronization so that the DOM-applying code never searches the scene by identity.
+module internal InteractionSync =
+    type Projection =
+        {
+            /// Selectable objects of every layer by identity; the first selectable object wins an identity.
+            Selectable: Dictionary<string, SemanticSceneObject>
+            /// Selectable objects of visible layers, in layer then object order: the HTML control order.
+            Controls: SemanticSceneObject list
+            /// The accessible label of the selected selectable object.
+            SelectedLabel: string
+            /// Scene objects examined to build this projection (an operation count, not a time).
+            ObjectsVisited: int
+        }
+
+    let project (state: RetainedInteractionState) : Projection =
+        let selectable = Dictionary<string, SemanticSceneObject>()
+        let controls = ResizeArray<SemanticSceneObject>()
+        let mutable visited = 0
+
+        for layer in state.Scene.Layers do
+            for value in layer.Objects do
+                visited <- visited + 1
+
+                if value.Selectable then
+                    if not (selectable.ContainsKey value.Id) then
+                        selectable[value.Id] <- value
+
+                    if layer.Visible then
+                        controls.Add value
+
+        {
+            Selectable = selectable
+            Controls = List.ofSeq controls
+            SelectedLabel =
+                match state.SelectedObjectId with
+                | Some id ->
+                    match selectable.TryGetValue id with
+                    | true, value -> value.AccessibleLabel
+                    | _ -> "No object selected"
+                | None -> "No object selected"
+            ObjectsVisited = visited
+        }
+
 [<Sealed>]
 type SvgBrowserHost
     internal
@@ -487,24 +534,25 @@ type SvgBrowserHost
         |> List.tryFind (fun candidate -> candidate.Id = id && candidate.Selectable)
 
     let syncInteraction () =
+        // One scene pass per synchronization; everything below reads the projection by identity.
+        let projection = InteractionSync.project state
+
         for KeyValue(id, element) in objects do
-            match selectableObject id with
-            | Some value ->
+            match projection.Selectable.TryGetValue id with
+            | true, value ->
                 Dom.set "aria-label" value.AccessibleLabel element
                 Dom.set "data-selected" (if state.SelectedObjectId = Some id then "true" else "false") element
                 Dom.set "data-focused" (if state.FocusedObjectId = Some id then "true" else "false") element
-            | None ->
+            | _ ->
                 element.removeAttribute ("aria-label")
                 element.removeAttribute ("data-selected")
                 element.removeAttribute ("data-focused")
 
-        let selectable =
-            state.Scene.Layers
-            |> List.filter (fun layer -> layer.Visible)
-            |> List.collect (fun layer -> layer.Objects)
-            |> List.filter (fun value -> value.Selectable)
+        let selectable = projection.Controls
+        let wanted = HashSet<string>()
 
-        let wanted = selectable |> List.map _.Id |> Set.ofList
+        for value in selectable do
+            wanted.Add value.Id |> ignore
 
         for id in controlButtons.Keys |> Seq.toArray do
             if not (wanted.Contains id) then
@@ -537,13 +585,7 @@ type SvgBrowserHost
 
         Dom.orderControls controls status (orderedControls.ToArray())
 
-        let selectedLabel =
-            state.SelectedObjectId
-            |> Option.bind selectableObject
-            |> Option.map _.AccessibleLabel
-            |> Option.defaultValue "No object selected"
-
-        Dom.setText selectedLabel status
+        Dom.setText projection.SelectedLabel status
 
     let reconcileScene () =
         Dom.set "id" state.Scene.RootId root
