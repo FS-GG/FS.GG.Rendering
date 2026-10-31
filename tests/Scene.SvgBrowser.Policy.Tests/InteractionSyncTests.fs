@@ -151,6 +151,38 @@ let tests =
                 Expect.equal projection.ObjectsVisited 6 "every scene object is examined once"
             }
 
+            test "with a duplicate identity the first selectable object wins, as the scanning lookup did" {
+                // Built directly: the reducer refuses duplicate identities, but the projection must not depend on that.
+                let withLabel id selectable label = { objectValue id selectable with AccessibleLabel = label }
+
+                let scene : RetainedScene =
+                    {
+                        RootId = "root"
+                        Revision = 1
+                        Camera = camera
+                        Layers =
+                            [
+                                layer "a" true [ withLabel "dup" false "unselectable first"; withLabel "dup" true "selectable first" ]
+                                layer "b" true [ withLabel "dup" true "selectable second" ]
+                            ]
+                    }
+
+                let state : RetainedInteractionState =
+                    {
+                        Scene = scene
+                        SelectedObjectId = Some "dup"
+                        FocusedObjectId = None
+                        CapturedPointerId = None
+                    }
+
+                let projection = InteractionSync.project state
+                Expect.equal (projection.Selectable.["dup"]).AccessibleLabel "selectable first" "first selectable wins the identity"
+                Expect.equal projection.SelectedLabel "selectable first" "status names the first selectable"
+                Expect.equal (projection.Controls |> List.map _.AccessibleLabel) [ "selectable first"; "selectable second" ] "every selectable gets a control"
+                let oracleObjects, _, _ = scanningOracle state (ref 0)
+                Expect.equal (oracleObjects |> List.map snd |> List.distinct) [ Some "selectable first" ] "the scanning lookup agrees"
+            }
+
             test "projection examines each scene object once: operations are linear in the object count" {
                 let counts = [ 400; 800; 1600 ]
 

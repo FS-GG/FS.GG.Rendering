@@ -107,6 +107,21 @@ let tests =
                 Expect.isTrue (classify rebuilt renamedState).Scene "new root identity"
             }
 
+            test "a changed layer list invalidates the scene even when root and revision are unchanged" {
+                let before = start 8
+                // Built directly: the reducer always advances the revision with a new layer list, so only the
+                // layer-list reference comparison can detect this.
+                let after = { before with Scene = { before.Scene with Layers = layers 9 } }
+                Expect.equal (classify before after) { Scene = true; Camera = false; Interaction = false } "new layer list, same revision"
+            }
+
+            test "a shared layer list with a changed revision still invalidates the scene" {
+                let before = start 8
+                let after = { before with Scene = { before.Scene with Revision = before.Scene.Revision + 1 } }
+                Expect.isTrue (obj.ReferenceEquals(before.Scene.Layers, after.Scene.Layers)) "layer list is shared"
+                Expect.equal (classify before after) { Scene = true; Camera = false; Interaction = false } "revision only"
+            }
+
             test "a camera pan reconciles no scene objects while a scene replacement reconciles all of them" {
                 // The operation count that the host acts on: objects reconciled per transition.
                 let counts = [ 100; 400; 1600 ]
