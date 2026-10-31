@@ -505,6 +505,58 @@ module internal InteractionSync =
             ObjectsVisited = visited
         }
 
+/// What a retained-host transition invalidates. The host caches DOM per layer, object and control and
+/// reconciles only the parts a transition can change (Rendering#1498).
+module internal Invalidation =
+    type Dependencies =
+        {
+            /// Root identity, scene revision or the layer/object structure changed: the whole retained
+            /// DOM is reconciled (which also applies the camera and interaction state).
+            Scene: bool
+            /// Only the camera differs: the viewport transform is the one DOM write.
+            Camera: bool
+            /// Selection or focus differs: object, control and status projections are synchronized.
+            Interaction: bool
+        }
+
+    /// Classify an accepted transition. The layer list is compared by reference: the reducer replaces it
+    /// only through ReplaceScene (which also advances the revision) and every other message keeps it.
+    let classify (before: RetainedInteractionState) (after: RetainedInteractionState) : Dependencies =
+        {
+            Scene =
+                before.Scene.RootId <> after.Scene.RootId
+                || before.Scene.Revision <> after.Scene.Revision
+                || not (obj.ReferenceEquals(before.Scene.Layers, after.Scene.Layers))
+            Camera = before.Scene.Camera <> after.Scene.Camera
+            Interaction =
+                before.SelectedObjectId <> after.SelectedObjectId
+                || before.FocusedObjectId <> after.FocusedObjectId
+        }
+
+/// Mapping between browser client coordinates and local SVG screen coordinates for one measured frame.
+/// A caller reads the element's bounds once per input event and applies the same frame to every conversion
+/// in that event, instead of re-measuring (which can force layout) per conversion.
+module internal PointerMapping =
+    type Frame =
+        {
+            Left: float
+            Top: float
+            Width: float
+            Height: float
+        }
+
+    let toLocal (frame: Frame) (options: SvgBrowserOptions) (clientX: float) (clientY: float) : Point =
+        {
+            X = (clientX - frame.Left) * options.Width / max 1.0 frame.Width
+            Y = (clientY - frame.Top) * options.Height / max 1.0 frame.Height
+        }
+
+    let toClientX (frame: Frame) (options: SvgBrowserOptions) (screenX: float) =
+        frame.Left + screenX * frame.Width / options.Width
+
+    let toClientY (frame: Frame) (options: SvgBrowserOptions) (screenY: float) =
+        frame.Top + screenY * frame.Height / options.Height
+
 [<Sealed>]
 type SvgBrowserHost
     internal
@@ -517,6 +569,12 @@ type SvgBrowserHost
         onTransition: RetainedInteractionResult -> unit
     ) =
 
+    // Caches owned by this host, each cleared on disposal. A cached entry is valid while the key's dependencies
+    // are unchanged; `Invalidation.classify` decides which of them a transition can have changed.
+    //   layers        layer id  -> its <g>                  depends on the layer list (scene change)
+    //   objects       object id -> its <g>                  depends on the object list (scene change)
+    //   objectValues  object id -> last rendered value      render is skipped while Content is unchanged
+    //   controlButtons object id -> its HTML control        depends on scene, selection and visibility
     let layers = Dictionary<string, Element>()
     let objects = Dictionary<string, Element>()
     let objectValues = Dictionary<string, SemanticSceneObject>()
@@ -587,16 +645,19 @@ type SvgBrowserHost
 
         Dom.setText projection.SelectedLabel status
 
-    let reconcileScene () =
-        Dom.set "id" state.Scene.RootId root
-        Dom.set "data-scene-root-id" state.Scene.RootId root
-        Dom.set "data-scene-revision" (string state.Scene.Revision) root
+    let syncCamera () =
         let camera = state.Scene.Camera
 
         Dom.set
             "transform"
             $"translate({Format.number camera.PanX} {Format.number camera.PanY}) scale({Format.number camera.Zoom})"
             viewport
+
+    let reconcileScene () =
+        Dom.set "id" state.Scene.RootId root
+        Dom.set "data-scene-root-id" state.Scene.RootId root
+        Dom.set "data-scene-revision" (string state.Scene.Revision) root
+        syncCamera ()
 
         let wantedLayers =
             state.Scene.Layers |> List.map (fun layer -> layer.Id) |> Set.ofList
@@ -670,23 +731,44 @@ type SvgBrowserHost
         if disposed then
             invalidOp "The SVG browser host is disposed."
 
+        let before = state
         let result = SvgRetained.update message state
         state <- result.State
 
         if result.Error.IsNone then
-            reconcileScene ()
+            let dependencies = Invalidation.classify before state
+
+            if dependencies.Scene then
+                reconcileScene ()
+            else
+                if dependencies.Camera then
+                    syncCamera ()
+
+                if dependencies.Interaction then
+                    syncInteraction ()
         else
             syncInteraction ()
 
         onTransition result
         result
 
-    let hitTest screenPoint =
+    let measure () : PointerMapping.Frame =
+        let bounds = root.getBoundingClientRect ()
+
+        {
+            Left = bounds.left
+            Top = bounds.top
+            Width = bounds.width
+            Height = bounds.height
+        }
+
+    // `frame` is evaluated only when the camera admits the point, so an invalid camera measures nothing.
+    let hitTestIn (frame: unit -> PointerMapping.Frame) screenPoint =
         SvgRetained.tryToScenePoint state.Scene.Camera screenPoint
         |> Option.bind (fun scenePoint ->
-            let bounds = root.getBoundingClientRect ()
-            let clientX = bounds.left + screenPoint.X * bounds.width / options.Width
-            let clientY = bounds.top + screenPoint.Y * bounds.height / options.Height
+            let frame = frame ()
+            let clientX = PointerMapping.toClientX frame options screenPoint.X
+            let clientY = PointerMapping.toClientY frame options screenPoint.Y
 
             match
                 Dom.objectIdAtClientPoint clientX clientY
@@ -695,13 +777,10 @@ type SvgBrowserHost
             | Some id -> Some id
             | None -> None)
 
-    let localPoint (pointer: PointerEvent) =
-        let bounds = root.getBoundingClientRect ()
+    let hitTest screenPoint = hitTestIn measure screenPoint
 
-        {
-            X = (pointer.clientX - bounds.left) * options.Width / max 1.0 bounds.width
-            Y = (pointer.clientY - bounds.top) * options.Height / max 1.0 bounds.height
-        }
+    let localPoint (frame: PointerMapping.Frame) (pointer: PointerEvent) =
+        PointerMapping.toLocal frame options pointer.clientX pointer.clientY
 
     let addListener (target: EventTarget) name handler =
         target.addEventListener (name, handler)
@@ -713,14 +792,16 @@ type SvgBrowserHost
         let pointerDown (event: Event) =
             let pointer = event :?> PointerEvent
             let pointerId = int pointer.pointerId
-            let point = localPoint pointer
+            // One measurement serves the whole gesture start: the local point and the hit test.
+            let frame = measure ()
+            let point = localPoint frame pointer
             lastPointer <- Some point
             Dom.capturePointer root pointerId
 
             apply (RetainedInteractionMessage.CapturePointer(state.Scene.Revision, pointerId))
             |> ignore
 
-            match hitTest point with
+            match hitTestIn (fun () -> frame) point with
             | Some id -> apply (RetainedInteractionMessage.Select(state.Scene.Revision, id)) |> ignore
             | None -> ()
 
@@ -731,7 +812,7 @@ type SvgBrowserHost
             let pointerId = int pointer.pointerId
 
             if state.CapturedPointerId = Some pointerId then
-                let point = localPoint pointer
+                let point = localPoint (measure ()) pointer
 
                 match lastPointer with
                 | Some previous ->
@@ -830,12 +911,7 @@ type SvgBrowserHost
             let value = event :?> WheelEvent
 
             let anchor =
-                let bounds = root.getBoundingClientRect ()
-
-                {
-                    X = (value.clientX - bounds.left) * options.Width / max 1.0 bounds.width
-                    Y = (value.clientY - bounds.top) * options.Height / max 1.0 bounds.height
-                }
+                PointerMapping.toLocal (measure ()) options value.clientX value.clientY
 
             let factor =
                 if value.deltaY < 0.0 then
@@ -948,6 +1024,11 @@ type SvgBrowserHost
                 if controls.parentNode = container then
                     container.removeChild (controls) |> ignore
 
+                // The caches own references to the detached DOM; release them with the host.
+                layers.Clear()
+                objects.Clear()
+                objectValues.Clear()
+                controlButtons.Clear()
                 disposed <- true
                 lastPointer <- None
 

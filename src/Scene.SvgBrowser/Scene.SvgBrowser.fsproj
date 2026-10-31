@@ -54,7 +54,7 @@
     <None Include="noto-sans-latin-400-normal.woff2.base64" Pack="true" PackagePath="contentFiles/any/any/noto-sans-latin-400-normal.woff2.base64" />
   </ItemGroup>
   <ItemGroup>
-    <!-- Rendering#1497: the policy test assembly reaches the internal InteractionSync projection. -->
+    <!-- Rendering#1497, #1498: the policy test assembly reaches the internal InteractionSync, Invalidation and PointerMapping modules. -->
     <InternalsVisibleTo Include="Scene.SvgBrowser.Policy.Tests" />
   </ItemGroup>
   <ItemGroup>

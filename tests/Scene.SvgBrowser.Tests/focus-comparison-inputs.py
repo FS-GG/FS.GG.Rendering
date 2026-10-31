@@ -2,7 +2,7 @@
 import hashlib,json,os,pathlib,re,subprocess,sys,zipfile
 BASE='f3eb5abb117042144a1cbb41a5ec43821642df74'
 SOURCE='src/Scene.SvgBrowser/SvgBrowser.fs'
-EXPECTED={'original':'e32cfb1f8c9683a4fddd158bba604ad825ef4c54a3b0f61d10b9902bde100cb0','candidate':'dd902ba6f12b1501362b442c4765bdd33e169c3577e2e8a989d6c83b940ae8df'}
+EXPECTED={'original':'e32cfb1f8c9683a4fddd158bba604ad825ef4c54a3b0f61d10b9902bde100cb0','candidate':'9c57832619d932106859ef9651976ce218c3b862e0ecd0e1516d308729c5d891'}
 def require(value,cause):
  if not value:raise RuntimeError(cause)
 def digest(body):return hashlib.sha256(body).hexdigest()

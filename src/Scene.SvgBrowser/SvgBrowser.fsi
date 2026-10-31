@@ -79,6 +79,33 @@ module internal InteractionSync =
         }
 
     val project: state: RetainedInteractionState -> Projection
+/// What a retained-host transition invalidates, so the host reconciles only the DOM it can have changed.
+module internal Invalidation =
+    type Dependencies =
+        {
+            /// Root identity, scene revision or the layer/object structure changed.
+            Scene: bool
+            /// Only the camera differs.
+            Camera: bool
+            /// Selection or focus differs.
+            Interaction: bool
+        }
+
+    val classify: before: RetainedInteractionState -> after: RetainedInteractionState -> Dependencies
+
+/// Mapping between browser client coordinates and local SVG screen coordinates for one measured frame.
+module internal PointerMapping =
+    type Frame =
+        {
+            Left: float
+            Top: float
+            Width: float
+            Height: float
+        }
+
+    val toLocal: frame: Frame -> options: SvgBrowserOptions -> clientX: float -> clientY: float -> Point
+    val toClientX: frame: Frame -> options: SvgBrowserOptions -> screenX: float -> float
+    val toClientY: frame: Frame -> options: SvgBrowserOptions -> screenY: float -> float
 
 /// A mounted retained SVG root. All state changes pass through the portable reducer.
 [<Sealed>]
