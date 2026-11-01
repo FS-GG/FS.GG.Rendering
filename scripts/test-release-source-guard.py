@@ -1009,7 +1009,7 @@ class SourceSdkInstallationRootTests(unittest.TestCase):
                 scripts.append(self.preparation(name))
         self.assertEqual(1, len(set(scripts)))
         # Installation isolation must not rewrite the developer's roll-forward policy.
-        self.assertEqual({'version':'10.0.401','rollForward':'latestFeature','allowPrerelease':False}, json.loads((ROOT/'global.json').read_text())['sdk'])
+        self.assertEqual({'version':'10.0.403','rollForward':'latestFeature','allowPrerelease':False}, json.loads((ROOT/'global.json').read_text())['sdk'])
 
     def test_actual_preparation_allows_fresh_root_and_refuses_occupied_or_wrong_roots_before_installer(self):
         for name in self.JOBS:
