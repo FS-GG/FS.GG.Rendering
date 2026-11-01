@@ -79,16 +79,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          root="${RUNNER_TEMP:?}/settlement-dotnet-10.0.401"
+          root="${RUNNER_TEMP:?}/settlement-dotnet-10.0.403"
           [[ "$RUNNER_TEMP" == /* && "$RUNNER_TEMP" != / && "$(realpath -e -- "$RUNNER_TEMP")" == "$RUNNER_TEMP" && ! -e "$root" && ! -L "$root" ]] || exit 3
           printf 'DOTNET_INSTALL_DIR=%s\n' "$root" >> "$GITHUB_ENV"
       - uses: actions/setup-dotnet@v6
         if: steps.subject.outputs.typed-qualification == 'true'
         with:
-          dotnet-version: '10.0.401'
+          dotnet-version: '10.0.403'
       - name: Verify selected qualification interpreter
         if: steps.subject.outputs.typed-qualification == 'true'
-        run: python3 scripts/release-toolchain-identity.py --expected-sdk 10.0.401 --receipt artifacts/tag-settlement/toolchain.json
+        run: python3 scripts/release-toolchain-identity.py --expected-sdk 10.0.403 --receipt artifacts/tag-settlement/toolchain.json
       - name: Check maintained settlement controls before credentials
         run: timeout --kill-after=5s 60s python3 scripts/test-settle-original-tags.py
       - name: Retain exact root admission and original authenticated artifacts

@@ -164,20 +164,20 @@ jobs:
         if: inputs.version == '0.32.4'
         shell: bash
         env:
-          DOTNET_INSTALL_DIR: ${{ runner.temp }}/rendering-selected-source-dotnet-10.0.401
+          DOTNET_INSTALL_DIR: ${{ runner.temp }}/rendering-selected-source-dotnet-10.0.403
         run: |
           set -euo pipefail
-          expected="${RUNNER_TEMP:?}/rendering-selected-source-dotnet-10.0.401"
+          expected="${RUNNER_TEMP:?}/rendering-selected-source-dotnet-10.0.403"
           [[ "$RUNNER_TEMP" == /* && "$RUNNER_TEMP" != / && "$RUNNER_TEMP" != */ && "$(realpath -e -- "$RUNNER_TEMP")" == "$RUNNER_TEMP" ]] || { echo '::error::selected source SDK parent must be canonical runner temp'; exit 1; }
           [[ "${DOTNET_INSTALL_DIR:-}" == "$expected" && ! -e "$expected" && ! -L "$expected" ]] || { echo '::error::selected source SDK root must be selected and absent'; exit 1; }
           printf 'DOTNET_INSTALL_DIR=%s\n' "$expected" >> "$GITHUB_ENV"
       - uses: actions/setup-dotnet@v6
         if: inputs.version == '0.32.4'
         with:
-          dotnet-version: '10.0.401'
+          dotnet-version: '10.0.403'
       - name: Verify selected-successor interpreter SDK
         if: inputs.version == '0.32.4'
-        run: python3 scripts/release-toolchain-identity.py --expected-sdk 10.0.401 --receipt artifacts/toolchain/selected-source.json
+        run: python3 scripts/release-toolchain-identity.py --expected-sdk 10.0.403 --receipt artifacts/toolchain/selected-source.json
       - name: Refuse wrong source, axes, roster, delivered surface, or SDK before costly jobs
         id: source-plan
         env:
@@ -310,19 +310,19 @@ jobs:
         if: inputs.source-only || inputs.font-disposal-attempt || inputs.retained-successor
         shell: bash
         env:
-          DOTNET_INSTALL_DIR: ${{ runner.temp }}/rendering-source-dotnet-10.0.401
+          DOTNET_INSTALL_DIR: ${{ runner.temp }}/rendering-source-dotnet-10.0.403
         run: |
           set -euo pipefail
-          expected="${RUNNER_TEMP:?}/rendering-source-dotnet-10.0.401"
+          expected="${RUNNER_TEMP:?}/rendering-source-dotnet-10.0.403"
           [[ "$RUNNER_TEMP" == /* && "$RUNNER_TEMP" != / && "$RUNNER_TEMP" != */ && "$(realpath -e -- "$RUNNER_TEMP")" == "$RUNNER_TEMP" ]] || { echo '::error::source SDK parent must be an existing canonical runner temp directory'; exit 1; }
           [[ "${DOTNET_INSTALL_DIR:-}" == "$expected" && ! -e "$expected" && ! -L "$expected" ]] || { echo '::error::source SDK root must be the selected absent runner-private directory'; exit 1; }
           # GITHUB_ENV applies this verified root to setup-dotnet and later steps.
           printf 'DOTNET_INSTALL_DIR=%s\n' "$expected" >> "$GITHUB_ENV"
       - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: '10.0.401'
+          dotnet-version: '10.0.403'
       - name: Verify loaded SDK and F# identity
-        run: python3 scripts/release-toolchain-identity.py --expected-sdk 10.0.401 --receipt artifacts/toolchain/${{ github.job }}.json
+        run: python3 scripts/release-toolchain-identity.py --expected-sdk 10.0.403 --receipt artifacts/toolchain/${{ github.job }}.json
       - name: Retain loaded release toolchain identity
         uses: actions/upload-artifact@v7
         with:
@@ -416,19 +416,19 @@ jobs:
         if: inputs.source-only || inputs.font-disposal-attempt || inputs.retained-successor
         shell: bash
         env:
-          DOTNET_INSTALL_DIR: ${{ runner.temp }}/rendering-source-dotnet-10.0.401
+          DOTNET_INSTALL_DIR: ${{ runner.temp }}/rendering-source-dotnet-10.0.403
         run: |
           set -euo pipefail
-          expected="${RUNNER_TEMP:?}/rendering-source-dotnet-10.0.401"
+          expected="${RUNNER_TEMP:?}/rendering-source-dotnet-10.0.403"
           [[ "$RUNNER_TEMP" == /* && "$RUNNER_TEMP" != / && "$RUNNER_TEMP" != */ && "$(realpath -e -- "$RUNNER_TEMP")" == "$RUNNER_TEMP" ]] || { echo '::error::source SDK parent must be an existing canonical runner temp directory'; exit 1; }
           [[ "${DOTNET_INSTALL_DIR:-}" == "$expected" && ! -e "$expected" && ! -L "$expected" ]] || { echo '::error::source SDK root must be the selected absent runner-private directory'; exit 1; }
           # GITHUB_ENV applies this verified root to setup-dotnet and later steps.
           printf 'DOTNET_INSTALL_DIR=%s\n' "$expected" >> "$GITHUB_ENV"
       - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: '10.0.401'
+          dotnet-version: '10.0.403'
       - name: Verify loaded SDK and F# identity
-        run: python3 scripts/release-toolchain-identity.py --expected-sdk 10.0.401 --receipt artifacts/toolchain/${{ github.job }}.json
+        run: python3 scripts/release-toolchain-identity.py --expected-sdk 10.0.403 --receipt artifacts/toolchain/${{ github.job }}.json
       - name: Retain loaded release toolchain identity
         uses: actions/upload-artifact@v7
         with:
@@ -555,19 +555,19 @@ jobs:
         if: inputs.source-only
         shell: bash
         env:
-          DOTNET_INSTALL_DIR: ${{ runner.temp }}/rendering-source-dotnet-10.0.401
+          DOTNET_INSTALL_DIR: ${{ runner.temp }}/rendering-source-dotnet-10.0.403
         run: |
           set -euo pipefail
-          expected="${RUNNER_TEMP:?}/rendering-source-dotnet-10.0.401"
+          expected="${RUNNER_TEMP:?}/rendering-source-dotnet-10.0.403"
           [[ "$RUNNER_TEMP" == /* && "$RUNNER_TEMP" != / && "$RUNNER_TEMP" != */ && "$(realpath -e -- "$RUNNER_TEMP")" == "$RUNNER_TEMP" ]] || { echo '::error::source SDK parent must be an existing canonical runner temp directory'; exit 1; }
           [[ "${DOTNET_INSTALL_DIR:-}" == "$expected" && ! -e "$expected" && ! -L "$expected" ]] || { echo '::error::source SDK root must be the selected absent runner-private directory'; exit 1; }
           # GITHUB_ENV applies this verified root to setup-dotnet and later steps.
           printf 'DOTNET_INSTALL_DIR=%s\n' "$expected" >> "$GITHUB_ENV"
       - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: '10.0.401'
+          dotnet-version: '10.0.403'
       - name: Verify loaded SDK and F# identity
-        run: python3 scripts/release-toolchain-identity.py --expected-sdk 10.0.401 --receipt artifacts/toolchain/source-package-custody.json
+        run: python3 scripts/release-toolchain-identity.py --expected-sdk 10.0.403 --receipt artifacts/toolchain/source-package-custody.json
       - uses: actions/upload-artifact@v7
         with:
           name: rendering-source-toolchain-${{ github.sha }}
@@ -600,7 +600,7 @@ jobs:
           SVG_SCENE_ORIGINAL_CANDIDATE_DIR: ${{ github.workspace }}/artifacts/packages
           SVG_SCENE_ORIGINAL_CUSTODY: ${{ github.workspace }}/artifacts/packages/release-custody.json
           SVG_SCENE_ORIGINAL_SOURCE_SHA: ${{ github.sha }}
-          SVG_SCENE_FOCUS_SDK: '10.0.401'
+          SVG_SCENE_FOCUS_SDK: '10.0.403'
         run: |
           export SVG_SCENE_ORIGINAL_CUSTODY_SHA256="$(sha256sum "$SVG_SCENE_ORIGINAL_CUSTODY" | cut -d' ' -f1)"
           bash tests/Scene.SvgBrowser.Tests/run.sh "$RUNNER_TEMP/source-browser-observations.json"
@@ -654,19 +654,19 @@ jobs:
         if: inputs.font-disposal-attempt || inputs.retained-successor
         shell: bash
         env:
-          DOTNET_INSTALL_DIR: ${{ runner.temp }}/rendering-source-dotnet-10.0.401
+          DOTNET_INSTALL_DIR: ${{ runner.temp }}/rendering-source-dotnet-10.0.403
         run: |
           set -euo pipefail
-          expected="${RUNNER_TEMP:?}/rendering-source-dotnet-10.0.401"
+          expected="${RUNNER_TEMP:?}/rendering-source-dotnet-10.0.403"
           [[ "$RUNNER_TEMP" == /* && "$RUNNER_TEMP" != / && "$RUNNER_TEMP" != */ && "$(realpath -e -- "$RUNNER_TEMP")" == "$RUNNER_TEMP" ]] || { echo '::error::source SDK parent must be an existing canonical runner temp directory'; exit 1; }
           [[ "${DOTNET_INSTALL_DIR:-}" == "$expected" && ! -e "$expected" && ! -L "$expected" ]] || { echo '::error::source SDK root must be the selected absent runner-private directory'; exit 1; }
           # GITHUB_ENV applies this verified root to setup-dotnet and later steps.
           printf 'DOTNET_INSTALL_DIR=%s\n' "$expected" >> "$GITHUB_ENV"
       - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: '10.0.401'
+          dotnet-version: '10.0.403'
       - name: Verify loaded SDK and F# identity
-        run: python3 scripts/release-toolchain-identity.py --expected-sdk 10.0.401 --receipt artifacts/toolchain/${{ github.job }}.json
+        run: python3 scripts/release-toolchain-identity.py --expected-sdk 10.0.403 --receipt artifacts/toolchain/${{ github.job }}.json
       - name: Retain loaded release toolchain identity
         uses: actions/upload-artifact@v7
         with:
@@ -856,19 +856,19 @@ jobs:
         if: inputs.font-disposal-attempt || inputs.retained-successor
         shell: bash
         env:
-          DOTNET_INSTALL_DIR: ${{ runner.temp }}/rendering-source-dotnet-10.0.401
+          DOTNET_INSTALL_DIR: ${{ runner.temp }}/rendering-source-dotnet-10.0.403
         run: |
           set -euo pipefail
-          expected="${RUNNER_TEMP:?}/rendering-source-dotnet-10.0.401"
+          expected="${RUNNER_TEMP:?}/rendering-source-dotnet-10.0.403"
           [[ "$RUNNER_TEMP" == /* && "$RUNNER_TEMP" != / && "$RUNNER_TEMP" != */ && "$(realpath -e -- "$RUNNER_TEMP")" == "$RUNNER_TEMP" ]] || { echo '::error::source SDK parent must be an existing canonical runner temp directory'; exit 1; }
           [[ "${DOTNET_INSTALL_DIR:-}" == "$expected" && ! -e "$expected" && ! -L "$expected" ]] || { echo '::error::source SDK root must be the selected absent runner-private directory'; exit 1; }
           # GITHUB_ENV applies this verified root to setup-dotnet and later steps.
           printf 'DOTNET_INSTALL_DIR=%s\n' "$expected" >> "$GITHUB_ENV"
       - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: '10.0.401'
+          dotnet-version: '10.0.403'
       - name: Verify loaded SDK and F# identity
-        run: python3 scripts/release-toolchain-identity.py --expected-sdk 10.0.401 --receipt artifacts/toolchain/${{ github.job }}.json
+        run: python3 scripts/release-toolchain-identity.py --expected-sdk 10.0.403 --receipt artifacts/toolchain/${{ github.job }}.json
       - name: Retain loaded release toolchain identity
         uses: actions/upload-artifact@v7
         with:
