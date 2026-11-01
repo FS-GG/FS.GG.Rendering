@@ -35,11 +35,11 @@ def check(candidate,original,out):
 def attest(candidate,original,work,out):
  seed=json.loads((out/'checkouts.json').read_text());variants=[]
  for selected in seed['variants']:
-  name=selected['name'];parent=work/name; sdk=json.loads((parent/'global.json').read_text());require(sdk=={'sdk':{'version':'10.0.401','rollForward':'disable','allowPrerelease':False}},name+' private SDK selection differs');require((parent/'sdk-version.log').read_text().strip()=='10.0.401',name+' actual SDK differs');bounded_write(out/(name+'-global.json'),(parent/'global.json').read_bytes());bounded_write(out/(name+'-sdk-version.log'),(parent/'sdk-version.log').read_bytes());repo=pathlib.Path(selected['repo']);fixture=work/name/'fixture';before=fixture/'source-manifest.tsv';after=fixture/'source-manifest-after.tsv'
+  name=selected['name'];parent=work/name; sdk=json.loads((parent/'global.json').read_text());require(sdk=={'sdk':{'version':'10.0.403','rollForward':'disable','allowPrerelease':False}},name+' private SDK selection differs');require((parent/'sdk-version.log').read_text().strip()=='10.0.403',name+' actual SDK differs');bounded_write(out/(name+'-global.json'),(parent/'global.json').read_bytes());bounded_write(out/(name+'-sdk-version.log'),(parent/'sdk-version.log').read_bytes());repo=pathlib.Path(selected['repo']);fixture=work/name/'fixture';before=fixture/'source-manifest.tsv';after=fixture/'source-manifest-after.tsv'
   require(before.read_bytes()==after.read_bytes(),name+' source manifest changed during build');require(pin(repo/SOURCE)==selected['productionSource'],name+' production source changed after build')
   source_row=selected['productionSource']['sha256']+'\t'+SOURCE
   require(source_row in before.read_text().splitlines(),name+' production source absent from fixture manifest')
-  if name=='candidate':require((fixture/'logs/sdk-version.log').read_text().strip()=='10.0.401' and json.loads((fixture/'global.json').read_text())==sdk,'candidate helper SDK context differs')
+  if name=='candidate':require((fixture/'logs/sdk-version.log').read_text().strip()=='10.0.403' and json.loads((fixture/'global.json').read_text())==sdk,'candidate helper SDK context differs')
   packages=list((fixture/'feed').glob('FS.GG.UI.Scene.SvgBrowser.*.nupkg'));require(len(packages)==1,name+' actual production package ambiguous')
   package=packages[0]
   packed=packed_production_source(package)
