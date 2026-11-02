@@ -9,7 +9,9 @@ import re
 
 HISTORICAL = '6a5dd5305ac6fe26f9f9726c72b1a7e553b0021b'
 FONT_DISPOSAL = '2f8d400a6a670568044d607a1ac0eb2c7c655a29'
-CURRENT_PUBLIC = 'd867ea9216118dc649ce52be6c9bcecdfb46e4e3'
+CURRENT_PUBLIC = '6468fd7d0d2318741665c9c468de3b0b924a4a66'
+# The previous current-public callee held all admission strings; it lacks the landed census/plan fixes.
+HELD_CURRENT_PUBLIC = 'd867ea9216118dc649ce52be6c9bcecdfb46e4e3'
 # Retained 0.32.3 current-public callee (Templates 789658f6, #804): its producer tuple is stale.
 STALE_CURRENT_PUBLIC_0323 = '789658f6ba487d839567df6ee556c7a21ede2bd8'
 PALETTE = 'fe24d30872c84d4c1c92afd7a05c5cf22d00bb10'
@@ -159,7 +161,7 @@ def controls(text):
         bad.append(text.replace(HISTORICAL,rejected))
     # Original40172407851 failed eager GHA resolution of this API-readable intermediate pin.
     bad.append(text.replace(FONT_DISPOSAL, '752a2ac1fa996c3235ac0330ffbcefb6b8301cb4'))
-    bad.extend([text.replace(CURRENT_PUBLIC, STALE_CURRENT_PUBLIC_0323), text.replace('@'+CURRENT_PUBLIC, '@'+STALE_CURRENT_PUBLIC_0323), text.replace('templates-source: '+CURRENT_PUBLIC, 'templates-source: '+STALE_CURRENT_PUBLIC_0323), text.replace(CURRENT_PUBLIC, '0'*40), text.replace('@'+CURRENT_PUBLIC, '@main'), text.replace("current-public-at-admission: ${{ inputs.current-public-at-admission }}", "current-public-at-admission: fixed"), text.replace(" && inputs.rendering-input-source != 'current-public-composition'", ''), text.replace("inputs.rendering-input-source == 'current-public-composition'", "inputs.rendering-input-source != 'current-public-composition'")])
+    bad.extend([text.replace(CURRENT_PUBLIC, HELD_CURRENT_PUBLIC), text.replace(CURRENT_PUBLIC, STALE_CURRENT_PUBLIC_0323), text.replace('@'+CURRENT_PUBLIC, '@'+STALE_CURRENT_PUBLIC_0323), text.replace('templates-source: '+CURRENT_PUBLIC, 'templates-source: '+STALE_CURRENT_PUBLIC_0323), text.replace(CURRENT_PUBLIC, '0'*40), text.replace('@'+CURRENT_PUBLIC, '@main'), text.replace("current-public-at-admission: ${{ inputs.current-public-at-admission }}", "current-public-at-admission: fixed"), text.replace(" && inputs.rendering-input-source != 'current-public-composition'", ''), text.replace("inputs.rendering-input-source == 'current-public-composition'", "inputs.rendering-input-source != 'current-public-composition'")])
     bad.extend([text.replace(CURRENT_PUBLIC,'59ce6af8b63a816d931e3a2e3f5c1ba890e9427d'),
         text.replace(CURRENT_PUBLIC,'3ececb44da3f8498ac9a295f67a7dffd10964a36'),
         text.replace('native-input-facility: ${{ inputs.native-input-facility }}','native-input-facility: fixed'),
