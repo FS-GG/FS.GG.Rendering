@@ -1,0 +1,15 @@
+{
+  "schema": "fsgg.routine-closure-waivers/1",
+  "waivers": [
+    {
+      "path": "eng/release/font-disposal-0.32.3-workflow-fences.json",
+      "sha256": "c5ce8b1b019a4a6dd0a48332664b60cdccee59725b12284bd3dfac3295c7b72d",
+      "reason": "Immutable original producer workflow census retained after accepted settlement; executor map uses the current canonical closure. Root ruling Rendering#1474 comment6588135866; no replay."
+    },
+    {
+      "path": "eng/release/palette-heading-0.32.4-workflow-fences.json",
+      "sha256": "c5ce8b1b019a4a6dd0a48332664b60cdccee59725b12284bd3dfac3295c7b72d",
+      "reason": "Immutable original producer workflow census retained after accepted settlement; executor map uses the current canonical closure. Root ruling Rendering#1474 comment6588135866; no replay."
+    }
+  ]
+}

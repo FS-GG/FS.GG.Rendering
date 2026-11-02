@@ -9,13 +9,10 @@ on:
   workflow_dispatch:
     inputs:
       subject:
-        # Closed choice over scripts/settle-original-tags.py SUBJECTS. A settled subject (0.32.3, run
-        # 39774890888) is not offered and the script refuses it before any read, mint or effect.
-        description: Closed original tag subject (one original failed selected-tag cut).
+        # Both closed subjects are settled. Historical inputs remain readable; no new subject is admitted.
+        description: Historical subject only; all original settlements are closed and refuse replay.
         required: true
-        type: choice
-        options:
-          - palette-heading-0.32.4
+        type: string
       expected-executor-sha:
         description: Exact independently reviewed protected executor SHA.
         required: true
@@ -37,8 +34,9 @@ permissions:
 jobs:
   settle:
     name: Settle original producer tags [org-publication-writer]
+    # No runnable subjects remain; refuse before checkout, writer lock or credentials.
     if: >-
-      github.repository == 'FS-GG/FS.GG.Rendering' && github.event_name == 'workflow_dispatch' &&
+      false && github.repository == 'FS-GG/FS.GG.Rendering' && github.event_name == 'workflow_dispatch' &&
       github.ref == 'refs/heads/main' && github.run_attempt == 1 && github.sha == inputs.expected-executor-sha
     runs-on: ubuntu-latest
     # Administrative workflow state and run reads only. Rulesets, refs and tags are never
