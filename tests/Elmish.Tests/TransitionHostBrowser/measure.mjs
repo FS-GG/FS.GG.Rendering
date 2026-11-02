@@ -127,6 +127,12 @@ const executablePath = [
 if (!executablePath) throw new Error("A production Chromium/Chrome executable is required");
 const browserVersion = execFileSync(executablePath, ["--version"], { encoding: "utf8" }).trim();
 const browser = await chromium.launch({ executablePath, headless: true });
+const actualBrowserVersion = browser.version();
+const browserMajor = /^([1-9]\d*)\.\d+\.\d+\.\d+$/.exec(actualBrowserVersion)?.[1];
+if (!browserMajor) {
+  await browser.close();
+  throw new Error(`Cannot identify the actual Chromium major version: ${actualBrowserVersion}`);
+}
 const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, deviceScaleFactor: 1 });
 const page = await context.newPage();
 const consoleErrors = [];
@@ -290,7 +296,7 @@ const summary = {
     maxCatchUpFrames: 0,
     measurementScope: "workspace-transition-production",
     requiredCapability: "production-fable-react-chromium",
-    hostProfile: `${platform()}-${process.arch}-chromium-151`,
+    hostProfile: `${platform()}-${process.arch}-chromium-${browserMajor}`,
     packageVersions: ["FS.GG.UI.Elmish@source"],
     measurementMode: "live-compositor",
     capabilities: ["production-fable-react-chromium", "live-compositor"],

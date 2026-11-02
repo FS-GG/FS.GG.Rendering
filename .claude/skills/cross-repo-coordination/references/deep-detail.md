@@ -1,6 +1,18 @@
 
 # Cross-repo coordination (FS-GG)
 
+## Current organization boundary
+
+Organization requests follow [mailbox and board](mailbox-and-board.md) and the
+[selected V2 contract](../../check-board/references/organization-v2-inspection.md). Resolve the actual qualified installed caller and selected binding; accepted organization cutover
+supersedes historical preparation-only status. Loading this reference is not a consumer switch or live mutation. The V1 intake/Class/severity/Phase,
+board field/hierarchy setup and done-stamp sections below are retained historical mechanics only.
+They do not govern current organization work, even by opting into an old scope, and cannot be used
+as a V2 fallback. Human planning and action-specific acceptance replace automatic merged/claim→Done.
+Keep shared contract/registry/release rules and independently qualified product behavior in scope;
+this retirement changes no product Core semantics or native operation authority.
+
+
 The FS-GG repos are deliberately decoupled but coupled at the edges through versioned
 contracts. Coordinate through **GitHub-native primitives** — never a shared file
 "mailbox" (git is not a queue). Canonical docs:
@@ -37,7 +49,7 @@ issue in the target repo; the board pulls that issue in and places it on the roa
 4. You need to **place or sequence work on the Coordination roadmap** (set a phase/target,
    surface a blocker, add an epic + child issues).
 
-## File a request (the "mailbox message")
+## Historical V1 request transaction
 
 A request is a **GitHub issue in the target repo**, using the org-wide
 `Cross-repo request` template (labels `cross-repo` + `cross-repo:request`). Always name
@@ -143,7 +155,7 @@ scripts/fsgg-coord issues <repo> --label cross-repo   # REST + ETag: 0 GraphQL, 
 scripts/fsgg-coord comment create FS-GG/<repo>#<n> FS-GG/<repo>#<n> <owned-response-file> --text
 ```
 
-## Track on the Coordination board (Projects v2)
+## Historical V1 board fields and setup
 
 ADR-0001 mandates a single **org-level Projects v2 board named `Coordination`** owned by
 `FS-GG`, spanning all four product repos + `.github`. It is the **sequencing/time layer** —
@@ -319,7 +331,7 @@ gh project item-create $P --owner FS-GG --title "<draft item>" --body "<acceptan
   links**, and **built-in workflows** (auto-add — prefer label-scoped, e.g. a `roadmap`
   label; item closed → `Status: Done`).
 
-## Signal an item is finished (the done-stamp)
+## Historical V1 done-stamp
 
 An item is **finished** only when **both** are true: its closing PR is **merged** *and* its board
 `Status` is **`Done`**. Neither alone counts — a merged PR whose card never flipped is still open

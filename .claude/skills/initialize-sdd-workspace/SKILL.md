@@ -27,7 +27,8 @@ these facts.
 ## Initialize
 
 1. Inspect the workspace without changing it:
-   - read `.fsgg/providers.yml`, `.fsgg/scaffold-provenance.json`, and the pending marker;
+   - read `.fsgg/providers.yml`, `.fsgg/scaffold-provenance.json`, `.fsgg/security-obligations.json` (the
+     Wizard-owned pending security state; absent when no coordination was selected) and the pending marker;
    - inspect the git worktree and configured `origin`, if any;
    - check the commands the selected provider actually needs, then run `dotnet tool restore`,
      `fsgg-sdd doctor --root .`, and the provider's cheapest meaningful build or validation;
@@ -37,33 +38,41 @@ these facts.
    provider that has no npm closure. Preserve existing user-authored configuration.
 3. Ask whether this workspace should remain local-only or use GitHub coordination. Local-only is a
    complete, supported initialization mode.
-4. For GitHub coordination, derive the repository identity from `origin` when possible and show the
-   detected value for confirmation. If no usable remote exists, ask whether the user wants to add one;
-   do not require it for local-only mode. Then collect only the chosen board's owner/title and, if the
-   board is non-FS-GG and chores will be scheduled, its real closed chore-lock issue reference.
-5. Before applying the confirmed coordination choice, ensure `new-sdd-workspace` is available. Run:
+4. For GitHub coordination, derive the exact repository identity from `origin`. Select that
+   product's explicit organization-owned V2 project and reviewed closed Binding version 3; do not
+   attach a product implicitly to the organization project or discover a project by title. Obtain
+   the actual immutable producer revision carrying the published adapter/tool pin and both skill
+   manifests. Missing publication or binding evidence keeps coordination pending; local-only remains
+   a complete supported choice. Do not construct project/field/node IDs from placeholders.
+5. Prepare the existing workspace's local integration through the creator's read-only preview:
 
    ```sh
-   new-sdd-workspace retrofit . --repo OWNER/REPO --board OWNER/TITLE
+   new-sdd-workspace retrofit . --repo OWNER/REPO --board-binding /private/selected-binding.json --board-kit-ref IMMUTABLE_SHA --preview
    ```
 
-   Add `--chore-locks OWNER/REPO#N` only when a real required lock exists. Never pass placeholders.
-   If the repository exists and the user authorizes the access-policy mutation, separately run:
+   Supply actual selected values. The canonical parser validates the binding; preparation verifies
+   adapter identity and published consumer digests, preserves unrelated JSON and refuses conflicting
+   owner-authored files, legacy wiring or adapter pins before writes. Review the concrete file list,
+   then run the same command without `--preview` within the user's authorized local configuration
+   scope. Repeating coherent integration is a no-op. This installs local configuration/provenance;
+   it creates no GitHub resource, grants no credential/access policy and performs no board write.
+   Existing legacy workspaces retain their history until a separately qualified adoption operation
+   handles migration; never remove conflicting owner settings to force this installation.
 
-   ```sh
-   new-sdd-workspace secure . --repo OWNER/REPO
-   ```
-
-   Project visibility and writer configuration are optional advanced setup. Ask about them only when
-   the user selected a Project and wants access managed now; use the tool's explicit `secure`
-   recovery route and preserve every pending human-verification obligation it records.
+   GitHub resource creation, issue-policy/access changes, selected membership and actual board
+   refresh are separate operations. Preserve their existing authorization and independent readback
+   requirements. A source fixture or local integration result cannot establish installed adoption.
 6. Re-run the local doctor/build checks and verify any selected coordination by inspecting the
-   materialized skills, `.claude/settings.json` environment, and tool restore. Surface warnings from
-   `.fsgg/scaffold-provenance.json`; a pending security obligation is not a verified receipt.
+   materialized skills, selected binding and its `productBoard` provenance, `.claude/settings.json`
+   environment, exact tool restore and work-board's read-only `board-v2 inspect` report. Surface the pending
+   obligations in `.fsgg/security-obligations.json` (the SDD-owned `.fsgg/scaffold-provenance.json` carries none);
+   a pending security obligation is not a verified receipt. If the doctor reports `scaffold.provenanceMalformed`
+   on a workspace created by Wizard 0.23.0, run `new-sdd-workspace secure . --repo OWNER/REPO` or
+   `new-sdd-workspace retrofit .`, which moves the legacy Wizard members out of the provenance.
 7. On success, replace `.fsgg/workspace-initialization.json` with valid JSON containing at least:
    `schemaVersion: 1`, `status: "initialized"`, an ISO-8601 UTC `initializedAt`, `mode` (`local` or
    `github-coordinated`), and a `checks` object recording the commands and exit codes actually
-   observed. For GitHub mode, also record the confirmed repository and board identities. Do not put
+   observed. For GitHub mode, also record the confirmed repository, immutable project ID, binding digest and exact adapter version. Do not put
    tokens, credentials, collaborator node ids, or other secrets in the marker.
 
 End with a compact receipt: mode, local checks, optional integrations configured or skipped, and any

@@ -19,12 +19,20 @@ file mailbox.
 For exact request/response recipes, registry details, and incident rationale, load
 [deep detail](references/deep-detail.md).
 
-Every request needs one owning repo, acceptance criteria, a narrow touch-set, and explicit dependencies.
-Author the complete `fsgg.coord.intake/v1` draft shown in [deep detail](references/deep-detail.md), then
-run `scripts/fsgg-coord intake validate` followed by `intake apply` on that same file. Its `paths`,
-`class`, `severity`, and optional `blockedBy` fields own the body and board projections; hand-authoring
-`Paths:` or `Class:` in a created body is a defect. Use `blockedBy` for real sequencing, not topical
-relationship or temporary overlap.
+For organization programme requests, read the [mailbox and board boundary](references/mailbox-and-board.md).
+Use one genuine owning issue with Owner, Done when, Current deliverable, Next action, Blocked on and
+Acceptance evidence; reuse an existing matching outcome and its actual PR. Keep narrow current slice
+paths distinct from the broad outcome. A durable cross-team dependency can justify an issue; an edit,
+CI failure or checkpoint alone does not. Native dependency edges and owning-plan prerequisites retain
+separate action-specific meaning. No organization `fsgg.coord.intake/v1` transaction, Class/severity,
+Phase, claim or done-stamp is required or authorized by this route. Project membership changes need
+their own admitted enrollment route. Issue-author permission does not grant parent operation authority.
+
+Use [canonical intake](https://github.com/FS-GG/.github/blob/main/.agents/skills/work-board/references/intake.md) for new requests. Resolve the actual
+qualified caller and selected binding under the
+[organization contract](../check-board/references/organization-v2-inspection.md). Accepted organization
+cutover and retained preparation/history have distinct scopes; instruction edits do not activate callers. Product contracts and explicitly historical protocol evidence retain
+their scoped meaning, without becoming a fallback for unavailable V2 facts.
 
 Finish by verifying the receiving issue/PR, board state, registry state, and any consumer update against
 live sources. Record durable decisions as ADRs in `.github`.

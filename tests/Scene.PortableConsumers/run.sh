@@ -50,7 +50,7 @@ dotnet run --project "$work/DotNet/DotNet.fsproj" --no-build -- \
   "$work/document-interaction.traces.tsv" "$work/dotnet-document-projections.tsv" "$work/dotnet-authoring.txt" "$work/dotnet-workspace.txt" "$work/dotnet-animation.txt" | tee "$work/dotnet-replay.log"
 
 dotnet restore "$work/Fable/Fable.fsproj" --configfile "$work/NuGet.Config"
-dotnet tool install fable --version 5.13.0 --tool-path "$tools" --configfile "$work/NuGet.Config"
+dotnet tool install fable --version 5.26.0 --tool-path "$tools" --configfile "$work/NuGet.Config"
 "$tools/fable" "$work/Fable/Fable.fsproj" --outDir "$work/javascript" --noCache
 node "$work/javascript/Program.js" "$work/retained-interaction.traces.tsv" "$work/fable-projections.tsv" \
   "$work/fable-document.txt" "$work/fable-export.svg" \

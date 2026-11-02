@@ -29,6 +29,7 @@ if [[ -n "${SVG_SCENE_ORIGINAL_CANDIDATE_DIR:-}${SVG_SCENE_ORIGINAL_CUSTODY:-}${
 fi
 [[ "$(nproc)" -ge 2 ]] || { echo "hosted benchmark needs two logical CPUs (browser and server pinned apart)" >&2; exit 2; }
 node "$here/hosted-benchmark-control-test.mjs"
+python3 "$here/hosted-benchmark-source-test.py"
 
 mkdir -p "$out/runs" "$out/logs"
 work="$out/work"
@@ -53,8 +54,7 @@ build_arm() {
     [[ "$revision" =~ ^[0-9a-f]{40}$ ]] || { echo "$arm revision must be a full commit SHA" >&2; exit 2; }
     mkdir -p "$work"
     git -C "$repo" worktree add --quiet --detach "$tree" HEAD
-    git -C "$tree" rm -r -q --ignore-unmatch -- "${producers[@]}"
-    git -C "$tree" checkout "$revision" -- "${producers[@]}"
+    python3 "$here/hosted-benchmark-source.py" "$tree" "$revision" > "$out/logs/source-$arm.json"
   fi
   bash "$tree/tests/Scene.SvgBrowser.Tests/build-fixture.sh" "$work/fixture-$arm" > "$out/logs/build-$arm.log" 2>&1 \
     || { tail -n 40 "$out/logs/build-$arm.log" >&2; exit 1; }
