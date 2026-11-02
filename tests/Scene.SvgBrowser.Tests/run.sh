@@ -53,7 +53,7 @@ package = next(feed.glob('FS.GG.UI.Scene.SvgBrowser.*.nupkg'))
 with zipfile.ZipFile(package) as archive:
     output.write_bytes(archive.read('contentFiles/any/any/svg-geometry-worker.js'))
 PY
-dotnet tool install fable --version 5.17.0 --tool-path "$tools" --configfile "$work/NuGet.Config"
+dotnet tool install fable --version 5.26.0 --tool-path "$tools" --configfile "$work/NuGet.Config"
 "$tools/fable" "$work/Browser/BrowserFixture.fsproj" --outDir "$work/Browser/generated" --lang JavaScript --noCache
 npm ci --prefix "$work/Browser"
 npm run --prefix "$work/Browser" build

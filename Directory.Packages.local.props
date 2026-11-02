@@ -11,7 +11,7 @@
     <!-- The coordination kit as a versioned package (ADR-0062, .github#1262). Referenced by
          .config/kit/FS.GG.Kit.receiver.proj, which materializes the kit onto disk; Renovate bumps
          this pin and kit-materialize.yml refreshes the committed kit on that PR. -->
-    <PackageVersion Include="FS.GG.Kit" Version="0.94.0" />
+    <PackageVersion Include="FS.GG.Kit" Version="0.114.4" />
     <PackageVersion Include="Fable.Package.SDK" Version="1.4.1" />
     <PackageVersion Include="Fable.Browser.Dom" Version="2.20.0" />
     <!-- FS.GG.Audio.Core (standalone repo, own version axis): the pure AudioEffect vocabulary.
@@ -21,18 +21,18 @@
          rendering core; the generated template supplies the backend at its own boundary. -->
     <PackageVersion Include="FS.GG.Audio.Core" Version="0.6.0" />
     <PackageVersion Include="Fable.Elmish" Version="5.0.2" />
-    <PackageVersion Include="HarfBuzzSharp.NativeAssets.Linux" Version="14.2.1.201" />
-    <PackageVersion Include="HarfBuzzSharp.NativeAssets.Win32" Version="14.2.1.201" />
+    <PackageVersion Include="HarfBuzzSharp.NativeAssets.Linux" Version="14.2.1.400" />
+    <PackageVersion Include="HarfBuzzSharp.NativeAssets.Win32" Version="14.2.1.400" />
     <PackageVersion Include="Silk.NET.Input" Version="2.23.0" />
     <PackageVersion Include="Silk.NET.OpenGL" Version="2.23.0" />
     <PackageVersion Include="Silk.NET.GLFW" Version="2.23.0" />
     <PackageVersion Include="Silk.NET.Windowing" Version="2.23.0" />
     <PackageVersion Include="Silk.NET.Windowing.Glfw" Version="2.23.0" />
     <PackageVersion Include="Silk.NET.Windowing.Extensions" Version="2.23.0" />
-    <PackageVersion Include="SkiaSharp" Version="4.152.1" />
-    <PackageVersion Include="SkiaSharp.HarfBuzz" Version="4.152.1" />
-    <PackageVersion Include="SkiaSharp.NativeAssets.Linux" Version="4.152.1" />
-    <PackageVersion Include="SkiaSharp.NativeAssets.Win32" Version="4.152.1" />
+    <PackageVersion Include="SkiaSharp" Version="4.154.0" />
+    <PackageVersion Include="SkiaSharp.HarfBuzz" Version="4.154.0" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.Linux" Version="4.154.0" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.Win32" Version="4.154.0" />
     <PackageVersion Include="Yoga.Net" Version="3.2.3" />
   </ItemGroup>
   <!-- Test-only dependencies. Repo-owned FS.Skia.UI package versions are not declared here.
@@ -51,7 +51,7 @@
        `template/base/Directory.Packages.props` (`FsGgContractsVersion`) already pins for the
        scaffolded product's own build. -->
   <ItemGroup>
-    <PackageVersion Include="FS.GG.Contracts" Version="[7.5.2]" />
+    <PackageVersion Include="FS.GG.Contracts" Version="[7.6.0]" />
     <!-- ADR-0022 P5: the game-sim primitives (Rng/FixedStep/Pathfinding/SpatialGrid/Geometry) moved
          to the FS.GG.Game.Core bottom layer. Canvas.Tests compiles the re-homed game-profile fragment
          sources (collision/visibility/grids/line-drawing), which now `open FS.GG.Game.Core`, so the
@@ -62,24 +62,24 @@
          `FS.GG.UI.Canvas.Loop`. samples/CanvasDemo and samples/SymbologyBoard consume it directly —
          the migration target must be a PACKAGE reference, because re-exporting it from Canvas is the
          `FS.GG.UI.Canvas -> FS.GG.Game.Core` edge ADR-0104 forbids. Below 0.3.0 there is no `Loop`. -->
-    <PackageVersion Include="FS.GG.Game.Core" Version="0.16.0" />
+    <PackageVersion Include="FS.GG.Game.Core" Version="0.19.0" />
     <!-- Issue #245: SkiaViewer.Tests drives the real record-only backend (NullBackend) through the
          same `Audio.play` the generated template hands to `runAppWithAudio`, so the seam is proven
          end-to-end without a window or a device. Test-only: the shipped SkiaViewer package depends on
          FS.GG.Audio.Core alone. -->
     <PackageVersion Include="FS.GG.Audio.Host" Version="0.6.0" />
-    <PackageVersion Include="Expecto" Version="11.1.0" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
+    <PackageVersion Include="Expecto" Version="11.1.1" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
     <PackageVersion Include="YoloDev.Expecto.TestSdk" Version="0.16.1" />
   </ItemGroup>
   <!-- Build-tooling only (build/** projects, NOT src/** and NOT shipped in any
        generated product). Consumed as ordinary NuGet libraries by the compiled
        FAKE build front-end (build/Build.fsproj) via `dotnet run`, NOT via the
        FSX script runner. Version matches the pinned fake-cli tool
-       (.config/dotnet-tools.json) and build.fsx.lock (6.1.4). No
+       (.config/dotnet-tools.json). No
        FSharp.Compiler.Service (FR-012). See docs/reports/dependencies.md. -->
   <ItemGroup>
-    <PackageVersion Include="Fake.Core.Target" Version="6.1.4" />
+    <PackageVersion Include="Fake.Core.Target" Version="6.2.0" />
   </ItemGroup>
   <!-- Build-tooling adopt-set (feature 040). Referenced ONLY by the tangle
        examples project (build/SkillExamples) and tests/Governance.Tests so the
@@ -89,10 +89,10 @@
   <ItemGroup>
     <PackageVersion Include="FSharp.SystemTextJson" Version="1.4.36" />
     <PackageVersion Include="XParsec" Version="1.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.FileSystemGlobbing" Version="10.0.12" />
-    <PackageVersion Include="Fake.IO.FileSystem" Version="6.1.4" />
-    <PackageVersion Include="Fake.Tools.Git" Version="6.1.4" />
+    <PackageVersion Include="Microsoft.Extensions.FileSystemGlobbing" Version="10.0.14" />
+    <PackageVersion Include="Fake.IO.FileSystem" Version="6.2.0" />
+    <PackageVersion Include="Fake.Tools.Git" Version="6.2.0" />
     <PackageVersion Include="DiffPlex" Version="1.9.0" />
-    <PackageVersion Include="FsCheck" Version="3.4.0" />
+    <PackageVersion Include="FsCheck" Version="3.6.0" />
   </ItemGroup>
 </Project>

@@ -75,7 +75,7 @@ Each JSONL line is one phase transition. The shared v1 fields are `schema_versio
 - `tooling` binds `ledger_schema` plus `runtime`, `coordination`, `sdd`, and `contracts` components.
   Each component records its exact name/version/source or an explicit `unavailable`/`not_applicable`
   reason. For Codex, take the runtime version from `session_meta.cli_version`; for Claude Code, take it
-  from status-line `version`. Capture `fsgg-coord --version`, `fsgg-sdd --version`, and the governed
+  from the transcript assistant record's `version`. Capture `fsgg-coord --version`, `fsgg-sdd --version`, and the governed
   contracts version at phase start. Historical comparisons must group by the canonicalized `tooling`
   object; do not blend durations or token rates from different toolchain fingerprints.
 - `model` records `provider`, exact `name`/variant, optional `effort`, and authoritative `source`. A model
@@ -121,15 +121,25 @@ Never append another phase to a receipt whose SHA-256 is already cited. The vali
 The local Codex JSONL is an internal interface, so the collector validates every required key and fails
 closed on shape drift. For direct API work, prefer the stable response `usage` object.
 
-Claude Code exposes `session_id`, `prompt_id`, `model.id`, effort, and the latest API response's input,
-cache-creation, cache-read, and output usage to a status-line command. Persist those snapshots after each
-assistant message. A `Stop` hook runs after the main response finishes and receives `session_id` and
-`transcript_path`; use it to append the saved snapshot. `SubagentStop` supplies a separate
-`agent_transcript_path`, so subagent usage must remain separate. The collector derives a stable response
-identity from session, prompt, timestamp, model, and usage, so repeated hook delivery is idempotent. The status-line value is one latest API
-response, not a whole multi-call turn; aggregate only captured requests. Claude's ordinary usage does not
-separate reasoning from output, so the report leaves `reasoning` empty rather than guessing. For
-non-interactive work, `--output-format json`/`stream-json` or the Agent SDK result is preferred.
+Claude Code persists its transcript as JSONL under `~/.claude/projects/<project>/<session>.jsonl`. Collect
+it with the same selection contract; no status line or hook is required:
+
+```sh
+scripts/fsgg-coord telemetry usage collect claude \
+  --session-file <transcript.jsonl> --task <item/phase> --turn-id <prompt-id> \
+  --coord-version <version> --sdd-version <version> --contracts-version <version> \
+  --all-responses --append <private-untracked-phase-usage.csv>
+```
+
+The collector emits one row per distinct API response, keyed by `message.id`. It deduplicates the
+per-content-block records and binds `requestId`, model, effort, version and timestamp. Input is uncached
+plus cache-read plus cache-creation; `reasoning` is `thinking_tokens` only when the response reports it.
+`turn_id` is the `promptId` of the nearest preceding user record; turn totals accumulate within that
+thread and prompt, and thread totals stay empty. A sidechain record keeps its own derived thread. Disagreeing
+repeated usage, malformed or partial lines, oversized input, missing counters and incomplete streaming
+responses (`stop_reason` null) are refused, never counted as zero. Collect after the response completes,
+or bound a live transcript with `--until`. Public provenance is `claude-transcript-jsonl:sha256:<digest>`.
+The legacy `--snapshot` status-line input remains accepted, but nothing produces it by default.
 
 ### Supervising a completed child
 
@@ -147,7 +157,8 @@ terminal, then:
 
 For Codex, a parent may use a unique phase marker only when the child could not return the session/turn
 identity; multiple matching sessions are an attribution failure, not permission to choose one. For
-Claude Code, consume the `SubagentStop` `agent_transcript_path`, never the parent's transcript. A strict
+Claude Code, collect the subagent's own transcript, never the parent's; observed hosts write it beside the
+session as `<session>/subagents/agent-<agent-id>.jsonl`. A strict
 post-completion lookup that finds no unique terminal record, or a collector failure caused by internal
 schema drift, may seal `unavailable` only when the exact lookup and validation failure are recorded.
 “Final usage is written after this response” proves the state is pending and is forbidden as an

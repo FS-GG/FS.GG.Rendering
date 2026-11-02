@@ -1,68 +1,29 @@
 # Mailbox and board operations
 
-Use `issues` for REST-backed dedupe, `add` for board membership, `set-field` for explicit board writes,
-`child` for hierarchy, and `say`/`inbox`/`room open` for worker communication. Budget exhaustion queues
-eligible writes; `flush` replays them, and a fresh read must confirm the result.
+For organization programme requests, use an existing matching native owning issue and actual PR.
+A new issue is appropriate only for a genuinely missing durable outcome or independently useful
+cross-team dependency. Keep the maintained six fields: Owner, Done when, Current deliverable,
+Next action, Blocked on, Acceptance evidence. Preserve original identities, discussions and uncertain
+operation references; do not create rows for edits, CI failures or unchanged checkpoints.
 
-<!-- BEGIN GENERATED: fsgg-protocol:filing-rules -->
-<!--
-  DO NOT EDIT THIS REGION. It is emitted from src/FS.GG.Coord.Core/Protocol.fs by
-  scripts/generate-projections, and `projections` in CI fails on any diff.
+Native issue/dependency reads and owning-plan action prerequisites remain distinct. Record exact
+missing evidence/decision and supplying owner, with the existing request channel, expected reply and
+next deadline. Read changed replies at session start/resume, the agreed deadline or a relevant event;
+a failed/partial read keeps the hold. No fixed unchanged comments or duplicate status ledger is needed.
 
-  These rules were restated by hand here, and #916 measured why that is not survivable: the
-  hand-written copies AGREED with each other for as long as they existed and were wrong the
-  whole time. Edit Protocol.fs and regenerate.
--->
+Read the [organization contract](../../check-board/references/organization-v2-inspection.md). Resolve its actual qualified installed caller and selected binding. The accepted organization
+binding5 baseline and historical binding4 preparation retain separate scope; instruction edits activate
+neither an older caller nor a wider enrollment. Enrollment/schema/view changes need their separately
+admitted typed route and final authenticated native IDs. Read-only inspection and Observation-only
+refresh cannot perform those changes or alter human Status/Track/Roadmap. Do not call org V1 intake,
+add/set-field/child, claim/done, flush/replay or Class/Phase/severity machinery as this programme route.
+Uncertain effects stay with their original owner; message or expiry does not authorize replay.
 
-*Generated from the typed core. The engine that refuses your `Paths:` line is the engine that
-wrote this. The full rule set, with the incident behind each one, is in
-[intra-repo-parallel-work](../../intra-repo-parallel-work/SKILL.md).*
+The canonical generator retires the old organization-only blocks below; shared Core/product facts
+remain unchanged. Historical commands are reference data, never a current organization fallback.
 
-**`Paths:` is a declaration, and a fenced one is a QUOTATION**
 
-Declare the touch-set as a `Paths:` line at up to three leading spaces. A `Paths:` line INSIDE a fenced code block is a quotation of the grammar, not a use of it — the protocol docs quote it constantly. `Paths: none` is a SENTINEL meaning "this item deliberately has no touch-set", and it is not the same fact as having forgotten one.
 
-**The touch-set grammar — it is NOT a glob language**
-
-supported: an exact path ('src/Foo.fs'), or a directory prefix ('src/Foo', 'src/Foo/*', 'src/Foo/**'). There is no glob matcher: a leading '**/' or an interior '*' matches nothing — spell the paths out.
-
-**A MERGED blocker is RESOLVED; an unreadable one BLOCKS**
-
-`Blocked by` is a Projects v2 board FIELD, not a body line — the same medium split as `Paths:` and its own fence rule, in reverse: `Paths:` lives in the body and a `Blocked by` FIELD is the only place this dependency is recorded. A `Blocked by:` line written into the issue BODY is inert: nothing that clears a blocker reads the body, so it looks like a declaration and does nothing. Write the edge with `set-field <ref> "Blocked by" <ref>`. Once the edge is on the field: `Blocked by` clears on CLOSED **or MERGED**. It does not clear on OPEN, on a blocker whose state could not be read (unverifiable), or on prose that is not an issue ref at all (unparseable) — all three BLOCK.
-
-<!-- END GENERATED: fsgg-protocol:filing-rules -->
-
-<!-- BEGIN GENERATED: fsgg-protocol:board-statuses -->
-<!--
-  DO NOT EDIT THIS REGION. It is emitted from src/FS.GG.Coord.Core/Protocol.fs by
-  scripts/generate-projections, and `projections` in CI fails on any diff.
-
-  These six strings were a table row here, hand-kept, in BOTH skill roots. A drifted option is
-  not a misprint: a reconciler selects it in jq, matches nothing, and reports a CLEAN BOARD over
-  a board it never read (#476).
-
-  SIX, NOT SEVEN. `BoardStatus` has a seventh case — `NoStatus`, wire form `""` — and it is
-  the ABSENCE of a column rather than an option a filer can select. Protocol.fs drops it in a
-  total match, so a new case cannot join the union without being classified.
--->
-
-*Generated from the typed core: `Types.statusWireName` writes these option names, so the engine
-that reads a column back is the engine that wrote this table. `startable?` is
-`Schedulability.columnStartability` — the predicate `take` schedules on, not a copy that agrees
-with it today.*
-
-| option | startable? | what it means |
-|---|---|---|
-| `Backlog` | only with `--include-backlog` | Filed, not triaged. The honest resting place for a finding nobody has scheduled yet. A scheduler passes it over unless the caller asks for it (`--include-backlog`), so a park here is invisible to a plain `take` BY DESIGN — that is what parking means. |
-| `Ready` | **YES** | Triaged and startable. The only column a scheduler hands out unconditionally, so an item that is real work belongs here or it will not be worked. |
-| `In progress` | no | A worker holds it — the claim's own footprint, written by `claim` and reset by `release`. Not a column to set by hand: the claim marker is the lock, and this column is only its shadow. |
-| `Blocked` | no | Something else must land first, and `Blocked by` names what. Mirrors the `blocked` label. Not offered — and an item sitting here whose blockers have all resolved is startable work no `take` will ever offer, which is why /check-board re-verifies them. |
-| `In review` | no | The work is written and its PR is open. Not offered: claiming it would duplicate an implementation already in flight. |
-| `Done` | no | Finished and merged, and the stamp says so. `done --flip` sets it once it confirms the merge; setting it by hand is how a board starts lying. |
-<!-- END GENERATED: fsgg-protocol:board-statuses -->
-
-Do not hand-edit project item IDs or use git as a queue. The issue is the durable request; the board is
-its projection and scheduling ledger.
-
-Repo-scope phase projection follows the board schema: a `net` item `P8 Net`; preserve that mapping
-when filing or reconciling a Net request.
+The issue is the durable request; the board supplies human planning and visibility. A view or native
+child is not enrollment, and a merged PR does not set an outcome Done. Product bindings and their
+qualified field semantics remain separate; no organization phase or scheduling ledger is required.

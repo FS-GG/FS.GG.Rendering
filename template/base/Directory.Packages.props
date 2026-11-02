@@ -14,7 +14,7 @@
          0.3.0 (ADR-0104, Rendering#269): adds `Loop`, the double step buffer that supersedes the
          deprecated FS.GG.UI.Canvas.Loop. A scaffold cannot reach it below this version. -->
 
-    <FsGgGameVersion>0.17.0</FsGgGameVersion>
+    <FsGgGameVersion>0.19.0</FsGgGameVersion>
     <!-- The standalone FS.GG.Audio component (own repo FS-GG/FS.GG.Audio, released on its OWN
          axis — NOT $(FsGgUiVersion)/$(FsGgGameVersion)). App/game/sample-pack scaffolds pin it here
          to get the REAL host-side audio realization (named buses, fades/ducking, 3D, device backend)
@@ -108,8 +108,8 @@
          these helpers, and a generated product should not carry a testing dependency to satisfy a skill
          about its tests. -->
     <PackageVersion Include="FS.GG.UI.Testing" Version="$(FsGgUiVersion)" />
-    <PackageVersion Include="Expecto" Version="11.1.0" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
+    <PackageVersion Include="Expecto" Version="11.1.1" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
     <PackageVersion Include="YoloDev.Expecto.TestSdk" Version="0.16.1" />
   </ItemGroup>
 </Project>

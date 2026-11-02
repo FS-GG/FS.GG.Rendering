@@ -10,9 +10,9 @@
 // `Render.toPng` fails at the rasterise step. Keep the versions in step with
 // Directory.Packages.local.props. The NativeAssets line is Linux-only — on Windows/macOS the
 // SkiaSharp package carries its own natives.
-#r "nuget: SkiaSharp, 4.150.0"
-#r "nuget: SkiaSharp.HarfBuzz, 4.150.0"
-#r "nuget: SkiaSharp.NativeAssets.Linux, 4.150.0"
+#r "nuget: SkiaSharp, 4.154.0"
+#r "nuget: SkiaSharp.HarfBuzz, 4.154.0"
+#r "nuget: SkiaSharp.NativeAssets.Linux, 4.154.0"
 #r "../../../src/Scene/bin/Debug/net10.0/FS.GG.UI.Scene.dll"
 #r "../../../src/SkiaViewer/bin/Debug/net10.0/FS.GG.UI.SkiaViewer.dll"
 #r "../../../src/Symbology/bin/Debug/net10.0/FS.GG.UI.Symbology.dll"

@@ -1,4 +1,4 @@
 interface:
   display_name: "Check Board"
-  short_description: "Reconcile board state with live GitHub issues"
-  default_prompt: "Use $check-board to reconcile the FS-GG Coordination board against live issue state."
+  short_description: "Inspect board evidence without writes"
+  default_prompt: "Use $check-board to inspect the explicitly selected FS-GG board, explain planning discrepancies and retain Unknowns without repairs or dispatch."

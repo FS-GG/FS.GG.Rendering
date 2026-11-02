@@ -1,4 +1,4 @@
 interface:
   display_name: "PNext Item"
-  short_description: "Claim and complete one schedulable FS-GG item"
-  default_prompt: "Use $pnext-item to claim and complete the next schedulable item in one FS-GG repository."
+  short_description: "Complete one Delivery through its full acceptance"
+  default_prompt: "Use $pnext-item to complete one selected Delivery through its full declared acceptance, retaining the same owner and PR."

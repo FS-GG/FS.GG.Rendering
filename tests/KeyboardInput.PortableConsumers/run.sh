@@ -28,7 +28,7 @@ export NUGET_PACKAGES="$work/packages"
 dotnet restore "$work/DotNet/DotNet.fsproj" --configfile "$work/NuGet.Config" >/dev/null
 dotnet run --project "$work/DotNet/DotNet.fsproj" --no-restore > "$work/dotnet.txt"
 dotnet restore "$work/Fable/Fable.fsproj" --configfile "$work/NuGet.Config" >/dev/null
-dotnet tool install fable --version 5.17.1 --tool-path "$work/tools" --configfile "$work/NuGet.Config" >/dev/null
+dotnet tool install fable --version 5.26.0 --tool-path "$work/tools" --configfile "$work/NuGet.Config" >/dev/null
 "$work/tools/fable" "$work/Fable/Fable.fsproj" --outDir "$work/js" --noCache
 node "$work/js/Program.js" > "$work/fable.txt"
 diff -u "$work/dotnet.txt" "$work/fable.txt"
