@@ -64,6 +64,49 @@ type SvgBrowserObservation =
         ScheduledFrameCount: int
     }
 
+/// The scene-derived half of retained interaction synchronization, computed in one pass per synchronization.
+module internal InteractionSync =
+    type Projection =
+        {
+            /// Selectable objects of every layer by identity; the first selectable object wins an identity.
+            Selectable: System.Collections.Generic.Dictionary<string, SemanticSceneObject>
+            /// Selectable objects of visible layers, in layer then object order: the HTML control order.
+            Controls: SemanticSceneObject list
+            /// The accessible label of the selected selectable object, or "No object selected".
+            SelectedLabel: string
+            /// Scene objects examined to build this projection (an operation count, not a time).
+            ObjectsVisited: int
+        }
+
+    val project: state: RetainedInteractionState -> Projection
+/// What a retained-host transition invalidates, so the host reconciles only the DOM it can have changed.
+module internal Invalidation =
+    type Dependencies =
+        {
+            /// Root identity, scene revision or the layer/object structure changed.
+            Scene: bool
+            /// Only the camera differs.
+            Camera: bool
+            /// Selection or focus differs.
+            Interaction: bool
+        }
+
+    val classify: before: RetainedInteractionState -> after: RetainedInteractionState -> Dependencies
+
+/// Mapping between browser client coordinates and local SVG screen coordinates for one measured frame.
+module internal PointerMapping =
+    type Frame =
+        {
+            Left: float
+            Top: float
+            Width: float
+            Height: float
+        }
+
+    val toLocal: frame: Frame -> options: SvgBrowserOptions -> clientX: float -> clientY: float -> Point
+    val toClientX: frame: Frame -> options: SvgBrowserOptions -> screenX: float -> float
+    val toClientY: frame: Frame -> options: SvgBrowserOptions -> screenY: float -> float
+
 /// A mounted retained SVG root. All state changes pass through the portable reducer.
 [<Sealed>]
 type SvgBrowserHost =

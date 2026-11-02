@@ -62,10 +62,16 @@ The routine marker is:
     <!-- fsgg:routine-development/v1 head=<40-hex-sha> operation=source-change -->
 
 The distinct `routine-eligibility` context runs a workflow definition from the default branch, extracts
-this validator and policy from the exact PR base, and treats candidate commits only as diff data. A push
-makes the marker stale and red. A protected operation named as the PR's effect stays pending until its
-independent authority is satisfied; neither that pending effect nor a sensitive path selects heavyweight
-delivery ceremony.
+this validator and policy from the exact PR base, and treats candidate commits only as diff data. A
+marker naming any head other than the current one is red, with one exception (.github#5189): a push
+cannot carry a marker naming a head that did not exist when the body was written, so on a `synchronize`
+event the trusted envelope may supply `--routine-previous-head`, GitHub's own `before`, once it has proved
+the push only added commits on top of it. A marker naming exactly that parent is admitted PROVISIONALLY
+(every other routine check still runs against the new head) with a warning that a rebind is owed; the
+merge boundary (`tools/routine-delivery.py` `routine_contract`, which reads the live body) still refuses
+any marker whose `head=` is not the merged head. A protected operation named as the PR's effect stays
+pending until its independent authority is satisfied; neither that pending effect nor a sensitive path
+selects heavyweight delivery ceremony.
 
 STRICT APPLICABILITY: ONLY a pull request whose branch is `item/<n>-*` — `pnext-item` §2's own naming
 convention, the SAME test `Delivery.fs`'s `ItemBranchCanonical` already makes
@@ -634,6 +640,18 @@ def routine_changed_paths(base_sha: str, head_sha: str) -> list[str]:
     return [line for line in proc.stdout.splitlines() if line]
 
 
+ROUTINE_PROVISIONAL = "routine delivery provisionally admitted"
+
+
+def routine_is_ancestor(ancestor: str, head: str) -> bool:
+    """Re-prove the envelope's push-parent ancestry; missing history is never an ancestor."""
+    proc = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", ancestor.lower(), head.lower()],
+        capture_output=True, text=True, check=False,
+    )
+    return proc.returncode == 0
+
+
 def evaluate_routine(args: argparse.Namespace, body: str) -> tuple[str | None, str]:
     """Return a routine finding kind/message, or `(None, success detail)`. No GitHub/board read occurs."""
     if not args.base_sha or not HEAD_SHA_RE.match(args.base_sha.lower()):
@@ -651,11 +669,17 @@ def evaluate_routine(args: argparse.Namespace, body: str) -> tuple[str | None, s
     missing = [field for field in ("head", "operation") if not marker.get(field)]
     if missing:
         return "routine-missing", "routine-development marker is missing: " + ", ".join(missing)
+    previous = getattr(args, "routine_previous_head", None)
+    provisional = False
     if marker["head"].lower() != args.head_sha.lower():
-        return "routine-changed-head", (
-            f"routine marker head={marker['head']} does not equal current PR head {args.head_sha}; "
-            "a moved head must be reviewed and rebound before merge"
-        )
+        if previous and marker["head"].lower() == previous.lower() and routine_is_ancestor(previous, args.head_sha):
+            provisional = True
+        else:
+            return "routine-changed-head", (
+                f"routine marker head={marker['head']} does not equal current PR head {args.head_sha}"
+                + (f" or its push parent {previous}" if previous else "")
+                + "; a moved head must be reviewed and rebound before merge"
+            )
     operation = marker["operation"]
     if operation in policy["protectedOperations"] or operation not in policy["allowedOperations"]:
         return "routine-protected-operation", (
@@ -665,6 +689,12 @@ def evaluate_routine(args: argparse.Namespace, body: str) -> tuple[str | None, s
     changed = routine_changed_paths(args.base_sha.lower(), args.head_sha.lower())
     if not changed:
         return "routine-empty", "the exact base/head comparison contains no changed paths"
+    if provisional:
+        return None, (
+            f"{ROUTINE_PROVISIONAL} at head {args.head_sha}: marker head={marker['head']} is this push's "
+            f"parent, operation={operation}, changedPaths={len(changed)}; rebind the marker to "
+            f"head={args.head_sha} before merge (the merge route refuses an unrebound marker)"
+        )
     return None, (
         f"routine delivery admitted at exact head {args.head_sha}: operation={operation}, "
         f"changedPaths={len(changed)}, requiredChecks={','.join(policy['requiredChecks'])}; "
@@ -1208,6 +1238,13 @@ def main(argv: list[str]) -> int:
         "--routine-policy-ref", default=None,
         help="read routine policy from this trusted git revision (the PR base in CI)",
     )
+    ap.add_argument(
+        "--routine-previous-head", default=None,
+        help=(
+            "routine branch only, supplied by the trusted envelope on a fast-forward `synchronize`: the "
+            "push's previous head, which a not-yet-rebound marker may name provisionally (#5189)"
+        ),
+    )
     ap.add_argument("--body", default=None, help="file holding the PR body (default: read stdin)")
     ap.add_argument(
         "--lease-minutes", type=int, default=None,
@@ -1250,6 +1287,11 @@ def main(argv: list[str]) -> int:
             f"give --lease-minutes (or ${LEASE_ENV}) a value this gate can add to a timestamp"
         )
 
+    if args.routine_previous_head is not None and (
+        not args.routine_policy_ref or not HEAD_SHA_RE.match(args.routine_previous_head.lower())
+    ):
+        raise GateError("--routine-previous-head needs --routine-policy-ref and a 40-hex commit SHA")
+
     if args.sweep:
         if args.head_ref or args.head_sha or args.base_sha or args.body:
             raise GateError("--sweep reads every open PR itself; it takes no --head-ref/--head-sha/--base-sha/--body")
@@ -1277,6 +1319,8 @@ def main(argv: list[str]) -> int:
     if ROUTINE_BRANCH_RE.match(args.head_ref) and args.routine_policy_ref:
         kind, message = evaluate_routine(args, body)
         if kind is None:
+            if message.startswith(ROUTINE_PROVISIONAL):
+                print(f"::warning::check-claim-generation [routine-rebind-owed]: {message}")
             print(f"check-claim-generation: OK — {message}.")
             return ExitCode.OK
         print(f"::error::check-claim-generation [{kind}]: {message}", file=sys.stderr)

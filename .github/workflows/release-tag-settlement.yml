@@ -9,13 +9,10 @@ on:
   workflow_dispatch:
     inputs:
       subject:
-        # Closed choice over scripts/settle-original-tags.py SUBJECTS. A settled subject (0.32.3, run
-        # 39774890888) is not offered and the script refuses it before any read, mint or effect.
-        description: Closed original tag subject (one original failed selected-tag cut).
+        # Both closed subjects are settled. Historical inputs remain readable; no new subject is admitted.
+        description: Historical subject only; all original settlements are closed and refuse replay.
         required: true
-        type: choice
-        options:
-          - palette-heading-0.32.4
+        type: string
       expected-executor-sha:
         description: Exact independently reviewed protected executor SHA.
         required: true
@@ -37,8 +34,9 @@ permissions:
 jobs:
   settle:
     name: Settle original producer tags [org-publication-writer]
+    # No runnable subjects remain; refuse before checkout, writer lock or credentials.
     if: >-
-      github.repository == 'FS-GG/FS.GG.Rendering' && github.event_name == 'workflow_dispatch' &&
+      false && github.repository == 'FS-GG/FS.GG.Rendering' && github.event_name == 'workflow_dispatch' &&
       github.ref == 'refs/heads/main' && github.run_attempt == 1 && github.sha == inputs.expected-executor-sha
     runs-on: ubuntu-latest
     # Administrative workflow state and run reads only. Rulesets, refs and tags are never
@@ -79,16 +77,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          root="${RUNNER_TEMP:?}/settlement-dotnet-10.0.401"
+          root="${RUNNER_TEMP:?}/settlement-dotnet-10.0.403"
           [[ "$RUNNER_TEMP" == /* && "$RUNNER_TEMP" != / && "$(realpath -e -- "$RUNNER_TEMP")" == "$RUNNER_TEMP" && ! -e "$root" && ! -L "$root" ]] || exit 3
           printf 'DOTNET_INSTALL_DIR=%s\n' "$root" >> "$GITHUB_ENV"
       - uses: actions/setup-dotnet@v6
         if: steps.subject.outputs.typed-qualification == 'true'
         with:
-          dotnet-version: '10.0.401'
+          dotnet-version: '10.0.403'
       - name: Verify selected qualification interpreter
         if: steps.subject.outputs.typed-qualification == 'true'
-        run: python3 scripts/release-toolchain-identity.py --expected-sdk 10.0.401 --receipt artifacts/tag-settlement/toolchain.json
+        run: python3 scripts/release-toolchain-identity.py --expected-sdk 10.0.403 --receipt artifacts/tag-settlement/toolchain.json
       - name: Check maintained settlement controls before credentials
         run: timeout --kill-after=5s 60s python3 scripts/test-settle-original-tags.py
       - name: Retain exact root admission and original authenticated artifacts

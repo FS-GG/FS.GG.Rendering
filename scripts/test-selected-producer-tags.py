@@ -84,7 +84,7 @@ def check_workflow(text):
         lock = ['FS-GG/.github/.github/actions/publication-writer-lock@c799a9f9b21d52eb9766cf0950722e3e55145d39 # ADR-0097'] if job == 'selected-tag-cut' else []
         need(uses == lock + ['actions/checkout@v7', 'actions/setup-dotnet@v6', 'actions/upload-artifact@v7'],
              f'{job}: unexpected action outside checkout and evidence upload')
-        need("if: inputs.version == '0.32.4'\n        with:\n          dotnet-version: '10.0.401'" in block, f'{job}: selected interpreter must be exact and conditional')
+        need("if: inputs.version == '0.32.4'\n        with:\n          dotnet-version: '10.0.403'" in block, f'{job}: selected interpreter must be exact and conditional')
         need('FSGG_SUCCESSOR_UNRESOLVED_SEND: ${{ inputs.successor-unresolved-send }}' in block, f'{job}: missing default-held prior-send input')
         need(not re.search(r'\b(gh|curl|git push|secrets\.|id-token|packages:|create-github-app-token)\b', block),
              f'{job}: unexpected authority/native command')

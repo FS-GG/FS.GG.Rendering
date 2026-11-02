@@ -17,7 +17,8 @@ import urllib.error
 SPEC = importlib.util.spec_from_file_location('settle', Path(__file__).with_name('settle-original-tags.py'))
 s = importlib.util.module_from_spec(SPEC); SPEC.loader.exec_module(s)
 ROOT = Path(__file__).resolve().parent.parent
-# The mechanism controls exercise the one runnable subject; the settled 0.32.3 subject has its own controls.
+# Mechanism controls replay the historical pre-settlement state only against fake providers.
+# Current-source non-replay controls below use the unmodified closed subject table.
 RUNNABLE = 'palette-heading-0.32.4'
 SETTLED = 'font-disposal-0.32.3'
 s.select(RUNNABLE)
@@ -101,8 +102,19 @@ def views(api):
     return View(api, 'actions'), View(api, 'reader'), View(api, 'writer')
 
 
-class SettlementTests(unittest.TestCase):
+class HistoricalMechanismCase(unittest.TestCase):
+    """Explicit disposable pre-settlement table for fake-provider mechanism controls only."""
     def setUp(self):
+        super().setUp()
+        subject = {**s.SUBJECTS[RUNNABLE], 'settledRun': None}
+        historical = patch.dict(s.SUBJECTS, {RUNNABLE: subject})
+        historical.start(); self.addCleanup(historical.stop)
+        s.select(RUNNABLE)
+
+
+class SettlementTests(HistoricalMechanismCase):
+    def setUp(self):
+        super().setUp()
         self.temp = tempfile.TemporaryDirectory(); self.addCleanup(self.temp.cleanup)
         self.api = FakeAPI(); self.root = Path(self.temp.name)
         self.op = s.Settlement(self.root, {'GITHUB_RUN_ID': '123'}, copy.deepcopy(ADMITTED), PINS,
@@ -228,7 +240,7 @@ class SettlementTests(unittest.TestCase):
         self.op.run();self.assertEqual('disabled_manually',self.api.states[310031035])
 
 
-class AdmissionAndAdapterTests(unittest.TestCase):
+class AdmissionAndAdapterTests(HistoricalMechanismCase):
     def test_actual_executor_old_actor_job_and_main_fences(self):
         env={'FSGG_EXPECTED_EXECUTOR_SHA':'a'*40,'GITHUB_SHA':'a'*40,'GITHUB_WORKFLOW_SHA':'a'*40,
              'GITHUB_WORKFLOW_REF':s.WORKFLOW,'GITHUB_REF':'refs/heads/main','GITHUB_EVENT_NAME':'workflow_dispatch',
@@ -449,7 +461,7 @@ class AppView:
         return d.overrides.get('mint_status', 201), d.overrides.get('grants', {}).get(role, good_grant(role))
 
 
-class DerivedBase(unittest.TestCase):
+class DerivedBase(HistoricalMechanismCase):
     def build(self, **overrides):
         self.temp = tempfile.TemporaryDirectory(); self.addCleanup(self.temp.cleanup)
         self.api = FakeAPI(); self.deriver = Deriver(self.api, **overrides)
@@ -633,7 +645,7 @@ class DerivedCredentialTests(DerivedBase):
         self.assertEqual([{'administration': 'write', 'metadata': 'read'}, {'contents': 'write', 'metadata': 'read', 'workflows': 'write'}], [e['permissions'] for e in minted])
 
 
-class RealAdapterDerivationTests(unittest.TestCase):
+class RealAdapterDerivationTests(HistoricalMechanismCase):
     """Real adapters over a scripted transport: exact bearer-to-route mapping and no credential persistence."""
     def run_settlement(self, grants=None, only_derive=False):
         self.temp = tempfile.TemporaryDirectory(); self.addCleanup(self.temp.cleanup)
@@ -719,7 +731,7 @@ class RealAdapterDerivationTests(unittest.TestCase):
         for secret in (JWT, *TOKENS.values()): self.assertNotIn(secret, raw)
 
 
-class RouteIsolationTests(unittest.TestCase):
+class RouteIsolationTests(HistoricalMechanismCase):
     def refused(self, role, method, path, body=None):
         api = s.API('credential-fixture', role, lambda *a, **k: None, 10**20)
         with patch.object(api.opener, 'open', side_effect=AssertionError('must not transport')), self.assertRaises(s.Refused):
@@ -887,7 +899,7 @@ class RouteIsolationTests(unittest.TestCase):
 
 
 class SubjectTableTests(unittest.TestCase):
-    """Closed subject table: the settled 0.32.3 row is unchanged and 0.32.4 is the only runnable one."""
+    """Closed subject table: both settled subjects preserve original intent and refuse replay."""
     def tearDown(self):
         s.select(RUNNABLE)
 
@@ -907,7 +919,8 @@ class SubjectTableTests(unittest.TestCase):
 
     def test_0324_subject_binds_original_cut_refs_and_lightweight_creates_only(self):
         s.select(RUNNABLE)
-        self.assertEqual({'palette-heading-0.32.4'}, {n for n, r in s.SUBJECTS.items() if r['settledRun'] is None})
+        self.assertEqual(set(), {n for n, r in s.SUBJECTS.items() if r['settledRun'] is None})
+        self.assertEqual(40997578723, s.SUBJECTS[RUNNABLE]['settledRun'])
         self.assertEqual(('refs/tags/fs-gg-ui/v0.32.4', 'refs/tags/fs-gg-ui-template/v0.32.4', 'refs/tags/v0.32.4'), s.REFS)
         self.assertEqual('4ede04be66cedffc8551cd14045bab714aa358a7', s.SOURCE)
         self.assertEqual('0.32.4', s.VERSION)
@@ -915,8 +928,7 @@ class SubjectTableTests(unittest.TestCase):
         self.assertEqual((40993299693, 1, 123860696926, '3f426ad75cc5be84fcac545d4f4cf61f3ce16e66', 1645484),
                          (intent['run'], intent['attempt'], intent['job'], intent['executorSha'], intent['actorId']))
         self.assertEqual([(12950172134, 'check.json'), (12950051972, 'cut.json')], [(a['id'], a['member']) for a in intent['artifacts']])
-        self.assertEqual({'producer-sha': s.SOURCE, 'version': '0.32.4', 'original-artifacts': '12950172134 12950051972', 'typed-qualification': 'true'},
-                         s.describe(ROOT, RUNNABLE))
+        with self.assertRaisesRegex(s.Refused, 'already settled'): s.describe(ROOT, RUNNABLE)
         binding = s.qualification_binding(ROOT, intent)
         self.assertEqual((s.SOURCE, '0.32.4', s.EFFECT, 'eng/release/palette-heading-0.32.4.json'),
                          (binding['producerSha'], binding['version'], binding['effectId'], binding['planPath']))
@@ -946,32 +958,34 @@ class NonReplayTests(unittest.TestCase):
         s.select(RUNNABLE)
 
     def test_settled_subject_refuses_before_any_read_mint_or_effect(self):
-        s.select(SETTLED)
-        api = FakeAPI(); deriver = Deriver(api); signed = []
-        def signer(*args): signed.append(args); return JWT
-        with tempfile.TemporaryDirectory() as d:
-            op = s.Settlement(Path(d), {'GITHUB_RUN_ID': '123', 'GITHUB_TOKEN': TOKENS['actions']}, copy.deepcopy(ADMITTED),
-                json.loads((ROOT / s.BINDING).read_text()), View(api, 'actions', TOKENS['actions']), identity=lambda: None,
-                app=('4242', 'PRIVATE KEY fixture'), api_factory=deriver.factory, signer=signer, mask=deriver.mask)
-            op.inventory = lambda: None
-            with self.assertRaises(s.Refused): op.run()
-        self.assertEqual(([], [], [], []), (api.calls, signed, deriver.mints, deriver.masked))
-        self.assertEqual('font-disposal-0.32.3', op.receipt['subject'])
-        self.assertEqual('refused-or-unknown', op.receipt['result'])
+        for subject in (SETTLED, RUNNABLE):
+            s.select(subject)
+            api = FakeAPI(); deriver = Deriver(api); signed = []
+            def signer(*args): signed.append(args); return JWT
+            with tempfile.TemporaryDirectory() as d:
+                op = s.Settlement(Path(d), {'GITHUB_RUN_ID': '123', 'GITHUB_TOKEN': TOKENS['actions']}, copy.deepcopy(ADMITTED),
+                    json.loads((ROOT / s.BINDING).read_text()), View(api, 'actions', TOKENS['actions']), identity=lambda: None,
+                    app=('4242', 'PRIVATE KEY fixture'), api_factory=deriver.factory, signer=signer, mask=deriver.mask)
+                op.inventory = lambda: None
+                with self.assertRaises(s.Refused): op.run()
+            self.assertEqual(([], [], [], []), (api.calls, signed, deriver.mints, deriver.masked))
+            self.assertEqual(subject, op.receipt['subject'])
+            self.assertEqual('refused-or-unknown', op.receipt['result'])
 
     def test_settled_subject_admission_and_main_refuse_without_credentials(self):
-        s.select(SETTLED)
-        doc = {**copy.deepcopy(ADMITTED), 'effectId': s.EFFECT, 'allowedRefs': list(s.REFS)}; raw = json.dumps(doc).encode()
-        with self.assertRaisesRegex(s.Refused, 'already settled'): s.admission(raw, s.digest(raw), {'FSGG_EXPECTED_EXECUTOR_SHA': 'a' * 40})
-        with tempfile.TemporaryDirectory() as d:
-            (Path(d) / 'a.json').write_bytes(raw)
-            for extra in ([], ['--describe'], ['--prepare-qualification']):
-                argv = ['settle', '--subject', SETTLED, *(extra or ['--admission', str(Path(d) / 'a.json'), '--admission-sha256', s.digest(raw), '--original-directory', d])]
-                with self.subTest(extra=extra), patch.object(s.sys, 'argv', argv), patch.object(s.Path, 'cwd', return_value=Path(d)), \
-                     patch.object(s, 'Settlement', side_effect=AssertionError('no settlement')), patch.object(s, 'original', side_effect=AssertionError('no original read')), \
-                     patch.object(s.tags, 'selected_binding', side_effect=AssertionError('no qualification')):
-                    self.assertEqual(1, s.main())
-        with patch.object(s.sys, 'argv', ['settle', '--subject', 'font-disposal-0.32.5']), self.assertRaises(SystemExit): s.main()
+        for subject in (SETTLED, RUNNABLE):
+            s.select(subject)
+            doc = {**copy.deepcopy(ADMITTED), 'effectId': s.EFFECT, 'allowedRefs': list(s.REFS)}; raw = json.dumps(doc).encode()
+            with self.assertRaisesRegex(s.Refused, 'already settled'): s.admission(raw, s.digest(raw), {'FSGG_EXPECTED_EXECUTOR_SHA': 'a' * 40})
+            with tempfile.TemporaryDirectory() as d:
+                (Path(d) / 'a.json').write_bytes(raw)
+                for extra in ([], ['--describe'], ['--prepare-qualification']):
+                    argv = ['settle', '--subject', subject, *(extra or ['--admission', str(Path(d) / 'a.json'), '--admission-sha256', s.digest(raw), '--original-directory', d])]
+                    with self.subTest(extra=extra), patch.object(s.sys, 'argv', argv), patch.object(s.Path, 'cwd', return_value=Path(d)), \
+                         patch.object(s, 'Settlement', side_effect=AssertionError('no settlement')), patch.object(s, 'original', side_effect=AssertionError('no original read')), \
+                         patch.object(s.tags, 'selected_binding', side_effect=AssertionError('no qualification')):
+                        self.assertEqual(1, s.main())
+            with patch.object(s.sys, 'argv', ['settle', '--subject', 'font-disposal-0.32.5']), self.assertRaises(SystemExit): s.main()
 
     def test_census_refuses_the_settled_subject_even_past_the_runnable_guard(self):
         s.select(SETTLED)
@@ -981,8 +995,9 @@ class NonReplayTests(unittest.TestCase):
         with self.assertRaisesRegex(s.Refused, 'this subject'): op.settlement_census(runs)
 
 
-class PerSubjectCensusTests(unittest.TestCase):
+class PerSubjectCensusTests(HistoricalMechanismCase):
     def setUp(self):
+        super().setUp()
         s.select(RUNNABLE)
         self.op = s.Settlement(Path('.'), {'GITHUB_RUN_ID': '7'}, {}, PINS, *views(FakeAPI()), identity=lambda: None)
 
@@ -1013,8 +1028,9 @@ class PerSubjectCensusTests(unittest.TestCase):
             self.op.settlement_census({'total_count': 2, 'workflow_runs': [{'id': 7, 'display_title': s.run_title(RUNNABLE)}]})
 
 
-class FenceIdentityAndRestoreTests(unittest.TestCase):
+class FenceIdentityAndRestoreTests(HistoricalMechanismCase):
     def setUp(self):
+        super().setUp()
         s.select(RUNNABLE)
 
     def inventory_with(self, mutate):
@@ -1068,9 +1084,11 @@ class WorkflowSubjectAndLockTests(unittest.TestCase):
         self.code = '\n'.join(l for l in self.text.splitlines() if not l.lstrip().startswith('#'))
         self.steps = re.split(r'(?m)^      - ', self.code.split('\njobs:\n')[1])[1:]
 
-    def test_subject_is_a_closed_choice_of_exactly_the_runnable_subjects(self):
+    def test_no_runnable_subject_is_offered_and_job_is_dormant(self):
         block = self.code.split('      subject:\n')[1].split('      expected-executor-sha:')[0]
-        self.assertIn('type: choice', block)
+        self.assertIn('type: string', block)
+        self.assertNotIn('options:', block)
+        self.assertIn('false && github.repository', self.code)
         self.assertEqual(sorted(n for n, r in s.SUBJECTS.items() if r['settledRun'] is None), re.findall(r'(?m)^          - (\S+)$', block))
         self.assertIn('run-name: release-tag-settlement ${{ inputs.subject }}', self.code)
         self.assertEqual(s.run_title('x'), 'release-tag-settlement x')

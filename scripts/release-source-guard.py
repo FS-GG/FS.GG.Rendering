@@ -19,6 +19,9 @@ preflight = importlib.util.module_from_spec(spec)
 assert spec.loader
 spec.loader.exec_module(preflight)
 
+# SDKs a selected release source may name; see the check in validate().
+RELEASE_SDKS = frozenset({'10.0.401', '10.0.403'})
+
 
 def validate(root: Path, source_sha: str, plan_path: str, requested_version: str = '', require_publication_ready: bool = False) -> dict:
     if not preflight.SHA.fullmatch(source_sha):
@@ -101,14 +104,17 @@ def validate(root: Path, source_sha: str, plan_path: str, requested_version: str
             preflight.fail(f'external host source/pack entry is missing: {name}')
     if 'SvgExternalSessionHost' not in checks.get('svgSurfaceMarkers', []):
         preflight.fail('plan omits external host API surface marker')
-    if plan.get('sdkVersion') != '10.0.401':
-        preflight.fail('release plan SDK must be exactly 10.0.401')
+    # Closed pair (FS-GG/.github#4943). Retained and historical producer sources (every selected plan above, all
+    # hash-bound) were built, and their plans written, on 10.0.401; a source prepared for the current release
+    # toolchain is exactly 10.0.403. Anything else, including a floating or neighbouring SDK, refuses.
+    if plan.get('sdkVersion') not in RELEASE_SDKS:
+        preflight.fail('release plan SDK must be exactly one of ' + ' or '.join(sorted(RELEASE_SDKS)))
     if json.loads(text('global.json'))['sdk']['version'] != plan['sdkVersion']:
         preflight.fail('source global.json differs from release SDK')
     for workflow in ('.github/workflows/release.yml', '.github/workflows/release-tags.yml'):
         versions = re.findall(r'dotnet-version:\s*[\'"]?([^\s\'"]+)', text(workflow))
         if not versions or any(v != plan['sdkVersion'] for v in versions):
-            preflight.fail(f'{workflow}: every release SDK setup must be exactly 10.0.401')
+            preflight.fail(f"{workflow}: every release SDK setup must be exactly {plan['sdkVersion']}")
     recipe = text('template/product-skills/fs-gg-symbology/reference.fsx')
     pins = re.findall(r'#r "nuget: (FS.GG.UI.[^,]+), ([^"]+)"', recipe)
     if len(pins) != 4 or any(v != version for _, v in pins):

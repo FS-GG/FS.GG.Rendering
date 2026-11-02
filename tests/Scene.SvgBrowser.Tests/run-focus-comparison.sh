@@ -17,16 +17,16 @@ python3 "$repo/tests/Scene.SvgBrowser.Tests/focus-comparison-inputs.py" check "$
 for variant in original candidate; do
   mkdir "$work/$variant"
   chmod 700 "$work/$variant"
-  printf '%s\n' '{"sdk":{"version":"10.0.401","rollForward":"disable","allowPrerelease":false}}' > "$work/$variant/global.json"
+  printf '%s\n' '{"sdk":{"version":"10.0.403","rollForward":"disable","allowPrerelease":false}}' > "$work/$variant/global.json"
   (
     cd "$work/$variant"
     dotnet --version > sdk-version.log
-    [[ "$(cat sdk-version.log)" == 10.0.401 ]] || { echo "Actual $variant SDK differs" >&2; exit 1; }
+    [[ "$(cat sdk-version.log)" == 10.0.403 ]] || { echo "Actual $variant SDK differs" >&2; exit 1; }
     if [[ "$variant" == original ]]; then
       # Unmodified historical helper inherits the same closed private SDK context.
       bash "$original/tests/Scene.SvgBrowser.Tests/build-fixture.sh" "$work/$variant/fixture"
     else
-      SVG_SCENE_FOCUS_SDK=10.0.401 bash "$repo/tests/Scene.SvgBrowser.Tests/build-fixture.sh" "$work/$variant/fixture"
+      SVG_SCENE_FOCUS_SDK=10.0.403 bash "$repo/tests/Scene.SvgBrowser.Tests/build-fixture.sh" "$work/$variant/fixture"
     fi
   )
 done

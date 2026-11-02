@@ -59,13 +59,14 @@ SUBJECTS = {
         'bindingSha256': 'a2443e3ca805a1b726eb0a47fcbf499dbaace56243deb50b00ea23c86503f5a6',
         'fences': 'eng/release/font-disposal-0.32.3-workflow-fences.json',
         'qualification': 'font-disposal-attempt', 'settledRun': 39774890888},
-    # Original failed cut run 40993299693/a1 job 123860696926 (GITHUB_TOKEN refused: no `workflows`).
+    # Original failed cut run 40993299693/a1 job 123860696926; transport remains Unknown.
+    # Settled by run 40997578723/a1 (Verified, passed, restored); Root ruling #1474 comment6588135866.
     'palette-heading-0.32.4': {
         'version': '0.32.4', 'source': '4ede04be66cedffc8551cd14045bab714aa358a7', 'effect': 'rendering-0324-original40737624380-a1',
         'binding': 'eng/release/palette-heading-0.32.4-original-tag-intent.json',
         'bindingSha256': 'b2e83bf8111ee7f741abf3f248524ce78bc6870fa977dc0bf1fa9474121ac401',
         'fences': 'eng/release/palette-heading-0.32.4-workflow-fences.json',
-        'qualification': 'retained-successor', 'settledRun': None},
+        'qualification': 'retained-successor', 'settledRun': 40997578723},
 }
 # Settlement runs that predate the subject run-name. Every other prior run is classified by its exact
 # `release-tag-settlement <subject>` display title; an unclassified prior run refuses.

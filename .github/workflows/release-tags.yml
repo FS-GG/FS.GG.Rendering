@@ -127,16 +127,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          root="${RUNNER_TEMP:?}/selected-tag-dotnet-10.0.401"
+          root="${RUNNER_TEMP:?}/selected-tag-dotnet-10.0.403"
           [[ "$RUNNER_TEMP" == /* && "$RUNNER_TEMP" != / && "$(realpath -e -- "$RUNNER_TEMP")" == "$RUNNER_TEMP" && ! -e "$root" && ! -L "$root" ]] || exit 3
           printf 'DOTNET_INSTALL_DIR=%s\n' "$root" >> "$GITHUB_ENV"
       - uses: actions/setup-dotnet@v6
         if: inputs.version == '0.32.4'
         with:
-          dotnet-version: '10.0.401'
+          dotnet-version: '10.0.403'
       - name: Verify selected tag policy interpreter
         if: inputs.version == '0.32.4'
-        run: python3 scripts/release-toolchain-identity.py --expected-sdk 10.0.401 --receipt artifacts/toolchain/selected-tags.json
+        run: python3 scripts/release-toolchain-identity.py --expected-sdk 10.0.403 --receipt artifacts/toolchain/selected-tags.json
       - name: Check tag ordering and refusal controls without effects
         run: timeout --kill-after=10s 60s python3 scripts/test-selected-producer-tags.py
       - name: Validate selected identities and all three remote refs
@@ -191,16 +191,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          root="${RUNNER_TEMP:?}/selected-tag-dotnet-10.0.401"
+          root="${RUNNER_TEMP:?}/selected-tag-dotnet-10.0.403"
           [[ "$RUNNER_TEMP" == /* && "$RUNNER_TEMP" != / && "$(realpath -e -- "$RUNNER_TEMP")" == "$RUNNER_TEMP" && ! -e "$root" && ! -L "$root" ]] || exit 3
           printf 'DOTNET_INSTALL_DIR=%s\n' "$root" >> "$GITHUB_ENV"
       - uses: actions/setup-dotnet@v6
         if: inputs.version == '0.32.4'
         with:
-          dotnet-version: '10.0.401'
+          dotnet-version: '10.0.403'
       - name: Verify selected tag policy interpreter
         if: inputs.version == '0.32.4'
-        run: python3 scripts/release-toolchain-identity.py --expected-sdk 10.0.401 --receipt artifacts/toolchain/selected-tags.json
+        run: python3 scripts/release-toolchain-identity.py --expected-sdk 10.0.403 --receipt artifacts/toolchain/selected-tags.json
       # A refusal whose diagnostic names `workflow-permission-message` is final for this route:
       # GITHUB_TOKEN can never hold `workflows` (0.32.3 run 39541842303 and 0.32.4 run 40993299693
       # both record that category; 0.32.2 run 38240917195 predates it). Do not retry or widen this
@@ -258,9 +258,9 @@ jobs:
 
       - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: '10.0.401'
+          dotnet-version: '10.0.403'
       - name: Verify loaded SDK and F# identity
-        run: python3 scripts/release-toolchain-identity.py --expected-sdk 10.0.401 --receipt artifacts/toolchain/release-tags.json
+        run: python3 scripts/release-toolchain-identity.py --expected-sdk 10.0.403 --receipt artifacts/toolchain/release-tags.json
       - uses: actions/upload-artifact@v7
         with:
           name: rendering-release-tags-toolchain-${{ github.sha }}

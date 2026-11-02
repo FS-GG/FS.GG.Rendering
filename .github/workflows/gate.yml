@@ -784,10 +784,10 @@ jobs:
       - name: Require a fresh private SDK root for read-selector controls
         shell: bash
         env:
-          DOTNET_INSTALL_DIR: ${{ runner.temp }}/rendering-read-controls-dotnet-10.0.401
+          DOTNET_INSTALL_DIR: ${{ runner.temp }}/rendering-read-controls-dotnet-10.0.403
         run: |
           set -euo pipefail
-          expected="${RUNNER_TEMP:?}/rendering-read-controls-dotnet-10.0.401"
+          expected="${RUNNER_TEMP:?}/rendering-read-controls-dotnet-10.0.403"
           [[ "$RUNNER_TEMP" == /* && "$RUNNER_TEMP" != / && "$RUNNER_TEMP" != */ && "$(realpath -e -- "$RUNNER_TEMP")" == "$RUNNER_TEMP" ]] || { echo '::error::read-controls SDK parent must be canonical runner temp'; exit 1; }
           [[ "${DOTNET_INSTALL_DIR:-}" == "$expected" && ! -e "$expected" && ! -L "$expected" ]] || { echo '::error::read-controls SDK root must be selected and absent'; exit 1; }
           printf 'DOTNET_INSTALL_DIR=%s\n' "$expected" >> "$GITHUB_ENV"
@@ -795,13 +795,13 @@ jobs:
       - name: Set up .NET
         uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: '10.0.401'
+          dotnet-version: '10.0.403'
 
       - name: Qualify closed read-only release selectors without credentials
         run: |
           timeout --kill-after=5s 60s python3 -B scripts/test-release-tag-capability.py
           timeout --kill-after=5s 60s python3 scripts/test-settle-original-tags.py
-          python3 scripts/release-toolchain-identity.py --expected-sdk 10.0.401 --receipt artifacts/toolchain/read-selector-controls.json
+          python3 scripts/release-toolchain-identity.py --expected-sdk 10.0.403 --receipt artifacts/toolchain/read-selector-controls.json
           dotnet restore tests/FS.GG.Rendering.ReleasePreflight.Tests/FS.GG.Rendering.ReleasePreflight.Tests.fsproj --locked-mode
           dotnet run --project tests/FS.GG.Rendering.ReleasePreflight.Tests/FS.GG.Rendering.ReleasePreflight.Tests.fsproj -c Release --no-restore
           dotnet fsi --exec scripts/test-release-package-census.fsx

@@ -47,7 +47,7 @@ those same archives. Publication remains disabled until original custody, receiv
 and current authorization are joined; a readiness flag alone grants no authority. Historical
 release plans, original attempts and retained custody remain unchanged.
 
-Release jobs set up SDK `10.0.401`, then verify the loaded SDK and retain host information,
+Release jobs set up SDK `10.0.403`, then verify the loaded SDK and retain host information,
 loaded F# core identity and SDK compiler hashes before restore/build/pack. Actual execution of
 those jobs is still needed to establish the candidate's toolchain and archive evidence.
 

@@ -6,12 +6,40 @@ name: routine-eligibility
 # Repository writers are trusted: this prevents mistakes and drift, but does not
 # claim protection from a writer able to alter Actions workflows or spoof a
 # name-based check context.
+#
+# Moved base (.github#4730): the event payload's base SHA is only a monotonic floor. The
+# base is resolved live at run time (a re-run therefore never reuses a stale base), the
+# policy and both executables come from that one live base, and the PR's change is the
+# merge-base(live base, head)..head diff recomputed against it. The event base must be an
+# ancestor of the live base and the head must not already be contained in it; the envelope
+# repeats and enforces both. A moved head is still refused, never followed.
+#
+# Push parent (.github#5189): a push cannot carry a marker naming a head that did not exist when the body
+# was written, so every push used to fail here once and then cost a body edit (about 8 more runs) to
+# clear. On `synchronize` only, GitHub's own `before` (the PR's previous head, never author-controlled)
+# is offered to the validator as a provisional binding, and only when the push merely added commits on
+# top of it (bounded deepening proves ancestry; a forced push or missing history offers nothing). The
+# validator then admits a marker that names exactly that parent, with a warning that a rebind is owed.
+# Every other check (operation, policy, changed paths) still runs against the new head. The exact
+# binding moves to the merge boundary, which already refuses it: tools/routine-delivery.py's
+# routine_contract reads the live body and requires `head=` to equal the merged head. An `edited`,
+# `opened` or `reopened` run has no trusted previous head and stays exact.
 on:
   pull_request_target:
     types: [opened, synchronize, reopened, edited]
 
 permissions:
   contents: read
+
+# PR-keyed concurrency (#4730 CI-load, after #4994): this workflow runs on `pull_request_target` only, where
+# `github.ref` is the default branch, so the key is the PR number and every event is a PR event.
+# A newer head action (opened, synchronize, reopened) cancels the superseded head's run; the moved-base fix
+# (#4994) resolves the base live on every run, so the run that replaces it never depends on the cancelled
+# one's payload. An `edited` run keys on its own `github.run_id` (#5159): it never cancels the head run
+# for the same head and is never cancelled, so no cancelled run is left to re-run on the stale body.
+concurrency:
+  group: routine-eligibility-${{ contains(fromJSON('["opened","synchronize","reopened"]'), github.event.action) && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
   routine-eligibility:
@@ -20,19 +48,25 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Evaluate with the PR base's policy and validator
+      - name: Evaluate with the live base's policy and validator
         shell: bash
         env:
+          RECEIVER_FETCH_TOKEN: ${{ github.token }}
           PR_BODY: ${{ github.event.pull_request.body }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           BASE_REF: ${{ github.event.pull_request.base.ref }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          EVENT_ACTION: ${{ github.event.action }}
+          EVENT_BEFORE: ${{ github.event.before }}
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           REPOSITORY: ${{ github.repository }}
         run: |
+          set +x
           set -euo pipefail
+          for trace_name in "${!GIT_TRACE@}"; do unset "$trace_name"; done
+          unset GIT_CURL_VERBOSE
 
           test "$BASE_REF" = "$DEFAULT_BRANCH" || {
             echo "routine-eligibility: PR target $BASE_REF is not default branch $DEFAULT_BRANCH" >&2
@@ -51,25 +85,79 @@ jobs:
             ''|*[!0-9]*) echo "routine-eligibility: invalid PR number" >&2; exit 1 ;;
           esac
 
+          # Keep the raw token out of every child environment, including Git initialization.
+          test -n "${RECEIVER_FETCH_TOKEN:-}" || { echo "routine-eligibility: missing fetch credential" >&2; exit 1; }
+          fetch_token="$RECEIVER_FETCH_TOKEN"
+          unset RECEIVER_FETCH_TOKEN
+          fetch_basic="$(printf 'x-access-token:%s' "$fetch_token" | base64 -w0)"
+          unset fetch_token
+          echo "::add-mask::$fetch_basic"
           inspect="$RUNNER_TEMP/routine-eligibility-repository"
           trusted="$RUNNER_TEMP/routine-eligibility-base"
           mkdir -p "$inspect" "$trusted/lib"
           git -C "$inspect" init -q
           git -C "$inspect" remote add origin "https://github.com/$REPOSITORY.git"
-          git -C "$inspect" fetch --quiet --no-tags --depth=1 origin \
-            "+refs/heads/${BASE_REF}:refs/remotes/origin/routine-base" \
-            "+refs/pull/${PR_NUMBER}/head:refs/remotes/origin/routine-head"
-
-          observed_base="$(git -C "$inspect" rev-parse refs/remotes/origin/routine-base)"
-          observed_head="$(git -C "$inspect" rev-parse refs/remotes/origin/routine-head)"
-          test "$observed_base" = "$BASE_SHA" || {
-            echo "routine-eligibility: fetched base $observed_base differs from event base $BASE_SHA" >&2
-            exit 1
+          # Only this fixed-origin fetch receives the ephemeral header; no persistent credentials.
+          fetch_routine_refs() {
+            ROUTINE_FETCH_HEADER="AUTHORIZATION: basic $fetch_basic" GIT_TERMINAL_PROMPT=0 \
+              git -c credential.helper= -c http.followRedirects=false \
+              --config-env=http.https://github.com/.extraheader=ROUTINE_FETCH_HEADER \
+              -C "$inspect" fetch --quiet --no-tags "$@" origin \
+              "+refs/heads/${BASE_REF}:refs/remotes/origin/routine-base" \
+              "+refs/pull/${PR_NUMBER}/head:refs/remotes/origin/routine-head"
           }
+          # Ancestry needs history that the depth-1 fetch lacks; this is the only deepening.
+          routine_connected() {
+            git -C "$inspect" merge-base --is-ancestor "$BASE_SHA" refs/remotes/origin/routine-base 2>/dev/null &&
+              git -C "$inspect" merge-base refs/remotes/origin/routine-base refs/remotes/origin/routine-head >/dev/null 2>&1
+          }
+          fetch_routine_refs --depth=1
+          observed_base="$(git -C "$inspect" rev-parse refs/remotes/origin/routine-base)"
+          if test "$observed_base" != "$BASE_SHA"; then
+            # Moved base: deepen a bounded number of times to connect the event base and the head.
+            for deepen in 64 256 1024 4096; do
+              if routine_connected; then break; fi
+              fetch_routine_refs --deepen="$deepen" || break
+            done
+            observed_base="$(git -C "$inspect" rev-parse refs/remotes/origin/routine-base)"
+          fi
+          # Push parent (#5189): offer GitHub's `before` only on a fast-forward push of a routine branch.
+          previous_head=""
+          if test "${EVENT_ACTION:-}" = synchronize && [[ "$HEAD_REF" == routine/* ]] &&
+              [[ "${EVENT_BEFORE:-}" =~ ^[0-9a-f]{40}$ ]] && test "$EVENT_BEFORE" != "$HEAD_SHA"; then
+            for deepen in 0 8 64 256; do
+              if test "$deepen" -gt 0; then fetch_routine_refs --deepen="$deepen" || break; fi
+              if git -C "$inspect" merge-base --is-ancestor "$EVENT_BEFORE" refs/remotes/origin/routine-head 2>/dev/null; then
+                previous_head="$EVENT_BEFORE"
+                break
+              fi
+            done
+            if test -n "$previous_head"; then
+              echo "routine-eligibility: push added commits on top of previous head $previous_head"
+            else
+              echo "routine-eligibility: previous head $EVENT_BEFORE is not a proven ancestor of $HEAD_SHA (forced push or history beyond the bound); only an exact-head marker is accepted"
+            fi
+          fi
+          unset fetch_basic
+
+          observed_head="$(git -C "$inspect" rev-parse refs/remotes/origin/routine-head)"
           test "$observed_head" = "$HEAD_SHA" || {
             echo "routine-eligibility: fetched head $observed_head differs from event head $HEAD_SHA" >&2
             exit 1
           }
+          if test "$observed_base" != "$BASE_SHA"; then
+            # The live base is the trusted code source: it must be the event base's forward
+            # descendant and must not already contain (or be) the candidate head.
+            git -C "$inspect" merge-base --is-ancestor "$BASE_SHA" "$observed_base" 2>/dev/null || {
+              echo "routine-eligibility: event base $BASE_SHA is not an ancestor of live base $observed_base" >&2
+              exit 1
+            }
+            if git -C "$inspect" merge-base --is-ancestor "$HEAD_SHA" "$observed_base" 2>/dev/null; then
+              echo "routine-eligibility: head $HEAD_SHA is already contained in live base $observed_base" >&2
+              exit 1
+            fi
+            echo "routine-eligibility: base moved $BASE_SHA -> $observed_base; re-evaluating the unchanged head against the live base"
+          fi
 
           case "$HEAD_REF" in
             routine/*) ;;
@@ -79,13 +167,16 @@ jobs:
               ;;
           esac
 
-          # Both executable files come from the exact PR base. The candidate can
-          # replace or delete either path without influencing this invocation.
-          git -C "$inspect" show "$BASE_SHA:scripts/check-claim-generation.py" > "$trusted/check-claim-generation.py"
-          git -C "$inspect" show "$BASE_SHA:scripts/lib/gate.py" > "$trusted/lib/gate.py"
-          git -C "$inspect" show "$BASE_SHA:scripts/check-routine-eligibility-envelope.py" > "$trusted/check-routine-eligibility-envelope.py"
+          # Every executable file and the policy come from the one live base resolved above
+          # (equal to the event base when it has not moved). The candidate can replace or
+          # delete any path without influencing this invocation.
+          git -C "$inspect" show "$observed_base:scripts/check-claim-generation.py" > "$trusted/check-claim-generation.py"
+          git -C "$inspect" show "$observed_base:scripts/lib/gate.py" > "$trusted/lib/gate.py"
+          git -C "$inspect" show "$observed_base:scripts/check-routine-eligibility-envelope.py" > "$trusted/check-routine-eligibility-envelope.py"
           printf '%s' "$PR_BODY" > "$trusted/pr-body.md"
 
+          previous_args=()
+          test -z "$previous_head" || previous_args=(--previous-head "$previous_head")
           python3 "$trusted/check-routine-eligibility-envelope.py" \
             --git-dir "$inspect" \
             --repository "$REPOSITORY" \
@@ -97,4 +188,5 @@ jobs:
             --head-revision refs/remotes/origin/routine-head \
             --head-sha "$HEAD_SHA" \
             --body "$trusted/pr-body.md" \
-            --validator "$trusted/check-claim-generation.py"
+            --validator "$trusted/check-claim-generation.py" \
+            "${previous_args[@]}"

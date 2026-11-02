@@ -188,9 +188,11 @@ try
         else None
     if currentAttempt || fontAttempt then
         use toolchain = JsonDocument.Parse(File.ReadAllBytes("artifacts/toolchain/publish-packages.json"))
-        for (field, expectedValue) in ["sdkVersion","10.0.401"; "runtimeVersion",(if fontAttempt then "10.0.13" else "10.0.12");
-                                      "compilerSha256","2bd6190eafa94f47739538467f5a7cd52de233a627789c69f07959d7578e4d6b";
-                                      "fsharpCoreSha256","2232698f623c28b8bcca32fa3cc8943cdd8529b20b487b5938106aae1c2ab256"] do
+        // The executor's own loaded toolchain (SDK 10.0.403, FS-GG/.github#4943), not the original run's: the original
+        // attempts keep their recorded 10.0.401 identity in their immutable attempt bindings.
+        for (field, expectedValue) in ["sdkVersion","10.0.403"; "runtimeVersion","10.0.14";
+                                      "compilerSha256","b5c905fb71bb111a47dd695c911d3e62479ed6cdb43fc17b58dcd17d4a86b1a7";
+                                      "fsharpCoreSha256","b70ab27f711d5378fc79429eb2a73b6bda868ba6c9e0496584492d6372a35946"] do
             if toolchain.RootElement.GetProperty(field).GetString()<>expectedValue then
                 invalidArg "input" "verify-key-current-toolchain-refused"
     let started = DateTimeOffset.UtcNow.ToString("O")

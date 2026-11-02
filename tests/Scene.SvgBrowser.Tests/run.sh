@@ -6,6 +6,7 @@ if [[ -n "${SVG_SCENE_ORIGINAL_CANDIDATE_DIR:-}${SVG_SCENE_ORIGINAL_CUSTODY:-}${
   original_mode=true
 else
   node "$repo/tests/Scene.SvgBrowser.Tests/reconciliation-source-test.mjs"
+  node "$repo/tests/Scene.SvgBrowser.Tests/reconciliation-lookup-test.mjs"
   node "$repo/tests/Scene.SvgBrowser.Tests/suite-control-test.mjs"
   node "$repo/tests/Scene.SvgBrowser.Tests/hosted-benchmark-control-test.mjs"
 fi

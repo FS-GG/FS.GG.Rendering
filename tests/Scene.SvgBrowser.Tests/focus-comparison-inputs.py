@@ -2,7 +2,7 @@
 import hashlib,json,os,pathlib,re,subprocess,sys,zipfile
 BASE='f3eb5abb117042144a1cbb41a5ec43821642df74'
 SOURCE='src/Scene.SvgBrowser/SvgBrowser.fs'
-EXPECTED={'original':'e32cfb1f8c9683a4fddd158bba604ad825ef4c54a3b0f61d10b9902bde100cb0','candidate':'c89d455f2ce970d9b51a7d3fe2fea2d0c62eff458bf10cf1d7926cbfd1f7a107'}
+EXPECTED={'original':'e32cfb1f8c9683a4fddd158bba604ad825ef4c54a3b0f61d10b9902bde100cb0','candidate':'9c57832619d932106859ef9651976ce218c3b862e0ecd0e1516d308729c5d891'}
 def require(value,cause):
  if not value:raise RuntimeError(cause)
 def digest(body):return hashlib.sha256(body).hexdigest()
@@ -35,11 +35,11 @@ def check(candidate,original,out):
 def attest(candidate,original,work,out):
  seed=json.loads((out/'checkouts.json').read_text());variants=[]
  for selected in seed['variants']:
-  name=selected['name'];parent=work/name; sdk=json.loads((parent/'global.json').read_text());require(sdk=={'sdk':{'version':'10.0.401','rollForward':'disable','allowPrerelease':False}},name+' private SDK selection differs');require((parent/'sdk-version.log').read_text().strip()=='10.0.401',name+' actual SDK differs');bounded_write(out/(name+'-global.json'),(parent/'global.json').read_bytes());bounded_write(out/(name+'-sdk-version.log'),(parent/'sdk-version.log').read_bytes());repo=pathlib.Path(selected['repo']);fixture=work/name/'fixture';before=fixture/'source-manifest.tsv';after=fixture/'source-manifest-after.tsv'
+  name=selected['name'];parent=work/name; sdk=json.loads((parent/'global.json').read_text());require(sdk=={'sdk':{'version':'10.0.403','rollForward':'disable','allowPrerelease':False}},name+' private SDK selection differs');require((parent/'sdk-version.log').read_text().strip()=='10.0.403',name+' actual SDK differs');bounded_write(out/(name+'-global.json'),(parent/'global.json').read_bytes());bounded_write(out/(name+'-sdk-version.log'),(parent/'sdk-version.log').read_bytes());repo=pathlib.Path(selected['repo']);fixture=work/name/'fixture';before=fixture/'source-manifest.tsv';after=fixture/'source-manifest-after.tsv'
   require(before.read_bytes()==after.read_bytes(),name+' source manifest changed during build');require(pin(repo/SOURCE)==selected['productionSource'],name+' production source changed after build')
   source_row=selected['productionSource']['sha256']+'\t'+SOURCE
   require(source_row in before.read_text().splitlines(),name+' production source absent from fixture manifest')
-  if name=='candidate':require((fixture/'logs/sdk-version.log').read_text().strip()=='10.0.401' and json.loads((fixture/'global.json').read_text())==sdk,'candidate helper SDK context differs')
+  if name=='candidate':require((fixture/'logs/sdk-version.log').read_text().strip()=='10.0.403' and json.loads((fixture/'global.json').read_text())==sdk,'candidate helper SDK context differs')
   packages=list((fixture/'feed').glob('FS.GG.UI.Scene.SvgBrowser.*.nupkg'));require(len(packages)==1,name+' actual production package ambiguous')
   package=packages[0]
   packed=packed_production_source(package)
