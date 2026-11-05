@@ -36,6 +36,16 @@ The [original budgets-v1 decision](https://github.com/FS-GG/.github/issues/4645#
 | sparse-50 | 38.250, 39.850, 40.200 | 38.450, 40.450, 39.300 | 73.600, 74.600, 79.800 | 64.400, 67.500, 67.800 | 7.73–8.14× |
 | churn-10 | 40.350, 42.250, 41.100 | 40.150, 41.550, 42.200 | 81.600, 82.400, 78.600 | 69.800, 76.800, 77.000 | 8.38–9.24× |
 
+Largest synchronous update in each 250-instance trial (ms):
+
+| Motion | Baseline maxima, trials 1/2/3 | Candidate maxima, trials 1/2/3 |
+| --- | --- | --- |
+| static | 81.100, 82.100, 84.100 | 88.800, 88.400, 81.300 |
+| camera-only | 85.100, 84.700, 82.100 | 68.000, 92.800, 81.100 |
+| sparse-10 | 86.500, 89.700, 94.400 | 86.300, 92.500, 93.800 |
+| sparse-50 | 88.800, 93.000, 98.600 | 85.600, 76.500, 77.600 |
+| churn-10 | 114.700, 114.100, 103.500 | 94.700, 95.100, 99.100 |
+
 All p95s use nearest rank over 100 samples per trial. Raw samples remain in the owner-retained execution bundle; no p99 or sustained-lifetime acceptance is inferred.
 
 ## Relative results for all cells
