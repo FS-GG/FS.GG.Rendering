@@ -18,21 +18,24 @@ such skip. Three kinds live here:
 - `tests/Elmish.Tests/Feature109BaselineReportTests.fs` — "non-golden timing/allocation
   baselines" (`ptestList` in the default tier, active on the scheduled tier).
 
-**Owner/review**: `FS-GG/FS.GG.Rendering#1047`, review by **2026-11-02**. The
+**Owner/review**: `FS-GG/FS.GG.Rendering#1047`, review by **2026-11-09**. The
 `pending-tests.yml` Monday cadence sets `FSGG_SCHEDULED_PENDING_TESTS=1`, regenerates the
 environment-dependent evidence in an isolated job, asserts both suites, and uploads the result.
 The default PR tier keeps them pending so wall-clock/allocation evidence cannot become a merge gate.
 `PendingTestOwnershipTests` fails once the review date expires.
 
-**Reviewed 2026-10-27**: the [26 October scheduled run](https://github.com/FS-GG/FS.GG.Rendering/actions/runs/40312471519)
-at `775505f82d4391360c2b5ee610be0ffeaa4f385a` passed all 308 tests with no failures or skips,
-using the scheduled flag and both regeneration flags, and uploaded its evidence. The
-[owner review](https://github.com/FS-GG/FS.GG.Rendering/issues/1047#issuecomment-6436025407)
-retains this cadence and the unchanged assertions. Rendering maintenance and the active programme
-coordinator own the next Monday review on 2 November, or earlier review if the cadence fails,
+**Reviewed 2026-11-05**: the [2 November scheduled run](https://github.com/FS-GG/FS.GG.Rendering/actions/runs/41453346589)
+at `2d35dc9b2365468e8a71e8d7aa5f4cdf60f60195` passed all 308 tests with no failures or skips,
+using the scheduled flag and both regeneration flags. Its downloaded evidence archive contains
+14 corpus goldens and both non-gating timing/allocation reports; its 9,962 bytes match SHA256
+`cb68ffe7a4bfb5a177a6203eca4505aaf7ee9ac88be265c4acb193ec1608f22d`.
+The [accountable owner review](https://github.com/FS-GG/FS.GG.Rendering/issues/1047#issuecomment-6648406448)
+retains this cadence and the unchanged assertions. Both suites, the cadence and the ownership
+guard match the reviewed scheduled source. Rendering maintenance and the active programme
+coordinator own the next Monday review on 9 November, or earlier review if the cadence fails,
 misses a run, its flags/evidence drift, or a supported tier change is proposed. The original
-27 October expired-review failure remains retained; this review does not promote timing or
-allocation evidence into PR acceptance.
+27 October and 5 November expired-review failures remain retained. This review does not promote
+timing or allocation evidence into PR acceptance or reopen the completed original implementation.
 
 **Review when**: the scheduled evidence should be promoted, split, or retired. A capable
 faithful-vsync runner may justify a separate host cadence, but is not required for this
