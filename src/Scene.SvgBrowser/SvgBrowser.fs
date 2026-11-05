@@ -391,6 +391,7 @@ type SvgDocumentBrowserHost
         initialRoot: Element
     ) =
 
+    let mutable exportDocument = SvgDocument.createExporter mountNamespace
     let mutable documentValue = initialDocument
     let mutable exportedSvg = initialSvg
     let mutable root = initialRoot
@@ -441,7 +442,7 @@ type SvgDocumentBrowserHost
         if disposed then
             invalidOp "The SVG document browser host is disposed."
 
-        match SvgDocument.exportSvg mountNamespace document with
+        match exportDocument document with
         | Error issues -> Error(SvgDocumentBrowserError.InvalidDocument issues)
         | Ok candidateSvg ->
             // Parsing happens only after portable validation/export succeeds, and replacement is the
@@ -459,6 +460,7 @@ type SvgDocumentBrowserHost
                     container.removeChild (root) |> ignore
 
                 DocumentRegistry.activeNamespaces.Remove mountNamespace |> ignore
+                exportDocument <- SvgDocument.createExporter mountNamespace
                 disposed <- true
 
 /// The scene-derived half of retained interaction synchronization. It is computed in one pass over the

@@ -77,6 +77,61 @@ let tests =
     testList
         "SVG document and affine contract"
         [
+            test "owner exporter preserves complete export and ordered refusals across definition transitions" {
+                let export = SvgDocument.createExporter "m"
+                for _ in 1..2 do
+                    for _, _, candidate in prefixCompatibilityCorpus () do
+                        Expect.equal (export candidate) (SvgDocument.exportSvg "m" candidate) "cached and stateless complete results"
+                let blank = SvgDocument.createExporter " "
+                for _, _, candidate in prefixCompatibilityCorpus () do
+                    Expect.equal (blank candidate) (SvgDocument.exportSvg " " candidate) "namespace refusal precedes document issues"
+            }
+
+            test "instance deltas retain cross-definition identities references and numeric validation" {
+                let definitionLeaf = leaf "definition-child"
+                let symbol = { Id = "symbol"; Content = SvgDefinitionContent.Symbol(None, [ definitionLeaf ]) }
+                let instance = { leaf "instance" with Content = SvgElementContent.SymbolInstance("symbol", None) }
+                let baseline = document [ symbol ] [ instance ]
+                let export = SvgDocument.createExporter "delta"
+                Expect.isOk (export baseline) "warm accepted definitions"
+                let check candidate =
+                    Expect.equal (export candidate) (SvgDocument.exportSvg "delta" candidate) "all issues, order and bytes match"
+                    Expect.isOk (export baseline) "refusal never poisons accepted state"
+                for value in [ Double.NaN; Double.NegativeInfinity; -1.0; 0.0; 1.0; Double.MaxValue; Double.PositiveInfinity ] do
+                    check { baseline with ViewBox = { baseline.ViewBox with Width = value } }
+                    check { baseline with Children = [ { instance with Transform = SvgAffine.translate value 0.0 } ] }
+                    check { baseline with Children = [ { instance with Presentation = Some { SvgDocument.defaultPresentation with OverallOpacity = value } } ] }
+                for id in [ ""; " "; "fixture"; "symbol"; "definition-child"; "other" ] do
+                    check { baseline with Id = id }
+                    check { baseline with Children = [ { instance with Id = id } ] }
+                    check { baseline with Children = [ { instance with SemanticId = Some id } ] }
+                    check { baseline with Children = [ { instance with Content = SvgElementContent.SymbolInstance(id, None) } ] }
+                check { baseline with Children = [ { instance with SemanticId = definitionLeaf.SemanticId } ] }
+                check { baseline with Children = [ { instance with ClipId = Some "symbol" } ] }
+                check { baseline with Definitions = [ { symbol with Content = SvgDefinitionContent.Symbol(None, [ instance ]) } ] }
+                check { baseline with Definitions = [] }
+                check { baseline with Definitions = [ symbol; symbol ] }
+                // New collection and record identities with equal content are legal and reusable.
+                check { baseline with Definitions = [ { symbol with Id = "symbol" } ] }
+            }
+
+            test "cached definitions still contribute to direct and expanded limits" {
+                let symbol = { Id = "symbol"; Content = SvgDefinitionContent.Symbol(None, [ leaf "geometry" ]) }
+                let instance index = { leaf ("instance-" + string index) with Content = SvgElementContent.SymbolInstance("symbol", None) }
+                let export = SvgDocument.createExporter "limits"
+                let baseline = document [ symbol ] [ instance 0 ]
+                Expect.isOk (export baseline) "warm definitions"
+                for count in [ 9998; 9999; 10000 ] do
+                    let candidate = { baseline with Children = List.init count instance }
+                    Expect.equal (export candidate) (SvgDocument.exportSvg "limits" candidate) "combined definition and instance node boundary"
+                let wide = { symbol with Content = SvgDefinitionContent.Symbol(None, List.init 10 (fun i -> leaf ("geometry-" + string i))) }
+                let baseline = { baseline with Definitions = [ wide ] }
+                Expect.isOk (export baseline) "new accepted definition set"
+                for count in [ 4545; 4546 ] do
+                    let candidate = { baseline with Children = List.init count instance }
+                    Expect.equal (export candidate) (SvgDocument.exportSvg "limits" candidate) "expanded symbol boundary"
+            }
+
             test "export prefix bytes match the frozen pre-change .NET producer" {
                 let actual = prefixCompatibilityObservations ()
                 Expect.equal actual.Length prefixPrechangeDigests.Length "every fixed success and refusal is checked"
