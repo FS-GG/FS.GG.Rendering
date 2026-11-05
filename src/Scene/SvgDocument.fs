@@ -397,14 +397,28 @@ module SvgDocument =
             1 + ownNodes + nestedNodes, ownSegments + nestedSegments
         | _ -> 1 + ownNodes, ownSegments
 
-    let validate serializedByteCount (limits: SvgDocumentLimits) (document: SvgDocument) =
+    // Only a successful exporter call can populate this owner-bounded snapshot.
+    type private DefinitionValidation =
+        {
+            Values: SvgDefinition list
+            Definitions: Map<string, SvgDefinition>
+            ElementIds: string list
+            SemanticIds: string list
+            Nodes: int
+            Segments: int
+        }
+
+    let private validateCore cached serializedByteCount (limits: SvgDocumentLimits) (document: SvgDocument) =
         let mutable issues: SvgDocumentIssue list = []
 
         let add code path message =
             issues <- issue code path message :: issues
 
+        let reusable = cached |> Option.filter (fun previous -> previous.Values = document.Definitions)
         let definitions: Map<string, SvgDefinition> =
-            document.Definitions |> List.map (fun value -> value.Id, value) |> Map.ofList
+            match reusable with
+            | Some previous -> previous.Definitions
+            | None -> document.Definitions |> List.map (fun value -> value.Id, value) |> Map.ofList
 
         let definitionKind (content: SvgDefinitionContent) =
             match content with
@@ -450,7 +464,8 @@ module SvgDocument =
                 if count > 1 then
                     add "duplicate-id" path $"{kind} id is duplicated: {id}")
 
-        duplicateIds "definition" "/definitions" (document.Definitions |> List.map _.Id)
+        if reusable.IsNone then
+            duplicateIds "definition" "/definitions" (document.Definitions |> List.map _.Id)
 
         let mutable allElementIds = []
         let mutable allSemanticIds = []
@@ -688,8 +703,19 @@ module SvgDocument =
         document.Children
         |> List.iteri (fun index child -> validateElement (childPath "" index) child)
 
-        document.Definitions
-        |> List.iteri (fun index definition -> validateDefinition $"/definitions/{index}" definition)
+        let instanceIds, instanceSemanticIds = allElementIds, allSemanticIds
+        allElementIds <- []
+        allSemanticIds <- []
+        match reusable with
+        | Some previous ->
+            allElementIds <- previous.ElementIds
+            allSemanticIds <- previous.SemanticIds
+        | None ->
+            document.Definitions
+            |> List.iteri (fun index definition -> validateDefinition $"/definitions/{index}" definition)
+        let definitionElementIds, definitionSemanticIds = allElementIds, allSemanticIds
+        allElementIds <- allElementIds @ instanceIds
+        allSemanticIds <- allSemanticIds @ instanceSemanticIds
 
         duplicateIds "element" "/children" allElementIds
         duplicateIds "semantic" "/children" allSemanticIds
@@ -727,18 +753,28 @@ module SvgDocument =
                 |> Option.iter (fun definition ->
                     definitionRefs definition |> List.iter (visit (id :: stack) (depth + 1)))
 
-        document.Definitions |> List.iter (fun definition -> visit [] 1 definition.Id)
+        if reusable.IsNone then
+            document.Definitions |> List.iter (fun definition -> visit [] 1 definition.Id)
 
-        let directNodes, pathSegments =
-            document.Children
-            @ (document.Definitions
-               |> List.collect (fun definition ->
-                   match definition.Content with
-                   | SvgDefinitionContent.Symbol(_, children)
-                   | SvgDefinitionContent.Mask(_, _, _, children) -> children
-                   | _ -> []))
+        let countElements elements =
+            elements
             |> List.map elementCounts
             |> List.fold (fun (n, s) (cn, cs) -> n + cn, s + cs) (0, 0)
+
+        let definitionNodes, definitionSegments =
+            match reusable with
+            | Some previous -> previous.Nodes, previous.Segments
+            | None ->
+                document.Definitions
+                |> List.collect (fun definition ->
+                    match definition.Content with
+                    | SvgDefinitionContent.Symbol(_, children)
+                    | SvgDefinitionContent.Mask(_, _, _, children) -> children
+                    | _ -> [])
+                |> countElements
+        let instanceNodes, instanceSegments = countElements document.Children
+        let directNodes = instanceNodes + definitionNodes
+        let pathSegments = instanceSegments + definitionSegments
 
         if directNodes > limits.MaxNodes then
             add "node-limit" "/children" $"document exceeds {limits.MaxNodes} nodes"
@@ -765,7 +801,16 @@ module SvgDocument =
         if expandedNodes > limits.MaxExpandedSymbolNodes then
             add "expanded-symbol-limit" "/children" $"expanded symbols exceed {limits.MaxExpandedSymbolNodes} nodes"
 
-        List.rev issues
+        List.rev issues,
+        { Values = document.Definitions
+          Definitions = definitions
+          ElementIds = definitionElementIds
+          SemanticIds = definitionSemanticIds
+          Nodes = definitionNodes
+          Segments = definitionSegments }
+
+    let validate serializedByteCount limits document =
+        validateCore None serializedByteCount limits document |> fst
 
     let ofRetainedScene (viewBox: Rect) (scene: RetainedScene) =
         match SvgRetained.project scene with
@@ -1794,17 +1839,7 @@ module SvgDocument =
 
         output.ToString().TrimEnd()
 
-    let exportSvg (mountNamespace: string) (document: SvgDocument) =
-        let namespaceIssues =
-            if String.IsNullOrWhiteSpace mountNamespace then
-                [
-                    issue "blank-mount-namespace" "/mountNamespace" "mount namespace must not be blank"
-                ]
-            else
-                []
-
-        let issues = namespaceIssues @ validate 0 defaultLimits document
-
+    let private exportValidated (mountNamespace: string) (document: SvgDocument) (issues: SvgDocumentIssue list) =
         if not issues.IsEmpty then
             Error issues
         else
@@ -2505,6 +2540,24 @@ module SvgDocument =
                 Ok(output.ToString())
             with error ->
                 Error [ issue "unsupported-export" "/" error.Message ]
+
+    let private namespaceIssues mountNamespace =
+        if String.IsNullOrWhiteSpace mountNamespace then
+            [ issue "blank-mount-namespace" "/mountNamespace" "mount namespace must not be blank" ]
+        else []
+
+    let exportSvg mountNamespace document =
+        exportValidated mountNamespace document (namespaceIssues mountNamespace @ validate 0 defaultLimits document)
+
+    let createExporter mountNamespace =
+        let mutable acceptedDefinitions = None
+        fun document ->
+            let issues, definitions = validateCore acceptedDefinitions 0 defaultLimits document
+            let result = exportValidated mountNamespace document (namespaceIssues mountNamespace @ issues)
+            match result with
+            | Ok _ -> acceptedDefinitions <- Some definitions
+            | Error _ -> ()
+            result
 
 type SvgDocumentPlaySnapshot =
     {

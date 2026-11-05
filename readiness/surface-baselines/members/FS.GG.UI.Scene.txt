@@ -993,6 +993,7 @@ FS.GG.UI.Scene.SvgDocument.Definitions : Microsoft.FSharp.Collections.FSharpList
 FS.GG.UI.Scene.SvgDocument.Id : System.String [get]
 FS.GG.UI.Scene.SvgDocument.Schema : System.String [get]
 FS.GG.UI.Scene.SvgDocument.ViewBox : FS.GG.UI.Scene.Rect [get]
+FS.GG.UI.Scene.SvgDocument.createExporter(System.String) : Microsoft.FSharp.Core.FSharpFunc<FS.GG.UI.Scene.SvgDocument, Microsoft.FSharp.Core.FSharpResult<System.String, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgDocumentIssue>>>
 FS.GG.UI.Scene.SvgDocument.defaultLimits : FS.GG.UI.Scene.SvgDocumentLimits [get]
 FS.GG.UI.Scene.SvgDocument.defaultPresentation : FS.GG.UI.Scene.SvgPresentation [get]
 FS.GG.UI.Scene.SvgDocument.deserialize(System.String) : Microsoft.FSharp.Core.FSharpResult<FS.GG.UI.Scene.SvgDocument, Microsoft.FSharp.Collections.FSharpList<FS.GG.UI.Scene.SvgDocumentIssue>>

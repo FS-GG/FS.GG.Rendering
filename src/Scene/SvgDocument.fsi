@@ -208,6 +208,12 @@ module SvgDocument =
     /// Export one accepted document as standalone SVG XML with collision-free local identifiers.
     val exportSvg: mountNamespace: string -> document: SvgDocument -> Result<string, SvgDocumentIssue list>
 
+    /// Create an owner-scoped exporter reusing validation of the last successful immutable
+    /// definition set. Instances, cross-identities and limits are checked on every call.
+    /// Changed definitions are fully checked; refusals never replace the cached set.
+    /// Release the exporter when its owner is disposed. Calls must be serialized by the owner.
+    val createExporter: mountNamespace: string -> (SvgDocument -> Result<string, SvgDocumentIssue list>)
+
 /// Immutable handoff from the minimal document editor into a play/session boundary.
 /// The canonical serialized bytes do not share later editor history.
 type SvgDocumentPlaySnapshot =
