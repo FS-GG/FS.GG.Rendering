@@ -96,6 +96,7 @@ let tests =
                 Expect.isOk (export baseline) "warm accepted definitions"
                 let check candidate =
                     Expect.equal (export candidate) (SvgDocument.exportSvg "delta" candidate) "all issues, order and bytes match"
+                    Expect.equal (export candidate) (SvgDocument.exportSvg "delta" candidate) "repeated refusal cannot certify invalid definitions"
                     Expect.isOk (export baseline) "refusal never poisons accepted state"
                 for value in [ Double.NaN; Double.NegativeInfinity; -1.0; 0.0; 1.0; Double.MaxValue; Double.PositiveInfinity ] do
                     check { baseline with ViewBox = { baseline.ViewBox with Width = value } }
@@ -121,15 +122,31 @@ let tests =
                 let export = SvgDocument.createExporter "limits"
                 let baseline = document [ symbol ] [ instance 0 ]
                 Expect.isOk (export baseline) "warm definitions"
-                for count in [ 9998; 9999; 10000 ] do
+                for count in [ SvgDocument.defaultLimits.MaxNodes - 2; SvgDocument.defaultLimits.MaxNodes - 1; SvgDocument.defaultLimits.MaxNodes ] do
                     let candidate = { baseline with Children = List.init count instance }
                     Expect.equal (export candidate) (SvgDocument.exportSvg "limits" candidate) "combined definition and instance node boundary"
                 let wide = { symbol with Content = SvgDefinitionContent.Symbol(None, List.init 10 (fun i -> leaf ("geometry-" + string i))) }
                 let baseline = { baseline with Definitions = [ wide ] }
                 Expect.isOk (export baseline) "new accepted definition set"
-                for count in [ 4545; 4546 ] do
+                let expandedBoundary = SvgDocument.defaultLimits.MaxExpandedSymbolNodes / 11
+                for count in [ expandedBoundary; expandedBoundary + 1 ] do
                     let candidate = { baseline with Children = List.init count instance }
                     Expect.equal (export candidate) (SvgDocument.exportSvg "limits" candidate) "expanded symbol boundary"
+            }
+
+            test "cached definition paths still contribute to the combined segment limit" {
+                let geometry count id =
+                    let path = Path.create PathFillType.Winding (Path.moveTo 0.0 0.0 :: List.replicate (count - 1) (Path.lineTo 1.0 1.0))
+                    { leaf id with Content = SvgElementContent.SceneLeaf(Scene.path path (Paint.fill Colors.black)) }
+                let definitionSegments = SvgDocument.defaultLimits.MaxPathSegments / 2
+                let instanceBoundary = SvgDocument.defaultLimits.MaxPathSegments - definitionSegments
+                let symbol = { Id = "symbol"; Content = SvgDefinitionContent.Symbol(None, [ geometry definitionSegments "definition-path" ]) }
+                let baseline = document [ symbol ] []
+                let export = SvgDocument.createExporter "paths"
+                Expect.isOk (export baseline) "warm accepted definition path"
+                for count in [ instanceBoundary - 1; instanceBoundary; instanceBoundary + 1 ] do
+                    let candidate = { baseline with Children = [ geometry count "instance-path" ] }
+                    Expect.equal (export candidate) (SvgDocument.exportSvg "paths" candidate) "definition plus instance path boundary"
             }
 
             test "export prefix bytes match the frozen pre-change .NET producer" {
